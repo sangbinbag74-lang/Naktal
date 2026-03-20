@@ -70,7 +70,7 @@ export default function SignupPage() {
     }
     setVerifying(false);
 
-    const email = `${form.bizNo}@naktal.biz`;
+    const email = `biz_${form.bizNo}@naktal.biz`;
     const supabase = createClient();
     const { error: authError } = await supabase.auth.signUp({ email, password: form.password });
 

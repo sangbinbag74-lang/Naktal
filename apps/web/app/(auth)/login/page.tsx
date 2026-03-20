@@ -22,7 +22,7 @@ export default function LoginPage() {
     setLoading(true);
     setError(null);
 
-    const email = `${bizNo}@naktal.biz`;
+    const email = `biz_${bizNo}@naktal.biz`;
     const supabase = createClient();
     const { error: authError } = await supabase.auth.signInWithPassword({ email, password });
 

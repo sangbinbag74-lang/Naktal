@@ -24,7 +24,7 @@ export default function ForgotPasswordPage() {
     setError(null);
 
     // notifyEmail이 있으면 해당 주소로, 없으면 @naktal.biz 주소로 발송
-    const email = notifyEmail.trim() || `${bizNo}@naktal.biz`;
+    const email = notifyEmail.trim() || `biz_${bizNo}@naktal.biz`;
     const supabase = createClient();
     const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
       redirectTo: `${location.origin}/auth/reset-password`,
