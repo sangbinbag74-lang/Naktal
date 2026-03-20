@@ -9,59 +9,51 @@ import {
   type G2BAnnouncement,
 } from "@/lib/g2b";
 
-// ─── G2B → DB upsert ─────────────────────────────────────────────────────────
-async function syncFromG2B(
+// ─── G2B → DB upsert (최근 N일치) ────────────────────────────────────────────
+async function syncRecentFromG2B(
   supabase: Awaited<ReturnType<typeof createClient>>,
-  fromDate: string,
-  toDate: string,
+  days: number,
 ): Promise<number> {
-  let page = 1;
-  let saved = 0;
+  const today   = toYMD(new Date());
+  const fromDay = toYMD(daysAgo(days));
+  let page = 1, saved = 0;
 
   while (true) {
     const { items, totalCount } = await g2bFetchAnnouncementPage({
-      pageNo: page,
-      numOfRows: 100,
-      inqryBgnDt: `${fromDate}0000`,
-      inqryEndDt: `${toDate}2359`,
+      pageNo: page, numOfRows: 100,
+      inqryBgnDt: `${fromDay}0000`,
+      inqryEndDt: `${today}2359`,
     });
-
     if (items.length === 0) break;
 
-    const rows = items
-      .map((item: G2BAnnouncement) => {
-        const konepsId  = item.bidNtceNo?.trim();
-        const title     = item.bidNtceNm?.trim();
-        const orgName   = (item.ntceInsttNm || item.demInsttNm)?.trim();
-        const budgetNum = parseInt(
-          (item.asignBdgtAmt || item.presmptPrce || "0").replace(/[^0-9]/g, ""), 10
-        );
-        const deadline  = g2bParseDate(item.bidClseDt);
-        if (!konepsId || !title || !orgName || !budgetNum || !deadline) return null;
-        const rawJson: Record<string, string> = {};
-        for (const [k, v] of Object.entries(item)) rawJson[k] = String(v ?? "");
-        return {
-          konepsId, title, orgName,
-          budget: String(budgetNum),
-          deadline,
-          category: item.ntceKindNm || item.indutyCtgryNm || "",
-          region: g2bExtractRegion(item.ntceInsttAddr || ""),
-          rawJson,
-        };
-      })
-      .filter(Boolean);
+    const rows = items.map((item: G2BAnnouncement) => {
+      const konepsId  = item.bidNtceNo?.trim();
+      const title     = item.bidNtceNm?.trim();
+      const orgName   = (item.ntceInsttNm || item.demInsttNm)?.trim();
+      const budgetNum = parseInt(
+        (item.asignBdgtAmt || item.presmptPrce || "0").replace(/[^0-9]/g, ""), 10
+      );
+      const deadline = g2bParseDate(item.bidClseDt);
+      if (!konepsId || !title || !orgName || !budgetNum || !deadline) return null;
+      const rawJson: Record<string, string> = {};
+      for (const [k, v] of Object.entries(item)) rawJson[k] = String(v ?? "");
+      return {
+        konepsId, title, orgName,
+        budget: String(budgetNum),
+        deadline,
+        category: item.ntceKindNm || item.indutyCtgryNm || "",
+        region: g2bExtractRegion(item.ntceInsttAddr || ""),
+        rawJson,
+      };
+    }).filter(Boolean);
 
     if (rows.length > 0) {
-      const { error } = await supabase
-        .from("Announcement")
-        .upsert(rows, { onConflict: "konepsId" });
-      if (!error) saved += rows.length;
+      await supabase.from("Announcement").upsert(rows, { onConflict: "konepsId" });
+      saved += rows.length;
     }
-
     if (page * 100 >= totalCount) break;
     page++;
   }
-
   return saved;
 }
 
@@ -80,48 +72,56 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   const offset    = (page - 1) * limit;
 
   const supabase = await createClient();
+  const hasFilter = !!(category || region || keyword || minBudget || maxBudget);
 
-  let query = supabase.from("Announcement").select("*", { count: "exact" });
-  if (category)  query = query.eq("category", category);
-  if (region)    query = query.eq("region", region);
-  if (keyword)   query = query.or(`title.ilike.%${keyword}%,orgName.ilike.%${keyword}%`);
-  if (minBudget) query = query.gte("budget", minBudget);
-  if (maxBudget) query = query.lte("budget", maxBudget);
-  query = sort === "deadline"
-    ? query.order("deadline", { ascending: true })
-    : query.order("createdAt", { ascending: false });
-  query = query.range(offset, offset + limit - 1);
+  // ── DB 조회 ──────────────────────────────────────────────────────────────────
+  const buildQuery = () => {
+    let q = supabase.from("Announcement").select("*", { count: "exact" });
+    if (category)  q = q.eq("category", category);
+    if (region)    q = q.eq("region", region);
+    if (keyword)   q = q.or(`title.ilike.%${keyword}%,orgName.ilike.%${keyword}%`);
+    if (minBudget) q = q.gte("budget", minBudget);
+    if (maxBudget) q = q.lte("budget", maxBudget);
+    q = sort === "deadline"
+      ? q.order("deadline", { ascending: true })
+      : q.order("createdAt", { ascending: false });
+    return q.range(offset, offset + limit - 1);
+  };
 
-  const { data, count, error } = await query;
+  const { data, count, error } = await buildQuery();
 
   if (error) {
     console.error("[GET /api/announcements]", error.message);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  // DB가 비어있으면 G2B API에서 즉시 수집 후 반환
-  if ((count ?? 0) === 0 && page === 1) {
+  // ── on-demand G2B fetch:
+  //    1) DB가 완전히 비어있을 때 (최초 접속)
+  //    2) 필터를 적용했는데 결과가 너무 적을 때 (< 5건)
+  const shouldSync =
+    page === 1 &&
+    ((count ?? 0) === 0 ||
+      (hasFilter && (count ?? 0) < 5));
+
+  if (shouldSync) {
     try {
-      const today   = toYMD(new Date());
-      const weekAgo = toYMD(daysAgo(7));
-      const saved   = await syncFromG2B(supabase, weekAgo, today);
-      console.log(`[on-demand G2B sync] ${saved}건 저장`);
+      // 필터 조회면 30일치, 첫 접속이면 7일치 수집
+      const days = hasFilter ? 30 : 7;
+      const saved = await syncRecentFromG2B(supabase, days);
+      console.log(`[on-demand G2B sync] ${days}일치 ${saved}건 저장`);
 
-      const { data: fresh, count: freshCount } = await supabase
-        .from("Announcement")
-        .select("*", { count: "exact" })
-        .order("createdAt", { ascending: false })
-        .range(0, limit - 1);
-
+      // 수집 후 동일 쿼리 재실행
+      const { data: fresh, count: freshCount } = await buildQuery();
       return NextResponse.json({
         data: fresh ?? [],
         total: freshCount ?? 0,
-        hasMore: limit < (freshCount ?? 0),
-        page: 1,
+        hasMore: offset + limit < (freshCount ?? 0),
+        page,
         limit,
       });
     } catch (syncErr) {
       console.error("[on-demand G2B sync 실패]", syncErr);
+      // 실패해도 기존 결과 반환
     }
   }
 
