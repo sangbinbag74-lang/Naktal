@@ -112,7 +112,7 @@ PORTONE_SECRET_KEY=
 PORTONE_WEBHOOK_SECRET=
 NTS_API_KEY=
 RESEND_API_KEY=
-NEXT_PUBLIC_SITE_URL=https://naktal.ai
+NEXT_PUBLIC_SITE_URL=https://naktal.me
 G2B_API_KEY=
 KONEPS_API_KEY=          # G2B_API_KEY와 동일 값 사용 가능 (공공데이터포털)
 KONEPS_API_BASE=https://apis.data.go.kr/1230000
@@ -132,7 +132,7 @@ KAKAO_TEMPLATE_DEADLINE= # 마감 임박 알림 템플릿 ID
 - shadcn/ui 컴포넌트 원본 수정 금지 → 래핑
 
 ## 현재 상태: 실서비스 운영 중 (B안 베타)
-배포: Vercel → naktal.ai (vercel.json 루트에 있음)
+배포: Vercel → naktal.me (vercel.json 루트에 있음)
 
 ## 운영 스케줄
 매일 03:00 KST   — /api/cron/sync-g2b (공고 + 낙찰결과 수집)

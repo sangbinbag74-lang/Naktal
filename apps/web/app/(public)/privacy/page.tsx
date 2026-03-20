@@ -54,12 +54,12 @@ export default function PrivacyPage() {
 • 처리 정지 요청
 • 동의 철회
 
-요청은 support@naktal.ai로 이메일을 보내주시면 10일 이내에 처리합니다.`,
+요청은 support@naktal.me로 이메일을 보내주시면 10일 이내에 처리합니다.`,
     },
     {
       title: "7. 개인정보 보호책임자",
       content: `• 이름: 홍길동 (대표이사)
-• 이메일: privacy@naktal.ai
+• 이메일: privacy@naktal.me
 • 개인정보 관련 문의는 위 이메일로 연락 바랍니다.`,
     },
     {

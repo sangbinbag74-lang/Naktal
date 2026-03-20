@@ -16,13 +16,13 @@ export const metadata: Metadata = {
   openGraph: {
     title: "낙탈AI — 이 공고 몇 번 넣어야 해요?",
     description: "수만 건 개찰 데이터가 답합니다. 번호 역이용 AI + 실시간 참여자 수 + 적격심사 계산기.",
-    url: "https://naktal.ai",
+    url: "https://naktal.me",
     siteName: "낙탈AI",
     locale: "ko_KR",
     type: "website",
   },
   robots: { index: true, follow: true },
-  metadataBase: new URL("https://naktal.ai"),
+  metadataBase: new URL("https://naktal.me"),
 };
 
 export default function RootLayout({

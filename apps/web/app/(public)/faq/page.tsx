@@ -47,7 +47,7 @@ export default function FaqPage() {
 
       <main style={{ maxWidth: 720, margin: "0 auto", padding: "48px 24px" }}>
         <h1 style={{ fontSize: 28, fontWeight: 800, color: "#0F172A", marginBottom: 8 }}>자주 묻는 질문</h1>
-        <p style={{ color: "#64748B", fontSize: 14, marginBottom: 40 }}>추가 문의는 support@naktal.ai로 보내주세요.</p>
+        <p style={{ color: "#64748B", fontSize: 14, marginBottom: 40 }}>추가 문의는 support@naktal.me로 보내주세요.</p>
 
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
           {FAQS.map((f) => (

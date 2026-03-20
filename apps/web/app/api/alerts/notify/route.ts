@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { Resend } from "resend";
 
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://naktal.ai";
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://naktal.me";
 
 interface Announcement {
   id: string;
@@ -111,7 +111,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     for (const ann of matched.slice(0, 5)) {
       try {
         await resend.emails.send({
-          from: "NAKTAL <noreply@naktal.ai>",
+          from: "NAKTAL <noreply@naktal.me>",
           to: user.notifyEmail,
           subject: `[낙탈AI] 새 공고: ${ann.title}`,
           html: buildEmailHtml(ann, user.bizName),

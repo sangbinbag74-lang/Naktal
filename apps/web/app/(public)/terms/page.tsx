@@ -8,7 +8,7 @@ export default function TermsPage() {
   const sections = [
     {
       title: "제1조 (목적)",
-      content: "이 이용약관(이하 '약관')은 (주)낙탈(이하 '회사')이 운영하는 낙탈AI(naktal.ai) 서비스(이하 '서비스')를 이용함에 있어 회사와 이용자의 권리, 의무 및 책임사항을 규정함을 목적으로 합니다.",
+      content: "이 이용약관(이하 '약관')은 (주)낙탈(이하 '회사')이 운영하는 낙탈AI(naktal.me) 서비스(이하 '서비스')를 이용함에 있어 회사와 이용자의 권리, 의무 및 책임사항을 규정함을 목적으로 합니다.",
     },
     {
       title: "제2조 (서비스 내용)",
@@ -43,7 +43,7 @@ export default function TermsPage() {
 • 번호 추천 서비스를 1회 이상 이용한 경우: 환불 불가
 • 구독 기간 중 중도 해지 시: 잔여 기간 환불 불가
 
-환불 요청: support@naktal.ai`,
+환불 요청: support@naktal.me`,
     },
     {
       title: "제6조 (면책 조항)",

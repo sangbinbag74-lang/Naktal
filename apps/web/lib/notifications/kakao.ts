@@ -44,7 +44,7 @@ async function sendEmailFallback(to: string, subject: string, text: string): Pro
   await fetch("https://api.resend.com/emails", {
     method: "POST",
     headers: { "Authorization": "Bearer " + key, "Content-Type": "application/json" },
-    body: JSON.stringify({ from: "낙탈AI <no-reply@naktal.ai>", to, subject, text }),
+    body: JSON.stringify({ from: "낙탈AI <no-reply@naktal.me>", to, subject, text }),
   }).catch(() => {});
 }
 
@@ -60,7 +60,7 @@ export async function notifyNewAnnouncement(
     const sent = await sendKakaoAlimtalk({ templateId, receiverPhone: phone, variables: { title: announcementTitle, deadline } });
     if (sent) return;
   }
-  if (email) await sendEmailFallback(email, "[낙탈AI] 새 공고 매칭: " + announcementTitle, "마감일: " + deadline + "\n\nhttps://naktal.ai/announcements");
+  if (email) await sendEmailFallback(email, "[낙탈AI] 새 공고 매칭: " + announcementTitle, "마감일: " + deadline + "\n\nhttps://naktal.me/announcements");
 }
 
 /** 개찰 결과 입력 요청 알림 */
@@ -91,5 +91,5 @@ export async function notifyDeadlineReminder(
     const sent = await sendKakaoAlimtalk({ templateId, receiverPhone: phone, variables: { title: announcementTitle, deadline } });
     if (sent) return;
   }
-  if (email) await sendEmailFallback(email, "[낙탈AI] 마감 D-1: " + announcementTitle, "내일 마감입니다. 번호 전략을 지금 확인하세요.\nhttps://naktal.ai/strategy");
+  if (email) await sendEmailFallback(email, "[낙탈AI] 마감 D-1: " + announcementTitle, "내일 마감입니다. 번호 전략을 지금 확인하세요.\nhttps://naktal.me/strategy");
 }
