@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { MobileSidebar } from "@/components/layout/MobileSidebar";
-import { LogoutButtonClient } from "@/components/layout/LogoutButtonClient";
+import { Header } from "@/components/layout/Header";
 
 export default async function DashboardLayout({
   children,
@@ -18,31 +18,48 @@ export default async function DashboardLayout({
     redirect("/login");
   }
 
+  // DB에서 회사명·플랜 조회
+  const { data: dbUser } = await supabase
+    .from("User")
+    .select("bizName, plan")
+    .eq("supabaseId", user.id)
+    .single();
+
+  const bizName = dbUser?.bizName ?? "";
+  const plan = (dbUser?.plan ?? "FREE") as "FREE" | "STANDARD" | "PRO";
+
   return (
-    <div className="flex h-screen bg-gray-50">
+    <div style={{ display: "flex", height: "100vh", background: "#F0F2F5" }}>
       {/* 데스크톱 사이드바 */}
-      <div className="hidden md:flex">
-        <Sidebar />
+      <div className="hidden md:flex" style={{ flexShrink: 0 }}>
+        <Sidebar plan={plan} />
       </div>
 
       {/* 메인 콘텐츠 영역 */}
-      <div className="flex flex-col flex-1 overflow-hidden">
-        {/* 헤더 */}
-        <header className="flex items-center justify-between h-16 px-4 md:px-6 bg-white border-b border-gray-200 shrink-0">
-          <div className="flex items-center gap-3">
-            <MobileSidebar />
-            <h1 className="text-lg font-semibold text-gray-800">대시보드</h1>
-          </div>
-          <div className="flex items-center gap-3">
-            <span className="text-sm text-gray-600 hidden sm:block">
-              {user.email}
-            </span>
-            <LogoutButtonClient />
-          </div>
-        </header>
+      <div style={{ display: "flex", flexDirection: "column", flex: 1, overflow: "hidden" }}>
+        {/* 모바일 상단바 */}
+        <div className="flex md:hidden" style={{
+          height: 56,
+          background: "#fff",
+          borderBottom: "1px solid #F1F5F9",
+          alignItems: "center",
+          padding: "0 16px",
+          gap: 12,
+          flexShrink: 0,
+        }}>
+          <MobileSidebar />
+          <span style={{ fontSize: 16, fontWeight: 700, color: "#1B3A6B" }}>NAKTAL.AI</span>
+        </div>
+
+        {/* 데스크톱 헤더 */}
+        <div className="hidden md:block" style={{ flexShrink: 0 }}>
+          <Header bizName={bizName} />
+        </div>
 
         {/* 페이지 콘텐츠 */}
-        <main className="flex-1 overflow-y-auto p-4 md:p-6">{children}</main>
+        <main style={{ flex: 1, overflowY: "auto", padding: "24px 28px" }}>
+          {children}
+        </main>
       </div>
     </div>
   );
