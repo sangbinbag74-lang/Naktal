@@ -165,7 +165,9 @@ function currentMonth(): string {
 // ─── Cron 진입점 ──────────────────────────────────────────────────────────────
 export async function GET(request: NextRequest) {
   const authHeader = request.headers.get("authorization");
-  if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+  const token = authHeader?.replace("Bearer ", "");
+  const validTokens = [process.env.CRON_SECRET, process.env.ADMIN_SECRET_KEY].filter(Boolean);
+  if (!token || !validTokens.includes(token)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
