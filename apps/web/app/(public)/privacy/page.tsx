@@ -58,7 +58,7 @@ export default function PrivacyPage() {
     },
     {
       title: "7. 개인정보 보호책임자",
-      content: `• 이름: 홍길동 (대표이사)
+      content: `• 이름: 박상빈 (대표이사)
 • 이메일: privacy@naktal.me
 • 개인정보 관련 문의는 위 이메일로 연락 바랍니다.`,
     },
