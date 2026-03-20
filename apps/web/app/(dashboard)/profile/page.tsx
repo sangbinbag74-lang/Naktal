@@ -23,7 +23,16 @@ export default function ProfilePage() {
   const [saved, setSaved] = useState(false);
 
   useEffect(() => {
-    fetch("/api/profile").then(r => r.json()).then(d => { if (d && !d.error) setProfile(d); }).catch(() => {}).finally(() => setLoading(false));
+    fetch("/api/profile").then(r => r.json()).then(d => {
+      if (d && !d.error) {
+        setProfile(prev => ({
+          ...prev,
+          ...d,
+          subCategories: Array.isArray(d.subCategories) ? d.subCategories : [],
+          constructionRecords: Array.isArray(d.constructionRecords) ? d.constructionRecords : [],
+        }));
+      }
+    }).catch(() => {}).finally(() => setLoading(false));
   }, []);
 
   async function save(e: React.FormEvent) {
