@@ -32,12 +32,12 @@ async function syncRecentFromG2B(days: number): Promise<number> {
         (item.asignBdgtAmt || item.presmptPrce || "0").replace(/[^0-9]/g, ""), 10
       );
       const deadline = g2bParseDate(item.bidClseDt);
-      if (!konepsId || !title || !orgName || !budgetNum || !deadline) return null;
+      if (!konepsId || !title || !orgName || isNaN(budgetNum) || !deadline) return null;
       const rawJson: Record<string, string> = {};
       for (const [k, v] of Object.entries(item)) rawJson[k] = String(v ?? "");
       return {
         konepsId, title, orgName,
-        budget: String(budgetNum),
+        budget: budgetNum,
         deadline,
         category: item.indutyCtgryNm || item.ntceKindNm || "",
         region: g2bExtractRegion(item.ntceInsttAddr || ""),
@@ -46,7 +46,8 @@ async function syncRecentFromG2B(days: number): Promise<number> {
     }).filter(Boolean);
 
     if (rows.length > 0) {
-      await admin.from("Announcement").upsert(rows, { onConflict: "konepsId" });
+      const { error: upsertErr } = await admin.from("Announcement").upsert(rows, { onConflict: "konepsId" });
+      if (upsertErr) throw new Error(`upsert 실패: ${upsertErr.message}`);
       saved += rows.length;
     }
     if (page * 100 >= totalCount) break;
@@ -133,6 +134,16 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       });
     } catch (syncErr) {
       console.error("[on-demand G2B sync 실패/타임아웃]", (syncErr as Error).message);
+      // 일부 저장됐을 수 있으니 재조회
+      const { data: fallback, count: fallbackCount } = await buildQuery();
+      if ((fallbackCount ?? 0) > 0) {
+        return NextResponse.json({
+          data: fallback ?? [],
+          total: fallbackCount ?? 0,
+          hasMore: offset + limit < (fallbackCount ?? 0),
+          page, limit,
+        });
+      }
     }
   }
 
