@@ -21,11 +21,101 @@ interface RecommendResult {
   hitRate1: number;
   hitRate2: number;
   hitRate3: number;
+  freqMap?: Record<string, number>;
   sampleSize: number;
   modelVersion: string;
   isEstimated: boolean;
   used: number;
   limit: number;
+}
+
+function FreqHeatmap({ freqMap, combo1, combo2, combo3 }: {
+  freqMap: Record<string, number>;
+  combo1: number[];
+  combo2: number[];
+  combo3: number[];
+}) {
+  const BUCKETS = 50;
+  const buckets: number[] = Array(BUCKETS).fill(0);
+
+  for (let i = 0; i < BUCKETS; i++) {
+    let sum = 0, cnt = 0;
+    for (let j = i * 20; j < i * 20 + 20; j++) {
+      const v = (freqMap as Record<number, number>)[j] ?? freqMap[String(j)];
+      if (v !== undefined) { sum += v; cnt++; }
+    }
+    buckets[i] = cnt > 0 ? sum / cnt : 0;
+  }
+
+  const valid = buckets.filter((v) => v > 0);
+  const maxFreq = valid.length ? Math.max(...valid) : 1;
+  const minFreq = valid.length ? Math.min(...valid) : 0;
+
+  const markedBuckets: Record<number, string> = {};
+  const comboColors = [
+    { nums: combo1, color: "#1B3A6B" },
+    { nums: combo2, color: "#1E40AF" },
+    { nums: combo3, color: "#2563EB" },
+  ];
+  for (const { nums, color } of comboColors) {
+    for (const n of nums) {
+      const b = Math.min(BUCKETS - 1, Math.floor(n / 20));
+      if (!markedBuckets[b]) markedBuckets[b] = color;
+    }
+  }
+
+  return (
+    <div style={{ background: "#fff", borderRadius: 14, border: "1px solid #E8ECF2", padding: "20px 24px" }}>
+      <div style={{ marginBottom: 14 }}>
+        <div style={{ fontSize: 14, fontWeight: 700, color: "#0F172A", marginBottom: 3 }}>번호 선택 빈도 히트맵</div>
+        <div style={{ fontSize: 11, color: "#64748B" }}>
+          초록 = 저빈도(추천 구간) · 빨강 = 고빈도(회피 구간) · <strong style={{ color: "#1B3A6B" }}>▲</strong> = 추천 번호 위치
+        </div>
+      </div>
+
+      <div style={{ display: "flex", gap: 2, alignItems: "flex-end" }}>
+        {buckets.map((freq, i) => {
+          const range = maxFreq - minFreq;
+          const ratio = range > 0 ? (freq - minFreq) / range : 0;
+          const hue = Math.round((1 - ratio) * 120);
+          const bg = freq === 0 ? "#F1F5F9" : `hsl(${hue}, 65%, 50%)`;
+          const isMark = markedBuckets[i] !== undefined;
+          return (
+            <div key={i} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 2 }}>
+              {isMark && <div style={{ fontSize: 7, color: markedBuckets[i], lineHeight: 1, fontWeight: 900 }}>▲</div>}
+              <div
+                style={{
+                  height: 32, width: "100%", background: bg, borderRadius: 3,
+                  border: isMark ? `2px solid ${markedBuckets[i]}` : "1px solid transparent",
+                  boxSizing: "border-box", cursor: "default",
+                }}
+                title={`.${String(i * 20).padStart(3, "0")}~.${String(i * 20 + 19).padStart(3, "0")}: ${freq.toFixed(2)}%`}
+              />
+            </div>
+          );
+        })}
+      </div>
+
+      <div style={{ display: "flex", justifyContent: "space-between", marginTop: 6 }}>
+        {[".000", ".200", ".400", ".600", ".800", ".999"].map((v) => (
+          <span key={v} style={{ fontSize: 9, color: "#94A3B8" }}>{v}</span>
+        ))}
+      </div>
+
+      <div style={{ display: "flex", gap: 14, marginTop: 12 }}>
+        {[
+          { color: "hsl(120,65%,50%)", label: "저빈도 (추천)" },
+          { color: "hsl(60,65%,50%)",  label: "중간" },
+          { color: "hsl(0,65%,50%)",   label: "고빈도 (회피)" },
+        ].map(({ color, label }) => (
+          <div key={label} style={{ display: "flex", alignItems: "center", gap: 5 }}>
+            <div style={{ width: 10, height: 10, borderRadius: 2, background: color }} />
+            <span style={{ fontSize: 10, color: "#64748B" }}>{label}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
 }
 
 const inp: React.CSSProperties = {
@@ -233,6 +323,15 @@ function StrategyContent() {
               </div>
             </div>
           ))}
+
+          {result.freqMap && Object.keys(result.freqMap).length > 0 && (
+            <FreqHeatmap
+              freqMap={result.freqMap}
+              combo1={result.combo1}
+              combo2={result.combo2}
+              combo3={result.combo3}
+            />
+          )}
 
           <div style={{ background: "#F8FAFC", borderRadius: 10, padding: "12px 16px", fontSize: 12, color: "#94A3B8" }}>
             위 번호 조합은 과거 낙찰 데이터 통계를 기반으로 한 참고 자료이며, 낙찰을 보장하지 않습니다.

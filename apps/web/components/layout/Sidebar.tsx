@@ -22,6 +22,7 @@ const MENU_SECTIONS = [
     label: "보조 기능",
     items: [
       { href: "/announcements", label: "공고 목록",    icon: "≡" },
+      { href: "/folder",        label: "서류함",       icon: "📂" },
       { href: "/history",       label: "투찰 이력",    icon: "📋" },
       { href: "/alerts",        label: "알림 설정",    icon: "◌" },
     ],

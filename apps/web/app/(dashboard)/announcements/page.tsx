@@ -3,6 +3,18 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import Link from "next/link";
 
+const FOLDER_KEY = "naktal_folder";
+function getFolderIds(): string[] {
+  if (typeof window === "undefined") return [];
+  try { return JSON.parse(localStorage.getItem(FOLDER_KEY) ?? "[]"); } catch { return []; }
+}
+function toggleFolder(id: string): boolean {
+  const ids = getFolderIds();
+  const exists = ids.includes(id);
+  localStorage.setItem(FOLDER_KEY, JSON.stringify(exists ? ids.filter((x) => x !== id) : [...ids, id]));
+  return !exists;
+}
+
 interface Announcement {
   id: string;
   konepsId: string;
@@ -59,6 +71,9 @@ export default function AnnouncementsPage() {
   const [loading, setLoading] = useState(false);
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
+  const [folderIds, setFolderIds] = useState<string[]>([]);
+
+  useEffect(() => { setFolderIds(getFolderIds()); }, []);
 
   const [keyword, setKeyword] = useState("");
   const [category, setCategory] = useState("");
@@ -312,6 +327,22 @@ export default function AnnouncementsPage() {
                     <a href={`/qualification?annId=${ann.id}`} onClick={e => e.stopPropagation()} style={{ fontSize: 11, fontWeight: 600, color: '#166534', background: '#F0FDF4', padding: '4px 8px', borderRadius: 6, textDecoration: 'none' }}>
                       ✅ 적격심사
                     </a>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        e.preventDefault();
+                        const saved = toggleFolder(ann.id);
+                        setFolderIds(saved ? (prev) => [...prev, ann.id] : (prev) => prev.filter((x) => x !== ann.id));
+                      }}
+                      style={{
+                        fontSize: 11, fontWeight: 600,
+                        color: folderIds.includes(ann.id) ? '#92400E' : '#64748B',
+                        background: folderIds.includes(ann.id) ? '#FEF3C7' : '#F8FAFC',
+                        padding: '4px 8px', borderRadius: 6, border: 'none', cursor: 'pointer',
+                      }}
+                    >
+                      {folderIds.includes(ann.id) ? '★ 저장됨' : '☆ 저장'}
+                    </button>
                   </div>
                 </div>
               </div>
