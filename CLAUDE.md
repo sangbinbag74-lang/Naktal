@@ -117,6 +117,8 @@ G2B_API_KEY=
 KONEPS_API_KEY=          # G2B_API_KEY와 동일 값 사용 가능 (공공데이터포털)
 KONEPS_API_BASE=https://apis.data.go.kr/1230000
 KONEPS_DAILY_LIMIT=1000  # 일일 API 호출 한도
+SENTRY_DSN=              # Sentry 오류 모니터링 (npx @sentry/wizard로 설정)
+SENTRY_AUTH_TOKEN=       # Sentry 소스맵 업로드용
 
 ## 컨벤션
 - 파일명: kebab-case / 컴포넌트: PascalCase
@@ -124,6 +126,18 @@ KONEPS_DAILY_LIMIT=1000  # 일일 API 호출 한도
 - 에러: console.error만 사용, alert 금지
 - 금액 단위: 항상 원(KRW), 소수점 없음
 - shadcn/ui 컴포넌트 원본 수정 금지 → 래핑
+
+## 현재 상태: 실서비스 운영 중 (B안 베타)
+배포: Vercel → naktal.ai (vercel.json 루트에 있음)
+
+## 운영 스케줄
+매일 03:00 KST   — /api/cron/sync-g2b (공고 + 낙찰결과 수집)
+GitHub Actions  — bulk-import.yml (2012~ 역대 데이터, 수동 실행)
+pg_cron (선택)  — 실시간 참여자 스냅샷 (snapshotParticipants 함수)
+
+## 장애 대응
+CORE 1 DB 데이터 부족 → estimated-v1 폴백 + isEstimated:true UI 표시
+나라장터 API 장애 → CrawlLog 기록 후 다음 배치에서 재시도
 
 ## 현재 스프린트: B안 Step 2 — 실제 엔진 구현
 
@@ -156,6 +170,31 @@ KONEPS_DAILY_LIMIT=1000  # 일일 API 호출 한도
   - category/budgetRange/region/bidderRange 기준 분류
   - rateInt: 투찰률 × 1000 (예: 87345 = 87.345%)
   - winCount/totalCount: 낙찰/전체 건수
+
+## Step 3 완료 ✅ — 배포 + 보안 + 베타 오픈
+- [x] Prisma: RateLimit + BetaApplication 모델 추가
+- [x] 랜딩 페이지 (app/landing-page.tsx) — Hero, 기능 소개, 경쟁사 비교, 베타 신청 폼
+- [x] app/page.tsx — 비로그인: 랜딩, 로그인: /dashboard 리다이렉트
+- [x] /api/beta/apply — 베타 신청 API (중복 검사 + BetaApplication 저장)
+- [x] /privacy, /terms — 법적 필수 페이지 (개인정보처리방침, 이용약관)
+- [x] components/layout/Footer.tsx — 사업자 정보 + 법적 링크
+- [x] lib/rate-limit.ts — Supabase 기반 속도 제한 헬퍼 (Redis 불필요)
+- [x] /api/strategy/recommend — 분당 10회 속도 제한 + Retry-After 헤더
+- [x] app/layout.tsx — SEO 메타데이터, OpenGraph, metadataBase
+- [x] app/robots.ts + app/sitemap.ts — 크롤러 제어 + 사이트맵
+- [x] next.config.js — 보안 헤더 (X-Frame-Options, CSP, nosniff 등)
+- [x] vercel.json — 빌드 설정 + maxDuration + Cron (03:00 KST)
+- [x] CLAUDE.md — 현재 상태, 운영 스케줄 업데이트
+
+## ⚠️ 개발자 직접 처리 필요 (코드 외)
+1. **Supabase RLS**: SQL Editor에서 Task 1 SQL 실행 (CLAUDE.md 상단 Step 3 스펙 참고)
+2. **Prisma 마이그레이션**: `pnpm prisma migrate dev --name add-rate-limit-beta` (로컬 또는 CI)
+3. **통신판매업 신고** (정부24) → 신고번호 푸터에 기재
+4. **포트원 실서비스 모드 전환** → Vercel ENV 업데이트
+5. **Sentry 설정**: `npx @sentry/wizard@latest -i nextjs` → SENTRY_DSN 등록
+6. **Vercel ENV 18개 등록** (CLAUDE.md 환경변수 목록 참고)
+7. **베타 모집**: 건설협회 커뮤니티, 네이버 카페, 지인 소개
+8. **사업자 정보 업데이트**: landing-page.tsx + Footer.tsx의 "000-00-00000" 실제 번호로 교체
 
 ## CORE 1 알고리즘 메모
 - 낙찰률(sucsfbidRate) 소수점 이하 3자리(millidigit) 추출

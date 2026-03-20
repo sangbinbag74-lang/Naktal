@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { Feature, checkUsageLimit } from "@/lib/plan-guard";
 import { recommendNumbers } from "@/lib/core1/frequency-engine";
+import { rateLimit } from "@/lib/rate-limit";
 import type { Plan } from "@naktal/types";
 
 export async function POST(req: NextRequest): Promise<NextResponse> {
@@ -15,6 +16,15 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     .eq("supabaseId", user.id)
     .single();
   if (!dbUser) return NextResponse.json({ error: "User not found" }, { status: 404 });
+
+  // 분당 10회 속도 제한
+  const { allowed: rlAllowed, resetAt } = await rateLimit(`${dbUser.id}:recommend`, 10, 60);
+  if (!rlAllowed) {
+    return NextResponse.json(
+      { error: "요청이 너무 많습니다. 잠시 후 다시 시도해주세요." },
+      { status: 429, headers: { "Retry-After": String(Math.ceil((resetAt.getTime() - Date.now()) / 1000)) } },
+    );
+  }
 
   const plan = dbUser.plan as Plan;
   const { allowed, used, limit } = await checkUsageLimit(

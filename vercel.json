@@ -1,0 +1,18 @@
+{
+  "buildCommand": "pnpm --filter @naktal/web build",
+  "outputDirectory": "apps/web/.next",
+  "installCommand": "pnpm install",
+  "framework": "nextjs",
+  "functions": {
+    "apps/web/app/api/strategy/recommend/route.ts": { "maxDuration": 30 },
+    "apps/web/app/api/realtime/recommend-live/route.ts": { "maxDuration": 30 },
+    "apps/web/app/api/analysis/qualification/route.ts": { "maxDuration": 20 },
+    "apps/web/app/api/cron/sync-g2b/route.ts": { "maxDuration": 300 }
+  },
+  "crons": [
+    {
+      "path": "/api/cron/sync-g2b",
+      "schedule": "0 3 * * *"
+    }
+  ]
+}

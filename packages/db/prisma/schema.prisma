@@ -112,6 +112,14 @@ model Prediction {
   @@index([expiresAt])
 }
 
+model RateLimit {
+  id        String   @id @default(cuid())
+  key       String   @unique   // format: "userId:feature" or "ip:endpoint"
+  count     Int      @default(0)
+  resetAt   DateTime
+  updatedAt DateTime @updatedAt
+}
+
 // B안 신규 모델
 
 model CompanyProfile {
@@ -198,4 +206,20 @@ enum CrawlStatus {
   SUCCESS
   PARTIAL
   FAILED
+}
+
+model BetaApplication {
+  id        String     @id @default(cuid())
+  bizNo     String     @unique
+  bizName   String
+  email     String
+  category  String
+  status    BetaStatus @default(PENDING)
+  createdAt DateTime   @default(now())
+}
+
+enum BetaStatus {
+  PENDING
+  APPROVED
+  REJECTED
 }
