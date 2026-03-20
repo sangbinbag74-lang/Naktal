@@ -217,7 +217,8 @@ export async function GET(request: NextRequest) {
         await sleep(300);
       }
 
-      const nextCursor = prevMonth(batches[batches.length - 1].ym);
+      const lastBatch = batches[batches.length - 1];
+      const nextCursor = lastBatch ? prevMonth(lastBatch.ym) : G2B_OLDEST;
       log.historical = {
         processed: batches.map((b) => b.ym),
         announcements: histAnn,
