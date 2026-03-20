@@ -182,7 +182,7 @@ export default function LandingPage() {
           <Link href="/terms" style={{ color: "rgba(255,255,255,0.6)", textDecoration: "none", marginRight: 20 }}>이용약관</Link>
           <a href="mailto:support@naktal.me" style={{ color: "rgba(255,255,255,0.6)", textDecoration: "none" }}>support@naktal.me</a>
         </div>
-        <div>상호명: (주)낙탈 | 대표자: 박상빈 | 사업자등록번호: 398-87-03453</div>
+        <div>상호명: 주식회사 호라이즌 | 대표자: 박상빈 | 사업자등록번호: 398-87-03453</div>
         <div>주소: 대전광역시 유성구 장대로 106, 2층 제이321호 | 호스팅: Vercel Inc.</div>
         <div style={{ fontSize: 12, color: "rgba(255,255,255,0.4)", marginTop: 8 }}>© 2025 낙탈AI. All rights reserved.</div>
       </footer>
