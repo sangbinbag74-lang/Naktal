@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, createAdminClient } from "@/lib/supabase/server";
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
+  // 세션 확인은 anon 클라이언트로
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
 
@@ -22,8 +23,9 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ ok: false }, { status: 400 });
   }
 
-  // Supabase service role로 User 테이블 upsert
-  const { error } = await supabase.from("User").upsert(
+  // RLS 우회: service_role로 User 테이블 upsert
+  const admin = createAdminClient();
+  const { error } = await admin.from("User").upsert(
     {
       supabaseId:  user.id,
       bizNo:       body.bizNo,
