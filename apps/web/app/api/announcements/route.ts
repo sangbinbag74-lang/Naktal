@@ -59,27 +59,44 @@ async function syncRecentFromG2B(days: number): Promise<number> {
 export async function GET(request: NextRequest): Promise<NextResponse> {
   const { searchParams } = new URL(request.url);
 
-  const category  = searchParams.get("category") ?? "";
-  const region    = searchParams.get("region") ?? "";
-  const minBudget = searchParams.get("minBudget");
-  const maxBudget = searchParams.get("maxBudget");
-  const sort      = searchParams.get("sort") ?? "latest";
-  const keyword   = searchParams.get("keyword") ?? "";
-  const page      = Math.max(1, parseInt(searchParams.get("page") ?? "1", 10));
-  const limit     = Math.min(50, parseInt(searchParams.get("limit") ?? "20", 10));
-  const offset    = (page - 1) * limit;
+  const category       = searchParams.get("category") ?? "";
+  const region         = searchParams.get("region") ?? "";
+  const minBudget      = searchParams.get("minBudget") ?? "";
+  const maxBudget      = searchParams.get("maxBudget") ?? "";
+  const sort           = searchParams.get("sort") ?? "latest";
+  const keyword        = searchParams.get("keyword") ?? "";
+  const contractMethod = searchParams.get("contractMethod") ?? "";
+  const deadlineRange  = searchParams.get("deadlineRange") ?? "";
+  const page           = Math.max(1, parseInt(searchParams.get("page") ?? "1", 10));
+  const limit          = Math.min(50, parseInt(searchParams.get("limit") ?? "20", 10));
+  const offset         = (page - 1) * limit;
 
   const supabase = await createClient();
-  const hasFilter = !!(category || region || keyword || minBudget || maxBudget);
+  const hasFilter = !!(category || region || keyword || minBudget || maxBudget || contractMethod || deadlineRange);
+
+  // 날짜 경계값
+  const now = new Date();
+  const nowIso     = now.toISOString();
+  const endOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59).toISOString();
+  const d3later    = new Date(now.getTime() +  3 * 86400000).toISOString();
+  const d7later    = new Date(now.getTime() +  7 * 86400000).toISOString();
+  const d30later   = new Date(now.getTime() + 30 * 86400000).toISOString();
 
   // ── DB 조회 ──────────────────────────────────────────────────────────────────
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const buildQuery = () => {
-    let q = supabase.from("Announcement").select("*", { count: "exact" });
-    if (category)  q = q.eq("category", category);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let q: any = supabase.from("Announcement").select("*", { count: "exact" });
+    if (category)  q = q.ilike("category", `%${category}%`);
     if (region)    q = q.eq("region", region);
     if (keyword)   q = q.or(`title.ilike.%${keyword}%,orgName.ilike.%${keyword}%`);
     if (minBudget) q = q.gte("budget", minBudget);
     if (maxBudget) q = q.lte("budget", maxBudget);
+    if (contractMethod) q = q.filter("rawJson->>cntrctMthdNm", "ilike", `%${contractMethod}%`);
+    if (deadlineRange === "today") { q = q.gte("deadline", nowIso).lte("deadline", endOfToday); }
+    else if (deadlineRange === "3")  { q = q.gte("deadline", nowIso).lte("deadline", d3later); }
+    else if (deadlineRange === "7")  { q = q.gte("deadline", nowIso).lte("deadline", d7later); }
+    else if (deadlineRange === "30") { q = q.gte("deadline", nowIso).lte("deadline", d30later); }
     q = sort === "deadline"
       ? q.order("deadline", { ascending: true })
       : q.order("createdAt", { ascending: false });
@@ -93,33 +110,29 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  // ── on-demand G2B fetch:
-  //    1) DB가 완전히 비어있을 때 (최초 접속)
-  //    2) 필터를 적용했는데 결과가 너무 적을 때 (< 5건)
-  const shouldSync =
-    page === 1 &&
-    ((count ?? 0) === 0 ||
-      (hasFilter && (count ?? 0) < 5));
+  // ── on-demand G2B fetch (6초 타임아웃) ───────────────────────────────────────
+  const shouldSync = page === 1 && ((count ?? 0) === 0 || (hasFilter && (count ?? 0) < 5));
 
   if (shouldSync) {
     try {
-      // 필터 조회면 30일치, 첫 접속이면 7일치 수집
       const days = hasFilter ? 30 : 7;
-      const saved = await syncRecentFromG2B(days);
-      console.log(`[on-demand G2B sync] ${days}일치 ${saved}건 저장`);
+      await Promise.race([
+        syncRecentFromG2B(days),
+        new Promise<never>((_, reject) =>
+          setTimeout(() => reject(new Error("sync_timeout")), 6000)
+        ),
+      ]);
+      console.log(`[on-demand G2B sync] ${days}일치 저장 완료`);
 
-      // 수집 후 동일 쿼리 재실행
       const { data: fresh, count: freshCount } = await buildQuery();
       return NextResponse.json({
         data: fresh ?? [],
         total: freshCount ?? 0,
         hasMore: offset + limit < (freshCount ?? 0),
-        page,
-        limit,
+        page, limit,
       });
     } catch (syncErr) {
-      console.error("[on-demand G2B sync 실패]", syncErr);
-      // 실패해도 기존 결과 반환
+      console.error("[on-demand G2B sync 실패/타임아웃]", (syncErr as Error).message);
     }
   }
 
@@ -127,7 +140,6 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     data: data ?? [],
     total: count ?? 0,
     hasMore: offset + limit < (count ?? 0),
-    page,
-    limit,
+    page, limit,
   });
 }

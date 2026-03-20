@@ -54,15 +54,32 @@ function formatDeadline(iso: string): string {
   return new Date(iso).toLocaleDateString("ko-KR", { month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" });
 }
 
-const QUICK_FILTERS = [
+const DEADLINE_FILTERS = [
   { key: "", label: "전체" },
-  { key: "deadline_today", label: "오늘마감" },
-  { key: "deadline_3", label: "D-3이내" },
-  { key: "multi_price", label: "복수예가" },
-  { key: "small", label: "소액" },
+  { key: "today", label: "오늘마감" },
+  { key: "3", label: "D-3이내" },
+  { key: "7", label: "D-7이내" },
+  { key: "30", label: "D-30이내" },
 ];
 
-const CATEGORIES = ["건설", "용역", "물품", "기타"];
+const CONTRACT_METHODS = [
+  { key: "", label: "전체" },
+  { key: "복수예가", label: "복수예가" },
+  { key: "적격심사", label: "적격심사" },
+  { key: "최저가", label: "최저가" },
+  { key: "협상에의한계약", label: "협상계약" },
+  { key: "제한경쟁", label: "제한경쟁" },
+];
+
+const BUDGET_PRESETS = [
+  { label: "전체", min: "", max: "" },
+  { label: "1억 미만", min: "", max: "99999999" },
+  { label: "1억~5억", min: "100000000", max: "499999999" },
+  { label: "5억~10억", min: "500000000", max: "999999999" },
+  { label: "10억 이상", min: "1000000000", max: "" },
+];
+
+const CATEGORIES = ["건설", "전기공사", "정보통신", "소방", "문화재수리", "용역", "물품", "기타"];
 const REGIONS = ["서울", "경기", "인천", "부산", "대구", "광주", "대전", "울산", "세종", "강원", "충북", "충남", "전북", "전남", "경북", "경남", "제주"];
 
 export default function AnnouncementsPage() {
@@ -79,7 +96,11 @@ export default function AnnouncementsPage() {
   const [category, setCategory] = useState("");
   const [region, setRegion] = useState("");
   const [sort, setSort] = useState("latest");
-  const [quickFilter, setQuickFilter] = useState("");
+  const [contractMethod, setContractMethod] = useState("");
+  const [deadlineRange, setDeadlineRange] = useState("");
+  const [minBudget, setMinBudget] = useState("");
+  const [maxBudget, setMaxBudget] = useState("");
+  const [budgetPreset, setBudgetPreset] = useState("");
 
   const observerRef = useRef<IntersectionObserver | null>(null);
   const sentinelRef = useRef<HTMLDivElement | null>(null);
@@ -88,15 +109,14 @@ export default function AnnouncementsPage() {
     async (currentPage: number, reset = false) => {
       setLoading(true);
       try {
-        const params = new URLSearchParams({
-          page: String(currentPage),
-          limit: "20",
-          sort,
-          ...(keyword && { keyword }),
-          ...(category && { category }),
-          ...(region && { region }),
-          ...(quickFilter && { quickFilter }),
-        });
+        const params = new URLSearchParams({ page: String(currentPage), limit: "20", sort });
+        if (keyword)        params.set("keyword", keyword);
+        if (category)       params.set("category", category);
+        if (region)         params.set("region", region);
+        if (contractMethod) params.set("contractMethod", contractMethod);
+        if (deadlineRange)  params.set("deadlineRange", deadlineRange);
+        if (minBudget)      params.set("minBudget", minBudget);
+        if (maxBudget)      params.set("maxBudget", maxBudget);
         const res = await fetch(`/api/announcements?${params}`);
         const json = (await res.json()) as ApiResponse;
         setItems((prev) => (reset ? json.data : [...prev, ...json.data]));
@@ -108,7 +128,7 @@ export default function AnnouncementsPage() {
         setLoading(false);
       }
     },
-    [keyword, category, region, sort, quickFilter]
+    [keyword, category, region, sort, contractMethod, deadlineRange, minBudget, maxBudget]
   );
 
   useEffect(() => {
@@ -116,7 +136,7 @@ export default function AnnouncementsPage() {
     setItems([]);
     setHasMore(true);
     fetchData(1, true);
-  }, [keyword, category, region, sort, quickFilter, fetchData]);
+  }, [keyword, category, region, sort, contractMethod, deadlineRange, minBudget, maxBudget, fetchData]);
 
   useEffect(() => {
     if (observerRef.current) observerRef.current.disconnect();
@@ -199,31 +219,77 @@ export default function AnnouncementsPage() {
           </select>
         </div>
 
-        {/* 빠른선택 필터 pill */}
-        <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-          {QUICK_FILTERS.map((f) => {
-            const isActive = quickFilter === f.key;
+        {/* 마감일 */}
+        <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
+          <span style={{ fontSize: 11, color: "#94A3B8", minWidth: 40 }}>마감일</span>
+          {DEADLINE_FILTERS.map((f) => {
+            const isActive = deadlineRange === f.key;
             return (
-              <button
-                key={f.key}
-                onClick={() => setQuickFilter(f.key)}
-                style={{
-                  height: 28,
-                  padding: "0 12px",
-                  borderRadius: 99,
-                  fontSize: 12,
-                  fontWeight: isActive ? 600 : 400,
-                  border: `1px solid ${isActive ? "#1B3A6B" : "#E2E8F0"}`,
-                  background: isActive ? "#1B3A6B" : "#fff",
-                  color: isActive ? "#fff" : "#374151",
-                  cursor: "pointer",
-                  transition: "all 0.15s ease",
-                }}
-              >
-                {f.label}
-              </button>
+              <button key={f.key} onClick={() => setDeadlineRange(f.key)} style={{
+                height: 28, padding: "0 12px", borderRadius: 99, fontSize: 12,
+                fontWeight: isActive ? 600 : 400,
+                border: `1px solid ${isActive ? "#1B3A6B" : "#E2E8F0"}`,
+                background: isActive ? "#1B3A6B" : "#fff",
+                color: isActive ? "#fff" : "#374151",
+                cursor: "pointer",
+              }}>{f.label}</button>
             );
           })}
+        </div>
+
+        {/* 계약방법 */}
+        <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
+          <span style={{ fontSize: 11, color: "#94A3B8", minWidth: 40 }}>계약</span>
+          {CONTRACT_METHODS.map((f) => {
+            const isActive = contractMethod === f.key;
+            return (
+              <button key={f.key} onClick={() => setContractMethod(f.key)} style={{
+                height: 28, padding: "0 12px", borderRadius: 99, fontSize: 12,
+                fontWeight: isActive ? 600 : 400,
+                border: `1px solid ${isActive ? "#1B3A6B" : "#E2E8F0"}`,
+                background: isActive ? "#1B3A6B" : "#fff",
+                color: isActive ? "#fff" : "#374151",
+                cursor: "pointer",
+              }}>{f.label}</button>
+            );
+          })}
+        </div>
+
+        {/* 예산 */}
+        <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
+          <span style={{ fontSize: 11, color: "#94A3B8", minWidth: 40 }}>예산</span>
+          {BUDGET_PRESETS.map((f) => {
+            const isActive = budgetPreset === f.label;
+            return (
+              <button key={f.label} onClick={() => {
+                setBudgetPreset(f.label);
+                setMinBudget(f.min);
+                setMaxBudget(f.max);
+              }} style={{
+                height: 28, padding: "0 12px", borderRadius: 99, fontSize: 12,
+                fontWeight: isActive ? 600 : 400,
+                border: `1px solid ${isActive ? "#1B3A6B" : "#E2E8F0"}`,
+                background: isActive ? "#1B3A6B" : "#fff",
+                color: isActive ? "#fff" : "#374151",
+                cursor: "pointer",
+              }}>{f.label}</button>
+            );
+          })}
+          <input
+            type="number"
+            value={minBudget}
+            onChange={(e) => { setMinBudget(e.target.value); setBudgetPreset(""); }}
+            placeholder="최소금액"
+            style={{ width: 90, height: 28, border: "1px solid #E2E8F0", borderRadius: 8, fontSize: 12, padding: "0 8px", outline: "none" }}
+          />
+          <span style={{ fontSize: 12, color: "#94A3B8" }}>~</span>
+          <input
+            type="number"
+            value={maxBudget}
+            onChange={(e) => { setMaxBudget(e.target.value); setBudgetPreset(""); }}
+            placeholder="최대금액"
+            style={{ width: 90, height: 28, border: "1px solid #E2E8F0", borderRadius: 8, fontSize: 12, padding: "0 8px", outline: "none" }}
+          />
         </div>
       </div>
 

@@ -69,8 +69,15 @@ export async function g2bFetchAnnouncementPage(params: {
   url.searchParams.set("inqryBgnDt", params.inqryBgnDt);
   url.searchParams.set("inqryEndDt", params.inqryEndDt);
 
-  const res = await fetch(url.toString(), { next: { revalidate: 0 } });
-  if (!res.ok) throw new Error(`G2B 공고 API ${res.status}`);
+  const controller = new AbortController();
+  const tid = setTimeout(() => controller.abort(), 5000);
+  let res: Response;
+  try {
+    res = await fetch(url.toString(), { next: { revalidate: 0 }, signal: controller.signal });
+  } finally {
+    clearTimeout(tid);
+  }
+  if (!res!.ok) throw new Error(`G2B 공고 API ${res!.status}`);
 
   const data = await res.json() as {
     response: { header: { resultCode: string; resultMsg: string }; body: { items: unknown; totalCount: number } };
@@ -101,8 +108,15 @@ export async function g2bFetchBidResultPage(params: {
   url.searchParams.set("inqryBgnDt", params.inqryBgnDt);
   url.searchParams.set("inqryEndDt", params.inqryEndDt);
 
-  const res = await fetch(url.toString(), { next: { revalidate: 0 } });
-  if (!res.ok) throw new Error(`G2B 낙찰결과 API ${res.status}`);
+  const controller2 = new AbortController();
+  const tid2 = setTimeout(() => controller2.abort(), 5000);
+  let res: Response;
+  try {
+    res = await fetch(url.toString(), { next: { revalidate: 0 }, signal: controller2.signal });
+  } finally {
+    clearTimeout(tid2);
+  }
+  if (!res!.ok) throw new Error(`G2B 낙찰결과 API ${res!.status}`);
 
   const data = await res.json() as {
     response: { header: { resultCode: string; resultMsg: string }; body: { items: unknown; totalCount: number } };
