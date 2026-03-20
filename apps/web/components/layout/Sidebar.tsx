@@ -6,6 +6,7 @@ import type { Plan } from "@naktal/types";
 
 interface SidebarProps {
   plan?: Plan;
+  isAdmin?: boolean;
 }
 
 const MENU_SECTIONS = [
@@ -21,6 +22,7 @@ const MENU_SECTIONS = [
     label: "보조 기능",
     items: [
       { href: "/announcements", label: "공고 목록",    icon: "≡" },
+      { href: "/history",       label: "투찰 이력",    icon: "📋" },
       { href: "/alerts",        label: "알림 설정",    icon: "◌" },
     ],
   },
@@ -32,6 +34,13 @@ const MENU_SECTIONS = [
       { href: "/settings", label: "설정",         icon: "⚙" },
     ],
   },
+  {
+    label: "어드민",
+    items: [
+      { href: "/admin/model",    label: "모델 성능",    icon: "📊", adminOnly: true },
+      { href: "/admin/outcomes", label: "결과 관리",    icon: "🗂", adminOnly: true },
+    ],
+  },
 ];
 
 const planLabels: Record<Plan, string> = {
@@ -40,7 +49,7 @@ const planLabels: Record<Plan, string> = {
   PRO: "프로",
 };
 
-export function Sidebar({ plan = "FREE" }: SidebarProps) {
+export function Sidebar({ plan = "FREE", isAdmin = false }: SidebarProps) {
   const pathname = usePathname();
 
   return (
@@ -69,7 +78,7 @@ export function Sidebar({ plan = "FREE" }: SidebarProps) {
 
       {/* 메뉴 */}
       <nav style={{ flex: 1, padding: "12px 10px", overflowY: "auto" }}>
-        {MENU_SECTIONS.map((section) => (
+        {MENU_SECTIONS.filter((section) => section.label !== "어드민" || isAdmin).map((section) => (
           <div key={section.label} style={{ marginBottom: 18 }}>
             <div style={{
               fontSize: 10,

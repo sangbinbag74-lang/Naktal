@@ -25,6 +25,7 @@ model User {
   alerts          UserAlert[]
   companyProfile  CompanyProfile?
   recommendations NumberRecommendation[]
+  bidOutcomes     BidOutcome[]
 }
 
 model Subscription {
@@ -174,6 +175,41 @@ model NumberSelectionStat {
   @@index([category, budgetRange, region, bidderRange])
 }
 
+model BidOutcome {
+  id               String        @id @default(cuid())
+  userId           String
+  user             User          @relation(fields: [userId], references: [id])
+  annId            String
+  recommendationId String?
+  selectedNos      Int[]
+  bidRate          Decimal       @db.Decimal(10, 4)
+  result           OutcomeResult @default(PENDING)
+  finalWinningNos  Int[]
+  actualBidRate    Decimal?      @db.Decimal(10, 4)
+  numBidders       Int?
+  recommendHit     Boolean?
+  bidAt            DateTime
+  openedAt         DateTime?
+  bonusGranted     Boolean       @default(false)
+  createdAt        DateTime      @default(now())
+
+  @@index([userId, bidAt])
+  @@index([annId])
+}
+
+model OrgBiddingPattern {
+  id         String   @id @default(cuid())
+  orgName    String
+  freqMap    Json
+  deviation  Json
+  sampleSize Int
+  updatedAt  DateTime @updatedAt
+  createdAt  DateTime @default(now())
+
+  @@unique([orgName])
+  @@index([orgName])
+}
+
 model ParticipantSnapshot {
   id           String       @id @default(cuid())
   annId        String
@@ -216,6 +252,13 @@ model BetaApplication {
   category  String
   status    BetaStatus @default(PENDING)
   createdAt DateTime   @default(now())
+}
+
+enum OutcomeResult {
+  WIN
+  LOSE
+  DISQUALIFIED
+  PENDING
 }
 
 enum BetaStatus {

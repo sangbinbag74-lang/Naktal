@@ -119,6 +119,10 @@ KONEPS_API_BASE=https://apis.data.go.kr/1230000
 KONEPS_DAILY_LIMIT=1000  # 일일 API 호출 한도
 SENTRY_DSN=              # Sentry 오류 모니터링 (npx @sentry/wizard로 설정)
 SENTRY_AUTH_TOKEN=       # Sentry 소스맵 업로드용
+KAKAO_API_KEY=           # 카카오 알림톡 API 키 (Kakao Developers)
+KAKAO_TEMPLATE_ANN=      # 새 공고 알림 템플릿 ID
+KAKAO_TEMPLATE_OUTCOME=  # 결과 입력 요청 템플릿 ID
+KAKAO_TEMPLATE_DEADLINE= # 마감 임박 알림 템플릿 ID
 
 ## 컨벤션
 - 파일명: kebab-case / 컴포넌트: PascalCase
@@ -186,15 +190,33 @@ CORE 1 DB 데이터 부족 → estimated-v1 폴백 + isEstimated:true UI 표시
 - [x] vercel.json — 빌드 설정 + maxDuration + Cron (03:00 KST)
 - [x] CLAUDE.md — 현재 상태, 운영 스케줄 업데이트
 
+## Step 4 완료 ✅ — 피드백 루프 + 자기개선 + 정식 런치
+- [x] Prisma: BidOutcome + OrgBiddingPattern 모델 + OutcomeResult enum 추가
+- [x] /strategy/outcome/[recommendId] — 투찰 결과 입력 UI + API
+- [x] /history — 투찰 이력 대시보드 (통계 + 타임라인)
+- [x] apps/crawler/src/pipelines/auto-outcome.ts — 자동 결과 수집 파이프라인
+- [x] lib/core1/org-pattern.ts — 발주처별 빈도 패턴 오버레이 (CORE 1 v2)
+- [x] lib/notifications/kakao.ts — 카카오 알림톡 + 이메일 폴백
+- [x] /admin/model — 모델 적중률 모니터링 대시보드
+- [x] /admin/outcomes — 결과 데이터 관리
+- [x] /faq — FAQ 페이지
+- [x] public/manifest.json — PWA 설정
+- [x] Sidebar.tsx — 투찰 이력 + 어드민 섹션 추가
+- [x] app/layout.tsx — PWA manifest 링크 추가
+
 ## ⚠️ 개발자 직접 처리 필요 (코드 외)
 1. **Supabase RLS**: SQL Editor에서 Task 1 SQL 실행 (CLAUDE.md 상단 Step 3 스펙 참고)
-2. **Prisma 마이그레이션**: `pnpm prisma migrate dev --name add-rate-limit-beta` (로컬 또는 CI)
+2. **Prisma 마이그레이션**:
+   - `pnpm prisma migrate dev --name add-rate-limit-beta`
+   - `pnpm prisma migrate dev --name add-bid-outcome-org-pattern`
 3. **통신판매업 신고** (정부24) → 신고번호 푸터에 기재
 4. **포트원 실서비스 모드 전환** → Vercel ENV 업데이트
 5. **Sentry 설정**: `npx @sentry/wizard@latest -i nextjs` → SENTRY_DSN 등록
-6. **Vercel ENV 18개 등록** (CLAUDE.md 환경변수 목록 참고)
+6. **Vercel ENV 22개 등록** (CLAUDE.md 환경변수 목록 참고, KAKAO_* 4개 추가)
 7. **베타 모집**: 건설협회 커뮤니티, 네이버 카페, 지인 소개
 8. **사업자 정보 업데이트**: landing-page.tsx + Footer.tsx의 "000-00-00000" 실제 번호로 교체
+9. **카카오 알림톡**: Kakao Developers 앱 등록 → 템플릿 심사 → KAKAO_* 환경변수 등록
+10. **pg_cron 설정**: Supabase SQL Editor에서 `18:00 KST auto-outcome` 크론 등록
 
 ## CORE 1 알고리즘 메모
 - 낙찰률(sucsfbidRate) 소수점 이하 3자리(millidigit) 추출
