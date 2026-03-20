@@ -6,7 +6,7 @@
     "crawl:ann": "ts-node src/index.ts --type announcement --pages 10",
     "crawl:result": "ts-node src/index.ts --type bid-result --pages 10",
     "crawl:all": "ts-node src/index.ts --type all --pages 10",
-    "bulk:import": "ts-node src/index.ts --type all --pages 999 --from",
+    "bulk:import": "ts-node src/bulk-import.ts",
     "build": "tsc"
   },
   "dependencies": {

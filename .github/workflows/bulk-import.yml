@@ -1,0 +1,49 @@
+name: 나라장터 전체 역대 데이터 수집
+
+on:
+  workflow_dispatch:
+    inputs:
+      from:
+        description: "수집 시작월 (YYYYMM, 기본 201201)"
+        required: false
+        default: "201201"
+      to:
+        description: "수집 종료월 (YYYYMM, 기본 현재월)"
+        required: false
+        default: ""
+
+jobs:
+  bulk-import:
+    name: G2B 전체 수집
+    runs-on: ubuntu-latest
+    timeout-minutes: 360  # 최대 6시간
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v3
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: 의존성 설치
+        run: pnpm install --no-frozen-lockfile
+
+      - name: 전체 데이터 수집
+        working-directory: apps/crawler
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          G2B_API_KEY: ${{ secrets.G2B_API_KEY }}
+        run: |
+          FROM="${{ github.event.inputs.from || '201201' }}"
+          TO="${{ github.event.inputs.to }}"
+          if [ -z "$TO" ]; then
+            TO=$(date +%Y%m)
+          fi
+          echo "수집 범위: $FROM ~ $TO"
+          pnpm ts-node src/bulk-import.ts --from "$FROM" --to "$TO"

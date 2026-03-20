@@ -1,0 +1,142 @@
+/**
+ * 나라장터 G2B 전체 역대 데이터 일괄 수집
+ * 2012-01 ~ 현재월까지 모든 공고·낙찰결과를 수집해 Supabase에 저장
+ *
+ * 실행: ts-node src/bulk-import.ts [--from 201201] [--to 202501]
+ * GitHub Actions에서 자동 실행됨 (workflow_dispatch)
+ */
+
+import * as path from "path";
+loadEnv();
+
+import { fetchAnnouncements } from "./fetchers/g2b-announcement";
+import { fetchBidResults } from "./fetchers/g2b-bid-result";
+import { upsertAnnouncement, upsertBidResult } from "./db/upsert";
+import { logger } from "./utils/logger";
+
+function loadEnv(): void {
+  const envPath = path.resolve(__dirname, "../../web/.env.local");
+  try {
+    const content = require("fs").readFileSync(envPath, "utf-8") as string;
+    for (const line of content.split("\n")) {
+      const trimmed = line.trim();
+      if (!trimmed || trimmed.startsWith("#")) continue;
+      const eqIdx = trimmed.indexOf("=");
+      if (eqIdx === -1) continue;
+      const key = trimmed.slice(0, eqIdx).trim();
+      const val = trimmed.slice(eqIdx + 1).trim();
+      if (key && !process.env[key]) process.env[key] = val;
+    }
+  } catch { /* GitHub Actions에서는 환경변수 직접 주입 */ }
+}
+
+// ─── 유틸 ────────────────────────────────────────────────────────────────────
+
+function sleep(ms: number) { return new Promise((r) => setTimeout(r, ms)); }
+
+/** 현재 월 YYYYMM */
+function currentYM(): string {
+  const now = new Date();
+  return `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, "0")}`;
+}
+
+/** YYYYMM → 해당 월 마지막날 YYYYMMDD */
+function lastDay(ym: string): string {
+  const y = parseInt(ym.slice(0, 4));
+  const m = parseInt(ym.slice(4, 6));
+  const last = new Date(y, m, 0).getDate();
+  return `${ym}${String(last).padStart(2, "0")}`;
+}
+
+/** YYYYMM을 n개월 이동 */
+function addMonths(ym: string, n: number): string {
+  const y = parseInt(ym.slice(0, 4));
+  const m = parseInt(ym.slice(4, 6)) + n - 1;
+  const d = new Date(y, m, 1);
+  return `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, "0")}`;
+}
+
+/** CLI 인수 파싱 */
+function parseArgs(): { from: string; to: string } {
+  const args = process.argv.slice(2);
+  let from = "201201";
+  let to   = currentYM();
+  for (let i = 0; i < args.length; i++) {
+    if (args[i] === "--from" && args[i + 1]) from = args[i + 1];
+    if (args[i] === "--to"   && args[i + 1]) to   = args[i + 1];
+  }
+  return { from, to };
+}
+
+// ─── 월별 수집 ────────────────────────────────────────────────────────────────
+
+async function importMonth(ym: string): Promise<{ ann: number; bid: number }> {
+  const fromDate = `${ym}01`;
+  const toDate   = lastDay(ym);
+  let ann = 0, bid = 0;
+
+  // 공고 수집
+  try {
+    const rows = await fetchAnnouncements({ fromDate, toDate, numOfRows: 100, maxPages: 999 });
+    for (const row of rows) {
+      try { await upsertAnnouncement(row); ann++; } catch { /* 중복 등 skip */ }
+    }
+  } catch (e) {
+    logger.error(`[${ym}] 공고 수집 오류`, e);
+  }
+
+  await sleep(500);
+
+  // 낙찰결과 수집
+  try {
+    const rows = await fetchBidResults({ fromDate, toDate, numOfRows: 100, maxPages: 999 });
+    for (const row of rows) {
+      try { await upsertBidResult(row); bid++; } catch { /* 중복 등 skip */ }
+    }
+  } catch (e) {
+    logger.error(`[${ym}] 낙찰결과 수집 오류`, e);
+  }
+
+  await sleep(500);
+  return { ann, bid };
+}
+
+// ─── 메인 ────────────────────────────────────────────────────────────────────
+
+async function main(): Promise<void> {
+  const { from, to } = parseArgs();
+
+  // 수집할 월 목록 생성 (오래된 순)
+  const months: string[] = [];
+  let cur = from;
+  while (cur <= to) {
+    months.push(cur);
+    cur = addMonths(cur, 1);
+  }
+
+  logger.info(`=== 전체 수집 시작: ${from} ~ ${to} (총 ${months.length}개월) ===`);
+
+  let totalAnn = 0, totalBid = 0;
+  const startTime = Date.now();
+
+  for (let i = 0; i < months.length; i++) {
+    const ym = months[i];
+    const elapsed = Math.round((Date.now() - startTime) / 1000);
+    const pct = Math.round(((i + 1) / months.length) * 100);
+    logger.info(`[${i + 1}/${months.length}] ${ym} 수집 중... (${pct}% / 경과 ${elapsed}초)`);
+
+    const { ann, bid } = await importMonth(ym);
+    totalAnn += ann;
+    totalBid += bid;
+
+    logger.info(`  → 공고 ${ann}건 / 낙찰결과 ${bid}건 저장 (누적: 공고 ${totalAnn}, 낙찰 ${totalBid})`);
+  }
+
+  const totalSec = Math.round((Date.now() - startTime) / 1000);
+  logger.info(`=== 전체 수집 완료: 공고 ${totalAnn}건 / 낙찰결과 ${totalBid}건 / 소요 ${totalSec}초 ===`);
+}
+
+main().catch((err) => {
+  logger.error("치명적 오류", err);
+  process.exit(1);
+});
