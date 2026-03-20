@@ -8,6 +8,26 @@
 Next.js 16 (App Router) + Supabase + Prisma + TailwindCSS v4
 모노레포: turbo / apps/web / apps/crawler / packages/db / packages/types
 
+## 디자인 시스템
+- 폰트: Pretendard (CDN — orioncactus)
+- 프라이머리: #1B3A6B (navy-800) / 사이드바 배경: #0F1E3C (navy-900)
+- 페이지 배경: #F0F2F5 / 카드: #fff + radius 12~14px + border 1px #E8ECF2
+- 강조 accent: #60A5FA (blue-400)
+- 컴포넌트 위치: components/naktal/ (BidBadge, BizNoInput, StatCard, BidCard, InfoTable, ScoreBar, AiResultCard, HistoryTable, FilterChip, UpgradeBanner)
+- 인풋: height 48px / border 1.5px / radius 10px / focus #1B3A6B
+- 버튼 CTA: height 50px / radius 12px / bg #1B3A6B → hover #152E58
+- D-day 뱃지: D-1~2 #DC2626 / D-3~5 #C2410C / D-6~10 #1E40AF / D-11+ #475569
+- shadcn 기본 blue 색상 사용 금지 → naktal-navy로 교체
+- AI 분석 면책 고지 삭제·숨김·tiny 처리 절대 금지
+
+## 공고 카드 필수 표시 항목
+기초금액 / 예가범위 / 낙찰하한율 / 낙찰방법 / 적격심사구분
+발주처평균낙찰률 / 마감일시 / D-day뱃지 / 계약방법 / 지역제한
+
+## 공고 상세 필수 표시 항목
+추정가격 / 예가하한상한 / 시공만점실적 / 적격심사배점
+AI추천투찰률+신뢰구간 / 발주처낙찰이력 / 면책고지문구
+
 ## 인증
 Supabase Auth (@supabase/ssr 전용)
 - lib/supabase/client.ts : 클라이언트 컴포넌트용 (createBrowserClient)

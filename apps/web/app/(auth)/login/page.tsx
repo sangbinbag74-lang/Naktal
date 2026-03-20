@@ -4,8 +4,6 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { BizNoInput } from "@/components/ui/biz-no-input";
 
 export default function LoginPage() {
@@ -24,7 +22,6 @@ export default function LoginPage() {
     setLoading(true);
     setError(null);
 
-    // 사업자번호 → @naktal.biz 이메일로 변환
     const email = `${bizNo}@naktal.biz`;
     const supabase = createClient();
     const { error: authError } = await supabase.auth.signInWithPassword({ email, password });
@@ -40,58 +37,105 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
-      <Card className="w-full max-w-md">
-        <CardHeader className="text-center">
-          <div className="text-3xl font-bold text-[#1E3A5F] mb-2">NAKTAL</div>
-          <CardTitle>로그인</CardTitle>
-          <CardDescription>나라장터 입찰 분석 플랫폼</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <form onSubmit={handleLogin} className="space-y-4">
-            <div className="space-y-2">
-              <label className="text-sm font-medium">사업자번호</label>
-              <BizNoInput
-                value={bizNo}
-                onChange={setBizNo}
-                disabled={loading}
-              />
-            </div>
-            <div className="space-y-2">
-              <label htmlFor="password" className="text-sm font-medium">
-                비밀번호
-              </label>
-              <input
-                id="password"
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                disabled={loading}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-[#1E3A5F]"
-                placeholder="••••••••"
-              />
-            </div>
-            {error && <p className="text-sm text-red-600">{error}</p>}
-            <Button
-              type="submit"
-              disabled={loading || bizNo.length !== 10}
-              className="w-full bg-[#1E3A5F] hover:bg-[#162d4a]"
-            >
-              {loading ? "로그인 중..." : "로그인"}
-            </Button>
-          </form>
-
-          <div className="flex items-center justify-between text-sm">
-            <Link href="/forgot-password" className="text-gray-500 hover:underline">
-              비밀번호 찾기
-            </Link>
-            <Link href="/signup" className="text-[#1E3A5F] font-medium hover:underline">
-              회원가입
-            </Link>
+    <div style={{
+      minHeight: "100vh",
+      background: "#F7F8FA",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      padding: "24px 16px",
+    }}>
+      <div style={{
+        background: "#fff",
+        borderRadius: 20,
+        border: "1px solid #EAECF0",
+        padding: "48px 44px",
+        width: "100%",
+        maxWidth: 420,
+        boxShadow: "0 4px 24px rgba(15,30,60,0.06)",
+      }}>
+        {/* 로고 */}
+        <div style={{ textAlign: "center", marginBottom: 28 }}>
+          <div style={{ display: "inline-flex", alignItems: "baseline", gap: 2, marginBottom: 16 }}>
+            <span style={{ fontSize: 26, fontWeight: 700, color: "#1B3A6B" }}>NAKTAL</span>
+            <span style={{ fontSize: 26, fontWeight: 700, color: "#60A5FA" }}>.AI</span>
           </div>
-        </CardContent>
-      </Card>
+          <div style={{ fontSize: 22, fontWeight: 700, color: "#0F172A", marginBottom: 6 }}>
+            다시 만나서 반갑습니다
+          </div>
+          <div style={{ fontSize: 14, color: "#64748B" }}>
+            사업자번호로 로그인하세요
+          </div>
+        </div>
+
+        <form onSubmit={handleLogin} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+          <div>
+            <label style={{ fontSize: 13, fontWeight: 500, color: "#374151", display: "block", marginBottom: 6 }}>
+              사업자번호
+            </label>
+            <BizNoInput value={bizNo} onChange={setBizNo} disabled={loading} />
+          </div>
+
+          <div>
+            <label htmlFor="password" style={{ fontSize: 13, fontWeight: 500, color: "#374151", display: "block", marginBottom: 6 }}>
+              비밀번호
+            </label>
+            <input
+              id="password"
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+              disabled={loading}
+              className="naktal-input"
+              placeholder="••••••••"
+            />
+          </div>
+
+          {error && (
+            <div style={{
+              background: "#FEF2F2",
+              border: "1px solid #FECACA",
+              borderRadius: 8,
+              padding: "10px 12px",
+              fontSize: 13,
+              color: "#DC2626",
+            }}>
+              {error}
+            </div>
+          )}
+
+          <button
+            type="submit"
+            disabled={loading || bizNo.length !== 10}
+            className="naktal-btn-primary"
+            style={{ marginTop: 4 }}
+          >
+            {loading ? "로그인 중..." : "로그인"}
+          </button>
+        </form>
+
+        <div style={{ display: "flex", justifyContent: "space-between", marginTop: 20, fontSize: 13 }}>
+          <Link href="/forgot-password" style={{ color: "#64748B" }}>
+            비밀번호 찾기
+          </Link>
+          <Link href="/signup" style={{ color: "#1B3A6B", fontWeight: 600 }}>
+            회원가입
+          </Link>
+        </div>
+
+        {/* 보안 문구 */}
+        <div style={{
+          marginTop: 28,
+          paddingTop: 16,
+          borderTop: "1px solid #F1F5F9",
+          textAlign: "center",
+          fontSize: 11,
+          color: "#CBD5E1",
+        }}>
+          국세청 인증 기반 · 256bit SSL 암호화
+        </div>
+      </div>
     </div>
   );
 }
