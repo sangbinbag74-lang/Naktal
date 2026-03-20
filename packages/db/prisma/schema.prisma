@@ -9,20 +9,22 @@ datasource db {
 }
 
 model User {
-  id           String        @id @default(cuid())
-  supabaseId   String        @unique
-  bizNo        String        @unique
-  bizName      String
-  ownerName    String
-  notifyEmail  String?
-  notifyPhone  String?
-  plan         Plan          @default(FREE)
-  isAdmin      Boolean       @default(false)
-  isActive     Boolean       @default(true)
-  adminMemo    String?
-  createdAt    DateTime      @default(now())
-  subscription Subscription?
-  alerts       UserAlert[]
+  id              String                 @id @default(cuid())
+  supabaseId      String                 @unique
+  bizNo           String                 @unique
+  bizName         String
+  ownerName       String
+  notifyEmail     String?
+  notifyPhone     String?
+  plan            Plan                   @default(FREE)
+  isAdmin         Boolean                @default(false)
+  isActive        Boolean                @default(true)
+  adminMemo       String?
+  createdAt       DateTime               @default(now())
+  subscription    Subscription?
+  alerts          UserAlert[]
+  companyProfile  CompanyProfile?
+  recommendations NumberRecommendation[]
 }
 
 model Subscription {
@@ -51,18 +53,19 @@ model UserAlert {
 }
 
 model Announcement {
-  id        String   @id @default(cuid())
-  konepsId  String   @unique
-  title     String
-  orgName   String
-  budget    BigInt
-  deadline  DateTime
-  category  String
-  region    String
-  rawJson   Json
-  isPinned  Boolean  @default(false)
-  deletedAt DateTime?
-  createdAt DateTime @default(now())
+  id                   String                @id @default(cuid())
+  konepsId             String                @unique
+  title                String
+  orgName              String
+  budget               BigInt
+  deadline             DateTime
+  category             String
+  region               String
+  rawJson              Json
+  isPinned             Boolean               @default(false)
+  deletedAt            DateTime?
+  createdAt            DateTime              @default(now())
+  participantSnapshots ParticipantSnapshot[]
 }
 
 model AdminLog {
@@ -81,7 +84,7 @@ model AdminLog {
 
 model BidResult {
   id         String   @id @default(cuid())
-  annId      String
+  annId      String   @unique
   bidRate    Decimal  @db.Decimal(10, 4)
   finalPrice BigInt
   numBidders Int
@@ -89,24 +92,72 @@ model BidResult {
 }
 
 model CrawlLog {
-  id     String      @id @default(cuid())
-  runAt  DateTime    @default(now())
-  type   CrawlType
-  status CrawlStatus
-  count  Int         @default(0)
-  errors String?
+  id        String      @id @default(cuid())
+  type      CrawlType
+  status    CrawlStatus
+  count     Int         @default(0)
+  errors    String?
+  createdAt DateTime    @default(now())
 }
 
 model Prediction {
-  id          String   @id @default(cuid())
-  type        String   // "bid-rate" | "preeprice"
-  cacheKey    String   @unique // hash of input params
-  result      Json
-  expiresAt   DateTime
-  createdAt   DateTime @default(now())
+  id        String   @id @default(cuid())
+  type      String
+  cacheKey  String   @unique
+  result    Json
+  expiresAt DateTime
+  createdAt DateTime @default(now())
 
   @@index([cacheKey])
   @@index([expiresAt])
+}
+
+// B안 신규 모델
+
+model CompanyProfile {
+  id                  String   @id @default(cuid())
+  userId              String   @unique
+  user                User     @relation(fields: [userId], references: [id])
+  bizName             String
+  mainCategory        String
+  subCategories       String[]
+  constructionRecords Json[]
+  creditScore         String?
+  capitalAmount       BigInt?
+  updatedAt           DateTime @updatedAt
+  createdAt           DateTime @default(now())
+}
+
+model NumberRecommendation {
+  id               String   @id @default(cuid())
+  userId           String
+  user             User     @relation(fields: [userId], references: [id])
+  annId            String?
+  category         String
+  budgetRange      String
+  region           String
+  estimatedBidders Int?
+  combo1           Int[]
+  combo2           Int[]
+  combo3           Int[]
+  hitRate1         Float
+  hitRate2         Float
+  hitRate3         Float
+  sampleSize       Int
+  modelVersion     String
+  createdAt        DateTime @default(now())
+
+  @@index([userId, createdAt])
+}
+
+model ParticipantSnapshot {
+  id           String       @id @default(cuid())
+  annId        String
+  announcement Announcement @relation(fields: [annId], references: [id])
+  count        Int
+  snapshotAt   DateTime     @default(now())
+
+  @@index([annId, snapshotAt])
 }
 
 enum Plan {
@@ -124,6 +175,7 @@ enum SubStatus {
 enum CrawlType {
   ANNOUNCEMENT
   BID_RESULT
+  HIST_CURSOR
 }
 
 enum CrawlStatus {

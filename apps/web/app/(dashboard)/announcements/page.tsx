@@ -296,19 +296,22 @@ export default function AnnouncementsPage() {
                   ))}
                 </div>
 
-                {/* card-bot */}
-                <div style={{ padding: "9px 16px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                  <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
+                { /* card-bot */ }
+                <div style={{ padding: '9px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
                     {[ann.category, ann.region].filter(Boolean).map((tag) => (
-                      <span key={tag} style={{ fontSize: 10, background: "#F1F5F9", color: "#64748B", padding: "2px 6px", borderRadius: 4 }}>
+                      <span key={tag} style={{ fontSize: 10, background: '#F1F5F9', color: '#64748B', padding: '2px 6px', borderRadius: 4 }}>
                         {tag}
                       </span>
                     ))}
                   </div>
-                  <div style={{ display: "flex", gap: 6 }}>
-                    <span style={{ fontSize: 11, fontWeight: 600, color: "#1B3A6B", background: "#EEF2FF", padding: "4px 8px", borderRadius: 6, cursor: "pointer" }}>
-                      AI 분석
-                    </span>
+                  <div style={{ display: 'flex', gap: 6 }}>
+                    <a href={} onClick={e => e.stopPropagation()} style={{ fontSize: 11, fontWeight: 600, color: '#1B3A6B', background: '#EEF2FF', padding: '4px 8px', borderRadius: 6, textDecoration: 'none' }}>
+                      🎯 번호 전략
+                    </a>
+                    <a href={} onClick={e => e.stopPropagation()} style={{ fontSize: 11, fontWeight: 600, color: '#166534', background: '#F0FDF4', padding: '4px 8px', borderRadius: 6, textDecoration: 'none' }}>
+                      ✅ 적격심사
+                    </a>
                   </div>
                 </div>
               </div>

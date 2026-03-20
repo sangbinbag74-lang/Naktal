@@ -10,26 +10,26 @@ interface SidebarProps {
 
 const MENU_SECTIONS = [
   {
-    label: "메인",
+    label: "핵심 기능",
     items: [
-      { href: "/dashboard", label: "대시보드", icon: "⊞" },
-      { href: "/announcements", label: "공고 목록", icon: "≡" },
+      { href: "/strategy",      label: "번호 전략",       icon: "🎯", badge: "CORE" },
+      { href: "/qualification", label: "적격심사 계산기",  icon: "✅" },
+      { href: "/realtime",      label: "실시간 모니터",    icon: "📡", proOnly: true },
     ],
   },
   {
-    label: "분석",
+    label: "보조 기능",
     items: [
-      { href: "/analysis", label: "투찰 분석", icon: "↗" },
-      { href: "/ai-recommend", label: "AI 투찰 추천", icon: "✦" },
-      { href: "/preeprice", label: "복수예가", icon: "◈" },
+      { href: "/announcements", label: "공고 목록",    icon: "≡" },
+      { href: "/alerts",        label: "알림 설정",    icon: "◌" },
     ],
   },
   {
-    label: "관리",
+    label: "계정",
     items: [
-      { href: "/alerts", label: "알림 설정", icon: "◌" },
-      { href: "/pricing", label: "요금제", icon: "◇" },
-      { href: "/settings", label: "설정", icon: "⚙" },
+      { href: "/profile",  label: "내 업체 정보", icon: "🏢" },
+      { href: "/pricing",  label: "요금제",       icon: "◇" },
+      { href: "/settings", label: "설정",         icon: "⚙" },
     ],
   },
 ];
@@ -40,19 +40,11 @@ const planLabels: Record<Plan, string> = {
   PRO: "프로",
 };
 
-const planColors: Record<Plan, string> = {
-  FREE: "#475569",
-  STANDARD: "#1B3A6B",
-  PRO: "#059669",
-};
-
 export function Sidebar({ plan = "FREE" }: SidebarProps) {
   const pathname = usePathname();
 
   return (
-    <aside
-      style={{ width: 220, minHeight: "100vh", background: "#0F1E3C", display: "flex", flexDirection: "column" }}
-    >
+    <aside style={{ width: 220, minHeight: "100vh", background: "#0F1E3C", display: "flex", flexDirection: "column" }}>
       {/* 로고 */}
       <div style={{ height: 56, display: "flex", alignItems: "center", padding: "0 20px", borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
         <Link href="/dashboard" style={{ display: "flex", alignItems: "baseline", gap: 2 }}>
@@ -61,36 +53,51 @@ export function Sidebar({ plan = "FREE" }: SidebarProps) {
         </Link>
       </div>
 
+      {/* 오늘의 추천 퀵 배너 */}
+      <Link href="/strategy" style={{
+        margin: "10px 10px 0",
+        background: "linear-gradient(135deg, #1B3A6B 0%, #1E4080 100%)",
+        borderRadius: 10,
+        padding: "10px 12px",
+        textDecoration: "none",
+        border: "1px solid rgba(96,165,250,0.25)",
+        display: "block",
+      }}>
+        <div style={{ fontSize: 10, color: "#60A5FA", fontWeight: 600, marginBottom: 2 }}>CORE 1</div>
+        <div style={{ fontSize: 12, color: "#fff", fontWeight: 600 }}>오늘의 번호 전략 확인하기 →</div>
+      </Link>
+
       {/* 메뉴 */}
-      <nav style={{ flex: 1, padding: "16px 12px", overflowY: "auto" }}>
+      <nav style={{ flex: 1, padding: "12px 10px", overflowY: "auto" }}>
         {MENU_SECTIONS.map((section) => (
-          <div key={section.label} style={{ marginBottom: 20 }}>
+          <div key={section.label} style={{ marginBottom: 18 }}>
             <div style={{
               fontSize: 10,
               fontWeight: 600,
               color: "#475569",
               textTransform: "uppercase",
               letterSpacing: "0.08em",
-              padding: "0 10px",
+              padding: "0 8px",
               marginBottom: 4,
             }}>
               {section.label}
             </div>
             {section.items.map((item) => {
               const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
+              const isProLocked = "proOnly" in item && item.proOnly && plan !== "PRO";
               return (
                 <Link
                   key={item.href}
-                  href={item.href}
+                  href={isProLocked ? "/pricing" : item.href}
                   style={{
                     display: "flex",
                     alignItems: "center",
-                    gap: 10,
+                    gap: 9,
                     padding: "9px 10px",
                     borderRadius: 8,
                     fontSize: 13.5,
-                    fontWeight: isActive ? 500 : 400,
-                    color: isActive ? "#fff" : "#94A3B8",
+                    fontWeight: isActive ? 600 : 400,
+                    color: isActive ? "#fff" : isProLocked ? "#475569" : "#94A3B8",
                     background: isActive ? "#1B3A6B" : "transparent",
                     transition: "all 0.15s ease",
                     marginBottom: 2,
@@ -98,21 +105,27 @@ export function Sidebar({ plan = "FREE" }: SidebarProps) {
                   }}
                   onMouseEnter={(e) => {
                     if (!isActive) {
-                      (e.currentTarget as HTMLAnchorElement).style.background = "#1E3A6B";
-                      (e.currentTarget as HTMLAnchorElement).style.color = "#fff";
+                      (e.currentTarget as HTMLAnchorElement).style.background = "rgba(255,255,255,0.06)";
+                      (e.currentTarget as HTMLAnchorElement).style.color = isProLocked ? "#64748B" : "#fff";
                     }
                   }}
                   onMouseLeave={(e) => {
                     if (!isActive) {
                       (e.currentTarget as HTMLAnchorElement).style.background = "transparent";
-                      (e.currentTarget as HTMLAnchorElement).style.color = "#94A3B8";
+                      (e.currentTarget as HTMLAnchorElement).style.color = isProLocked ? "#475569" : "#94A3B8";
                     }
                   }}
                 >
-                  <span style={{ fontSize: 14, width: 18, textAlign: "center", opacity: isActive ? 1 : 0.7 }}>
-                    {item.icon}
-                  </span>
-                  <span>{item.label}</span>
+                  <span style={{ fontSize: 14, width: 18, textAlign: "center" }}>{item.icon}</span>
+                  <span style={{ flex: 1 }}>{item.label}</span>
+                  {"badge" in item && item.badge && (
+                    <span style={{ fontSize: 9, fontWeight: 700, color: "#60A5FA", background: "rgba(96,165,250,0.15)", padding: "1px 5px", borderRadius: 4 }}>
+                      {item.badge}
+                    </span>
+                  )}
+                  {isProLocked && (
+                    <span style={{ fontSize: 10, color: "#475569" }}>🔒</span>
+                  )}
                 </Link>
               );
             })}
@@ -120,8 +133,8 @@ export function Sidebar({ plan = "FREE" }: SidebarProps) {
         ))}
       </nav>
 
-      {/* 하단 플랜 뱃지 */}
-      <div style={{ padding: "12px 14px", borderTop: "1px solid rgba(255,255,255,0.08)" }}>
+      {/* 플랜 뱃지 */}
+      <div style={{ padding: "12px 10px", borderTop: "1px solid rgba(255,255,255,0.08)" }}>
         <div style={{
           background: "#1B3A6B",
           borderRadius: 10,
@@ -135,23 +148,16 @@ export function Sidebar({ plan = "FREE" }: SidebarProps) {
             <div style={{ fontSize: 13, fontWeight: 600, color: "#fff" }}>{planLabels[plan]}</div>
           </div>
           {plan !== "PRO" && (
-            <Link
-              href="/pricing"
-              style={{
-                fontSize: 11,
-                fontWeight: 600,
-                color: "#60A5FA",
-                textDecoration: "none",
-                background: "rgba(96,165,250,0.12)",
-                padding: "4px 8px",
-                borderRadius: 6,
-              }}
-            >
+            <Link href="/pricing" style={{
+              fontSize: 11, fontWeight: 600, color: "#60A5FA",
+              textDecoration: "none", background: "rgba(96,165,250,0.12)",
+              padding: "4px 8px", borderRadius: 6,
+            }}>
               업그레이드
             </Link>
           )}
           {plan === "PRO" && (
-            <span style={{ fontSize: 11, color: planColors[plan], fontWeight: 600 }}>PRO</span>
+            <span style={{ fontSize: 11, color: "#059669", fontWeight: 700 }}>PRO ✓</span>
           )}
         </div>
       </div>

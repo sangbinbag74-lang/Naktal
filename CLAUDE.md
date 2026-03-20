@@ -1,86 +1,103 @@
-# Naktal.ai — Project Context
+# Naktal.ai — Project Context (B안: 번호 전략 특화)
 
-## 서비스 개요
-나라장터 공공입찰 AI 분석 SaaS. 대한민국 전용 서비스.
+## 서비스 한 줄 정의
+"이 공고 몇 번 넣어야 해요?"를 데이터로 답하는 유일한 서비스.
 ⚠️ "낙찰 보장" 표현은 코드·UI·주석 어디에도 절대 사용 금지.
 
+## 핵심 3대 엔진 (CORE)
+
+### CORE 1 — 번호 역이용 AI
+- 수만 건 개찰 데이터 → 번호별 선택 빈도 학습
+- 고빈도 번호(상위 30%) 자동 회피, 저빈도 조합 추천
+- 업종/금액/지역/시즌/참여자수 조건별 최적 조합 3세트 출력
+- API: POST /api/strategy/recommend
+- 플랜: 무료 월3회 / 스탠다드 월30회 / 프로 무제한
+
+### CORE 2 — 실시간 참여자 수 예측 (Pro 전용)
+- 마감 3시간 전부터 나라장터 참여 신청 현황 크롤링
+- 예상 참여자 수 변화에 따라 번호 추천 실시간 갱신
+- UI: /realtime (Pro 미가입 시 블러 + 업그레이드 배너)
+
+### CORE 3 — 적격심사 통과 계산기
+- 업체 실적 DB(CompanyProfile) 기반 자동 심사 가능성 산출
+- API: POST /api/analysis/qualification
+- 무료: 기본 / 스탠다드·프로: 전체
+
 ## 아키텍처
-Next.js 16 (App Router) + Supabase + Prisma + TailwindCSS v4
+Next.js (App Router) + Supabase + Prisma + TailwindCSS v4
 모노레포: turbo / apps/web / apps/crawler / packages/db / packages/types
+
+## 요금제별 CORE 접근 권한
+| 기능                   | 무료 | 스탠다드 | 프로 |
+|------------------------|------|----------|------|
+| CORE1 번호 추천        | 월3회 | 월30회  | 무제한 |
+| CORE2 실시간 모니터    | ❌   | ❌       | ✅   |
+| CORE3 적격심사 기본    | ✅   | ✅       | ✅   |
+| CORE3 적격심사 전체    | ❌   | ✅       | ✅   |
+| 알림 무제한            | ❌   | ✅       | ✅   |
 
 ## 디자인 시스템
 - 폰트: Pretendard (CDN — orioncactus)
 - 프라이머리: #1B3A6B (navy-800) / 사이드바 배경: #0F1E3C (navy-900)
 - 페이지 배경: #F0F2F5 / 카드: #fff + radius 12~14px + border 1px #E8ECF2
 - 강조 accent: #60A5FA (blue-400)
-- 컴포넌트 위치: components/naktal/ (BidBadge, BizNoInput, StatCard, BidCard, InfoTable, ScoreBar, AiResultCard, HistoryTable, FilterChip, UpgradeBanner)
 - 인풋: height 48px / border 1.5px / radius 10px / focus #1B3A6B
 - 버튼 CTA: height 50px / radius 12px / bg #1B3A6B → hover #152E58
 - D-day 뱃지: D-1~2 #DC2626 / D-3~5 #C2410C / D-6~10 #1E40AF / D-11+ #475569
 - shadcn 기본 blue 색상 사용 금지 → naktal-navy로 교체
 - AI 분석 면책 고지 삭제·숨김·tiny 처리 절대 금지
 
-## 공고 카드 필수 표시 항목
-기초금액 / 예가범위 / 낙찰하한율 / 낙찰방법 / 적격심사구분
-발주처평균낙찰률 / 마감일시 / D-day뱃지 / 계약방법 / 지역제한
+## 네비게이션 구조
+[핵심 기능]
+  번호 전략       → /strategy          ★ 메인 진입점
+  적격심사 계산기 → /qualification
+  실시간 모니터   → /realtime          (Pro 전용)
 
-## 공고 상세 필수 표시 항목
-추정가격 / 예가하한상한 / 시공만점실적 / 적격심사배점
-AI추천투찰률+신뢰구간 / 발주처낙찰이력 / 면책고지문구
+[보조 기능]
+  공고 목록       → /announcements
+  서류함          → /folder
+  알림 설정       → /alerts
+
+[계정]
+  내 업체 정보    → /profile
+  요금제          → /pricing
+  설정            → /settings
+
+## DB 스키마 주요 모델
+- User: 사용자 (사업자번호 기반)
+- CompanyProfile: 업체 실적·업종 정보
+- NumberRecommendation: 번호 추천 이력 (사용량 추적)
+- ParticipantSnapshot: 실시간 참여자 수 스냅샷
+- Announcement: 나라장터 공고
+- BidResult: 낙찰 결과 (번호 빈도 학습 재료)
+- CrawlLog: 크롤링 로그 + 역대 수집 커서
+
+## plan-guard.ts Feature enum
+- CORE1_NUMBER_RECOMMEND: 번호 추천 (무료3/스탠다드30/프로∞)
+- CORE2_REALTIME_MONITOR: 실시간 모니터 (프로 전용)
+- CORE3_QUALIFICATION_BASIC: 적격심사 기본
+- CORE3_QUALIFICATION_FULL: 적격심사 전체 (스탠다드+)
+- UNLIMITED_ALERTS: 알림 무제한
 
 ## 인증
 Supabase Auth (@supabase/ssr 전용)
-- lib/supabase/client.ts : 클라이언트 컴포넌트용 (createBrowserClient)
-- lib/supabase/server.ts : 서버 컴포넌트 / Route Handler용 (createServerClient)
-- proxy.ts             : 라우트 가드 (미인증→/login, 인증→/dashboard)
+- 사업자번호 기반: `{10자리}@naktal.biz` 형식 (이메일 노출 금지)
+- lib/supabase/client.ts: createBrowserClient
+- lib/supabase/server.ts: createServerClient
+- middleware.ts: 라우트 가드
 
 ## 결제
-포트원(PortOne) v2 SDK
-- 브라우저: @portone/browser-sdk (결제창 호출)
-- 서버:     @portone/server-sdk  (결제 검증 Webhook)
-- ⚠️ 구버전 아임포트(iamport / v1) 절대 사용 금지
-- 지원 수단: 카카오페이 / 네이버페이 / 토스페이 / 신용카드
-- 결제 플로우:
-    1. 클라이언트에서 PortOne.requestPayment() 호출
-    2. 서버 Route Handler에서 결제 검증 (@portone/server-sdk)
-    3. 검증 성공 시 Subscription 테이블 업데이트
-
-## 인증 방식 (Step 3 변경)
-- 사업자번호 기반 로그인: `{10자리}@naktal.biz` 형식으로 Supabase에 저장
-- 사용자에게는 사업자번호+비밀번호만 노출 (이메일 노출 금지)
-- 회원가입 시 국세청 NTS API로 사업자번호 유효성 검증 (API 실패 시 graceful 허용)
-- BizNoInput 컴포넌트: components/ui/biz-no-input.tsx (자동 하이픈 포매팅)
-
-## 플랜 접근 제어
-- lib/plan-guard.ts: canAccess(userPlan: Plan, feature: Feature): boolean
-- Feature enum: REALTIME_ALERT | AI_RECOMMEND | PREEPRICE_ANALYSIS | COMPETITOR_WATCH | UNLIMITED_ALERTS
-- 잠금 UI: components/ui/upgrade-banner.tsx → /pricing 링크
-
-## ML 서버 (apps/ml)
-- Python 3.11 + FastAPI + XGBoost + scikit-learn
-- Modal.com에 배포 (무료 월 30시간 — 캐시로 최소화)
-- 엔드포인트: POST /predict/bid-rate, POST /predict/preeprice
-- 인증: x-api-key 헤더 (ML_API_KEY)
-- 캐시: Prediction 테이블, 24시간 TTL (lib/ml-cache.ts)
-- 학습: python apps/ml/pipelines/train.py (권장 최소 3,000건)
-- 재학습: 매주 금요일 02:00 KST (Modal Cron 내장)
-- ⚠️ "낙찰 보장" 표현 금지. AI 결과 화면에 면책 고지 필수.
-- ⚠️ 복수예가 disclaimer 삭제·숨김·작은 글씨 금지.
+포트원(PortOne) v2 SDK — ⚠️ 구버전 아임포트 절대 사용 금지
+- 지원: 카카오페이 / 네이버페이 / 토스페이 / 신용카드
 
 ## 어드민 (/admin)
-- 접근: User.isAdmin=true + ADMIN_SECRET_KEY 헤더 두 겹 보호
-- 레이아웃: app/(admin)/layout.tsx (배경 #0F172A, ADMIN MODE 빨간 뱃지)
-- 가드: proxy.ts에서 isAdmin 확인, 아니면 /dashboard redirect
-- 모든 /api/admin/* Route: requireAdmin() → admin-guard.ts
-- 모든 조작은 AdminLog 테이블에 기록 → writeAdminLog()
-- 최초 어드민 설정: Supabase SQL Editor에서
-    UPDATE "User" SET "isAdmin" = true WHERE "bizNo" = '{사업자번호}';
-- robots.txt: Disallow: /admin
+- 접근: User.isAdmin=true + ADMIN_SECRET_KEY 헤더
+- 모든 조작: AdminLog 테이블 기록
 
-## 크롤링 자동화
-- Supabase Edge Function: supabase/functions/trigger-crawl/index.ts
-- pg_cron: supabase/migrations/pg_cron_schedules.sql (KST 06:00/12:00/18:00)
-- SQL의 {SUPABASE_PROJECT_REF}, {SUPABASE_ANON_KEY} 실제 값으로 교체 후 실행
+## 크롤러 (apps/crawler)
+- G2B OpenAPI 기반 (Playwright 제거됨)
+- 전체 역대 수집: apps/crawler/src/bulk-import.ts
+- Vercel Cron: /api/cron/sync-g2b (일 1회, 12개월씩)
 
 ## 환경변수 (필수)
 NEXT_PUBLIC_SUPABASE_URL=
@@ -96,75 +113,30 @@ PORTONE_WEBHOOK_SECRET=
 NTS_API_KEY=
 RESEND_API_KEY=
 NEXT_PUBLIC_SITE_URL=https://naktal.ai
-ML_API_URL=
-ML_API_KEY=
-
-## DB
-Prisma + Supabase PostgreSQL
-스키마: packages/db/prisma/schema.prisma
-⚠️ migrations/ 폴더 직접 수정 금지
-
-## 크롤러 (apps/crawler)
-- Playwright headless Chromium 사용
-- 나라장터 공고/낙찰 결과 수집
-- CSS 셀렉터 상수: scrapers/announcement.ts, scrapers/bid-result.ts의 SELECTORS 객체
-- 실행: pnpm crawl:ann | pnpm crawl:result | pnpm crawl:all
-- DB 저장: Supabase service role key로 upsert
-- 요청 간격: 2~3.5초 randomDelay 적용
-- 관리자 트리거: POST /api/admin/crawl (x-admin-secret 헤더)
+G2B_API_KEY=
 
 ## 컨벤션
 - 파일명: kebab-case / 컴포넌트: PascalCase
 - API Route: apps/web/app/api/ 하위
 - 에러: console.error만 사용, alert 금지
 - 금액 단위: 항상 원(KRW), 소수점 없음
-- shadcn/ui 컴포넌트 원본 수정 금지 → 래핑해서 사용
+- shadcn/ui 컴포넌트 원본 수정 금지 → 래핑
 
-## 현재 스프린트: Step 5 완료 — 어드민 대시보드
-- [x] 모노레포 세팅 (turbo + pnpm)
-- [x] Supabase 인증 연동 (@supabase/ssr)
-- [x] 기본 레이아웃 UI (Sidebar, Header, Dashboard)
-- [x] Prisma 스키마 초안 (포트원 필드 포함)
-- [x] CLAUDE.md + .env.local.example
-- [x] Prisma 마이그레이션 (CrawlLog 추가)
-- [x] 크롤러 패키지 (apps/crawler)
-- [x] 공고 수집 스크래퍼 (Playwright)
-- [x] 낙찰 결과 수집 스크래퍼 (Playwright)
-- [x] DB upsert 로직 (Supabase service role)
-- [x] 관리자 크롤 트리거 API
-- [x] 사업자번호 기반 인증 전환 (login / signup / forgot-password)
-- [x] 국세청 NTS 사업자번호 검증 API
-- [x] 공고 목록 UI (필터·무한스크롤)
-- [x] 투찰률 통계 차트 (Recharts — 업종별·분포·참여업체수)
-- [x] 이메일 알림 시스템 (Resend)
-- [x] 포트원 v2 구독 결제 연동
-- [x] 대시보드 실시간 통계 API
-- [x] 플랜별 기능 접근 제어 (plan-guard.ts)
-- [x] 업그레이드 배너 컴포넌트
-- [x] XGBoost 투찰률 예측 모델 (Modal.com 서빙)
-- [x] 복수예가 번호 통계 추천
-- [x] AI 투찰 추천 UI (신뢰 구간 + 면책 고지)
-- [x] ML API 24시간 캐시 (Prediction 테이블)
-- [x] Supabase Edge Function (trigger-crawl)
-- [x] pg_cron 자동화 (1일 3회 + 주간 재학습)
-- [x] Vercel 배포 설정 (vercel.json)
-- [x] Prisma isAdmin + AdminLog 스키마
-- [x] 어드민 라우트 가드 (proxy.ts)
-- [x] 어드민 레이아웃 (배경 #0F172A, ADMIN MODE 뱃지)
-- [x] 운영 대시보드 지표 6개 + 7일 추이 차트
-- [x] 사용자 관리 (목록·상세·플랜변경·비활성화·AdminLog)
-- [x] 결제 내역 (목록·취소·CSV)
-- [x] 크롤링 관리 (로그·수동실행·다음 예정 시각)
-- [x] 공고 관리 (삭제·복구·핀 지정)
-- [x] robots.txt Disallow: /admin
+## 현재 스프린트: B안 Step 1 — 번호 전략 특화 전환
+- [x] Prisma 스키마 B안 확장 (CompanyProfile, NumberRecommendation, ParticipantSnapshot)
+- [x] CLAUDE.md B안 전면 재작성
+- [x] plan-guard.ts B안 Feature enum 업데이트
+- [x] 사이드바 네비게이션 B안 재편
+- [x] 대시보드 B안 지표·섹션 교체
+- [x] /strategy 번호 전략 페이지 (Mock API)
+- [x] /qualification 적격심사 계산기 (Mock API)
+- [x] /profile 내 업체 정보 페이지
+- [x] /realtime 실시간 모니터 UI (Pro 배너)
+- [x] 공고 목록 "번호 전략" 버튼 교체
+- [x] apps/ml XGBoost 삭제
+- [x] analysis/ 투찰 분석 페이지 삭제
 
-## 운영 배포 체크리스트
-1. python apps/ml/pipelines/train.py → MAE 출력 확인
-2. modal deploy apps/ml/modal_app.py → ML_API_URL 발급
-3. supabase functions deploy trigger-crawl
-4. Supabase SQL Editor에서 pg_cron_schedules.sql 실행 ({} 교체 필수)
-5. vercel --prod 배포
-6. Vercel 환경변수 15개 전체 등록
-7. naktal.ai A레코드: 76.76.21.21 / CNAME www → cname.vercel-dns.com
-8. 포트원 Webhook URL → https://naktal.ai/api/payment/webhook
-9. 실결제 1건 테스트 후 환불
+## ⚠️ B안 Step 2 예정
+- 번호 역이용 ML 모델 실제 구현 (apps/ml 재구축)
+- 실시간 참여자 수 크롤러 구현
+- 적격심사 로직 실제 구현 (CompanyProfile 연동)
