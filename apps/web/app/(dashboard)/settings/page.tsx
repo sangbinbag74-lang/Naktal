@@ -76,7 +76,7 @@ export default function SettingsPage() {
               ...inp, display: "flex", alignItems: "center",
               background: "#F8FAFC", color: "#94A3B8",
             }}>
-              {loginEmail.replace("@naktal.biz", "") || "—"}
+              {loginEmail.replace("biz_", "").replace("@naktal.biz", "") || "—"}
             </div>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>

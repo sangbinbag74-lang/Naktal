@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, createAdminClient } from "@/lib/supabase/server";
 import {
   g2bFetchAnnouncementPage,
   g2bExtractRegion,
@@ -10,10 +10,8 @@ import {
 } from "@/lib/g2b";
 
 // ─── G2B → DB upsert (최근 N일치) ────────────────────────────────────────────
-async function syncRecentFromG2B(
-  supabase: Awaited<ReturnType<typeof createClient>>,
-  days: number,
-): Promise<number> {
+async function syncRecentFromG2B(days: number): Promise<number> {
+  const admin = createAdminClient();
   const today   = toYMD(new Date());
   const fromDay = toYMD(daysAgo(days));
   let page = 1, saved = 0;
@@ -48,7 +46,7 @@ async function syncRecentFromG2B(
     }).filter(Boolean);
 
     if (rows.length > 0) {
-      await supabase.from("Announcement").upsert(rows, { onConflict: "konepsId" });
+      await admin.from("Announcement").upsert(rows, { onConflict: "konepsId" });
       saved += rows.length;
     }
     if (page * 100 >= totalCount) break;
@@ -107,7 +105,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     try {
       // 필터 조회면 30일치, 첫 접속이면 7일치 수집
       const days = hasFilter ? 30 : 7;
-      const saved = await syncRecentFromG2B(supabase, days);
+      const saved = await syncRecentFromG2B(days);
       console.log(`[on-demand G2B sync] ${days}일치 ${saved}건 저장`);
 
       // 수집 후 동일 쿼리 재실행

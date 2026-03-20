@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, createAdminClient } from "@/lib/supabase/server";
 import { Feature, checkUsageLimit } from "@/lib/plan-guard";
 import { recommendNumbers } from "@/lib/core1/frequency-engine";
 import { rateLimit } from "@/lib/rate-limit";
@@ -10,7 +10,8 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const { data: dbUser } = await supabase
+  const admin = createAdminClient();
+  const { data: dbUser } = await admin
     .from("User")
     .select("id,plan")
     .eq("supabaseId", user.id)
@@ -63,7 +64,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   });
 
   // 추천 이력 저장
-  await supabase.from("NumberRecommendation").insert({
+  await admin.from("NumberRecommendation").insert({
     userId: dbUser.id,
     annId: body.annId ?? null,
     category: body.category,
