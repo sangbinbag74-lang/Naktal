@@ -79,8 +79,27 @@ const BUDGET_PRESETS = [
   { label: "10억 이상", min: "1000000000", max: "" },
 ];
 
-const CATEGORIES = ["건설", "전기공사", "정보통신", "소방", "문화재수리", "용역", "물품", "기타"];
-const REGIONS = ["서울", "경기", "인천", "부산", "대구", "광주", "대전", "울산", "세종", "강원", "충북", "충남", "전북", "전남", "경북", "경남", "제주"];
+const CATEGORY_GROUPS: { label: string; items: string[] }[] = [
+  { label: "── 시설공사", items: [
+    "토목공사","건축공사","토목건축공사","조경공사","전기공사","통신공사",
+    "소방시설공사","기계설비공사","지반조성포장공사","실내건축공사",
+    "철근콘크리트공사","구조물해체비계공사","상하수도설비공사","철강재설치공사",
+    "삭도승강기기계설비공사","도장습식방수석공사","문화재수리공사",
+  ]},
+  { label: "── 용역", items: [
+    "엔지니어링","측량","청소","경비","시설관리","연구용역","학술연구","기타용역",
+  ]},
+  { label: "── 물품/기타", items: ["물품","기타"] },
+];
+
+const REGION_GROUPS: { label: string; items: string[] }[] = [
+  { label: "── 수도권", items: ["서울","경기","인천"] },
+  { label: "── 경기 주요시", items: ["수원시","성남시","용인시","고양시","화성시","안산시","남양주시","안양시","평택시","시흥시","부천시","광명시","광주시","이천시","파주시","김포시","의정부시"] },
+  { label: "── 충청", items: ["충북","충남","대전","세종"] },
+  { label: "── 전라", items: ["전북","전남","광주"] },
+  { label: "── 경상", items: ["경북","경남","부산","대구","울산"] },
+  { label: "── 강원/제주", items: ["강원","제주"] },
+];
 
 export default function AnnouncementsPage() {
   const [items, setItems] = useState<Announcement[]>([]);
@@ -207,11 +226,19 @@ export default function AnnouncementsPage() {
           />
           <select value={category} onChange={(e) => setCategory(e.target.value)} style={selectStyle}>
             <option value="">전체 업종</option>
-            {CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
+            {CATEGORY_GROUPS.map((g) => (
+              <optgroup key={g.label} label={g.label}>
+                {g.items.map((c) => <option key={c} value={c}>{c}</option>)}
+              </optgroup>
+            ))}
           </select>
           <select value={region} onChange={(e) => setRegion(e.target.value)} style={selectStyle}>
             <option value="">전체 지역</option>
-            {REGIONS.map((r) => <option key={r} value={r}>{r}</option>)}
+            {REGION_GROUPS.map((g) => (
+              <optgroup key={g.label} label={g.label}>
+                {g.items.map((r) => <option key={r} value={r}>{r}</option>)}
+              </optgroup>
+            ))}
           </select>
           <select value={sort} onChange={(e) => setSort(e.target.value)} style={selectStyle}>
             <option value="latest">최신순</option>

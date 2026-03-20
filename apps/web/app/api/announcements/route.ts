@@ -39,7 +39,7 @@ async function syncRecentFromG2B(days: number): Promise<number> {
         konepsId, title, orgName,
         budget: String(budgetNum),
         deadline,
-        category: item.ntceKindNm || item.indutyCtgryNm || "",
+        category: item.indutyCtgryNm || item.ntceKindNm || "",
         region: g2bExtractRegion(item.ntceInsttAddr || ""),
         rawJson,
       };
@@ -71,7 +71,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   const limit          = Math.min(50, parseInt(searchParams.get("limit") ?? "20", 10));
   const offset         = (page - 1) * limit;
 
-  const supabase = await createClient();
+  const admin = createAdminClient();
   const hasFilter = !!(category || region || keyword || minBudget || maxBudget || contractMethod || deadlineRange);
 
   // 날짜 경계값
@@ -86,9 +86,9 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const buildQuery = () => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    let q: any = supabase.from("Announcement").select("*", { count: "exact" });
+    let q: any = admin.from("Announcement").select("*", { count: "exact" });
     if (category)  q = q.ilike("category", `%${category}%`);
-    if (region)    q = q.eq("region", region);
+    if (region)    q = q.filter("rawJson->>ntceInsttAddr", "ilike", `%${region}%`);
     if (keyword)   q = q.or(`title.ilike.%${keyword}%,orgName.ilike.%${keyword}%`);
     if (minBudget) q = q.gte("budget", minBudget);
     if (maxBudget) q = q.lte("budget", maxBudget);
@@ -119,7 +119,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       await Promise.race([
         syncRecentFromG2B(days),
         new Promise<never>((_, reject) =>
-          setTimeout(() => reject(new Error("sync_timeout")), 6000)
+          setTimeout(() => reject(new Error("sync_timeout")), 9000)
         ),
       ]);
       console.log(`[on-demand G2B sync] ${days}일치 저장 완료`);
