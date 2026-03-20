@@ -3,7 +3,8 @@
  * apps/crawler와 별도로 순수 fetch 기반으로 구현
  */
 
-const G2B_BASE = "https://apis.data.go.kr/1230000/ad/BidPublicInfoService";
+const G2B_BASE     = "https://apis.data.go.kr/1230000/ad/BidPublicInfoService";
+const G2B_RESULT_BASE = "https://apis.data.go.kr/1230000/ad/BidResultInfoService";
 
 export interface G2BAnnouncement {
   bidNtceNo: string;
@@ -92,7 +93,7 @@ export async function g2bFetchBidResultPage(params: {
   inqryBgnDt: string;
   inqryEndDt: string;
 }): Promise<{ items: G2BBidResult[]; totalCount: number }> {
-  const url = new URL(`${G2B_BASE}/getSuccBidInquireInfoServc`);
+  const url = new URL(`${G2B_RESULT_BASE}/getBidResultListInfoServc`);
   url.searchParams.set("serviceKey", apiKey());
   url.searchParams.set("numOfRows", String(params.numOfRows));
   url.searchParams.set("pageNo", String(params.pageNo));

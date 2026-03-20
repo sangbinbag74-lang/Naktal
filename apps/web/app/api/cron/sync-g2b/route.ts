@@ -184,10 +184,10 @@ export async function GET(request: NextRequest) {
 
   try {
     // ── 1. 오늘 데이터 (항상 먼저) ────────────────────────────────────────────
-    const [todayAnn, todayBid] = await Promise.all([
-      importAnnouncements(supabaseUrl, serviceKey, today, today),
-      importBidResults(supabaseUrl, serviceKey, today, today),
-    ]);
+    const todayAnn = await importAnnouncements(supabaseUrl, serviceKey, today, today);
+    let todayBid = 0;
+    try { todayBid = await importBidResults(supabaseUrl, serviceKey, today, today); }
+    catch (e) { console.error("[cron] 낙찰결과 수집 실패 (공고는 정상):", e); }
     log.today = { announcements: todayAnn, bidResults: todayBid };
 
     // ── 2. 역대 과거 수집 (커서 방식, 회차당 MONTHS_PER_RUN 개월) ────────────
@@ -208,10 +208,10 @@ export async function GET(request: NextRequest) {
 
       let histAnn = 0, histBid = 0;
       for (const { from, to, ym: bYm } of batches) {
-        const [a, b] = await Promise.all([
-          importAnnouncements(supabaseUrl, serviceKey, from, to),
-          importBidResults(supabaseUrl, serviceKey, from, to),
-        ]);
+        const a = await importAnnouncements(supabaseUrl, serviceKey, from, to);
+        let b = 0;
+        try { b = await importBidResults(supabaseUrl, serviceKey, from, to); }
+        catch (e) { console.error("[cron] 낙찰결과 수집 실패:", e); }
         histAnn += a;
         histBid += b;
         // 마지막으로 처리한 월을 커서로 저장 (다음 실행 시 이 이전부터 시작)
