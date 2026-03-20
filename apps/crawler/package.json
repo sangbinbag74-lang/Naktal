@@ -1,0 +1,22 @@
+{
+  "name": "@naktal/crawler",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "crawl:ann": "ts-node src/index.ts --type announcement --pages 5",
+    "crawl:result": "ts-node src/index.ts --type bid-result --pages 3",
+    "crawl:all": "ts-node src/index.ts --type all --pages 5",
+    "build": "tsc"
+  },
+  "dependencies": {
+    "playwright": "^1.52.0",
+    "@supabase/supabase-js": "^2.99.3",
+    "decimal.js": "^10.4.3"
+  },
+  "devDependencies": {
+    "@repo/typescript-config": "workspace:*",
+    "@types/node": "^22.15.3",
+    "ts-node": "^10.9.2",
+    "typescript": "5.9.2"
+  }
+}

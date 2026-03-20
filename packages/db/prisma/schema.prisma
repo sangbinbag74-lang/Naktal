@@ -1,0 +1,133 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model User {
+  id           String        @id @default(cuid())
+  supabaseId   String        @unique
+  bizNo        String        @unique
+  bizName      String
+  ownerName    String
+  notifyEmail  String?
+  notifyPhone  String?
+  plan         Plan          @default(FREE)
+  isAdmin      Boolean       @default(false)
+  isActive     Boolean       @default(true)
+  adminMemo    String?
+  createdAt    DateTime      @default(now())
+  subscription Subscription?
+  alerts       UserAlert[]
+}
+
+model Subscription {
+  id               String    @id @default(cuid())
+  userId           String    @unique
+  user             User      @relation(fields: [userId], references: [id])
+  plan             Plan
+  portoneOrderId   String?   @unique
+  portonePaymentId String?   @unique
+  status           SubStatus @default(ACTIVE)
+  currentPeriodEnd DateTime
+  createdAt        DateTime  @default(now())
+}
+
+model UserAlert {
+  id         String   @id @default(cuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id])
+  keywords   String[]
+  categories String[]
+  regions    String[]
+  minBudget  BigInt?
+  maxBudget  BigInt?
+  active     Boolean  @default(true)
+  createdAt  DateTime @default(now())
+}
+
+model Announcement {
+  id        String   @id @default(cuid())
+  konepsId  String   @unique
+  title     String
+  orgName   String
+  budget    BigInt
+  deadline  DateTime
+  category  String
+  region    String
+  rawJson   Json
+  isPinned  Boolean  @default(false)
+  deletedAt DateTime?
+  createdAt DateTime @default(now())
+}
+
+model AdminLog {
+  id        String   @id @default(cuid())
+  adminId   String
+  action    String
+  targetId  String
+  before    Json?
+  after     Json?
+  reason    String?
+  createdAt DateTime @default(now())
+
+  @@index([adminId])
+  @@index([targetId])
+}
+
+model BidResult {
+  id         String   @id @default(cuid())
+  annId      String
+  bidRate    Decimal  @db.Decimal(10, 4)
+  finalPrice BigInt
+  numBidders Int
+  createdAt  DateTime @default(now())
+}
+
+model CrawlLog {
+  id     String      @id @default(cuid())
+  runAt  DateTime    @default(now())
+  type   CrawlType
+  status CrawlStatus
+  count  Int         @default(0)
+  errors String?
+}
+
+model Prediction {
+  id          String   @id @default(cuid())
+  type        String   // "bid-rate" | "preeprice"
+  cacheKey    String   @unique // hash of input params
+  result      Json
+  expiresAt   DateTime
+  createdAt   DateTime @default(now())
+
+  @@index([cacheKey])
+  @@index([expiresAt])
+}
+
+enum Plan {
+  FREE
+  STANDARD
+  PRO
+}
+
+enum SubStatus {
+  ACTIVE
+  CANCELLED
+  EXPIRED
+}
+
+enum CrawlType {
+  ANNOUNCEMENT
+  BID_RESULT
+}
+
+enum CrawlStatus {
+  SUCCESS
+  PARTIAL
+  FAILED
+}
