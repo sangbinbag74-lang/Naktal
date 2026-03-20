@@ -1,0 +1,64 @@
+name: G2B 나라장터 데이터 수집
+
+on:
+  # 매일 KST 06:00 / 12:00 / 18:00 (UTC 21:00 / 03:00 / 09:00 전날기준)
+  schedule:
+    - cron: "0 21 * * *"   # KST 06:00
+    - cron: "0 3  * * *"   # KST 12:00
+    - cron: "0 9  * * *"   # KST 18:00
+  # 수동 실행 (과거 데이터 대량 수집 등)
+  workflow_dispatch:
+    inputs:
+      type:
+        description: "수집 타입 (announcement / bid-result / all)"
+        required: false
+        default: "all"
+      from:
+        description: "시작일 YYYYMMDD (과거 수집, 미입력 시 오늘)"
+        required: false
+      to:
+        description: "종료일 YYYYMMDD (미입력 시 오늘)"
+        required: false
+      pages:
+        description: "최대 페이지 수 (기본 10, 과거 수집 시 999)"
+        required: false
+        default: "10"
+
+jobs:
+  crawl:
+    name: G2B API 데이터 수집
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: "pnpm"
+
+      - name: 의존성 설치
+        run: pnpm install --frozen-lockfile
+
+      - name: G2B 데이터 수집 실행
+        working-directory: apps/crawler
+        env:
+          G2B_API_KEY: ${{ secrets.G2B_API_KEY }}
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          TYPE="${{ github.event.inputs.type || 'all' }}"
+          PAGES="${{ github.event.inputs.pages || '10' }}"
+          FROM="${{ github.event.inputs.from }}"
+          TO="${{ github.event.inputs.to }}"
+
+          CMD="pnpm ts-node src/index.ts --type $TYPE --pages $PAGES"
+          if [ -n "$FROM" ]; then CMD="$CMD --from $FROM"; fi
+          if [ -n "$TO" ];   then CMD="$CMD --to $TO"; fi
+
+          echo "실행: $CMD"
+          eval $CMD

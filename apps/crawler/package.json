@@ -3,13 +3,13 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "crawl:ann": "ts-node src/index.ts --type announcement --pages 5",
-    "crawl:result": "ts-node src/index.ts --type bid-result --pages 3",
-    "crawl:all": "ts-node src/index.ts --type all --pages 5",
+    "crawl:ann": "ts-node src/index.ts --type announcement --pages 10",
+    "crawl:result": "ts-node src/index.ts --type bid-result --pages 10",
+    "crawl:all": "ts-node src/index.ts --type all --pages 10",
+    "bulk:import": "ts-node src/index.ts --type all --pages 999 --from",
     "build": "tsc"
   },
   "dependencies": {
-    "playwright": "^1.52.0",
     "@supabase/supabase-js": "^2.99.3",
     "decimal.js": "^10.4.3"
   },

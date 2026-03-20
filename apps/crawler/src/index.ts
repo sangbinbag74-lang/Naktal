@@ -1,11 +1,10 @@
 import * as path from "path";
-import * as dotenv from "fs";
 
 // .env.local 파일 직접 로드 (apps/web/.env.local 참조)
 loadEnv();
 
-import { scrapeAnnouncements } from "./scrapers/announcement";
-import { scrapeBidResults } from "./scrapers/bid-result";
+import { fetchAnnouncements } from "./fetchers/g2b-announcement";
+import { fetchBidResults } from "./fetchers/g2b-bid-result";
 import {
   upsertAnnouncement,
   upsertBidResult,
@@ -35,33 +34,48 @@ function loadEnv(): void {
 }
 
 // ─── CLI 인수 파싱 ───────────────────────────────────────────────────────────
-function parseArgs(): { type: "announcement" | "bid-result" | "all"; pages: number } {
+interface CliArgs {
+  type: "announcement" | "bid-result" | "all";
+  pages: number;
+  from?: string; // YYYYMMDD — 과거 데이터 수집 시작일
+  to?: string;   // YYYYMMDD — 종료일 (기본: 오늘)
+}
+
+function parseArgs(): CliArgs {
   const args = process.argv.slice(2);
-  let type: "announcement" | "bid-result" | "all" = "all";
+  let type: CliArgs["type"] = "all";
   let pages = 5;
+  let from: string | undefined;
+  let to: string | undefined;
 
   for (let i = 0; i < args.length; i++) {
     if (args[i] === "--type" && args[i + 1]) {
       const t = args[i + 1];
-      if (t === "announcement" || t === "bid-result" || t === "all") {
-        type = t;
-      }
+      if (t === "announcement" || t === "bid-result" || t === "all") type = t;
     }
     if (args[i] === "--pages" && args[i + 1]) {
       const p = parseInt(args[i + 1], 10);
       if (!isNaN(p) && p > 0) pages = p;
     }
+    if (args[i] === "--from" && args[i + 1]) from = args[i + 1]; // YYYYMMDD
+    if (args[i] === "--to"   && args[i + 1]) to   = args[i + 1]; // YYYYMMDD
   }
-  return { type, pages };
+
+  return { type, pages, from, to };
 }
 
-// ─── 공고 크롤 실행 ───────────────────────────────────────────────────────────
-async function runAnnouncementCrawl(pages: number): Promise<void> {
-  logger.info("=== 공고 크롤 시작 ===");
+// ─── 공고 수집 ────────────────────────────────────────────────────────────────
+async function runAnnouncementCrawl(args: CliArgs): Promise<void> {
+  logger.info("=== G2B 공고 수집 시작 ===");
   let count = 0;
   const errorMsgs: string[] = [];
 
-  const rows = await scrapeAnnouncements(pages);
+  const rows = await fetchAnnouncements({
+    fromDate: args.from,
+    toDate: args.to,
+    numOfRows: 100,
+    maxPages: args.pages,
+  });
 
   for (const row of rows) {
     try {
@@ -74,30 +88,23 @@ async function runAnnouncementCrawl(pages: number): Promise<void> {
     }
   }
 
-  const status =
-    errorMsgs.length === 0
-      ? "SUCCESS"
-      : count > 0
-      ? "PARTIAL"
-      : "FAILED";
-
-  await logCrawl({
-    type: "ANNOUNCEMENT",
-    status,
-    count,
-    errors: errorMsgs.length > 0 ? errorMsgs.slice(0, 20).join("\n") : undefined,
-  });
-
-  logger.info(`=== 공고 크롤 완료: ${count}건 저장, 오류 ${errorMsgs.length}건 ===`);
+  const status = errorMsgs.length === 0 ? "SUCCESS" : count > 0 ? "PARTIAL" : "FAILED";
+  await logCrawl({ type: "ANNOUNCEMENT", status, count, errors: errorMsgs.slice(0, 20).join("\n") || undefined });
+  logger.info(`=== 공고 수집 완료: ${count}건 저장, 오류 ${errorMsgs.length}건 ===`);
 }
 
-// ─── 낙찰 결과 크롤 실행 ──────────────────────────────────────────────────────
-async function runBidResultCrawl(pages: number): Promise<void> {
-  logger.info("=== 낙찰 결과 크롤 시작 ===");
+// ─── 낙찰결과 수집 ───────────────────────────────────────────────────────────
+async function runBidResultCrawl(args: CliArgs): Promise<void> {
+  logger.info("=== G2B 낙찰결과 수집 시작 ===");
   let count = 0;
   const errorMsgs: string[] = [];
 
-  const rows = await scrapeBidResults(pages);
+  const rows = await fetchBidResults({
+    fromDate: args.from,
+    toDate: args.to,
+    numOfRows: 100,
+    maxPages: args.pages,
+  });
 
   for (const row of rows) {
     try {
@@ -110,37 +117,25 @@ async function runBidResultCrawl(pages: number): Promise<void> {
     }
   }
 
-  const status =
-    errorMsgs.length === 0
-      ? "SUCCESS"
-      : count > 0
-      ? "PARTIAL"
-      : "FAILED";
-
-  await logCrawl({
-    type: "BID_RESULT",
-    status,
-    count,
-    errors: errorMsgs.length > 0 ? errorMsgs.slice(0, 20).join("\n") : undefined,
-  });
-
-  logger.info(`=== 낙찰 결과 크롤 완료: ${count}건 저장, 오류 ${errorMsgs.length}건 ===`);
+  const status = errorMsgs.length === 0 ? "SUCCESS" : count > 0 ? "PARTIAL" : "FAILED";
+  await logCrawl({ type: "BID_RESULT", status, count, errors: errorMsgs.slice(0, 20).join("\n") || undefined });
+  logger.info(`=== 낙찰결과 수집 완료: ${count}건 저장, 오류 ${errorMsgs.length}건 ===`);
 }
 
 // ─── 메인 ────────────────────────────────────────────────────────────────────
 async function main(): Promise<void> {
-  const { type, pages } = parseArgs();
-  logger.info(`크롤 타입: ${type}, 페이지 수: ${pages}`);
+  const args = parseArgs();
+  logger.info(`수집 타입: ${args.type}, 최대 페이지: ${args.pages}${args.from ? `, 기간: ${args.from}~${args.to ?? "오늘"}` : ""}`);
 
   try {
-    if (type === "announcement" || type === "all") {
-      await runAnnouncementCrawl(pages);
+    if (args.type === "announcement" || args.type === "all") {
+      await runAnnouncementCrawl(args);
     }
-    if (type === "bid-result" || type === "all") {
-      await runBidResultCrawl(pages);
+    if (args.type === "bid-result" || args.type === "all") {
+      await runBidResultCrawl(args);
     }
   } catch (err) {
-    logger.error("크롤러 치명적 오류", err);
+    logger.error("수집 치명적 오류", err);
     process.exit(1);
   }
 }
