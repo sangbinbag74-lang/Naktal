@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { Resend } from "resend";
 
-const resend = new Resend(process.env.RESEND_API_KEY);
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://naktal.ai";
 
 interface Announcement {
@@ -77,6 +76,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ ok: false }, { status: 401 });
   }
 
+  const resend = new Resend(process.env.RESEND_API_KEY);
   const supabase = await createClient();
 
   // 오늘 등록된 신규 공고
