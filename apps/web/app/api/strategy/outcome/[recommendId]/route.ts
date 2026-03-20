@@ -3,8 +3,9 @@ import { createClient } from "@/lib/supabase/server";
 
 export async function GET(
   _req: NextRequest,
-  { params }: { params: { recommendId: string } },
+  { params }: { params: Promise<{ recommendId: string }> },
 ): Promise<NextResponse> {
+  const { recommendId } = await params;
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -12,7 +13,7 @@ export async function GET(
   const { data } = await supabase
     .from("NumberRecommendation")
     .select("id,annId,category,budgetRange,region,combo1,combo2,combo3,hitRate1,hitRate2,hitRate3,sampleSize,createdAt")
-    .eq("id", params.recommendId)
+    .eq("id", recommendId)
     .maybeSingle();
 
   if (!data) return NextResponse.json({ error: "추천 이력을 찾을 수 없습니다." }, { status: 404 });
@@ -21,8 +22,9 @@ export async function GET(
 
 export async function POST(
   req: NextRequest,
-  { params }: { params: { recommendId: string } },
+  { params }: { params: Promise<{ recommendId: string }> },
 ): Promise<NextResponse> {
+  const { recommendId } = await params;
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -37,7 +39,7 @@ export async function POST(
   const { data: rec } = await supabase
     .from("NumberRecommendation")
     .select("id,userId,annId,combo1,combo2,combo3")
-    .eq("id", params.recommendId)
+    .eq("id", recommendId)
     .eq("userId", dbUser.id)
     .maybeSingle();
   if (!rec) return NextResponse.json({ error: "추천 이력 없음" }, { status: 404 });
@@ -46,7 +48,7 @@ export async function POST(
   const { data: existing } = await supabase
     .from("BidOutcome")
     .select("id,bonusGranted")
-    .eq("recommendationId", params.recommendId)
+    .eq("recommendationId", recommendId)
     .maybeSingle();
 
   const body = await req.json() as {
@@ -82,7 +84,7 @@ export async function POST(
   await supabase.from("BidOutcome").insert({
     userId: dbUser.id,
     annId: rec.annId ?? "unknown",
-    recommendationId: params.recommendId,
+    recommendationId: recommendId,
     selectedNos: body.selectedNos,
     bidRate: body.bidRate,
     result: body.result,
