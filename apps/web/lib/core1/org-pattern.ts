@@ -4,7 +4,7 @@
  * 기본 freqMap에 가중 평균 적용.
  */
 
-import { createServerClient } from "@supabase/ssr";
+import { createClient } from "@supabase/supabase-js";
 
 export interface OrgFreqMap {
   freqMap: Record<number, number>;
@@ -22,7 +22,7 @@ export async function getOrgPattern(
 ): Promise<OrgFreqMap | null> {
   if (!orgName) return null;
 
-  const supabase = createServerClient(supabaseUrl, supabaseKey, { cookies: () => null as any });
+  const supabase = createClient(supabaseUrl, supabaseKey);
 
   const { data } = await supabase
     .from("OrgBiddingPattern")
@@ -95,7 +95,7 @@ export async function updateOrgPattern(
     deviation[parseInt(k)] = parseFloat(((v / total - avgFreq / total) * 100).toFixed(2));
   }
 
-  const supabase = createServerClient(supabaseUrl, supabaseKey, { cookies: () => null as any });
+  const supabase = createClient(supabaseUrl, supabaseKey);
   await supabase.from("OrgBiddingPattern").upsert(
     { orgName, freqMap: freqPct, deviation, sampleSize: bidRates.length },
     { onConflict: "orgName" },

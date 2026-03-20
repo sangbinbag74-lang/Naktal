@@ -9,7 +9,8 @@ export default async function AdminOutcomesPage() {
   const { data: dbUser } = await supabase.from("User").select("isAdmin").eq("supabaseId", user.id).single();
   if (!dbUser?.isAdmin) redirect("/dashboard");
 
-  const { data: counts } = await supabase.rpc("count_bid_outcomes_by_result").catch(() => ({ data: null }));
+  let counts: unknown = null;
+  try { const r = await supabase.rpc("count_bid_outcomes_by_result"); counts = r.data; } catch { /* rpc not yet defined */ }
 
   const { data: recent } = await supabase
     .from("BidOutcome")

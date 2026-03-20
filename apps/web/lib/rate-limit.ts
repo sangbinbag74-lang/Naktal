@@ -7,7 +7,7 @@
  *   if (!allowed) return NextResponse.json({ error: "Too Many Requests" }, { status: 429, headers: { "Retry-After": "60" } });
  */
 
-import { createServerClient } from "@supabase/ssr";
+import { createClient } from "@supabase/supabase-js";
 
 export interface RateLimitResult {
   allowed: boolean;
@@ -25,10 +25,9 @@ export async function rateLimit(
   limit: number,
   windowSec: number,
 ): Promise<RateLimitResult> {
-  const supabase = createServerClient(
+  const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    { cookies: () => null as any },
   );
 
   const now = new Date();

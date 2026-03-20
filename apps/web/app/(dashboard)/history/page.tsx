@@ -75,7 +75,7 @@ export default function HistoryPage() {
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           {outcomes.map((o) => {
-            const tag = RESULT_LABELS[o.result] ?? RESULT_LABELS.PENDING;
+            const tag = RESULT_LABELS[o.result] ?? { label: "대기중", color: "#F59E0B", bg: "#FFFBEB" };
             return (
               <div key={o.id} style={{ background: "#fff", borderRadius: 12, border: "1px solid #E8ECF2", padding: "16px 20px", display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
                 <div style={{ flex: 1, minWidth: 140 }}>

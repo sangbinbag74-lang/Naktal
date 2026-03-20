@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createServerClient } from "@supabase/ssr";
+import { createClient } from "@supabase/supabase-js";
 
 export async function POST(req: NextRequest): Promise<NextResponse> {
   const body = (await req.json()) as {
@@ -25,10 +25,9 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ error: "올바른 이메일 형식을 입력해주세요." }, { status: 400 });
   }
 
-  const supabase = createServerClient(
+  const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    { cookies: () => null as any },
   );
 
   // 중복 신청 확인

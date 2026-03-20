@@ -12,8 +12,7 @@
  * 폴백: DB 데이터 없으면 통계적 기본값 반환
  */
 
-import { createServerClient } from "@supabase/ssr";
-import { cookies } from "next/headers";
+import { createClient } from "@supabase/supabase-js";
 
 export interface NumberCombo {
   numbers: number[];    // 추천 투찰률 끝 자리 조합 (예: [3, 11] → 87.311%)
@@ -108,7 +107,7 @@ export async function recommendNumbers(
 ): Promise<RecommendResult> {
   const { supabaseUrl, supabaseKey, category, budgetRange, region, estimatedBidders } = params;
 
-  const supabase = createServerClient(supabaseUrl, supabaseKey, { cookies: () => null as any });
+  const supabase = createClient(supabaseUrl, supabaseKey);
 
   // BidResult에서 해당 조건과 유사한 낙찰률 조회
   // Announcement 조인을 통해 필터링
