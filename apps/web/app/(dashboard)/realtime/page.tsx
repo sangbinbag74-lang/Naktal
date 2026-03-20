@@ -1,10 +1,34 @@
 "use client";
+import { useEffect, useState } from "react";
+import { createBrowserClient } from "@supabase/ssr";
 import Link from "next/link";
 
+interface PlanData { plan: string }
+
 export default function RealtimePage() {
-  // TODO: 실제 구현은 B안 Step 2에서. 현재는 Pro 업그레이드 배너 표시.
-  // Pro 여부는 실제로는 서버에서 plan 정보를 받아야 하지만, 지금은 UI만 구현
-  const isPro = false; // 실제로는 layout에서 plan prop 받아서 판단
+  const [planData, setPlanData] = useState<PlanData | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const supabase = createBrowserClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    );
+    supabase.auth.getUser().then(async ({ data: { user } }) => {
+      if (!user) { setLoading(false); return; }
+      const { data } = await supabase
+        .from("User")
+        .select("plan")
+        .eq("supabaseId", user.id)
+        .single();
+      setPlanData(data);
+      setLoading(false);
+    });
+  }, []);
+
+  const isPro = planData?.plan === "PRO";
+
+  if (loading) return <div style={{ padding: 40, color: "#94A3B8" }}>로딩 중...</div>;
 
   if (!isPro) {
     return (
@@ -60,10 +84,107 @@ export default function RealtimePage() {
     );
   }
 
+  return <RealtimeMonitor />;
+}
+
+function RealtimeMonitor() {
+  const [annId, setAnnId] = useState("");
+  const [data, setData] = useState<any>(null);
+  const [liveCount, setLiveCount] = useState<number | null>(null);
+  const [fetching, setFetching] = useState(false);
+
+  const load = async () => {
+    if (!annId.trim()) return;
+    setFetching(true);
+    const res = await fetch("/api/realtime/participants?annId=" + encodeURIComponent(annId.trim()));
+    const json = await res.json();
+    setData(json);
+    setLiveCount(json.currentCount ?? null);
+    setFetching(false);
+
+    // Supabase Realtime 구독
+    if (json.snapshotChannel) {
+      const supabase = createBrowserClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      );
+      supabase
+        .channel(json.snapshotChannel)
+        .on(
+          "postgres_changes",
+          { event: "INSERT", schema: "public", table: "ParticipantSnapshot", filter: "annId=eq." + json.annId },
+          (payload) => {
+            if (payload.new && typeof payload.new.count === "number") {
+              setLiveCount(payload.new.count);
+            }
+          },
+        )
+        .subscribe();
+    }
+  };
+
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
-      <h2 style={{ fontSize: 22, fontWeight: 700, color: "#0F172A", margin: 0 }}>실시간 모니터</h2>
-      <p style={{ color: "#64748B" }}>B안 Step 2에서 실제 크롤러 연동 예정입니다.</p>
+      <div>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+          <h2 style={{ fontSize: 22, fontWeight: 700, color: "#0F172A", margin: 0 }}>실시간 모니터</h2>
+          <span style={{ fontSize: 11, fontWeight: 700, background: "#F0F9FF", color: "#0369A1", padding: "3px 8px", borderRadius: 5 }}>CORE 2</span>
+          <span style={{ fontSize: 10, fontWeight: 700, background: "#059669", color: "#fff", padding: "2px 6px", borderRadius: 4 }}>PRO</span>
+        </div>
+        <p style={{ fontSize: 13, color: "#64748B", margin: 0 }}>공고번호를 입력하면 참여자 수 이력과 실시간 변화를 확인할 수 있습니다.</p>
+      </div>
+
+      <div style={{ display: "flex", gap: 12 }}>
+        <input
+          value={annId}
+          onChange={(e) => setAnnId(e.target.value)}
+          placeholder="공고번호 입력 (예: 20250312345)"
+          style={{ flex: 1, height: 48, padding: "0 14px", border: "1.5px solid #E8ECF2", borderRadius: 10, fontSize: 14, outline: "none" }}
+          onKeyDown={(e) => e.key === "Enter" && load()}
+        />
+        <button
+          onClick={load}
+          disabled={fetching}
+          style={{ height: 48, padding: "0 24px", background: "#1B3A6B", color: "#fff", borderRadius: 12, border: "none", fontWeight: 700, cursor: fetching ? "wait" : "pointer" }}
+        >
+          {fetching ? "조회중..." : "조회"}
+        </button>
+      </div>
+
+      {data && (
+        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+          <div style={{ background: "#fff", borderRadius: 14, border: "1px solid #E8ECF2", padding: 20 }}>
+            <div style={{ fontSize: 15, fontWeight: 700, color: "#0F172A", marginBottom: 8 }}>{data.title}</div>
+            <div style={{ display: "flex", gap: 24 }}>
+              <div>
+                <div style={{ fontSize: 11, color: "#9CA3AF" }}>현재 참여자</div>
+                <div style={{ fontSize: 32, fontWeight: 800, color: "#1B3A6B" }}>
+                  {liveCount !== null ? liveCount + "개사" : "집계 중"}
+                </div>
+                {liveCount !== null && <div style={{ fontSize: 11, color: "#60A5FA" }}>● 실시간 업데이트</div>}
+              </div>
+              <div>
+                <div style={{ fontSize: 11, color: "#9CA3AF" }}>마감일</div>
+                <div style={{ fontSize: 14, fontWeight: 600, color: "#374151" }}>
+                  {data.deadline ? new Date(data.deadline).toLocaleDateString("ko-KR") : "-"}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {data.snapshots && data.snapshots.length > 0 && (
+            <div style={{ background: "#fff", borderRadius: 14, border: "1px solid #E8ECF2", padding: 20 }}>
+              <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 12, color: "#374151" }}>참여자 수 이력</div>
+              {data.snapshots.map((s: any, i: number) => (
+                <div key={i} style={{ display: "flex", justifyContent: "space-between", padding: "6px 0", borderBottom: "1px solid #F1F5F9", fontSize: 13 }}>
+                  <span style={{ color: "#6B7280" }}>{new Date(s.snapshotAt).toLocaleString("ko-KR")}</span>
+                  <span style={{ fontWeight: 600, color: "#1B3A6B" }}>{s.count}개사</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

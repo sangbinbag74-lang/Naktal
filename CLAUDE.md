@@ -114,6 +114,9 @@ NTS_API_KEY=
 RESEND_API_KEY=
 NEXT_PUBLIC_SITE_URL=https://naktal.ai
 G2B_API_KEY=
+KONEPS_API_KEY=          # G2B_API_KEY와 동일 값 사용 가능 (공공데이터포털)
+KONEPS_API_BASE=https://apis.data.go.kr/1230000
+KONEPS_DAILY_LIMIT=1000  # 일일 API 호출 한도
 
 ## 컨벤션
 - 파일명: kebab-case / 컴포넌트: PascalCase
@@ -122,21 +125,41 @@ G2B_API_KEY=
 - 금액 단위: 항상 원(KRW), 소수점 없음
 - shadcn/ui 컴포넌트 원본 수정 금지 → 래핑
 
-## 현재 스프린트: B안 Step 1 — 번호 전략 특화 전환
+## 현재 스프린트: B안 Step 2 — 실제 엔진 구현
+
+### Step 1 완료 ✅
 - [x] Prisma 스키마 B안 확장 (CompanyProfile, NumberRecommendation, ParticipantSnapshot)
 - [x] CLAUDE.md B안 전면 재작성
 - [x] plan-guard.ts B안 Feature enum 업데이트
 - [x] 사이드바 네비게이션 B안 재편
 - [x] 대시보드 B안 지표·섹션 교체
-- [x] /strategy 번호 전략 페이지 (Mock API)
-- [x] /qualification 적격심사 계산기 (Mock API)
+- [x] /strategy 번호 전략 페이지 (Mock API → Step 2에서 실제 엔진으로 교체)
+- [x] /qualification 적격심사 계산기
 - [x] /profile 내 업체 정보 페이지
-- [x] /realtime 실시간 모니터 UI (Pro 배너)
+- [x] /realtime 실시간 모니터 UI
 - [x] 공고 목록 "번호 전략" 버튼 교체
-- [x] apps/ml XGBoost 삭제
-- [x] analysis/ 투찰 분석 페이지 삭제
+- [x] apps/ml XGBoost 삭제, analysis/ 페이지 삭제
 
-## ⚠️ B안 Step 2 예정
-- 번호 역이용 ML 모델 실제 구현 (apps/ml 재구축)
-- 실시간 참여자 수 크롤러 구현
-- 적격심사 로직 실제 구현 (CompanyProfile 연동)
+### Step 2 완료 ✅
+- [x] NumberSelectionStat Prisma 모델 추가
+- [x] apps/crawler/src/api/koneps-client.ts — 5개 KONEPS API 메서드
+- [x] apps/crawler/src/scrapers/realtime-participants.ts — 참여자 스냅샷 수집
+- [x] apps/web/lib/core1/frequency-engine.ts — CORE 1 빈도 분석 엔진
+- [x] /api/strategy/recommend — Mock → 실제 주파수 분석으로 교체
+- [x] /api/analysis/qualification — Mock → 실제 적격심사 로직으로 교체
+- [x] /api/realtime/participants — CORE 2 참여자 조회 API
+- [x] /api/realtime/recommend-live — CORE 2 실시간 번호 갱신 API
+- [x] /realtime 페이지 — Supabase Realtime 구독 연동
+
+## DB 스키마 추가 모델
+- NumberSelectionStat: 투찰률 millidigit 빈도 통계 캐시
+  - category/budgetRange/region/bidderRange 기준 분류
+  - rateInt: 투찰률 × 1000 (예: 87345 = 87.345%)
+  - winCount/totalCount: 낙찰/전체 건수
+
+## CORE 1 알고리즘 메모
+- 낙찰률(sucsfbidRate) 소수점 이하 3자리(millidigit) 추출
+- 0~999 범위 빈도맵 구성 → 상위 30% 고빈도 제거
+- 나머지 저빈도 구간을 3개 존으로 분리해 combo 추천
+- DB 데이터 30건 미만이면 통계 추정값(estimated-v1) 반환
+- freqMap을 프론트로 전달 → 히트맵 시각화

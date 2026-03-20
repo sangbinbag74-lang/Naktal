@@ -41,3 +41,21 @@ export interface BidResult {
   numBidders: number;
   createdAt: string;
 }
+
+
+export type QualResult = "PASS" | "UNCERTAIN" | "FAIL";
+
+export interface NumberComboResult {
+  combo1: number[];
+  combo2: number[];
+  combo3: number[];
+  hitRate1: number;
+  hitRate2: number;
+  hitRate3: number;
+  freqMap: Record<number, number>;
+  sampleSize: number;
+  modelVersion: string;
+  isEstimated: boolean;
+  used: number;
+  limit: number;
+}

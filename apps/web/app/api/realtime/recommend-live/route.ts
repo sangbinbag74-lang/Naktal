@@ -1,3 +1,8 @@
+/**
+ * CORE 2 — 실시간 번호 갱신 추천
+ * POST /api/realtime/recommend-live
+ * Pro 전용. 현재 참여자 수 기반으로 번호 추천을 즉시 갱신.
+ */
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { Feature, checkUsageLimit } from "@/lib/plan-guard";
@@ -16,58 +21,33 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     .single();
   if (!dbUser) return NextResponse.json({ error: "User not found" }, { status: 404 });
 
-  const plan = dbUser.plan as Plan;
-  const { allowed, used, limit } = await checkUsageLimit(
+  const { allowed } = await checkUsageLimit(
     dbUser.id,
-    Feature.CORE1_NUMBER_RECOMMEND,
-    plan,
+    Feature.CORE2_REALTIME_MONITOR,
+    dbUser.plan as Plan,
   );
-
   if (!allowed) {
-    const msg =
-      limit === Infinity
-        ? "오류"
-        : String(limit) + "회 한도를 초과했습니다. 업그레이드하면 더 많이 사용할 수 있습니다.";
     return NextResponse.json(
-      { message: msg, upgradeUrl: "/pricing", used, limit },
-      { status: 429 },
+      { error: "Pro 전용 기능입니다.", upgradeUrl: "/pricing" },
+      { status: 403 },
     );
   }
 
   const body = (await req.json()) as {
+    annId: string;
     category: string;
     budgetRange: string;
     region: string;
-    estimatedBidders?: number;
-    annId?: string;
+    currentBidders: number; // 현재 참여자 수 (실시간)
   };
 
-  // CORE 1: 실제 빈도 분석
   const result = await recommendNumbers({
     category: body.category,
     budgetRange: body.budgetRange,
     region: body.region,
-    estimatedBidders: body.estimatedBidders,
+    estimatedBidders: body.currentBidders,
     supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL!,
     supabaseKey: process.env.SUPABASE_SERVICE_ROLE_KEY!,
-  });
-
-  // 추천 이력 저장
-  await supabase.from("NumberRecommendation").insert({
-    userId: dbUser.id,
-    annId: body.annId ?? null,
-    category: body.category,
-    budgetRange: body.budgetRange,
-    region: body.region,
-    estimatedBidders: body.estimatedBidders ?? null,
-    combo1: result.combo1.numbers,
-    combo2: result.combo2.numbers,
-    combo3: result.combo3.numbers,
-    hitRate1: result.combo1.hitRate,
-    hitRate2: result.combo2.hitRate,
-    hitRate3: result.combo3.hitRate,
-    sampleSize: result.sampleSize,
-    modelVersion: result.modelVersion,
   });
 
   return NextResponse.json({
@@ -80,8 +60,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     freqMap: result.combo1.freqMap,
     sampleSize: result.sampleSize,
     modelVersion: result.modelVersion,
-    isEstimated: result.isEstimated,
-    used: used + 1,
-    limit,
+    currentBidders: body.currentBidders,
+    updatedAt: new Date().toISOString(),
   });
 }

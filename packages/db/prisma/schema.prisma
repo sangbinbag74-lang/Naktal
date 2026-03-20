@@ -150,6 +150,22 @@ model NumberRecommendation {
   @@index([userId, createdAt])
 }
 
+model NumberSelectionStat {
+  id           String   @id @default(cuid())
+  category     String
+  budgetRange  String
+  region       String
+  bidderRange  String   // "1-5" | "6-10" | "11-20" | "21-50" | "51+"
+  rateInt      Int      // 투찰률 × 1000 (예: 87345 = 87.345%)
+  winCount     Int      @default(0)
+  totalCount   Int      @default(0)
+  updatedAt    DateTime @updatedAt
+  createdAt    DateTime @default(now())
+
+  @@unique([category, budgetRange, region, bidderRange, rateInt])
+  @@index([category, budgetRange, region, bidderRange])
+}
+
 model ParticipantSnapshot {
   id           String       @id @default(cuid())
   annId        String
