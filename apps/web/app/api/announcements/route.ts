@@ -1,5 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient, createAdminClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/server";
+
+// G2B sync 쿨다운 (동일 Vercel 인스턴스 내 5분 재호출 방지)
+let lastSyncAt = 0;
+const SYNC_COOLDOWN_MS = 5 * 60 * 1000;
 import {
   g2bFetchAnnouncementPage,
   g2bExtractRegion,
@@ -125,9 +129,11 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   }
 
   // ── on-demand G2B fetch (6초 타임아웃) ───────────────────────────────────────
-  const shouldSync = page === 1 && ((count ?? 0) === 0 || (hasFilter && (count ?? 0) < 5));
+  const now2 = Date.now();
+  const shouldSync = page === 1 && ((count ?? 0) === 0 || (hasFilter && (count ?? 0) < 5)) && (now2 - lastSyncAt > SYNC_COOLDOWN_MS);
 
   if (shouldSync) {
+    lastSyncAt = now2;
     try {
       const days = hasFilter ? 30 : 7;
       await Promise.race([

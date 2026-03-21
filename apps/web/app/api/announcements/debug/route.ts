@@ -27,45 +27,11 @@ export async function GET() {
     result.db = { ok: false, error: String(e) };
   }
 
-  // 3. G2B API 직접 호출 테스트 (1건만)
-  try {
-    const key = process.env.G2B_API_KEY;
-    if (!key) throw new Error("G2B_API_KEY 없음");
-
-    const today = new Date();
-    const ymd = today.toISOString().slice(0, 10).replace(/-/g, "");
-    const from = new Date(today); from.setDate(from.getDate() - 3);
-    const fromYmd = from.toISOString().slice(0, 10).replace(/-/g, "");
-
-    const url = new URL("https://apis.data.go.kr/1230000/ad/BidPublicInfoService/getBidPblancListInfoServc");
-    url.searchParams.set("serviceKey", key);
-    url.searchParams.set("numOfRows", "1");
-    url.searchParams.set("pageNo", "1");
-    url.searchParams.set("type", "json");
-    url.searchParams.set("inqryDiv", "1");
-    url.searchParams.set("inqryBgnDt", `${fromYmd}0000`);
-    url.searchParams.set("inqryEndDt", `${ymd}2359`);
-
-    const controller = new AbortController();
-    const tid = setTimeout(() => controller.abort(), 5000);
-    let res: Response;
-    try {
-      res = await fetch(url.toString(), { signal: controller.signal });
-    } finally {
-      clearTimeout(tid);
-    }
-
-    if (!res!.ok) throw new Error(`HTTP ${res!.status}`);
-    const data = await res!.json() as { response: { header: { resultCode: string; resultMsg: string }; body: { totalCount: number } } };
-    result.g2b = {
-      ok: true,
-      resultCode: data.response?.header?.resultCode,
-      resultMsg: data.response?.header?.resultMsg,
-      totalCount: data.response?.body?.totalCount,
-    };
-  } catch (e) {
-    result.g2b = { ok: false, error: String(e) };
-  }
+  // 3. G2B API 키 존재 여부만 확인 (실제 호출 X — rate limit 소모 방지)
+  result.g2b = {
+    keySet: !!process.env.G2B_API_KEY,
+    note: "실제 호출 생략 (rate limit 보호)",
+  };
 
   // 4. 샘플 upsert 테스트 (실제 데이터 X, 더미)
   try {
