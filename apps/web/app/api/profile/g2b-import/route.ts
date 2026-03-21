@@ -18,9 +18,9 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
       fetchG2BContracts(bizNo),
     ]);
 
-    if (!companyInfo) {
+    if (!companyInfo || companyInfo.licenses.length === 0) {
       return NextResponse.json(
-        { error: "나라장터에서 업체 정보를 찾을 수 없습니다" },
+        { error: "해당 사업자번호로 나라장터에 등록된 면허·업종 정보를 찾을 수 없습니다. 나라장터에 조달업체로 등록된 사업자번호인지 확인해주세요." },
         { status: 404 }
       );
     }
