@@ -80,7 +80,7 @@ export default async function AnnouncementDetailPage({
   const isClosed = new Date(a.deadline) < new Date();
 
   // rawJson에서 동적 필드 추출
-  const rawJson = a.rawJson ?? {};
+  const rawJson = (a.rawJson ?? {}) as Record<string, string>;
   const bidMethodDisplay =
     rawJson.bidMthdNm ||
     rawJson.cntrctMthdNm ||
@@ -185,7 +185,7 @@ export default async function AnnouncementDetailPage({
           <div style={{ fontSize: 13, fontWeight: 600, color: "#FCA5A5", marginTop: 2 }}>{getDDay(a.deadline)}</div>
         </div>
         <a
-          href="https://www.g2b.go.kr/"
+          href={rawJson.ntcePbancUrl || `https://www.g2b.go.kr:8081/ep/peoplecvpl/narasVary.do?bidno=${a.konepsId}&bidseq=${rawJson.bidNtceSqNo ?? "00"}`}
           target="_blank"
           rel="noopener noreferrer"
           style={{

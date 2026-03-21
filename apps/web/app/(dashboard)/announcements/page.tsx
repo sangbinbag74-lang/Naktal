@@ -382,29 +382,34 @@ export default function AnnouncementsPage() {
                 </div>
 
                 {/* card-mid */}
-                <div style={{
-                  padding: "8px 16px",
-                  background: "#F8FAFC",
-                  borderTop: "1px solid #F1F5F9",
-                  borderBottom: "1px solid #F1F5F9",
-                  display: "grid",
-                  gridTemplateColumns: "repeat(4, 1fr)",
-                  gap: 8,
-                }}>
-                  {[
-                    { label: "예가범위", value: "±2%" },
-                    { label: "낙찰하한율", value: "87.745%" },
-                    { label: "적격심사", value: "해당" },
-                    { label: "발주처낙찰률", value: "-" },
-                  ].map((item) => (
-                    <div key={item.label} style={{ textAlign: "center" }}>
-                      <div style={{ fontSize: 10, color: "#94A3B8", marginBottom: 2 }}>{item.label}</div>
-                      <div style={{ fontSize: 12, fontWeight: 600, color: item.label === "낙찰하한율" ? "#DC2626" : item.label === "발주처낙찰률" ? "#059669" : "#1B3A6B" }}>
-                        {item.value}
-                      </div>
+                {(() => {
+                  const rj = (ann.rawJson ?? {}) as Record<string, string>;
+                  const lwltRate = rj.sucsfbidLwltRate;
+                  const bidMethod = rj.bidMthdNm || rj.cntrctMthdNm || rj.ntceKindNm || "-";
+                  const isMultiple = isMultiplePriceBid(ann.rawJson);
+                  return (
+                    <div style={{
+                      padding: "8px 16px",
+                      background: "#F8FAFC",
+                      borderTop: "1px solid #F1F5F9",
+                      borderBottom: "1px solid #F1F5F9",
+                      display: "grid",
+                      gridTemplateColumns: "repeat(3, 1fr)",
+                      gap: 8,
+                    }}>
+                      {[
+                        { label: "낙찰하한율", value: lwltRate ? `${lwltRate}%` : "-", color: lwltRate ? "#DC2626" : "#94A3B8" },
+                        { label: "낙찰방법",   value: bidMethod,                        color: "#1B3A6B" },
+                        { label: "예가방법",   value: isMultiple ? "복수예가" : "단일예가", color: isMultiple ? "#059669" : "#64748B" },
+                      ].map((item) => (
+                        <div key={item.label} style={{ textAlign: "center" }}>
+                          <div style={{ fontSize: 10, color: "#94A3B8", marginBottom: 2 }}>{item.label}</div>
+                          <div style={{ fontSize: 12, fontWeight: 600, color: item.color }}>{item.value}</div>
+                        </div>
+                      ))}
                     </div>
-                  ))}
-                </div>
+                  );
+                })()}
 
                 { /* card-bot */ }
                 <div style={{ padding: '9px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
