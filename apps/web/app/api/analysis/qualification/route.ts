@@ -8,7 +8,7 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, createAdminClient } from "@/lib/supabase/server";
 import { Feature, checkUsageLimit } from "@/lib/plan-guard";
 import type { Plan } from "@naktal/types";
 
@@ -41,7 +41,8 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const { data: dbUser } = await supabase
+  const admin = createAdminClient();
+  const { data: dbUser } = await admin
     .from("User")
     .select("id,plan")
     .eq("supabaseId", user.id)
@@ -51,7 +52,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   const plan = dbUser.plan as Plan;
   const body = (await req.json()) as { annId?: string };
 
-  const { data: profile } = await supabase
+  const { data: profile } = await admin
     .from("CompanyProfile")
     .select("id,mainCategory,subCategories,constructionRecords,creditScore,licenses")
     .eq("userId", dbUser.id)
@@ -71,7 +72,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     });
   }
 
-  const { data: ann } = await supabase
+  const { data: ann } = await admin
     .from("Announcement")
     .select("budget,category,rawJson")
     .eq("konepsId", body.annId)
@@ -89,7 +90,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   const budget = Number(ann.budget ?? 0);
   const isConstruction = ntceKindNm.includes("공사");
   const THREE_BILLION = 300_000_000;
-  const THIRTY_BILLION = 30_000_000_000;
+  const THIRTY_BILLION = 3_000_000_000;
 
   if (!isConstruction || budget < THREE_BILLION) {
     return NextResponse.json({

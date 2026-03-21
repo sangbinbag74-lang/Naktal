@@ -13,6 +13,9 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   const keyword        = searchParams.get("keyword") ?? "";
   const contractMethod = searchParams.get("contractMethod") ?? "";
   const deadlineRange  = searchParams.get("deadlineRange") ?? "";
+  const konepsId       = searchParams.get("konepsId") ?? "";
+  const prtcptnLmt     = searchParams.get("prtcptnLmt") ?? "";
+  const ntceKind       = searchParams.get("ntceKind") ?? "";
   const page           = Math.max(1, parseInt(searchParams.get("page") ?? "1", 10));
   const limit          = Math.min(50, parseInt(searchParams.get("limit") ?? "20", 10));
   const offset         = (page - 1) * limit;
@@ -34,6 +37,9 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   if (minBudget) q = q.gte("budget", minBudget);
   if (maxBudget) q = q.lte("budget", maxBudget);
   if (contractMethod) q = q.filter("rawJson->>cntrctMthdNm", "ilike", `%${contractMethod}%`);
+  if (konepsId)       q = q.ilike("konepsId", `%${konepsId}%`);
+  if (prtcptnLmt)     q = q.filter("rawJson->>prtcptnLmtNm", "ilike", `%${prtcptnLmt}%`);
+  if (ntceKind)       q = q.filter("rawJson->>ntceKindNm", "ilike", `%${ntceKind}%`);
   if (deadlineRange === "today") { q = q.gte("deadline", nowIso).lte("deadline", endOfToday); }
   else if (deadlineRange === "3")  { q = q.gte("deadline", nowIso).lte("deadline", d3later); }
   else if (deadlineRange === "7")  { q = q.gte("deadline", nowIso).lte("deadline", d7later); }

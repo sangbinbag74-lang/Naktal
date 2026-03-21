@@ -103,6 +103,21 @@ const REGION_GROUPS: { label: string; items: string[] }[] = [
   { label: "── 강원/제주", items: ["강원","제주"] },
 ];
 
+const PRTCPTN_FILTERS = [
+  { key: "", label: "전체" },
+  { key: "전국", label: "전국" },
+  { key: "관내", label: "관내" },
+];
+
+const NTCE_KINDS = [
+  { value: "", label: "전체 공사종류" },
+  { value: "소수의 도급", label: "소수의 도급" },
+  { value: "일반경쟁", label: "일반경쟁" },
+  { value: "제한경쟁", label: "제한경쟁" },
+  { value: "지명경쟁", label: "지명경쟁" },
+  { value: "협상에의한계약", label: "협상계약" },
+];
+
 export default function AnnouncementsPage() {
   const [items, setItems] = useState<Announcement[]>([]);
   const [hasMore, setHasMore] = useState(true);
@@ -114,6 +129,7 @@ export default function AnnouncementsPage() {
   useEffect(() => { setFolderIds(getFolderIds()); }, []);
 
   const [keyword, setKeyword] = useState("");
+  const [konepsId, setKonepsId] = useState("");
   const [category, setCategory] = useState("");
   const [region, setRegion] = useState("");
   const [sort, setSort] = useState("latest");
@@ -122,6 +138,8 @@ export default function AnnouncementsPage() {
   const [minBudget, setMinBudget] = useState("");
   const [maxBudget, setMaxBudget] = useState("");
   const [budgetPreset, setBudgetPreset] = useState("");
+  const [prtcptnLmt, setPrtcptnLmt] = useState("");
+  const [ntceKind, setNtceKind] = useState("");
 
   const observerRef = useRef<IntersectionObserver | null>(null);
   const sentinelRef = useRef<HTMLDivElement | null>(null);
@@ -132,12 +150,15 @@ export default function AnnouncementsPage() {
       try {
         const params = new URLSearchParams({ page: String(currentPage), limit: "20", sort });
         if (keyword)        params.set("keyword", keyword);
+        if (konepsId)       params.set("konepsId", konepsId);
         if (category)       params.set("category", category);
         if (region)         params.set("region", region);
         if (contractMethod) params.set("contractMethod", contractMethod);
         if (deadlineRange)  params.set("deadlineRange", deadlineRange);
         if (minBudget)      params.set("minBudget", minBudget);
         if (maxBudget)      params.set("maxBudget", maxBudget);
+        if (prtcptnLmt)     params.set("prtcptnLmt", prtcptnLmt);
+        if (ntceKind)       params.set("ntceKind", ntceKind);
         const res = await fetch(`/api/announcements?${params}`);
         const json = (await res.json()) as ApiResponse;
         setItems((prev) => (reset ? json.data : [...prev, ...json.data]));
@@ -149,7 +170,7 @@ export default function AnnouncementsPage() {
         setLoading(false);
       }
     },
-    [keyword, category, region, sort, contractMethod, deadlineRange, minBudget, maxBudget]
+    [keyword, konepsId, category, region, sort, contractMethod, deadlineRange, minBudget, maxBudget, prtcptnLmt, ntceKind]
   );
 
   useEffect(() => {
@@ -157,7 +178,7 @@ export default function AnnouncementsPage() {
     setItems([]);
     setHasMore(true);
     fetchData(1, true);
-  }, [keyword, category, region, sort, contractMethod, deadlineRange, minBudget, maxBudget, fetchData]);
+  }, [keyword, konepsId, category, region, sort, contractMethod, deadlineRange, minBudget, maxBudget, prtcptnLmt, ntceKind, fetchData]);
 
   useEffect(() => {
     if (observerRef.current) observerRef.current.disconnect();
@@ -187,8 +208,15 @@ export default function AnnouncementsPage() {
     cursor: "pointer",
   };
 
+  const skeletonStyle: React.CSSProperties = {
+    background: "#E8ECF2",
+    borderRadius: 4,
+    animation: "pulse 1.5s ease-in-out infinite",
+  };
+
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+      <style>{`@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.45} }`}</style>
       {/* 헤더 */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <div>
@@ -234,6 +262,9 @@ export default function AnnouncementsPage() {
               </optgroup>
             ))}
           </select>
+          <select value={ntceKind} onChange={(e) => setNtceKind(e.target.value)} style={selectStyle}>
+            {NTCE_KINDS.map((k) => <option key={k.value} value={k.value}>{k.label}</option>)}
+          </select>
           <select value={region} onChange={(e) => setRegion(e.target.value)} style={selectStyle}>
             <option value="">전체 지역</option>
             {REGION_GROUPS.map((g) => (
@@ -246,6 +277,28 @@ export default function AnnouncementsPage() {
             <option value="latest">최신순</option>
             <option value="deadline">마감임박순</option>
           </select>
+        </div>
+
+        {/* 공고번호 검색 */}
+        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+          <input
+            type="text"
+            value={konepsId}
+            onChange={(e) => setKonepsId(e.target.value)}
+            placeholder="공고번호 직접 입력 (예: R26BK01367226)"
+            style={{
+              flex: 1,
+              height: 36,
+              border: "1px solid #E8ECF2",
+              borderRadius: 9,
+              fontSize: 12,
+              padding: "0 12px",
+              outline: "none",
+              color: "#374151",
+            }}
+            onFocus={(e) => { (e.target as HTMLInputElement).style.borderColor = "#1B3A6B"; }}
+            onBlur={(e) => { (e.target as HTMLInputElement).style.borderColor = "#E8ECF2"; }}
+          />
         </div>
 
         {/* 마감일 */}
@@ -273,6 +326,24 @@ export default function AnnouncementsPage() {
             const isActive = contractMethod === f.key;
             return (
               <button key={f.key} onClick={() => setContractMethod(f.key)} style={{
+                height: 28, padding: "0 12px", borderRadius: 99, fontSize: 12,
+                fontWeight: isActive ? 600 : 400,
+                border: `1px solid ${isActive ? "#1B3A6B" : "#E2E8F0"}`,
+                background: isActive ? "#1B3A6B" : "#fff",
+                color: isActive ? "#fff" : "#374151",
+                cursor: "pointer",
+              }}>{f.label}</button>
+            );
+          })}
+        </div>
+
+        {/* 참가지역 */}
+        <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
+          <span style={{ fontSize: 11, color: "#94A3B8", minWidth: 40 }}>참가</span>
+          {PRTCPTN_FILTERS.map((f) => {
+            const isActive = prtcptnLmt === f.key;
+            return (
+              <button key={f.key} onClick={() => setPrtcptnLmt(f.key)} style={{
                 height: 28, padding: "0 12px", borderRadius: 99, fontSize: 12,
                 fontWeight: isActive ? 600 : 400,
                 border: `1px solid ${isActive ? "#1B3A6B" : "#E2E8F0"}`,
@@ -324,6 +395,13 @@ export default function AnnouncementsPage() {
 
       {/* 공고 카드 목록 */}
       <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+        {loading && items.length === 0 && Array.from({ length: 5 }).map((_, i) => (
+          <div key={i} style={{ background: "#fff", borderRadius: 12, border: "1px solid #E8ECF2", padding: "16px" }}>
+            <div style={{ ...skeletonStyle, height: 12, width: "30%", marginBottom: 10 }} />
+            <div style={{ ...skeletonStyle, height: 16, width: "80%", marginBottom: 8 }} />
+            <div style={{ ...skeletonStyle, height: 12, width: "50%" }} />
+          </div>
+        ))}
         {items.map((ann) => {
           const dday = getDDay(ann.deadline);
           return (
@@ -351,6 +429,15 @@ export default function AnnouncementsPage() {
                       {ann.region && (
                         <span style={{ fontSize: 10, fontWeight: 600, background: "#F8FAFC", color: "#64748B", padding: "2px 6px", borderRadius: 4 }}>
                           {ann.region}
+                        </span>
+                      )}
+                      {ann.rawJson?.prtcptnLmtNm && (
+                        <span style={{
+                          fontSize: 10, fontWeight: 600, padding: "2px 6px", borderRadius: 4,
+                          background: ann.rawJson.prtcptnLmtNm.includes("전국") ? "#F0FDF4" : "#FFF7ED",
+                          color:      ann.rawJson.prtcptnLmtNm.includes("전국") ? "#166534" : "#92400E",
+                        }}>
+                          {ann.rawJson.prtcptnLmtNm}
                         </span>
                       )}
                     </div>

@@ -35,6 +35,14 @@ interface DashboardStats {
   todayAnnouncements: number;
 }
 
+interface QualificationStatus {
+  hasProfile: boolean;
+  bizName?: string;
+  mainCategory?: string;
+  recordCount?: number;
+  creditScore?: string;
+}
+
 const cardStyle: React.CSSProperties = {
   background: "#fff",
   borderRadius: 14,
@@ -42,10 +50,18 @@ const cardStyle: React.CSSProperties = {
   padding: "18px 20px",
 };
 
+const skeletonStyle: React.CSSProperties = {
+  background: "#E8ECF2",
+  borderRadius: 4,
+  animation: "pulse 1.5s ease-in-out infinite",
+};
+
 export default function DashboardPage() {
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [urgentAnns, setUrgentAnns] = useState<UrgentAnn[]>([]);
+  const [qualStatus, setQualStatus] = useState<QualificationStatus | null>(null);
+  const [qualLoading, setQualLoading] = useState(true);
 
   useEffect(() => {
     fetch("/api/dashboard/stats")
@@ -57,6 +73,11 @@ export default function DashboardPage() {
       .then((r) => r.json())
       .then((d) => setUrgentAnns(d.data ?? []))
       .catch(() => {});
+    fetch("/api/dashboard/qualification-status")
+      .then((r) => r.json())
+      .then((d) => setQualStatus(d))
+      .catch(() => {})
+      .finally(() => setQualLoading(false));
   }, []);
 
   const val = (key: keyof DashboardStats) =>
@@ -64,6 +85,7 @@ export default function DashboardPage() {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+      <style>{`@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.45} }`}</style>
       {/* 헤더 */}
       <div>
         <h2 style={{ fontSize: 22, fontWeight: 700, color: "#0F172A", margin: 0 }}>대시보드</h2>
@@ -74,10 +96,16 @@ export default function DashboardPage() {
 
       {/* 지표 카드 4열 */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 14 }}>
-        {[
+        {loading ? Array.from({ length: 4 }).map((_, i) => (
+          <div key={i} style={{ ...cardStyle, borderTop: i === 0 ? "3px solid #1B3A6B" : cardStyle.border }}>
+            <div style={{ ...skeletonStyle, height: 12, width: "60%", marginBottom: 14 }} />
+            <div style={{ ...skeletonStyle, height: 28, width: "40%", marginBottom: 8 }} />
+            <div style={{ ...skeletonStyle, height: 10, width: "50%" }} />
+          </div>
+        )) : [
           {
             title: "이번 달 번호 추천",
-            value: loading ? "..." : stats ? `${stats.core1UsedThisMonth} / ${stats.core1Limit === -1 ? "∞" : stats.core1Limit}` : "-",
+            value: stats ? `${stats.core1UsedThisMonth} / ${stats.core1Limit === -1 ? "∞" : stats.core1Limit}` : "-",
             sub: "CORE 1 사용량",
             icon: "🎯",
             accent: true,
@@ -152,24 +180,49 @@ export default function DashboardPage() {
           </div>
           <Link href="/profile" style={{ fontSize: 12, color: "#60A5FA", textDecoration: "none" }}>업체 정보 설정 →</Link>
         </div>
-        <div style={{
-          background: "#F8FAFC",
-          borderRadius: 10,
-          border: "1px dashed #CBD5E1",
-          padding: "24px",
-          textAlign: "center",
-        }}>
-          <div style={{ fontSize: 28, marginBottom: 8 }}>🏢</div>
-          <div style={{ fontSize: 14, fontWeight: 600, color: "#374151", marginBottom: 4 }}>
-            업체 정보를 등록하면 적격심사 가능 공고를 자동으로 안내해드립니다
+        {qualLoading ? (
+          <div style={{ background: "#F8FAFC", borderRadius: 10, border: "1px solid #E8ECF2", padding: "20px" }}>
+            <div style={{ ...skeletonStyle, height: 16, width: "40%", marginBottom: 10 }} />
+            <div style={{ ...skeletonStyle, height: 12, width: "60%" }} />
           </div>
-          <Link href="/profile" style={{
-            display: "inline-block", marginTop: 12, background: "#1B3A6B", color: "#fff",
-            borderRadius: 8, padding: "8px 20px", fontSize: 13, fontWeight: 600, textDecoration: "none",
+        ) : qualStatus?.hasProfile ? (
+          <div style={{
+            background: "#F0F6FF", borderRadius: 10, border: "1px solid #BFDBFE",
+            padding: "16px 20px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16,
           }}>
-            업체 정보 등록하기
-          </Link>
-        </div>
+            <div>
+              <div style={{ fontSize: 15, fontWeight: 700, color: "#1B3A6B", marginBottom: 4 }}>
+                {qualStatus.bizName || "업체명 미입력"}
+              </div>
+              <div style={{ fontSize: 12, color: "#475569" }}>
+                주업종: {qualStatus.mainCategory || "미입력"} · 실적 {qualStatus.recordCount ?? 0}건
+                {qualStatus.creditScore && ` · 신용등급 ${qualStatus.creditScore}`}
+              </div>
+            </div>
+            <Link href="/qualification" style={{
+              fontSize: 12, fontWeight: 600, color: "#1B3A6B", background: "#fff",
+              border: "1px solid #BFDBFE", borderRadius: 8, padding: "7px 14px", textDecoration: "none", flexShrink: 0,
+            }}>
+              적격심사 바로가기 →
+            </Link>
+          </div>
+        ) : (
+          <div style={{
+            background: "#F8FAFC", borderRadius: 10, border: "1px dashed #CBD5E1",
+            padding: "24px", textAlign: "center",
+          }}>
+            <div style={{ fontSize: 28, marginBottom: 8 }}>🏢</div>
+            <div style={{ fontSize: 14, fontWeight: 600, color: "#374151", marginBottom: 4 }}>
+              업체 정보를 등록하면 적격심사 가능 공고를 자동으로 안내해드립니다
+            </div>
+            <Link href="/profile" style={{
+              display: "inline-block", marginTop: 12, background: "#1B3A6B", color: "#fff",
+              borderRadius: 8, padding: "8px 20px", fontSize: 13, fontWeight: 600, textDecoration: "none",
+            }}>
+              업체 정보 등록하기
+            </Link>
+          </div>
+        )}
       </div>
 
       {/* 마감 임박 공고 */}
