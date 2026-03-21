@@ -89,9 +89,10 @@ function formatKorean(amount: string): string {
 
 export default function ProfilePage() {
   const [profile, setProfile] = useState<CompanyProfile>(EMPTY_PROFILE);
-  const [loading, setLoading]   = useState(true);
-  const [saving,  setSaving]    = useState(false);
-  const [saved,   setSaved]     = useState(false);
+  const [loading,    setLoading]    = useState(true);
+  const [saving,     setSaving]     = useState(false);
+  const [saved,      setSaved]      = useState(false);
+  const [saveError,  setSaveError]  = useState("");
 
   // G2B 불러오기 상태
   const [importBizNo,  setImportBizNo]  = useState("");
@@ -169,9 +170,9 @@ export default function ProfilePage() {
   }
 
   async function save(e: React.FormEvent) {
-    e.preventDefault(); setSaving(true); setSaved(false);
+    e.preventDefault(); setSaving(true); setSaved(false); setSaveError("");
     try {
-      await fetch("/api/profile", {
+      const res = await fetch("/api/profile", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -180,8 +181,14 @@ export default function ProfilePage() {
           employeeCount: profile.employeeCount  ? parseInt(profile.employeeCount, 10) : null,
         }),
       });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setSaveError(data.error ?? `저장 실패 (${res.status})`);
+        return;
+      }
       setSaved(true); setTimeout(() => setSaved(false), 3000);
-    } catch { console.error("저장 실패"); } finally { setSaving(false); }
+    } catch { setSaveError("네트워크 오류로 저장하지 못했습니다."); }
+    finally { setSaving(false); }
   }
 
   // 면허 조작
@@ -428,6 +435,12 @@ export default function ProfilePage() {
           )}
         </div>
 
+        {/* ── 저장 에러 ── */}
+        {saveError && (
+          <div style={{ background: "#FEF2F2", border: "1px solid #FECACA", borderRadius: 10, padding: "12px 16px", fontSize: 13, color: "#DC2626", fontWeight: 500 }}>
+            ⚠ {saveError}
+          </div>
+        )}
         {/* ── 저장 버튼 ── */}
         <button type="submit" disabled={saving}
           style={{ height: 50, background: saving ? "#94A3B8" : "#1B3A6B", color: "#fff", borderRadius: 12, fontSize: 15, fontWeight: 700, border: "none", cursor: saving ? "not-allowed" : "pointer" }}>
