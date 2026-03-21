@@ -79,7 +79,9 @@ async function importMonth(ym: string): Promise<{ ann: number; bid: number }> {
   try {
     const rows = await fetchAnnouncements({ fromDate, toDate, numOfRows: 100, maxPages: 999 });
     for (const row of rows) {
-      try { await upsertAnnouncement(row); ann++; } catch { /* 중복 등 skip */ }
+      try { await upsertAnnouncement(row); ann++; } catch (e) {
+        logger.error(`  저장 실패 (${row.konepsId}): ${e instanceof Error ? e.message : String(e)}`);
+      }
     }
   } catch (e) {
     logger.error(`[${ym}] 공고 수집 오류`, e);
@@ -91,7 +93,9 @@ async function importMonth(ym: string): Promise<{ ann: number; bid: number }> {
   try {
     const rows = await fetchBidResults({ fromDate, toDate, numOfRows: 100, maxPages: 999 });
     for (const row of rows) {
-      try { await upsertBidResult(row); bid++; } catch { /* 중복 등 skip */ }
+      try { await upsertBidResult(row); bid++; } catch (e) {
+        logger.error(`  낙찰결과 저장 실패 (${row.annId}): ${e instanceof Error ? e.message : String(e)}`);
+      }
     }
   } catch (e) {
     logger.error(`[${ym}] 낙찰결과 수집 오류`, e);

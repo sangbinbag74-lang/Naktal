@@ -1,6 +1,13 @@
 import { createClient } from "@supabase/supabase-js";
+import { createHash } from "crypto";
 import type { AnnouncementRow } from "../parsers/announcement";
 import type { BidResultRow } from "../parsers/bid-result";
+
+/** konepsId → 결정론적 UUID (MD5 기반). 같은 공고번호는 항상 같은 PK. */
+function konepsIdToUuid(konepsId: string): string {
+  const h = createHash("md5").update(konepsId).digest("hex");
+  return `${h.slice(0,8)}-${h.slice(8,12)}-4${h.slice(13,16)}-8${h.slice(17,20)}-${h.slice(20,32)}`;
+}
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -20,6 +27,7 @@ const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {
 export async function upsertAnnouncement(data: AnnouncementRow): Promise<void> {
   const { error } = await supabase.from("Announcement").upsert(
     {
+      id:       konepsIdToUuid(data.konepsId), // 결정론적 UUID — PK 안정성 보장
       konepsId: data.konepsId,
       title:    data.title,
       orgName:  data.orgName,
