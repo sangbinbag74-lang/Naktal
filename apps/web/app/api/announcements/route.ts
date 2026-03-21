@@ -38,6 +38,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   else if (deadlineRange === "3")  { q = q.gte("deadline", nowIso).lte("deadline", d3later); }
   else if (deadlineRange === "7")  { q = q.gte("deadline", nowIso).lte("deadline", d7later); }
   else if (deadlineRange === "30") { q = q.gte("deadline", nowIso).lte("deadline", d30later); }
+  else { q = q.gte("deadline", nowIso); } // 기본: 마감된 공고 제외
   q = sort === "deadline"
     ? q.order("deadline", { ascending: true })
     : q.order("createdAt", { ascending: false });

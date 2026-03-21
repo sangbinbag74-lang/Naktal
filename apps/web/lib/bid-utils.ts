@@ -1,7 +1,10 @@
 export function isMultiplePriceBid(rawJson: Record<string, string> | null | undefined): boolean {
   if (!rawJson) return false;
-  const method = rawJson.bidMthdNm ?? rawJson.cntrctMthdNm ?? "";
-  return method.includes("복수예가");
+  // KONEPS API가 복수예가를 어느 필드에 담는지 서비스별로 다를 수 있으므로
+  // rawJson 전체 값을 스캔하여 "복수예가" 포함 여부 판단
+  return Object.values(rawJson).some(
+    (v) => typeof v === "string" && v.includes("복수예가"),
+  );
 }
 
 export function getBudgetRange(budget: number): string {
