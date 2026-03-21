@@ -20,6 +20,11 @@ interface ConstructionRecord {
   category?: string;
 }
 
+interface License {
+  licenseType: string;
+  validYn: string;
+}
+
 function formatAmount(n: number): string {
   if (n >= 100_000_000) return (n / 100_000_000).toFixed(1) + "억원";
   if (n >= 10_000) return Math.round(n / 10_000) + "만원";
@@ -48,7 +53,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
   const { data: profile } = await supabase
     .from("CompanyProfile")
-    .select("id,mainCategory,subCategories,constructionRecords,creditScore")
+    .select("id,mainCategory,subCategories,constructionRecords,creditScore,licenses")
     .eq("userId", dbUser.id)
     .maybeSingle();
 
@@ -115,7 +120,13 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   const recordOk = myRecord >= requiredRecord;
 
   const annCategory = ann.category || "";
-  const profileCats = [profile.mainCategory, ...(profile.subCategories ?? [])].filter(Boolean);
+  const licenses = (profile.licenses ?? []) as License[];
+  const validLicenseTypes = licenses.filter(l => l.validYn !== "N").map(l => l.licenseType);
+  const profileCats = [
+    profile.mainCategory,
+    ...(profile.subCategories ?? []),
+    ...validLicenseTypes,
+  ].filter(Boolean);
   const categoryMatch =
     profileCats.length === 0 ||
     profileCats.some(
