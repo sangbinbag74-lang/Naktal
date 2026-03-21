@@ -21,9 +21,14 @@ function extractRegion(addr: string): string {
   return trimmed.slice(0, 2);
 }
 
-// ─── G2B 날짜 "YYYYMMDDHHMM" → Date ─────────────────────────────────────────
+// ─── G2B 날짜 → Date ─────────────────────────────────────────────────────────
+// "YYYY-MM-DD HH:MM:SS" 또는 "YYYYMMDDHHMM" 두 형식 모두 처리
 function parseG2BDate(raw: string): Date | null {
   if (!raw || raw.length < 8) return null;
+  if (raw.includes("-")) {
+    const dt = new Date(raw.replace(" ", "T") + (raw.length <= 16 ? ":00+09:00" : "+09:00"));
+    return isNaN(dt.getTime()) ? null : dt;
+  }
   const y  = raw.slice(0, 4);
   const mo = raw.slice(4, 6);
   const d  = raw.slice(6, 8);

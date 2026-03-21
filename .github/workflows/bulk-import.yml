@@ -39,6 +39,7 @@ jobs:
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           G2B_API_KEY: ${{ secrets.G2B_API_KEY }}
+          G2B_ANNOUNCE_KEY: ${{ secrets.G2B_API_KEY }}
         run: |
           FROM="${{ github.event.inputs.from || '201201' }}"
           TO="${{ github.event.inputs.to }}"
