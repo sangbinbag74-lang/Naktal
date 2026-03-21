@@ -24,9 +24,11 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   }
 
   // RLS 우회: service_role로 User 테이블 upsert
+  // id는 Prisma cuid가 아닌 직접 insert이므로 직접 생성 (onConflict 시 무시됨)
   const admin = createAdminClient();
   const { error } = await admin.from("User").upsert(
     {
+      id:          crypto.randomUUID(),
       supabaseId:  user.id,
       bizNo:       body.bizNo,
       bizName:     body.bizName,

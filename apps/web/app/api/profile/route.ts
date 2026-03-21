@@ -38,10 +38,11 @@ async function getOrCreateDbUserId(
     }
   }
 
-  // 4) 없으면 신규 insert
+  // 4) 없으면 신규 insert (id는 Prisma cuid가 아닌 DB 직접 insert이므로 직접 생성)
   const { data: created, error } = await admin
     .from("User")
     .insert({
+      id:        crypto.randomUUID(),
       supabaseId,
       bizNo:     bizNo || supabaseId.slice(0, 10),
       bizName:   bizNo ? `업체(${bizNo})` : "미등록",
