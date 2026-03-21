@@ -1,38 +1,33 @@
 /**
- * G2B(나라장터) 업체 면허/업종 정보 API 클라이언트
+ * G2B(나라장터) 업체정보 API 클라이언트
  *
- * 현재 키로 접근 가능한 오퍼레이션:
- *   getPrcrmntCorpIndstrytyInfo02 — 조달업체 업종(면허) 정보 조회
- *   - 파라미터: bizno(사업자번호) + inqryDiv=1
- *   - 응답필드: indstrytyNm, indstrytyCd, rgstDt, vldPrdExprtDt, rprsntIndstrytyYn
+ * 확인된 오퍼레이션 (UsrInfoService02):
+ *   getPrcrmntCorpBasicInfo02    — 조달업체 기본정보 조회 (inqryDiv=3 + bizno)
+ *   getPrcrmntCorpIndstrytyInfo02 — 조달업체 업종(면허) 조회 (inqryDiv=1 + bizno)
  *
- * ※ getPrcrmntCorpBasicInfo02(업체 기본정보) — 현재 키로 미승인(HTTP 404)
- * ※ CntrctInfoService(계약실적) — 현재 키로 미승인(HTTP 404)
- *   → data.go.kr에서 해당 서비스 별도 활용신청 필요
+ * CntrctInfoService — 활성화 대기 중 (현재 HTTP 404)
  */
 
-const USR_BASE = "https://apis.data.go.kr/1230000/ao/UsrInfoService02";
-const USR_OP   = "getPrcrmntCorpIndstrytyInfo02";
+const USR_BASE  = "https://apis.data.go.kr/1230000/ao/UsrInfoService02";
+const CNTR_BASE = "https://apis.data.go.kr/1230000/ao/CntrctInfoService";
 
 export interface G2BLicense {
-  licenseType:  string;  // 면허업종명 (indstrytyNm)
-  licenseNo:    string;  // 업종코드   (indstrytyCd)
-  registAt:     string;  // 등록일     (rgstDt)
-  gradeNm:      string;  // 등급       (현재 API에서 미제공, 빈 문자열)
-  validYn:      string;  // 유효여부   (vldPrdExprtDt 만료여부로 판단)
-  isMain:       boolean; // 대표업종여부 (rprsntIndstrytyYn)
+  licenseType: string;  // 면허업종명 (indstrytyNm)
+  licenseNo:   string;  // 업종코드   (indstrytyCd)
+  registAt:    string;  // 등록일     (rgstDt)
+  gradeNm:     string;  // 등급       (indstrytyStatsNm)
+  validYn:     string;  // 유효여부
+  isMain:      boolean; // 대표업종여부
 }
 
 export interface G2BCompanyInfo {
-  // 현재 키로 접근 가능한 정보만 포함
-  licenses: G2BLicense[];
-  // 아래는 getPrcrmntCorpBasicInfo02 승인 후 추가 가능
-  bizName:       string;
-  ceoName:       string;
-  address:       string;
-  establishedAt: string;
-  employeeCount: number;
-  capitalAmount: number;
+  bizName:       string;  // corpNm
+  ceoName:       string;  // ceoNm
+  address:       string;  // adrs + dtlAdrs
+  establishedAt: string;  // opbizDt → YYYYMMDD
+  employeeCount: number;  // emplyeNum
+  capitalAmount: number;  // API 미제공, 0
+  licenses:      G2BLicense[];
 }
 
 export interface G2BContract {
@@ -53,95 +48,174 @@ function apiKey(): string {
   return k;
 }
 
+/** XML 응답에서 <item> 블록을 파싱 */
 function parseXmlItems(xml: string): Record<string, string>[] {
   const items: Record<string, string>[] = [];
   const itemRegex = /<item>([\s\S]*?)<\/item>/g;
-  let match;
-  while ((match = itemRegex.exec(xml)) !== null) {
-    const block = match[1];
+  let m;
+  while ((m = itemRegex.exec(xml)) !== null) {
+    const block = m[1];
     const fieldRegex = /<(\w+)>([\s\S]*?)<\/\1>/g;
     const item: Record<string, string> = {};
-    let fMatch;
-    while ((fMatch = fieldRegex.exec(block)) !== null) {
-      item[fMatch[1]] = fMatch[2].trim();
+    let f;
+    while ((f = fieldRegex.exec(block)) !== null) {
+      item[f[1]] = f[2].trim();
     }
     items.push(item);
   }
   return items;
 }
 
-function parseJsonItems(items: unknown): Record<string, string>[] {
-  if (!items || typeof items === "string") return [];
-  if (Array.isArray(items)) return items as Record<string, string>[];
-  if (typeof items === "object" && "item" in items) {
-    const item = (items as { item: unknown }).item;
-    if (!item) return [];
-    return Array.isArray(item)
-      ? (item as Record<string, string>[])
-      : [item as Record<string, string>];
-  }
-  return [];
+/** XML totalCount 추출 */
+function parseTotalCount(xml: string): number {
+  const m = xml.match(/<totalCount>(\d+)<\/totalCount>/);
+  return m ? parseInt(m[1], 10) : 0;
 }
 
-function isExpired(vldPrdExprtDt: string): boolean {
-  if (!vldPrdExprtDt) return false;
+/** "YYYY-MM-DD HH:MM:SS" → "YYYYMMDD" */
+function toYYYYMMDD(raw: string): string {
+  if (!raw) return "";
+  return raw.slice(0, 10).replace(/-/g, "");
+}
+
+/** 만료일이 오늘 이전이면 N */
+function validYn(vldPrdExprtDt: string): string {
+  if (!vldPrdExprtDt) return "Y";
   const exp = new Date(vldPrdExprtDt.replace(" ", "T"));
-  return !isNaN(exp.getTime()) && exp < new Date();
+  return !isNaN(exp.getTime()) && exp < new Date() ? "N" : "Y";
 }
 
-// ─── 업체 면허/업종 조회 ─────────────────────────────────────────────────────
-// getPrcrmntCorpIndstrytyInfo02: bizno + inqryDiv=1
+// ─── 조달업체 기본정보 조회 ──────────────────────────────────────────────────
+// getPrcrmntCorpBasicInfo02: inqryDiv=3 + bizno
 
-export async function fetchG2BCompanyInfo(
-  bizNo: string
-): Promise<G2BCompanyInfo | null> {
-  const url = new URL(`${USR_BASE}/${USR_OP}`);
+async function fetchBasicInfo(bizNo: string): Promise<Omit<G2BCompanyInfo, "licenses"> | null> {
+  const url = new URL(`${USR_BASE}/getPrcrmntCorpBasicInfo02`);
+  url.searchParams.set("serviceKey", apiKey());
+  url.searchParams.set("numOfRows",  "1");
+  url.searchParams.set("pageNo",     "1");
+  url.searchParams.set("bizno",      bizNo);
+  url.searchParams.set("inqryDiv",   "3");
+
+  const res = await fetch(url.toString(), { signal: AbortSignal.timeout(10_000) });
+  if (!res.ok) return null;
+
+  const xml = await res.text();
+  if (parseTotalCount(xml) === 0) return null;
+
+  const items = parseXmlItems(xml);
+  const item  = items[0];
+  if (!item) return null;
+
+  const adrs = [item["adrs"] ?? "", item["dtlAdrs"] ?? ""].filter(Boolean).join(" ").trim();
+
+  return {
+    bizName:       item["corpNm"]    ?? "",
+    ceoName:       item["ceoNm"]     ?? "",
+    address:       adrs,
+    establishedAt: toYYYYMMDD(item["opbizDt"] ?? ""),
+    employeeCount: parseInt(item["emplyeNum"] ?? "0", 10) || 0,
+    capitalAmount: 0,  // API 미제공
+  };
+}
+
+// ─── 조달업체 업종(면허) 조회 ────────────────────────────────────────────────
+// getPrcrmntCorpIndstrytyInfo02: inqryDiv=1 + bizno
+
+async function fetchLicenses(bizNo: string): Promise<G2BLicense[]> {
+  const url = new URL(`${USR_BASE}/getPrcrmntCorpIndstrytyInfo02`);
   url.searchParams.set("serviceKey", apiKey());
   url.searchParams.set("numOfRows",  "100");
   url.searchParams.set("pageNo",     "1");
   url.searchParams.set("bizno",      bizNo);
   url.searchParams.set("inqryDiv",   "1");
-  // JSON 응답이 nkoneps 래퍼로 와서 파싱이 까다로움 → XML 사용
+
   const res = await fetch(url.toString(), { signal: AbortSignal.timeout(10_000) });
-  if (!res.ok) return null;
+  if (!res.ok) return [];
 
-  const text = await res.text();
+  const xml = await res.text();
+  if (parseTotalCount(xml) === 0) return [];
 
-  // 오류 응답 체크
-  if (text.includes("resultCode>08") || text.includes('"resultCode":"08"')) return null;
-  if (!text.includes("<totalCount>") && !text.includes('"totalCount"')) return null;
+  return parseXmlItems(xml)
+    .filter(item => item["indstrytyNm"])
+    .map(item => ({
+      licenseType: item["indstrytyNm"]   ?? "",
+      licenseNo:   item["indstrytyCd"]   ?? "",
+      registAt:    toYYYYMMDD(item["rgstDt"] ?? ""),
+      gradeNm:     item["indstrytyStatsNm"] ?? "",
+      validYn:     validYn(item["vldPrdExprtDt"] ?? ""),
+      isMain:      item["rprsntIndstrytyYn"] === "Y",
+    }));
+}
 
-  // totalCount 추출
-  const countMatch = text.match(/<totalCount>(\d+)<\/totalCount>/);
-  if (!countMatch || countMatch[1] === "0") return null;
+// ─── 퍼블릭 API ──────────────────────────────────────────────────────────────
 
-  const rawItems = parseXmlItems(text);
-  if (rawItems.length === 0) return null;
+export async function fetchG2BCompanyInfo(
+  bizNo: string
+): Promise<G2BCompanyInfo | null> {
+  const [basic, licenses] = await Promise.all([
+    fetchBasicInfo(bizNo),
+    fetchLicenses(bizNo),
+  ]);
 
-  const licenses: G2BLicense[] = rawItems.map((item) => ({
-    licenseType: item["indstrytyNm"] ?? "",
-    licenseNo:   item["indstrytyCd"] ?? "",
-    registAt:    (item["rgstDt"] ?? "").replace(/\s.*$/, "").replace(/-/g, ""),
-    gradeNm:     item["indstrytyStatsNm"] ?? "",
-    validYn:     isExpired(item["vldPrdExprtDt"] ?? "") ? "N" : "Y",
-    isMain:      item["rprsntIndstrytyYn"] === "Y",
-  })).filter(l => l.licenseType);
+  if (!basic && licenses.length === 0) return null;
 
   return {
+    bizName:       basic?.bizName       ?? "",
+    ceoName:       basic?.ceoName       ?? "",
+    address:       basic?.address       ?? "",
+    establishedAt: basic?.establishedAt ?? "",
+    employeeCount: basic?.employeeCount ?? 0,
+    capitalAmount: 0,
     licenses,
-    // 기본정보 API 미승인으로 빈 값
-    bizName: "", ceoName: "", address: "",
-    establishedAt: "", employeeCount: 0, capitalAmount: 0,
   };
 }
 
-// ─── 계약실적 조회 (현재 미승인) ─────────────────────────────────────────────
-// CntrctInfoService — data.go.kr에서 별도 활용신청 필요
+// ─── 계약실적 조회 ───────────────────────────────────────────────────────────
+// CntrctInfoService — 활성화 후 아래 구현 활성화
 
 export async function fetchG2BContracts(
-  _bizNo: string
+  bizNo: string,
+  maxPages = 10
 ): Promise<G2BContract[]> {
-  // CntrctInfoService 키가 승인되지 않아 빈 배열 반환
-  // data.go.kr → 조달청_나라장터 계약정보서비스 → 활용신청 후 아래 구현
-  return [];
+  // 건설공사 + 용역 계약 모두 시도
+  const ops = ["getCntrctInfoListCnstwk", "getCntrctInfoListServc"];
+  const results: G2BContract[] = [];
+
+  for (const op of ops) {
+    let page = 1;
+    while (page <= maxPages) {
+      const url = new URL(`${CNTR_BASE}/${op}`);
+      url.searchParams.set("serviceKey", apiKey());
+      url.searchParams.set("numOfRows",  "100");
+      url.searchParams.set("pageNo",     String(page));
+      url.searchParams.set("bizno",      bizNo);
+
+      const res = await fetch(url.toString(), { signal: AbortSignal.timeout(10_000) });
+      if (!res.ok) break;  // 404 = 미활성 or 해당 업체 데이터 없음
+
+      const xml = await res.text();
+      const total = parseTotalCount(xml);
+      if (total === 0) break;
+
+      const items = parseXmlItems(xml);
+      for (const item of items) {
+        const completionDate = toYYYYMMDD(item["cmpltDt"] ?? item["complDt"] ?? "");
+        results.push({
+          projectName:    item["cntrctNm"]  ?? item["prjctNm"]  ?? "",
+          client:         item["dminsttNm"] ?? item["orgnNm"]   ?? "",
+          amount:         (item["cntrctAmt"] ?? "0").replace(/[^0-9]/g, ""),
+          contractDate:   toYYYYMMDD(item["cntrctDt"]  ?? ""),
+          completionDate,
+          category:       item["indutyNm"]  ?? item["ctgryNm"]  ?? "",
+          year:           parseInt(completionDate.slice(0, 4), 10) || new Date().getFullYear(),
+        });
+      }
+
+      if (page * 100 >= total) break;
+      page++;
+      await new Promise(r => setTimeout(r, 200));
+    }
+  }
+
+  return results;
 }
