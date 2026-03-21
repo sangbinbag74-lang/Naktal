@@ -87,9 +87,18 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
   const body = await req.json();
   const admin = createAdminClient();
+
+  // 기존 CompanyProfile id 조회 (없으면 신규 생성용 UUID 발급)
+  const { data: existingProfile } = await admin
+    .from("CompanyProfile")
+    .select("id")
+    .eq("userId", result.id)
+    .maybeSingle();
+  const profileId = existingProfile?.id ?? crypto.randomUUID();
+
   const { error } = await admin
     .from("CompanyProfile")
-    .upsert({ ...body, userId: result.id }, { onConflict: "userId" });
+    .upsert({ ...body, id: profileId, userId: result.id }, { onConflict: "userId" });
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json({ ok: true });
