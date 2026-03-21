@@ -31,11 +31,11 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let q: any = admin.from("Announcement").select("*", { count: "exact" });
-  // category 컬럼엔 ntceKindNm(시설공사/물품/용역)이 저장되고,
-  // 실제 업종(토목공사, 건축공사 등)은 rawJson.indutyCtgryNm에 있음.
-  // .or() 내 rawJson->> 는 URL 인코딩 문제로 작동 안 함 → .filter() 두 번으로 처리.
+  // indutyCtgryNm이 G2B API에서 빈 값으로 오는 경우가 많음.
+  // category 컬럼(= indutyCtgryNm || ntceKindNm) OR 공고 제목 두 필드를 OR 검색.
+  // title에는 항상 공사 유형이 포함됨 (예: "○○ 토목공사", "○○ 건축공사 공사").
   if (category) {
-    q = q.filter("rawJson->>indutyCtgryNm", "ilike", `%${category}%`);
+    q = q.or(`category.ilike.%${category}%,title.ilike.%${category}%`);
   }
   if (region)    q = q.filter("rawJson->>ntceInsttAddr", "ilike", `%${region}%`);
   if (keyword)   q = q.or(`title.ilike.%${keyword}%,orgName.ilike.%${keyword}%`);
