@@ -98,7 +98,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
   const { error } = await admin
     .from("CompanyProfile")
-    .upsert({ ...body, id: profileId, userId: result.id }, { onConflict: "userId" });
+    .upsert({ ...body, id: profileId, userId: result.id, updatedAt: new Date().toISOString() }, { onConflict: "userId" });
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json({ ok: true });
