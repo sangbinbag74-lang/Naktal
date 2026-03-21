@@ -1,78 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/server";
 
-// G2B sync 쿨다운 (동일 Vercel 인스턴스 내 5분 재호출 방지)
-let lastSyncAt = 0;
-const SYNC_COOLDOWN_MS = 5 * 60 * 1000;
-import {
-  g2bFetchAnnouncementPage,
-  g2bExtractRegion,
-  g2bParseDate,
-  toYMD,
-  daysAgo,
-  type G2BAnnouncement,
-} from "@/lib/g2b";
-
-// ─── G2B → DB upsert (최근 N일치) ────────────────────────────────────────────
-async function syncRecentFromG2B(days: number): Promise<number> {
-  const admin = createAdminClient();
-  const today   = toYMD(new Date());
-  const fromDay = toYMD(daysAgo(days));
-  let page = 1, saved = 0;
-
-  while (true) {
-    const { items, totalCount } = await g2bFetchAnnouncementPage({
-      pageNo: page, numOfRows: 100,
-      inqryBgnDt: `${fromDay}0000`,
-      inqryEndDt: `${today}2359`,
-    });
-    if (items.length === 0) break;
-
-    const rows = items.map((item: G2BAnnouncement) => {
-      const konepsId  = item.bidNtceNo?.trim();
-      const title     = item.bidNtceNm?.trim();
-      const orgName   = (item.ntceInsttNm || item.demInsttNm)?.trim();
-      const budgetNum = parseInt(
-        (item.asignBdgtAmt || item.presmptPrce || "0").replace(/[^0-9]/g, ""), 10
-      );
-      const deadline = g2bParseDate(item.bidClseDt);
-      if (!konepsId || !title || !orgName || isNaN(budgetNum) || !deadline) return null;
-      const rawJson: Record<string, string> = {};
-      for (const [k, v] of Object.entries(item)) rawJson[k] = String(v ?? "");
-      return {
-        konepsId, title, orgName,
-        budget: budgetNum,
-        deadline,
-        category: item.indutyCtgryNm || item.ntceKindNm || "",
-        region: g2bExtractRegion(item.ntceInsttAddr || ""),
-        rawJson,
-      };
-    }).filter(Boolean);
-
-    if (rows.length > 0) {
-      // 기존 행의 id 조회 (id 컬럼에 DB DEFAULT 없어서 직접 관리)
-      const konepsIds = (rows as { konepsId: string }[]).map((r) => r.konepsId);
-      const { data: existing } = await admin
-        .from("Announcement")
-        .select("konepsId, id")
-        .in("konepsId", konepsIds);
-      const idMap = new Map((existing ?? []).map((r: { konepsId: string; id: string }) => [r.konepsId, r.id]));
-
-      const rowsWithId = (rows as { konepsId: string }[]).map((r) => ({
-        ...r,
-        id: idMap.get(r.konepsId) ?? crypto.randomUUID(),
-      }));
-
-      const { error: upsertErr } = await admin.from("Announcement").upsert(rowsWithId, { onConflict: "konepsId" });
-      if (upsertErr) throw new Error(`upsert 실패: ${upsertErr.message}`);
-      saved += rows.length;
-    }
-    if (page * 100 >= totalCount) break;
-    page++;
-  }
-  return saved;
-}
-
 // ─── GET /api/announcements ───────────────────────────────────────────────────
 export async function GET(request: NextRequest): Promise<NextResponse> {
   const { searchParams } = new URL(request.url);
@@ -90,9 +18,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   const offset         = (page - 1) * limit;
 
   const admin = createAdminClient();
-  const hasFilter = !!(category || region || keyword || minBudget || maxBudget || contractMethod || deadlineRange);
 
-  // 날짜 경계값
   const now = new Date();
   const nowIso     = now.toISOString();
   const endOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59).toISOString();
@@ -100,70 +26,28 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   const d7later    = new Date(now.getTime() +  7 * 86400000).toISOString();
   const d30later   = new Date(now.getTime() + 30 * 86400000).toISOString();
 
-  // ── DB 조회 ──────────────────────────────────────────────────────────────────
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const buildQuery = () => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    let q: any = admin.from("Announcement").select("*", { count: "exact" });
-    if (category)  q = q.ilike("category", `%${category}%`);
-    if (region)    q = q.filter("rawJson->>ntceInsttAddr", "ilike", `%${region}%`);
-    if (keyword)   q = q.or(`title.ilike.%${keyword}%,orgName.ilike.%${keyword}%`);
-    if (minBudget) q = q.gte("budget", minBudget);
-    if (maxBudget) q = q.lte("budget", maxBudget);
-    if (contractMethod) q = q.filter("rawJson->>cntrctMthdNm", "ilike", `%${contractMethod}%`);
-    if (deadlineRange === "today") { q = q.gte("deadline", nowIso).lte("deadline", endOfToday); }
-    else if (deadlineRange === "3")  { q = q.gte("deadline", nowIso).lte("deadline", d3later); }
-    else if (deadlineRange === "7")  { q = q.gte("deadline", nowIso).lte("deadline", d7later); }
-    else if (deadlineRange === "30") { q = q.gte("deadline", nowIso).lte("deadline", d30later); }
-    q = sort === "deadline"
-      ? q.order("deadline", { ascending: true })
-      : q.order("createdAt", { ascending: false });
-    return q.range(offset, offset + limit - 1);
-  };
+  let q: any = admin.from("Announcement").select("*", { count: "exact" });
+  if (category)  q = q.ilike("category", `%${category}%`);
+  if (region)    q = q.filter("rawJson->>ntceInsttAddr", "ilike", `%${region}%`);
+  if (keyword)   q = q.or(`title.ilike.%${keyword}%,orgName.ilike.%${keyword}%`);
+  if (minBudget) q = q.gte("budget", minBudget);
+  if (maxBudget) q = q.lte("budget", maxBudget);
+  if (contractMethod) q = q.filter("rawJson->>cntrctMthdNm", "ilike", `%${contractMethod}%`);
+  if (deadlineRange === "today") { q = q.gte("deadline", nowIso).lte("deadline", endOfToday); }
+  else if (deadlineRange === "3")  { q = q.gte("deadline", nowIso).lte("deadline", d3later); }
+  else if (deadlineRange === "7")  { q = q.gte("deadline", nowIso).lte("deadline", d7later); }
+  else if (deadlineRange === "30") { q = q.gte("deadline", nowIso).lte("deadline", d30later); }
+  q = sort === "deadline"
+    ? q.order("deadline", { ascending: true })
+    : q.order("createdAt", { ascending: false });
+  q = q.range(offset, offset + limit - 1);
 
-  const { data, count, error } = await buildQuery();
+  const { data, count, error } = await q;
 
   if (error) {
     console.error("[GET /api/announcements]", error.message);
     return NextResponse.json({ error: error.message }, { status: 500 });
-  }
-
-  // ── on-demand G2B fetch (6초 타임아웃) ───────────────────────────────────────
-  const now2 = Date.now();
-  const shouldSync = page === 1 && ((count ?? 0) === 0 || (hasFilter && (count ?? 0) < 5)) && (now2 - lastSyncAt > SYNC_COOLDOWN_MS);
-
-  if (shouldSync) {
-    lastSyncAt = now2;
-    try {
-      const days = hasFilter ? 30 : 7;
-      await Promise.race([
-        syncRecentFromG2B(days),
-        new Promise<never>((_, reject) =>
-          setTimeout(() => reject(new Error("sync_timeout")), 9000)
-        ),
-      ]);
-      console.log(`[on-demand G2B sync] ${days}일치 저장 완료`);
-
-      const { data: fresh, count: freshCount } = await buildQuery();
-      return NextResponse.json({
-        data: fresh ?? [],
-        total: freshCount ?? 0,
-        hasMore: offset + limit < (freshCount ?? 0),
-        page, limit,
-      });
-    } catch (syncErr) {
-      console.error("[on-demand G2B sync 실패/타임아웃]", (syncErr as Error).message);
-      // 일부 저장됐을 수 있으니 재조회
-      const { data: fallback, count: fallbackCount } = await buildQuery();
-      if ((fallbackCount ?? 0) > 0) {
-        return NextResponse.json({
-          data: fallback ?? [],
-          total: fallbackCount ?? 0,
-          hasMore: offset + limit < (fallbackCount ?? 0),
-          page, limit,
-        });
-      }
-    }
   }
 
   return NextResponse.json({

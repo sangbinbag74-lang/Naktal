@@ -1,12 +1,8 @@
 /**
  * Vercel Cron — G2B 나라장터 데이터 자동 수집
  *
- * 스케줄: 매일 KST 09:00~18:00 매 1시간 (UTC 00~09시)
- * 동작:
- *  - 최초 실행부터 역대 모든 데이터 수집 (G2B API 시작: 2012-01-01)
- *  - 한 번 실행 시 12개월치씩 처리 (Vercel 타임아웃 대응)
- *  - 과거 수집 완료 후에는 매 실행마다 오늘 데이터 추가
- *  - 커서를 CrawlLog에 저장해 재시작 시에도 이어서 수집
+ * ?mode=recent  → 최근 2일치만 sync (매 1시간)
+ * (default)     → 역대 전체 + 오늘 sync (매일 03:00 KST)
  */
 
 import { NextRequest, NextResponse } from "next/server";
@@ -16,15 +12,16 @@ import {
   g2bExtractRegion,
   g2bParseDate,
   toYMD,
+  daysAgo,
   type G2BAnnouncement,
   type G2BBidResult,
 } from "@/lib/g2b";
 
-export const maxDuration = 300; // Vercel Pro: 5분
+export const maxDuration = 300;
 
 const NUM_OF_ROWS = 100;
-const MONTHS_PER_RUN = 12;      // 한 번 실행 시 최대 12개월 처리
-const G2B_OLDEST = "201201";    // 나라장터 G2B API 데이터 시작월 (2012-01)
+const MONTHS_PER_RUN = 12;
+const G2B_OLDEST = "201201";
 
 type SupabaseHeaders = Record<string, string>;
 
@@ -55,22 +52,30 @@ async function importAnnouncements(
       const orgName   = (item.ntceInsttNm || item.demInsttNm)?.trim();
       const budgetNum = parseInt((item.asignBdgtAmt || item.presmptPrce || "0").replace(/[^0-9]/g, ""), 10);
       const deadline  = g2bParseDate(item.bidClseDt);
-      if (!konepsId || !title || !orgName || !budgetNum || !deadline) return null;
+      if (!konepsId || !title || !orgName || isNaN(budgetNum) || !deadline) return null;
       const rawJson: Record<string, string> = {};
       for (const [k, v] of Object.entries(item)) rawJson[k] = String(v ?? "");
       return {
-        konepsId, title, orgName, budget: String(budgetNum), deadline,
-        category: item.ntceKindNm || item.indutyCtgryNm || "",
+        id: crypto.randomUUID(),
+        konepsId, title, orgName,
+        budget: budgetNum,
+        deadline,
+        category: item.indutyCtgryNm || item.ntceKindNm || "",
         region: g2bExtractRegion(item.ntceInsttAddr || ""),
         rawJson,
       };
     }).filter(Boolean);
 
     if (rows.length > 0) {
-      const r = await fetch(`${url}/rest/v1/Announcement`, {
+      // on_conflict=konepsId: konepsId 중복 시 기존 행 업데이트
+      const r = await fetch(`${url}/rest/v1/Announcement?on_conflict=konepsId`, {
         method: "POST", headers: supabaseHeaders(key), body: JSON.stringify(rows),
       });
       if (r.ok) saved += rows.length;
+      else {
+        const errText = await r.text();
+        console.error(`[importAnnouncements] upsert 실패 ${r.status}:`, errText);
+      }
     }
     if (page * NUM_OF_ROWS >= totalCount) break;
     page++;
@@ -117,9 +122,7 @@ async function importBidResults(
   return saved;
 }
 
-// ─── 커서 관리 (CrawlLog 테이블 활용) ────────────────────────────────────────
-// CrawlLog.type = "HIST_CURSOR" 인 row의 errors 필드에 "YYYYMM" 저장
-
+// ─── 커서 관리 ────────────────────────────────────────────────────────────────
 async function readCursor(url: string, key: string): Promise<string | null> {
   const r = await fetch(
     `${url}/rest/v1/CrawlLog?type=eq.HIST_CURSOR&order=createdAt.desc&limit=1`,
@@ -140,7 +143,6 @@ async function writeCursor(url: string, key: string, cursor: string): Promise<vo
 // ─── 유틸 ────────────────────────────────────────────────────────────────────
 function sleep(ms: number) { return new Promise((r) => setTimeout(r, ms)); }
 
-/** YYYYMM → 해당 월의 마지막 날 YYYYMMDD */
 function lastDayOfMonth(ym: string): string {
   const y = parseInt(ym.slice(0, 4));
   const m = parseInt(ym.slice(4, 6));
@@ -148,7 +150,6 @@ function lastDayOfMonth(ym: string): string {
   return `${ym}${String(last).padStart(2, "0")}`;
 }
 
-/** YYYYMM을 N개월 이전으로 이동 */
 function prevMonth(ym: string, n = 1): string {
   const y = parseInt(ym.slice(0, 4));
   const m = parseInt(ym.slice(4, 6)) - n;
@@ -156,7 +157,6 @@ function prevMonth(ym: string, n = 1): string {
   return `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, "0")}`;
 }
 
-/** 현재 월 YYYYMM */
 function currentMonth(): string {
   const now = new Date();
   return `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, "0")}`;
@@ -173,36 +173,38 @@ export async function GET(request: NextRequest) {
 
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const serviceKey  = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
   if (!supabaseUrl || !serviceKey) {
     return NextResponse.json({ error: "Supabase 환경변수 누락" }, { status: 500 });
   }
 
-  const today = toYMD(new Date());
-  const curMonth = currentMonth();
-  const log: Record<string, unknown> = {};
+  const mode = new URL(request.url).searchParams.get("mode");
+  const isRecentOnly = mode === "recent";
+  const today   = toYMD(new Date());
+  const twoDaysAgo = toYMD(daysAgo(2));
+  const log: Record<string, unknown> = { mode: isRecentOnly ? "recent" : "full" };
 
   try {
-    // ── 1. 오늘 데이터 (항상 먼저) ────────────────────────────────────────────
-    const todayAnn = await importAnnouncements(supabaseUrl, serviceKey, today, today);
-    let todayBid = 0;
-    try { todayBid = await importBidResults(supabaseUrl, serviceKey, today, today); }
-    catch (e) { console.error("[cron] 낙찰결과 수집 실패 (공고는 정상):", e); }
-    log.today = { announcements: todayAnn, bidResults: todayBid };
+    // ── 최근 2일치 공고 sync (매시간 + 전체 실행 모두) ──────────────────────
+    const recentAnn = await importAnnouncements(supabaseUrl, serviceKey, twoDaysAgo, today);
+    let recentBid = 0;
+    try { recentBid = await importBidResults(supabaseUrl, serviceKey, twoDaysAgo, today); }
+    catch (e) { console.error("[cron] 낙찰결과 수집 실패:", e); }
+    log.recent = { announcements: recentAnn, bidResults: recentBid, from: twoDaysAgo, to: today };
 
-    // ── 2. 역대 과거 수집 (커서 방식, 회차당 MONTHS_PER_RUN 개월) ────────────
+    if (isRecentOnly) {
+      return NextResponse.json({ ok: true, ...log });
+    }
+
+    // ── 역대 과거 수집 (커서 방식, 1회 실행 시 MONTHS_PER_RUN 개월) ─────────
+    const curMonth = currentMonth();
     const cursor = await readCursor(supabaseUrl, serviceKey);
-    // cursor가 없으면 이번 달부터 시작, 있으면 커서 이전 달부터
     const startFrom = cursor ? prevMonth(cursor) : curMonth;
 
     if (startFrom >= G2B_OLDEST) {
       const batches: { from: string; to: string; ym: string }[] = [];
       let ym = startFrom;
-
       for (let i = 0; i < MONTHS_PER_RUN && ym >= G2B_OLDEST; i++) {
-        const fromDate = `${ym}01`;
-        const toDate   = lastDayOfMonth(ym);
-        batches.push({ from: fromDate, to: toDate, ym });
+        batches.push({ from: `${ym}01`, to: lastDayOfMonth(ym), ym });
         ym = prevMonth(ym);
       }
 
@@ -212,9 +214,7 @@ export async function GET(request: NextRequest) {
         let b = 0;
         try { b = await importBidResults(supabaseUrl, serviceKey, from, to); }
         catch (e) { console.error("[cron] 낙찰결과 수집 실패:", e); }
-        histAnn += a;
-        histBid += b;
-        // 마지막으로 처리한 월을 커서로 저장 (다음 실행 시 이 이전부터 시작)
+        histAnn += a; histBid += b;
         await writeCursor(supabaseUrl, serviceKey, bYm);
         await sleep(300);
       }
