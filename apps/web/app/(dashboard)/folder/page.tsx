@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import { isMultiplePriceBid } from "@/lib/bid-utils";
 
 interface Announcement {
   id: string;
@@ -12,6 +13,7 @@ interface Announcement {
   deadline: string;
   category: string;
   region: string;
+  rawJson?: Record<string, string> | null;
 }
 
 const FOLDER_KEY = "naktal_folder";
@@ -87,7 +89,7 @@ export default function FolderPage() {
         <div>
           <h2 style={{ fontSize: 22, fontWeight: 700, color: "#0F172A", margin: "0 0 4px" }}>서류함</h2>
           <p style={{ fontSize: 13, color: "#64748B", margin: 0 }}>
-            저장한 공고 {ids.length}건 — 공고 목록에서 ★ 버튼으로 저장하세요.
+            저장한 공고 {ids.length}건 · 번호 분석 가능 {items.filter((a) => isMultiplePriceBid(a.rawJson)).length}건
           </p>
         </div>
         {ids.length > 0 && (
@@ -187,12 +189,18 @@ export default function FolderPage() {
                   display: "flex", alignItems: "center", justifyContent: "space-between",
                 }}>
                   <div style={{ display: "flex", gap: 6 }}>
-                    <a
-                      href={`/strategy?annId=${ann.id}`}
-                      style={{ fontSize: 11, fontWeight: 600, color: "#1B3A6B", background: "#EEF2FF", padding: "4px 8px", borderRadius: 6, textDecoration: "none" }}
-                    >
-                      🎯 번호 전략
-                    </a>
+                    {isMultiplePriceBid(ann.rawJson) ? (
+                      <Link
+                        href={`/announcements/${ann.id}#number-analysis`}
+                        style={{ fontSize: 11, fontWeight: 600, color: "#1B3A6B", background: "#EEF2FF", padding: "4px 8px", borderRadius: 6, textDecoration: "none" }}
+                      >
+                        🎯 번호 분석
+                      </Link>
+                    ) : (
+                      <span style={{ fontSize: 11, fontWeight: 600, color: "#94A3B8", background: "#F1F5F9", padding: "4px 8px", borderRadius: 6 }}>
+                        번호분석 미지원
+                      </span>
+                    )}
                     <a
                       href={`/qualification?annId=${ann.id}`}
                       style={{ fontSize: 11, fontWeight: 600, color: "#166534", background: "#F0FDF4", padding: "4px 8px", borderRadius: 6, textDecoration: "none" }}

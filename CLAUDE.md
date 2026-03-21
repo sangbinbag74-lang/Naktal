@@ -1,5 +1,14 @@
 # Naktal.ai — Project Context (B안: 번호 전략 특화)
 
+## ⚠️ 번호 분석 진입 규칙 (절대 변경 금지)
+- POST /api/strategy/recommend 의 `annId`는 **필수 파라미터**
+- annId 없는 요청 → 400 ANNOUNCEMENT_REQUIRED
+- 단일예가 공고 → 422 NOT_MULTIPLE_PRICE
+- 마감 공고 → 422 ANNOUNCEMENT_CLOSED
+- **허용 진입점 2개만**: /announcements/[id] 공고 상세 하단 섹션, /folder 카드 버튼
+- **금지**: 독립 /strategy 페이지 + 직접 조건 입력 (삭제됨)
+- isMultiplePriceBid() 함수는 반드시 `@/lib/bid-utils`에서 import
+
 ## 서비스 한 줄 정의
 "이 공고 몇 번 넣어야 해요?"를 데이터로 답하는 유일한 서비스.
 ⚠️ "낙찰 보장" 표현은 코드·UI·주석 어디에도 절대 사용 금지.
@@ -49,12 +58,12 @@ Next.js (App Router) + Supabase + Prisma + TailwindCSS v4
 
 ## 네비게이션 구조
 [핵심 기능]
-  번호 전략       → /strategy          ★ 메인 진입점
+  공고 목록       → /announcements     ★ 메인 진입점 (번호 분석은 공고 상세에서)
   적격심사 계산기 → /qualification
   실시간 모니터   → /realtime          (Pro 전용)
 
-[보조 기능]
-  공고 목록       → /announcements
+[내 활동]
+  분석 이력       → /history           (구 /strategy 독립 페이지 삭제됨)
   서류함          → /folder
   알림 설정       → /alerts
 

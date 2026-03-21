@@ -1,6 +1,8 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/server";
+import { NumberAnalysisSection } from "@/components/naktal/NumberAnalysisSection";
+import { isMultiplePriceBid } from "@/lib/bid-utils";
 
 interface Announcement {
   id: string;
@@ -12,6 +14,7 @@ interface Announcement {
   category: string;
   region: string;
   createdAt: string;
+  rawJson: Record<string, string> | null;
 }
 
 function fmt(n: string) {
@@ -43,8 +46,8 @@ export default async function AnnouncementDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const supabase = await createClient();
-  const { data: ann, error } = await supabase
+  const admin = createAdminClient();
+  const { data: ann, error } = await admin
     .from("Announcement")
     .select("*")
     .eq("id", id)
@@ -53,6 +56,9 @@ export default async function AnnouncementDetailPage({
   if (error || !ann) notFound();
   const a = ann as Announcement;
 
+  const multiplePrice = isMultiplePriceBid(a.rawJson);
+  const bidMethod = a.rawJson?.bidMthdNm ?? a.rawJson?.cntrctMthdNm ?? "";
+  const isClosed = new Date(a.deadline) < new Date();
   const budgetNum = parseInt(a.budget, 10);
   const estimatedPrice = isNaN(budgetNum) ? null : Math.round(budgetNum * 1.03);
 
@@ -288,6 +294,25 @@ export default async function AnnouncementDetailPage({
         <div style={{ fontSize: 13, color: "#94A3B8", textAlign: "center", padding: "24px 0" }}>
           아직 수집된 낙찰이력 데이터가 없습니다.
         </div>
+      </div>
+
+      {/* 섹션6 — 번호 분석 */}
+      <div style={{ background: "#fff", borderRadius: 12, border: multiplePrice ? "2px solid #C7D2FE" : "1px solid #E8ECF2", padding: "20px 24px" }}>
+        {multiplePrice ? (
+          <NumberAnalysisSection annId={a.id} isClosed={isClosed} bidMethod={bidMethod} />
+        ) : (
+          <div>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+              <span style={{ fontSize: 15, fontWeight: 700, color: "#0F172A" }}>AI 번호 분석</span>
+              <span style={{ fontSize: 10, fontWeight: 700, background: "#EEF2FF", color: "#1B3A6B", padding: "2px 7px", borderRadius: 4 }}>CORE 1</span>
+            </div>
+            <div style={{ background: "#F8FAFC", borderRadius: 10, padding: "14px 16px", fontSize: 13, color: "#64748B" }}>
+              이 공고는 번호 분석이 지원되지 않습니다.
+              {bidMethod && <> · <strong>{bidMethod}</strong> 방식</>}
+              <div style={{ fontSize: 12, color: "#94A3B8", marginTop: 4 }}>번호 분석은 복수예가 방식 공고에서만 가능합니다.</div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

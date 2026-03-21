@@ -3,6 +3,30 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 
+interface UrgentAnn {
+  id: string;
+  title: string;
+  orgName: string;
+  budget: string;
+  deadline: string;
+}
+
+function fmtBudget(b: string) {
+  const n = parseInt(b, 10);
+  if (isNaN(n)) return b;
+  if (n >= 100000000) return `${(n / 100000000).toFixed(1)}억원`;
+  if (n >= 10000) return `${(n / 10000).toFixed(0)}만원`;
+  return new Intl.NumberFormat("ko-KR").format(n) + "원";
+}
+
+function getDDay(deadline: string) {
+  const diff = Math.ceil((new Date(deadline).getTime() - Date.now()) / 86400000);
+  if (diff <= 0) return { label: "마감", color: "#475569" };
+  if (diff <= 2) return { label: `D-${diff}`, color: "#DC2626" };
+  if (diff <= 5) return { label: `D-${diff}`, color: "#C2410C" };
+  return { label: `D-${diff}`, color: "#1E40AF" };
+}
+
 interface DashboardStats {
   core1UsedThisMonth: number;
   core1Limit: number;
@@ -21,6 +45,7 @@ const cardStyle: React.CSSProperties = {
 export default function DashboardPage() {
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [loading, setLoading] = useState(true);
+  const [urgentAnns, setUrgentAnns] = useState<UrgentAnn[]>([]);
 
   useEffect(() => {
     fetch("/api/dashboard/stats")
@@ -28,6 +53,10 @@ export default function DashboardPage() {
       .then((d) => setStats(d))
       .catch(() => {})
       .finally(() => setLoading(false));
+    fetch("/api/dashboard/urgent-multiple-price")
+      .then((r) => r.json())
+      .then((d) => setUrgentAnns(d.data ?? []))
+      .catch(() => {});
   }, []);
 
   const val = (key: keyof DashboardStats) =>
@@ -71,33 +100,47 @@ export default function DashboardPage() {
         ))}
       </div>
 
-      {/* 번호 전략 퀵 액세스 */}
+      {/* 번호 분석 가능한 마감 임박 공고 */}
       <div style={cardStyle}>
-        <div style={{ marginBottom: 16 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
-            <span style={{ fontSize: 16, fontWeight: 700, color: "#0F172A" }}>번호 전략 분석</span>
-            <span style={{ fontSize: 10, fontWeight: 700, background: "#EEF2FF", color: "#1B3A6B", padding: "2px 7px", borderRadius: 4 }}>CORE 1</span>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <span style={{ fontSize: 15, fontWeight: 700, color: "#0F172A" }}>번호 분석 가능한 마감 임박 공고</span>
+            <span style={{ fontSize: 10, fontWeight: 700, background: "#EEF2FF", color: "#1B3A6B", padding: "2px 7px", borderRadius: 4 }}>CORE 1 · 복수예가</span>
           </div>
-          <p style={{ fontSize: 13, color: "#64748B", margin: 0 }}>
-            지금 분석할 공고를 선택하거나 조건을 직접 입력하세요
-          </p>
+          <Link href="/announcements?contractMethod=복수예가&sort=deadline" style={{ fontSize: 12, color: "#60A5FA", textDecoration: "none" }}>전체 보기 →</Link>
         </div>
-        <div style={{ display: "flex", gap: 10 }}>
-          <Link href="/announcements" style={{
-            flex: 1, height: 44, display: "flex", alignItems: "center", justifyContent: "center",
-            background: "#1B3A6B", color: "#fff", borderRadius: 10, fontSize: 13, fontWeight: 600,
-            textDecoration: "none",
-          }}>
-            📋 공고 선택하기
-          </Link>
-          <Link href="/strategy" style={{
-            flex: 1, height: 44, display: "flex", alignItems: "center", justifyContent: "center",
-            background: "#F0F2F5", color: "#1B3A6B", borderRadius: 10, fontSize: 13, fontWeight: 600,
-            textDecoration: "none", border: "1px solid #E8ECF2",
-          }}>
-            ✏️ 직접 조건 입력
-          </Link>
-        </div>
+        {urgentAnns.length === 0 ? (
+          <div style={{ background: "#F8FAFC", borderRadius: 10, padding: "24px", textAlign: "center" }}>
+            <div style={{ fontSize: 13, color: "#94A3B8" }}>복수예가 마감 임박 공고가 없습니다.</div>
+            <Link href="/announcements" style={{ display: "inline-block", marginTop: 10, fontSize: 12, color: "#1B3A6B", fontWeight: 600, textDecoration: "none" }}>공고 목록 보기 →</Link>
+          </div>
+        ) : (
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            {urgentAnns.map((ann) => {
+              const dday = getDDay(ann.deadline);
+              return (
+                <div key={ann.id} style={{
+                  background: "#F8FAFC", borderRadius: 10, border: "1px solid #E8ECF2",
+                  padding: "12px 16px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12,
+                }}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: "#0F172A", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{ann.title}</div>
+                    <div style={{ fontSize: 11, color: "#64748B", marginTop: 2 }}>{ann.orgName} · {fmtBudget(ann.budget)}</div>
+                  </div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
+                    <span style={{ fontSize: 11, fontWeight: 700, color: dday.color }}>{dday.label}</span>
+                    <Link href={`/announcements/${ann.id}#number-analysis`} style={{
+                      fontSize: 11, fontWeight: 600, color: "#1B3A6B", background: "#EEF2FF",
+                      padding: "5px 10px", borderRadius: 6, textDecoration: "none",
+                    }}>
+                      🎯 번호 분석하기
+                    </Link>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       {/* 내 업체 적격심사 현황 */}

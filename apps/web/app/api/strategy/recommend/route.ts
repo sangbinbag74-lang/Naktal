@@ -3,6 +3,7 @@ import { createClient, createAdminClient } from "@/lib/supabase/server";
 import { Feature, checkUsageLimit } from "@/lib/plan-guard";
 import { recommendNumbers } from "@/lib/core1/frequency-engine";
 import { rateLimit } from "@/lib/rate-limit";
+import { isMultiplePriceBid, getBudgetRange } from "@/lib/bid-utils";
 import type { Plan } from "@naktal/types";
 
 export async function POST(req: NextRequest): Promise<NextResponse> {
@@ -27,6 +28,57 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     );
   }
 
+  const body = (await req.json()) as {
+    annId: string;
+    estimatedBidders?: number;
+  };
+
+  // annId 필수 검증
+  if (!body.annId || typeof body.annId !== "string") {
+    return NextResponse.json(
+      {
+        error: "ANNOUNCEMENT_REQUIRED",
+        message: "번호 분석은 실제 공고를 선택한 후에만 가능합니다.",
+        hint: "공고 목록 또는 서류함에서 공고를 선택해주세요.",
+      },
+      { status: 400 },
+    );
+  }
+
+  // 공고 조회
+  const { data: ann } = await admin
+    .from("Announcement")
+    .select("id,konepsId,title,orgName,budget,deadline,category,region,rawJson")
+    .eq("id", body.annId)
+    .single();
+
+  if (!ann) {
+    return NextResponse.json({ error: "ANNOUNCEMENT_NOT_FOUND", message: "공고를 찾을 수 없습니다." }, { status: 404 });
+  }
+
+  // 복수예가 검증
+  const rawData = ann.rawJson as Record<string, string>;
+  if (!isMultiplePriceBid(rawData)) {
+    const bidMethod = rawData?.bidMthdNm ?? rawData?.cntrctMthdNm ?? "알 수 없음";
+    return NextResponse.json(
+      {
+        error: "NOT_MULTIPLE_PRICE",
+        message: "이 공고는 복수예가 방식이 아닙니다.",
+        bidMethod,
+        hint: "번호 분석은 복수예가 방식 공고에서만 가능합니다.",
+      },
+      { status: 422 },
+    );
+  }
+
+  // 마감 검증
+  if (new Date(ann.deadline) < new Date()) {
+    return NextResponse.json(
+      { error: "ANNOUNCEMENT_CLOSED", message: "이미 마감된 공고입니다.", deadline: ann.deadline },
+      { status: 422 },
+    );
+  }
+
   const plan = dbUser.plan as Plan;
   const { allowed, used, limit } = await checkUsageLimit(
     dbUser.id,
@@ -45,19 +97,14 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     );
   }
 
-  const body = (await req.json()) as {
-    category: string;
-    budgetRange: string;
-    region: string;
-    estimatedBidders?: number;
-    annId?: string;
-  };
+  // 공고 데이터에서 분석 파라미터 자동 추출
+  const budgetNum = Number(ann.budget);
+  const budgetRange = getBudgetRange(budgetNum);
 
-  // CORE 1: 실제 빈도 분석
   const result = await recommendNumbers({
-    category: body.category,
-    budgetRange: body.budgetRange,
-    region: body.region,
+    category: ann.category,
+    budgetRange,
+    region: ann.region,
     estimatedBidders: body.estimatedBidders,
     supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL!,
     supabaseKey: process.env.SUPABASE_SERVICE_ROLE_KEY!,
@@ -66,10 +113,10 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   // 추천 이력 저장
   await admin.from("NumberRecommendation").insert({
     userId: dbUser.id,
-    annId: body.annId ?? null,
-    category: body.category,
-    budgetRange: body.budgetRange,
-    region: body.region,
+    annId: ann.id,
+    category: ann.category,
+    budgetRange,
+    region: ann.region,
     estimatedBidders: body.estimatedBidders ?? null,
     combo1: result.combo1.numbers,
     combo2: result.combo2.numbers,
@@ -94,5 +141,8 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     isEstimated: result.isEstimated,
     used: used + 1,
     limit,
+    announcementTitle: ann.title,
+    announcementBudget: ann.budget,
+    announcementOrg: ann.orgName,
   });
 }

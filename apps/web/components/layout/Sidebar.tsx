@@ -13,18 +13,17 @@ const MENU_SECTIONS = [
   {
     label: "핵심 기능",
     items: [
-      { href: "/strategy",      label: "번호 전략",       icon: "🎯", badge: "CORE" },
+      { href: "/announcements", label: "공고 목록",       icon: "≡",  badge: "CORE" },
       { href: "/qualification", label: "적격심사 계산기",  icon: "✅" },
       { href: "/realtime",      label: "실시간 모니터",    icon: "📡", proOnly: true },
     ],
   },
   {
-    label: "보조 기능",
+    label: "내 활동",
     items: [
-      { href: "/announcements", label: "공고 목록",    icon: "≡" },
-      { href: "/folder",        label: "서류함",       icon: "📂" },
-      { href: "/history",       label: "투찰 이력",    icon: "📋" },
-      { href: "/alerts",        label: "알림 설정",    icon: "◌" },
+      { href: "/history",  label: "분석 이력",  icon: "🎯" },
+      { href: "/folder",   label: "서류함",     icon: "📂" },
+      { href: "/alerts",   label: "알림 설정",  icon: "◌" },
     ],
   },
   {
@@ -63,8 +62,8 @@ export function Sidebar({ plan = "FREE", isAdmin = false }: SidebarProps) {
         </Link>
       </div>
 
-      {/* 오늘의 추천 퀵 배너 */}
-      <Link href="/strategy" style={{
+      {/* 퀵 배너 */}
+      <Link href="/announcements" style={{
         margin: "10px 10px 0",
         background: "linear-gradient(135deg, #1B3A6B 0%, #1E4080 100%)",
         borderRadius: 10,
@@ -73,8 +72,8 @@ export function Sidebar({ plan = "FREE", isAdmin = false }: SidebarProps) {
         border: "1px solid rgba(96,165,250,0.25)",
         display: "block",
       }}>
-        <div style={{ fontSize: 10, color: "#60A5FA", fontWeight: 600, marginBottom: 2 }}>CORE 1</div>
-        <div style={{ fontSize: 12, color: "#fff", fontWeight: 600 }}>오늘의 번호 전략 확인하기 →</div>
+        <div style={{ fontSize: 10, color: "#60A5FA", fontWeight: 600, marginBottom: 2 }}>공고 → 번호 분석</div>
+        <div style={{ fontSize: 12, color: "#fff", fontWeight: 600 }}>오늘 공고에서 번호 분석하기 →</div>
       </Link>
 
       {/* 메뉴 */}

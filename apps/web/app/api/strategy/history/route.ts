@@ -31,10 +31,36 @@ export async function GET(): Promise<NextResponse> {
     for (const r of recs ?? []) recMap[r.id] = r;
   }
 
-  const enriched = (outcomes ?? []).map((o) => ({
-    ...o,
-    recommendation: o.recommendationId ? recMap[o.recommendationId] : null,
-  }));
+  // 공고 정보 조회
+  const annIds = [...new Set((outcomes ?? []).map((o) => o.annId).filter(Boolean) as string[])];
+  type AnnRow = { id: string; title: string; orgName: string; budget: string };
+  let annMap: Record<string, AnnRow> = {};
+  if (annIds.length > 0) {
+    const { data: anns } = await supabase
+      .from("Announcement")
+      .select("id,title,orgName,budget")
+      .in("id", annIds);
+    for (const a of (anns ?? []) as AnnRow[]) annMap[a.id] = a;
+  }
+
+  function fmtBudget(b: string) {
+    const n = parseInt(b, 10);
+    if (isNaN(n)) return b;
+    if (n >= 100000000) return `${(n / 100000000).toFixed(1)}억원`;
+    if (n >= 10000) return `${(n / 10000).toFixed(0)}만원`;
+    return new Intl.NumberFormat("ko-KR").format(n) + "원";
+  }
+
+  const enriched = (outcomes ?? []).map((o) => {
+    const ann = o.annId ? annMap[o.annId] : null;
+    return {
+      ...o,
+      recommendation: o.recommendationId ? recMap[o.recommendationId] : null,
+      annTitle: ann?.title ?? null,
+      annOrgName: ann?.orgName ?? null,
+      annBudget: ann ? fmtBudget(ann.budget) : null,
+    };
+  });
 
   // 통계
   const all = (outcomes ?? []).filter((o) => o.result !== "PENDING");

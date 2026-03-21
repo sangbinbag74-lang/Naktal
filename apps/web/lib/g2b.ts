@@ -46,7 +46,13 @@ function parseItems<T>(items: unknown): T[] {
   return [];
 }
 
-function apiKey(): string {
+function announcementApiKey(): string {
+  const k = process.env.G2B_ANNOUNCE_KEY;
+  if (!k) throw new Error("G2B_ANNOUNCE_KEY 환경변수 누락");
+  return k;
+}
+
+function bidResultApiKey(): string {
   const k = process.env.G2B_API_KEY;
   if (!k) throw new Error("G2B_API_KEY 환경변수 누락");
   return k;
@@ -61,7 +67,7 @@ export async function g2bFetchAnnouncementPage(params: {
   inqryDiv?: "1" | "2";
 }): Promise<{ items: G2BAnnouncement[]; totalCount: number }> {
   const url = new URL(`${G2B_BASE}/getBidPblancListInfoServc`);
-  url.searchParams.set("serviceKey", apiKey());
+  url.searchParams.set("serviceKey", announcementApiKey());
   url.searchParams.set("numOfRows", String(params.numOfRows));
   url.searchParams.set("pageNo", String(params.pageNo));
   url.searchParams.set("type", "json");
@@ -101,7 +107,7 @@ export async function g2bFetchBidResultPage(params: {
   inqryEndDt: string;
 }): Promise<{ items: G2BBidResult[]; totalCount: number }> {
   const url = new URL(`${G2B_RESULT_BASE}/getBidResultListInfoServc`);
-  url.searchParams.set("serviceKey", apiKey());
+  url.searchParams.set("serviceKey", bidResultApiKey());
   url.searchParams.set("numOfRows", String(params.numOfRows));
   url.searchParams.set("pageNo", String(params.pageNo));
   url.searchParams.set("type", "json");
@@ -148,6 +154,12 @@ export function g2bExtractRegion(addr: string): string {
 
 export function g2bParseDate(raw: string): string | null {
   if (!raw || raw.length < 8) return null;
+  // "YYYY-MM-DD HH:MM:SS" 또는 "YYYY-MM-DD HH:MM" 형식 처리
+  if (raw.includes("-")) {
+    const dt = new Date(raw.replace(" ", "T") + (raw.length <= 16 ? ":00+09:00" : "+09:00"));
+    return isNaN(dt.getTime()) ? null : dt.toISOString();
+  }
+  // "YYYYMMDDHHMMSS" 또는 "YYYYMMDDHHMM" 형식 처리
   const y = raw.slice(0, 4), mo = raw.slice(4, 6), d = raw.slice(6, 8);
   const hh = raw.slice(8, 10) || "00", mm = raw.slice(10, 12) || "00";
   const dt = new Date(`${y}-${mo}-${d}T${hh}:${mm}:00+09:00`);

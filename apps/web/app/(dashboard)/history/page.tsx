@@ -5,6 +5,9 @@ import Link from "next/link";
 interface Outcome {
   id: string;
   annId: string;
+  annTitle?: string;
+  annOrgName?: string;
+  annBudget?: string;
   recommendationId?: string;
   selectedNos: number[];
   bidRate: number;
@@ -69,8 +72,8 @@ export default function HistoryPage() {
         <div style={{ background: "#fff", borderRadius: 14, border: "1px solid #E8ECF2", padding: "48px", textAlign: "center" }}>
           <div style={{ fontSize: 40, marginBottom: 12 }}>📋</div>
           <div style={{ fontSize: 15, fontWeight: 600, color: "#374151", marginBottom: 8 }}>투찰 이력이 없습니다</div>
-          <div style={{ fontSize: 13, color: "#9CA3AF", marginBottom: 20 }}>번호 추천을 받고 결과를 입력해보세요</div>
-          <Link href="/strategy" style={{ display: "inline-block", background: "#1B3A6B", color: "#fff", padding: "10px 24px", borderRadius: 10, textDecoration: "none", fontWeight: 600, fontSize: 14 }}>번호 추천받기</Link>
+          <div style={{ fontSize: 13, color: "#9CA3AF", marginBottom: 20 }}>공고를 선택해 번호 분석을 받고 결과를 입력해보세요</div>
+          <Link href="/announcements" style={{ display: "inline-block", background: "#1B3A6B", color: "#fff", padding: "10px 24px", borderRadius: 10, textDecoration: "none", fontWeight: 600, fontSize: 14 }}>공고 목록 보기</Link>
         </div>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
@@ -78,9 +81,16 @@ export default function HistoryPage() {
             const tag = RESULT_LABELS[o.result] ?? { label: "대기중", color: "#F59E0B", bg: "#FFFBEB" };
             return (
               <div key={o.id} style={{ background: "#fff", borderRadius: 12, border: "1px solid #E8ECF2", padding: "16px 20px", display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
-                <div style={{ flex: 1, minWidth: 140 }}>
+                <div style={{ flex: 1, minWidth: 180 }}>
                   <div style={{ fontSize: 12, color: "#9CA3AF", marginBottom: 2 }}>{new Date(o.bidAt).toLocaleDateString("ko-KR")}</div>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: "#1B3A6B" }}>공고 #{o.annId}</div>
+                  {o.annTitle ? (
+                    <div style={{ fontSize: 13, fontWeight: 600, color: "#0F172A", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{o.annTitle}</div>
+                  ) : (
+                    <div style={{ fontSize: 13, fontWeight: 600, color: "#94A3B8" }}>공고 정보 없음</div>
+                  )}
+                  {o.annOrgName && (
+                    <div style={{ fontSize: 11, color: "#64748B", marginTop: 1 }}>{o.annOrgName}{o.annBudget ? ` · ${o.annBudget}` : ""}</div>
+                  )}
                 </div>
                 <div style={{ flex: 1, minWidth: 120 }}>
                   <div style={{ fontSize: 11, color: "#9CA3AF" }}>선택 번호</div>

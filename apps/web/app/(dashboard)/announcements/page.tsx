@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import Link from "next/link";
+import { isMultiplePriceBid } from "@/lib/bid-utils";
 
 const FOLDER_KEY = "naktal_folder";
 function getFolderIds(): string[] {
@@ -25,6 +26,7 @@ interface Announcement {
   category: string;
   region: string;
   createdAt: string;
+  rawJson?: Record<string, string> | null;
 }
 
 interface ApiResponse {
@@ -414,9 +416,15 @@ export default function AnnouncementsPage() {
                     ))}
                   </div>
                   <div style={{ display: 'flex', gap: 6 }}>
-                    <a href={`/strategy?annId=${ann.id}`} onClick={e => e.stopPropagation()} style={{ fontSize: 11, fontWeight: 600, color: '#1B3A6B', background: '#EEF2FF', padding: '4px 8px', borderRadius: 6, textDecoration: 'none' }}>
-                      🎯 번호 전략
-                    </a>
+                    {isMultiplePriceBid(ann.rawJson) ? (
+                      <a href={`/announcements/${ann.id}#number-analysis`} onClick={e => e.stopPropagation()} style={{ fontSize: 11, fontWeight: 600, color: '#1B3A6B', background: '#EEF2FF', padding: '4px 8px', borderRadius: 6, textDecoration: 'none' }}>
+                        🎯 번호 분석
+                      </a>
+                    ) : (
+                      <span title={`${ann.rawJson?.cntrctMthdNm ?? '단일예가'} · 번호분석 미지원`} style={{ fontSize: 11, fontWeight: 600, color: '#94A3B8', background: '#F1F5F9', padding: '4px 8px', borderRadius: 6, cursor: 'default' }}>
+                        🎯 번호분석 미지원
+                      </span>
+                    )}
                     <a href={`/qualification?annId=${ann.id}`} onClick={e => e.stopPropagation()} style={{ fontSize: 11, fontWeight: 600, color: '#166534', background: '#F0FDF4', padding: '4px 8px', borderRadius: 6, textDecoration: 'none' }}>
                       ✅ 적격심사
                     </a>
