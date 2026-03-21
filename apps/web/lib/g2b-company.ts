@@ -54,7 +54,7 @@ function parseXmlItems(xml: string): Record<string, string>[] {
   const itemRegex = /<item>([\s\S]*?)<\/item>/g;
   let m;
   while ((m = itemRegex.exec(xml)) !== null) {
-    const block = m[1];
+    const block: string = m[1] ?? "";
     const fieldRegex = /<(\w+)>([\s\S]*?)<\/\1>/g;
     const item: Record<string, string> = {};
     let f;
