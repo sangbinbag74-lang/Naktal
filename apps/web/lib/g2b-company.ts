@@ -69,7 +69,7 @@ function parseXmlItems(xml: string): Record<string, string>[] {
 /** XML totalCount 추출 */
 function parseTotalCount(xml: string): number {
   const m = xml.match(/<totalCount>(\d+)<\/totalCount>/);
-  return m ? parseInt(m[1], 10) : 0;
+  return m ? parseInt(m[1] ?? "0", 10) : 0;
 }
 
 /** "YYYY-MM-DD HH:MM:SS" → "YYYYMMDD" */
