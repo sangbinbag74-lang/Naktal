@@ -57,7 +57,7 @@ function getApiKey(): string {
 
 /** G2B API 응답 items 정규화 (단일 객체 / 배열 / 빈 문자열 처리) */
 function parseItems<T>(items: G2BBody<T>["items"]): T[] {
-  if (!items || items === "") return [];
+  if (!items || typeof items === "string") return [];
   if (Array.isArray(items)) return items;
   if (typeof items === "object" && "item" in items) {
     const item = (items as { item: T[] | T }).item;
