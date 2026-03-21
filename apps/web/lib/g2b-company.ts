@@ -59,7 +59,7 @@ function parseXmlItems(xml: string): Record<string, string>[] {
     const item: Record<string, string> = {};
     let f;
     while ((f = fieldRegex.exec(block)) !== null) {
-      item[f[1]] = f[2].trim();
+      if (f[1] && f[2] !== undefined) item[f[1]] = f[2].trim();
     }
     items.push(item);
   }
