@@ -71,6 +71,7 @@ export async function GET() {
   try {
     const admin = createAdminClient();
     const { error } = await admin.from("Announcement").upsert([{
+      id: crypto.randomUUID(),
       konepsId: "DEBUG-TEST-000",
       title: "디버그 테스트 공고",
       orgName: "테스트기관",

@@ -46,7 +46,20 @@ async function syncRecentFromG2B(days: number): Promise<number> {
     }).filter(Boolean);
 
     if (rows.length > 0) {
-      const { error: upsertErr } = await admin.from("Announcement").upsert(rows, { onConflict: "konepsId" });
+      // 기존 행의 id 조회 (id 컬럼에 DB DEFAULT 없어서 직접 관리)
+      const konepsIds = (rows as { konepsId: string }[]).map((r) => r.konepsId);
+      const { data: existing } = await admin
+        .from("Announcement")
+        .select("konepsId, id")
+        .in("konepsId", konepsIds);
+      const idMap = new Map((existing ?? []).map((r: { konepsId: string; id: string }) => [r.konepsId, r.id]));
+
+      const rowsWithId = (rows as { konepsId: string }[]).map((r) => ({
+        ...r,
+        id: idMap.get(r.konepsId) ?? crypto.randomUUID(),
+      }));
+
+      const { error: upsertErr } = await admin.from("Announcement").upsert(rowsWithId, { onConflict: "konepsId" });
       if (upsertErr) throw new Error(`upsert 실패: ${upsertErr.message}`);
       saved += rows.length;
     }
