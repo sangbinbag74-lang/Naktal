@@ -46,7 +46,7 @@ jobs:
         working-directory: apps/crawler
         env:
           G2B_API_KEY: ${{ secrets.G2B_API_KEY }}
-          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
         run: |
           TYPE="${{ github.event.inputs.type || 'all' }}"

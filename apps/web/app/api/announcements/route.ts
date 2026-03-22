@@ -54,7 +54,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     }
   } catch (e) {
     console.error("[GET /api/announcements] G2B API 오류:", e);
-    return NextResponse.json({ error: "G2B API 오류" }, { status: 502 });
+    return NextResponse.json({ data: [], total: 0, hasMore: false, page: 1, limit: 20 });
   }
 
   // ─── 필터 적용 ───────────────────────────────────────────────────────────────

@@ -161,7 +161,7 @@ export default function AnnouncementsPage() {
         if (ntceKind)       params.set("ntceKind", ntceKind);
         const res = await fetch(`/api/announcements?${params}`);
         const json = (await res.json()) as ApiResponse;
-        setItems((prev) => (reset ? json.data : [...prev, ...json.data]));
+        setItems((prev) => (reset ? (json.data ?? []) : [...prev, ...(json.data ?? [])]));
         setHasMore(json.hasMore);
         setTotal(json.total);
       } catch {
