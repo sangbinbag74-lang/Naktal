@@ -99,6 +99,42 @@ export async function g2bFetchAnnouncementPage(params: {
   };
 }
 
+// ─── 공고 단건 조회 (bidNtceNo 기준) ─────────────────────────────────────────
+export async function g2bFetchAnnouncementByNo(bidNtceNo: string): Promise<G2BAnnouncement | null> {
+  const now = Date.now();
+  // 최근 60일 범위로 조회 후 클라이언트에서 필터
+  const inqryBgnDt = toYMD(new Date(now - 60 * 86400000)) + "0000";
+  const inqryEndDt = toYMD(new Date()) + "2359";
+
+  const url = new URL(`${G2B_BASE}/getBidPblancListInfoServc`);
+  url.searchParams.set("serviceKey", announcementApiKey());
+  url.searchParams.set("numOfRows", "100");
+  url.searchParams.set("pageNo", "1");
+  url.searchParams.set("type", "json");
+  url.searchParams.set("inqryDiv", "1");
+  url.searchParams.set("inqryBgnDt", inqryBgnDt);
+  url.searchParams.set("inqryEndDt", inqryEndDt);
+  url.searchParams.set("bidNtceNo", bidNtceNo);
+
+  const controller = new AbortController();
+  const tid = setTimeout(() => controller.abort(), 15000);
+  let res: Response;
+  try {
+    res = await fetch(url.toString(), { next: { revalidate: 0 }, signal: controller.signal });
+  } finally {
+    clearTimeout(tid);
+  }
+  if (!res!.ok) return null;
+
+  const data = await res.json() as {
+    response: { header: { resultCode: string }; body: { items: unknown } };
+  };
+  if (data.response.header.resultCode !== "00") return null;
+
+  const items = parseItems<G2BAnnouncement>(data.response.body.items);
+  return items.find(i => i.bidNtceNo === bidNtceNo) ?? items[0] ?? null;
+}
+
 // ─── 낙찰결과 페이지 조회 ─────────────────────────────────────────────────────
 export async function g2bFetchBidResultPage(params: {
   pageNo: number;

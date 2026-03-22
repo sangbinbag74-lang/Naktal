@@ -3,6 +3,12 @@ import Link from "next/link";
 import { createAdminClient } from "@/lib/supabase/server";
 import { NumberAnalysisSection } from "@/components/naktal/NumberAnalysisSection";
 import { isMultiplePriceBid } from "@/lib/bid-utils";
+import {
+  g2bFetchAnnouncementByNo,
+  g2bParseDate,
+  g2bExtractRegion,
+  type G2BAnnouncement,
+} from "@/lib/g2b";
 
 interface Announcement {
   id: string;
@@ -58,6 +64,29 @@ function extractParticipationConditions(rawJson: Record<string, string> | null):
     .filter(({ value }) => value.trim() !== "");
 }
 
+/** UUID 형식 여부 판별 */
+function isUUID(s: string) {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(s);
+}
+
+/** G2BAnnouncement → Announcement 형태로 변환 */
+function g2bToAnnouncement(item: G2BAnnouncement): Announcement {
+  const rawJson: Record<string, string> = {};
+  for (const [k, v] of Object.entries(item)) rawJson[k] = String(v ?? "");
+  return {
+    id: item.bidNtceNo,
+    konepsId: item.bidNtceNo,
+    title: item.bidNtceNm ?? "",
+    orgName: item.ntceInsttNm || item.demInsttNm || "",
+    budget: String(+(item.asignBdgtAmt || item.presmptPrce || "0").replace(/[^0-9]/g, "")),
+    deadline: g2bParseDate(item.bidClseDt) ?? "",
+    category: item.indutyCtgryNm || item.ntceKindNm || "",
+    region: g2bExtractRegion(item.ntceInsttAddr || ""),
+    createdAt: g2bParseDate(item.bidNtceDt) ?? new Date().toISOString(),
+    rawJson,
+  };
+}
+
 export default async function AnnouncementDetailPage({
   params,
 }: {
@@ -66,14 +95,29 @@ export default async function AnnouncementDetailPage({
   const { id } = await params;
   const admin = createAdminClient();
 
-  // 공고 + 발주처 최근 공고 konepsId 목록 병렬 조회
-  const { data: ann, error } = await admin
-    .from("Announcement")
-    .select("*")
-    .eq("id", id)
-    .single();
+  let ann: Announcement | null = null;
 
-  if (error || !ann) notFound();
+  if (isUUID(id)) {
+    // DB UUID 조회
+    const { data } = await admin.from("Announcement").select("*").eq("id", id).single();
+    ann = data as Announcement | null;
+  }
+
+  if (!ann) {
+    // konepsId로 DB 조회 (G2B 실시간 공고가 이미 DB에 저장된 경우)
+    const { data } = await admin.from("Announcement").select("*").eq("konepsId", id).single();
+    ann = data as Announcement | null;
+  }
+
+  if (!ann) {
+    // DB에 없으면 G2B API 실시간 조회
+    try {
+      const item = await g2bFetchAnnouncementByNo(id);
+      if (item) ann = g2bToAnnouncement(item);
+    } catch { /* G2B 실패 시 notFound */ }
+  }
+
+  if (!ann) notFound();
   const a = ann as Announcement;
 
   const multiplePrice = isMultiplePriceBid(a.rawJson);
