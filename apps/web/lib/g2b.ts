@@ -47,8 +47,8 @@ function parseItems<T>(items: unknown): T[] {
 }
 
 function announcementApiKey(): string {
-  const k = process.env.G2B_ANNOUNCE_KEY;
-  if (!k) throw new Error("G2B_ANNOUNCE_KEY 환경변수 누락");
+  const k = process.env.G2B_ANNOUNCE_KEY ?? process.env.G2B_API_KEY;
+  if (!k) throw new Error("G2B_ANNOUNCE_KEY 또는 G2B_API_KEY 환경변수 누락");
   return k;
 }
 

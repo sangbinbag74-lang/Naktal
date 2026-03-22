@@ -57,11 +57,12 @@ function formatDeadline(iso: string): string {
 }
 
 const DEADLINE_FILTERS = [
-  { key: "", label: "전체" },
+  { key: "active", label: "진행중" },
   { key: "today", label: "오늘마감" },
   { key: "3", label: "D-3이내" },
   { key: "7", label: "D-7이내" },
   { key: "30", label: "D-30이내" },
+  { key: "", label: "전체(마감포함)" },
 ];
 
 const CONTRACT_METHODS = [
@@ -134,7 +135,7 @@ export default function AnnouncementsPage() {
   const [region, setRegion] = useState("");
   const [sort, setSort] = useState("latest");
   const [contractMethod, setContractMethod] = useState("");
-  const [deadlineRange, setDeadlineRange] = useState("");
+  const [deadlineRange, setDeadlineRange] = useState("active");
   const [minBudget, setMinBudget] = useState("");
   const [maxBudget, setMaxBudget] = useState("");
   const [budgetPreset, setBudgetPreset] = useState("");

@@ -85,7 +85,16 @@ function buildG2BResponse(allItems: G2BAnnouncement[], opts: Record<string, stri
   if (maxBudget) { const max = +maxBudget; filtered = filtered.filter(i =>
     +(i.asignBdgtAmt||i.presmptPrce||"0").replace(/[^0-9]/g,"") <= max); }
 
-  if (deadlineRange) {
+  // 취소 공고 항상 제외
+  filtered = filtered.filter(i => !(i.ntceKindNm ?? "").includes("취소"));
+
+  if (deadlineRange === "active") {
+    // 진행중: 마감일이 현재 이후인 공고만
+    filtered = filtered.filter(i => {
+      const t = new Date(g2bParseDate(i.bidClseDt) ?? 0).getTime();
+      return t >= now;
+    });
+  } else if (deadlineRange) {
     const ends: Record<string, number> = {
       today: new Date(new Date().setHours(23,59,59,0)).getTime(),
       "3":   now + 3 * 86400000, "7": now + 7 * 86400000, "30": now + 30 * 86400000,
@@ -147,12 +156,19 @@ async function fetchFromDB(opts: Record<string, string | number>): Promise<NextR
   if (prtcptnLmt)     q = q.filter("rawJson->>prtcptnLmtNm", "ilike", `%${prtcptnLmt}%`);
   if (ntceKind)       q = q.filter("rawJson->>ntceKindNm", "ilike", `%${ntceKind}%`);
 
-  if (deadlineRange === "today") {
+  // 취소 공고 항상 제외
+  q = q.not("rawJson->>ntceKindNm", "ilike", "%취소%");
+
+  if (deadlineRange === "active") {
+    // 진행중(기본값): 마감일 미래인 공고만
+    q = q.gte("deadline", nowIso);
+  } else if (deadlineRange === "today") {
     const endOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59).toISOString();
     q = q.gte("deadline", nowIso).lte("deadline", endOfToday);
   } else if (deadlineRange === "3")  { q = q.gte("deadline", nowIso).lte("deadline", new Date(Date.now() + 3*86400000).toISOString()); }
   else if (deadlineRange === "7")  { q = q.gte("deadline", nowIso).lte("deadline", new Date(Date.now() + 7*86400000).toISOString()); }
   else if (deadlineRange === "30") { q = q.gte("deadline", nowIso).lte("deadline", new Date(Date.now() + 30*86400000).toISOString()); }
+  // deadlineRange === "": 전체(마감포함) — 날짜 필터 없음
 
   q = sort === "deadline"
     ? q.order("deadline", { ascending: true })
