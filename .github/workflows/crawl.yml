@@ -49,14 +49,18 @@ jobs:
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
         run: |
-          TYPE="${{ github.event.inputs.type || 'all' }}"
-          PAGES="${{ github.event.inputs.pages || '10' }}"
+          TYPE="${{ github.event.inputs.type || 'announcement' }}"
+          PAGES="${{ github.event.inputs.pages || '999' }}"
           FROM="${{ github.event.inputs.from }}"
           TO="${{ github.event.inputs.to }}"
 
-          CMD="pnpm ts-node src/index.ts --type $TYPE --pages $PAGES"
-          if [ -n "$FROM" ]; then CMD="$CMD --from $FROM"; fi
-          if [ -n "$TO" ];   then CMD="$CMD --to $TO"; fi
+          # 수동 입력 없을 경우 기본값: 30일 전 ~ 오늘 (진행중인 공고 전체 수집)
+          if [ -z "$FROM" ]; then
+            FROM=$(date -d '30 days ago' +%Y%m%d 2>/dev/null || date -v-30d +%Y%m%d)
+          fi
+
+          CMD="pnpm ts-node src/index.ts --type $TYPE --pages $PAGES --from $FROM"
+          if [ -n "$TO" ]; then CMD="$CMD --to $TO"; fi
 
           echo "실행: $CMD"
           eval $CMD

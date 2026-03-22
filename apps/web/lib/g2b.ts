@@ -76,7 +76,7 @@ export async function g2bFetchAnnouncementPage(params: {
   url.searchParams.set("inqryEndDt", params.inqryEndDt);
 
   const controller = new AbortController();
-  const tid = setTimeout(() => controller.abort(), 5000);
+  const tid = setTimeout(() => controller.abort(), 15000);
   let res: Response;
   try {
     res = await fetch(url.toString(), { next: { revalidate: 0 }, signal: controller.signal });
