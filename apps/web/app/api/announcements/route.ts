@@ -50,6 +50,8 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   try {
     const g2bItems = await fetchFromG2B();
     if (g2bItems.length > 0) {
+      // G2B 아이템을 DB에 백그라운드 저장 (상세 페이지 조회를 위해)
+      upsertG2BItemsToDB(g2bItems).catch(e => console.error("[announcements] upsert 실패:", e));
       return buildG2BResponse(g2bItems, { category, region, minBudget, maxBudget, keyword,
         contractMethod, deadlineRange, konepsId, prtcptnLmt, ntceKind, sort, page, limit });
     }
@@ -60,6 +62,34 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   // ── 2순위: Supabase DB 폴백 ───────────────────────────────────────────────
   return fetchFromDB({ category, region, minBudget, maxBudget, keyword,
     contractMethod, deadlineRange, konepsId, prtcptnLmt, ntceKind, sort, page, limit });
+}
+
+// ─── G2B 아이템 DB 저장 (상세 페이지 조회용) ──────────────────────────────────
+async function upsertG2BItemsToDB(items: G2BAnnouncement[]): Promise<void> {
+  const admin = createAdminClient();
+  const rows = items.map(i => {
+    const rawJson: Record<string, string> = {};
+    for (const [k, v] of Object.entries(i)) rawJson[k] = String(v ?? "");
+    const budgetNum = +(i.asignBdgtAmt || i.presmptPrce || "0").replace(/[^0-9]/g, "");
+    const deadline  = g2bParseDate(i.bidClseDt);
+    const konepsId  = i.bidNtceNo?.trim();
+    const title     = i.bidNtceNm?.trim();
+    const orgName   = (i.ntceInsttNm || i.demInsttNm)?.trim();
+    if (!konepsId || !title || !orgName || !deadline) return null;
+    return {
+      id: crypto.randomUUID(),
+      konepsId, title, orgName,
+      budget: budgetNum,
+      deadline,
+      category: i.indutyCtgryNm || i.ntceKindNm || "",
+      region: g2bExtractRegion(i.ntceInsttAddr || ""),
+      rawJson,
+    };
+  }).filter(Boolean);
+
+  if (rows.length === 0) return;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  await (admin.from("Announcement") as any).upsert(rows, { onConflict: "konepsId" });
 }
 
 // ─── G2B 결과 처리 ────────────────────────────────────────────────────────────

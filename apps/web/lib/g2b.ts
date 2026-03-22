@@ -100,39 +100,33 @@ export async function g2bFetchAnnouncementPage(params: {
 }
 
 // ─── 공고 단건 조회 (bidNtceNo 기준) ─────────────────────────────────────────
+// G2B API는 bidNtceNo 필터를 지원하지 않으므로 최근 3일 전체 페이지 병렬 조회 후 필터
 export async function g2bFetchAnnouncementByNo(bidNtceNo: string): Promise<G2BAnnouncement | null> {
   const now = Date.now();
-  // 최근 60일 범위로 조회 후 클라이언트에서 필터
-  const inqryBgnDt = toYMD(new Date(now - 60 * 86400000)) + "0000";
+  const inqryBgnDt = toYMD(new Date(now - 3 * 86400000)) + "0000";
   const inqryEndDt = toYMD(new Date()) + "2359";
 
-  const url = new URL(`${G2B_BASE}/getBidPblancListInfoServc`);
-  url.searchParams.set("serviceKey", announcementApiKey());
-  url.searchParams.set("numOfRows", "100");
-  url.searchParams.set("pageNo", "1");
-  url.searchParams.set("type", "json");
-  url.searchParams.set("inqryDiv", "1");
-  url.searchParams.set("inqryBgnDt", inqryBgnDt);
-  url.searchParams.set("inqryEndDt", inqryEndDt);
-  url.searchParams.set("bidNtceNo", bidNtceNo);
+  // 1페이지로 totalCount 먼저 확인
+  const first = await g2bFetchAnnouncementPage({ pageNo: 1, numOfRows: 100, inqryBgnDt, inqryEndDt });
+  const found1 = first.items.find(i => i.bidNtceNo === bidNtceNo);
+  if (found1) return found1;
 
-  const controller = new AbortController();
-  const tid = setTimeout(() => controller.abort(), 15000);
-  let res: Response;
-  try {
-    res = await fetch(url.toString(), { next: { revalidate: 0 }, signal: controller.signal });
-  } finally {
-    clearTimeout(tid);
+  const totalPages = Math.ceil(first.totalCount / 100);
+  if (totalPages <= 1) return null;
+
+  // 나머지 페이지 병렬 조회 (최대 30페이지)
+  const pageNums = Array.from({ length: Math.min(totalPages - 1, 29) }, (_, i) => i + 2);
+  const results = await Promise.all(
+    pageNums.map(p =>
+      g2bFetchAnnouncementPage({ pageNo: p, numOfRows: 100, inqryBgnDt, inqryEndDt })
+        .catch(() => ({ items: [] as G2BAnnouncement[], totalCount: 0 }))
+    )
+  );
+  for (const r of results) {
+    const f = r.items.find(i => i.bidNtceNo === bidNtceNo);
+    if (f) return f;
   }
-  if (!res!.ok) return null;
-
-  const data = await res.json() as {
-    response: { header: { resultCode: string }; body: { items: unknown } };
-  };
-  if (data.response.header.resultCode !== "00") return null;
-
-  const items = parseItems<G2BAnnouncement>(data.response.body.items);
-  return items.find(i => i.bidNtceNo === bidNtceNo) ?? items[0] ?? null;
+  return null;
 }
 
 // ─── 낙찰결과 페이지 조회 ─────────────────────────────────────────────────────
