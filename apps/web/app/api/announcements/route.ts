@@ -7,6 +7,8 @@ import {
   type G2BAnnouncement,
 } from "@/lib/g2b";
 
+export const maxDuration = 60;
+
 // ─── GET /api/announcements — G2B API 실시간 조회 ─────────────────────────────
 export async function GET(request: NextRequest): Promise<NextResponse> {
   const { searchParams } = new URL(request.url);
@@ -28,13 +30,13 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   const now = new Date();
   const nowTime = now.getTime();
 
-  // G2B 조회 날짜 범위: 최근 60일 ~ 앞으로 90일 (공고 등록일 기준)
-  const inqryBgnDt = toYMD(new Date(nowTime - 60 * 86400000)) + "0000";
-  const inqryEndDt = toYMD(new Date(nowTime + 90 * 86400000)) + "2359";
+  // G2B 조회 날짜 범위: 최근 14일 ~ 앞으로 60일 (공고 등록일 기준)
+  const inqryBgnDt = toYMD(new Date(nowTime - 14 * 86400000)) + "0000";
+  const inqryEndDt = toYMD(new Date(nowTime + 60 * 86400000)) + "2359";
 
-  // G2B API에서 최대 5페이지(500건) 수집
+  // G2B API에서 최대 2페이지(200건) 수집
   const G2B_PAGE_SIZE = 100;
-  const MAX_PAGES = 5;
+  const MAX_PAGES = 2;
   let allItems: G2BAnnouncement[] = [];
   let g2bTotal = 0;
 
