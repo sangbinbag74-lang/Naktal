@@ -1,8 +1,9 @@
 import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, createAdminClient } from "@/lib/supabase/server";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { MobileSidebar } from "@/components/layout/MobileSidebar";
 import { Header } from "@/components/layout/Header";
+import { fetchG2BCompanyInfo } from "@/lib/g2b-company";
 
 export default async function DashboardLayout({
   children,
@@ -25,7 +26,27 @@ export default async function DashboardLayout({
     .eq("supabaseId", user.id)
     .single();
 
-  const bizName = dbUser?.bizName ?? "";
+  const rawBizName = dbUser?.bizName ?? "";
+  const isTemplate = /^업체\(\d+\)$/.test(rawBizName) || rawBizName === "미등록" || rawBizName === "";
+
+  let bizName = isTemplate ? "" : rawBizName;
+
+  // 템플릿 값이면 G2B에서 실제 업체명 조회 후 DB 자동 갱신
+  if (isTemplate) {
+    const bizNoMatch = user.email?.match(/^biz_(\d{10})@naktal\.biz$/);
+    const bizNo = bizNoMatch?.[1];
+    if (bizNo) {
+      try {
+        const g2b = await fetchG2BCompanyInfo(bizNo);
+        if (g2b?.bizName) {
+          bizName = g2b.bizName;
+          const admin = createAdminClient();
+          admin.from("User").update({ bizName: g2b.bizName, ownerName: g2b.ceoName }).eq("supabaseId", user.id).then(() => {});
+        }
+      } catch { /* G2B 실패 무시 */ }
+    }
+  }
+
   const plan = (dbUser?.plan ?? "FREE") as "FREE" | "STANDARD" | "PRO";
 
   return (
