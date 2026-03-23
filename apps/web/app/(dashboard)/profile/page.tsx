@@ -443,7 +443,7 @@ export default function ProfilePage() {
         )}
         {/* ── 저장 버튼 ── */}
         <button type="submit" disabled={saving}
-          style={{ height: 50, background: saving ? "#94A3B8" : "#1B3A6B", color: "#fff", borderRadius: 12, fontSize: 15, fontWeight: 700, border: "none", cursor: saving ? "not-allowed" : "pointer" }}>
+          style={{ height: 50, width: "100%", background: saving ? "#94A3B8" : "#1B3A6B", color: "#fff", borderRadius: 12, fontSize: 15, fontWeight: 700, border: "none", cursor: saving ? "not-allowed" : "pointer", whiteSpace: "nowrap" }}>
           {saved ? "✓ 저장 완료!" : saving ? "저장 중..." : "업체 정보 저장"}
         </button>
       </form>

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient, createAdminClient } from "@/lib/supabase/server";
+import { fetchG2BCompanyInfo } from "@/lib/g2b-company";
 
 /**
  * DB User 조회 — 없으면 Supabase Auth 정보로 자동 생성/복구
@@ -38,15 +39,24 @@ async function getOrCreateDbUserId(
     }
   }
 
-  // 4) 없으면 신규 insert (id는 Prisma cuid가 아닌 DB 직접 insert이므로 직접 생성)
+  // 4) 없으면 신규 insert — G2B API로 실제 업체명 조회 시도
+  let bizName = "";
+  let ownerName = "";
+  if (bizNo) {
+    try {
+      const g2b = await fetchG2BCompanyInfo(bizNo);
+      if (g2b) { bizName = g2b.bizName; ownerName = g2b.ceoName; }
+    } catch { /* G2B 실패 시 빈 값으로 진행 */ }
+  }
+
   const { data: created, error } = await admin
     .from("User")
     .insert({
       id:        crypto.randomUUID(),
       supabaseId,
       bizNo:     bizNo || supabaseId.slice(0, 10),
-      bizName:   bizNo ? `업체(${bizNo})` : "미등록",
-      ownerName: "미등록",
+      bizName,
+      ownerName,
     })
     .select("id")
     .single();
