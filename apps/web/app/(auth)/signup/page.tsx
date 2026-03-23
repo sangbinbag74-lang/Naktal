@@ -34,6 +34,7 @@ export default function SignupPage() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [verifying, setVerifying] = useState(false);
+  const [bizAutoFilled, setBizAutoFilled] = useState(false);
 
   function set(key: keyof FormState) {
     return (value: string) => setForm((prev) => ({ ...prev, [key]: value }));
@@ -68,6 +69,23 @@ export default function SignupPage() {
     } catch {
       console.error("사업자 검증 API 호출 실패 — 가입 진행");
     }
+
+    // G2B 업체정보 자동 조회 (실패해도 수동 입력 유지)
+    try {
+      const g2bRes = await fetch(`/api/auth/lookup-biz?bizNo=${form.bizNo}`);
+      const g2b = await g2bRes.json() as { ok: boolean; bizName?: string; ceoName?: string };
+      if (g2b.ok && g2b.bizName) {
+        setForm(prev => ({
+          ...prev,
+          bizName:   g2b.bizName ?? prev.bizName,
+          ownerName: g2b.ceoName ?? prev.ownerName,
+        }));
+        setBizAutoFilled(true);
+      }
+    } catch {
+      console.error("G2B 업체정보 조회 실패 — 수동 입력");
+    }
+
     setVerifying(false);
 
     const email = `biz_${form.bizNo}@naktal.biz`;
@@ -128,12 +146,18 @@ export default function SignupPage() {
             <BizNoInput value={form.bizNo} onChange={set("bizNo")} disabled={loading} />
           </div>
           <div>
-            <label style={LabelStyle}>상호명 <span style={{ color: "#DC2626" }}>*</span></label>
+            <label style={LabelStyle}>
+              상호명 <span style={{ color: "#DC2626" }}>*</span>
+              {bizAutoFilled && <span style={{ marginLeft: 6, fontSize: 11, color: "#16A34A", fontWeight: 400 }}>나라장터 자동 조회됨</span>}
+            </label>
             <input type="text" required value={form.bizName} disabled={loading}
               onChange={setE("bizName")} placeholder="(주)홍길동건설" className="naktal-input" />
           </div>
           <div>
-            <label style={LabelStyle}>대표자명 <span style={{ color: "#DC2626" }}>*</span></label>
+            <label style={LabelStyle}>
+              대표자명 <span style={{ color: "#DC2626" }}>*</span>
+              {bizAutoFilled && <span style={{ marginLeft: 6, fontSize: 11, color: "#16A34A", fontWeight: 400 }}>나라장터 자동 조회됨</span>}
+            </label>
             <input type="text" required value={form.ownerName} disabled={loading}
               onChange={setE("ownerName")} placeholder="홍길동" className="naktal-input" />
           </div>

@@ -1,6 +1,6 @@
 {
-  "name": "낙탈AI",
-  "short_name": "낙탈AI",
+  "name": "낙찰AI",
+  "short_name": "낙찰AI",
   "description": "나라장터 번호 전략 AI — 이 공고 몇 번 넣어야 해요?",
   "start_url": "/strategy",
   "display": "standalone",

@@ -1,14 +1,14 @@
 import Link from "next/link";
 
 export const metadata = {
-  title: "이용약관 — 낙탈AI",
+  title: "이용약관 — 낙찰AI",
 };
 
 export default function TermsPage() {
   const sections = [
     {
       title: "제1조 (목적)",
-      content: "이 이용약관(이하 '약관')은 주식회사 호라이즌(이하 '회사')이 운영하는 낙탈AI(naktal.me) 서비스(이하 '서비스')를 이용함에 있어 회사와 이용자의 권리, 의무 및 책임사항을 규정함을 목적으로 합니다.",
+      content: "이 이용약관(이하 '약관')은 주식회사 호라이즌(이하 '회사')이 운영하는 낙찰AI(naktal.me) 서비스(이하 '서비스')를 이용함에 있어 회사와 이용자의 권리, 의무 및 책임사항을 규정함을 목적으로 합니다.",
     },
     {
       title: "제2조 (서비스 내용)",

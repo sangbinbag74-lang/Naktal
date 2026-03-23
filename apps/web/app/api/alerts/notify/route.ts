@@ -113,7 +113,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         await resend.emails.send({
           from: "NAKTAL <noreply@naktal.me>",
           to: user.notifyEmail,
-          subject: `[낙탈AI] 새 공고: ${ann.title}`,
+          subject: `[낙찰AI] 새 공고: ${ann.title}`,
           html: buildEmailHtml(ann, user.bizName),
         });
         sentCount++;

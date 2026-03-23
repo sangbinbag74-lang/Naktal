@@ -20,7 +20,7 @@ export default function PricingPage() {
         storeId: process.env.NEXT_PUBLIC_PORTONE_STORE_ID!,
         channelKey: process.env.NEXT_PUBLIC_PORTONE_CHANNEL_KEY!,
         paymentId,
-        orderName: `낙탈AI ${planId === "STANDARD" ? "스탠다드" : "프로"} 구독`,
+        orderName: `낙찰AI ${planId === "STANDARD" ? "스탠다드" : "프로"} 구독`,
         totalAmount: amount, currency: "CURRENCY_KRW", payMethod: "EASY_PAY",
       });
       if (response?.code !== undefined) { console.error("[결제 실패]", response.message); return; }

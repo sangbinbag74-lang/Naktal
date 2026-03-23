@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-export const metadata = { title: "자주 묻는 질문 — 낙탈AI" };
+export const metadata = { title: "자주 묻는 질문 — 낙찰AI" };
 
 const FAQS = [
   {
@@ -29,7 +29,7 @@ const FAQS = [
   },
   {
     q: "사업자등록번호 없이 가입할 수 있나요?",
-    a: "낙탈AI는 사업자 전용 서비스입니다. 사업자등록번호 보유 사업자만 가입 가능합니다.",
+    a: "낙찰AI는 사업자 전용 서비스입니다. 사업자등록번호 보유 사업자만 가입 가능합니다.",
   },
   {
     q: "CORE 2 실시간 모니터는 어떻게 동작하나요?",

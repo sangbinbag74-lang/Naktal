@@ -1,14 +1,14 @@
 import Link from "next/link";
 
 export const metadata = {
-  title: "개인정보처리방침 — 낙탈AI",
+  title: "개인정보처리방침 — 낙찰AI",
 };
 
 export default function PrivacyPage() {
   const sections = [
     {
       title: "1. 수집하는 개인정보 항목",
-      content: `낙탈AI는 서비스 제공을 위해 아래의 정보를 수집합니다.
+      content: `낙찰AI는 서비스 제공을 위해 아래의 정보를 수집합니다.
 
 • 필수: 사업자등록번호, 상호명, 대표자명
 • 선택: 알림 이메일, 알림 전화번호
@@ -31,12 +31,12 @@ export default function PrivacyPage() {
     },
     {
       title: "4. 개인정보의 제3자 제공",
-      content: `낙탈AI는 이용자의 동의 없이 개인정보를 제3자에게 제공하지 않습니다.
+      content: `낙찰AI는 이용자의 동의 없이 개인정보를 제3자에게 제공하지 않습니다.
 단, 법령에 의거하거나 수사기관의 적법한 절차에 따른 요청이 있는 경우는 예외로 합니다.`,
     },
     {
       title: "5. 개인정보 처리 위탁",
-      content: `낙탈AI는 원활한 서비스 제공을 위해 아래와 같이 개인정보 처리 업무를 위탁합니다.
+      content: `낙찰AI는 원활한 서비스 제공을 위해 아래와 같이 개인정보 처리 업무를 위탁합니다.
 
 • Supabase Inc. — 데이터베이스 및 인증 서비스 운영
 • Resend, Inc. — 이메일 발송
