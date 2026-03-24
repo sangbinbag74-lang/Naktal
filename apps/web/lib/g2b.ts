@@ -4,6 +4,13 @@
  */
 
 const G2B_BASE = "https://apis.data.go.kr/1230000/ad/BidPublicInfoService";
+const SCSBID_BASE = "https://apis.data.go.kr/1230000/as/ScsbidInfoService";
+const SCSBID_OPS = [
+  "getScsbidListSttusThng",
+  "getScsbidListSttusCnstwk",
+  "getScsbidListSttusServc",
+  "getScsbidListSttusFrgcpt",
+];
 
 export interface G2BAnnouncement {
   bidNtceNo: string;
@@ -128,20 +135,23 @@ export async function g2bFetchAnnouncementByNo(bidNtceNo: string): Promise<G2BAn
   return null;
 }
 
-// ─── 낙찰결과 페이지 조회 (개찰일 기준) ─────────────────────────────────────
+// ─── 낙찰결과 페이지 조회 (ScsbidInfoService, 단일 카테고리) ─────────────────
 export async function g2bFetchBidResultPage(params: {
   pageNo: number;
   numOfRows: number;
-  inqryBgnDt: string; // YYYYMMDD0000 (개찰일 from)
-  inqryEndDt: string; // YYYYMMDD2359 (개찰일 to)
+  inqryBgnDt: string; // YYYYMMDD0000
+  inqryEndDt: string; // YYYYMMDD2359
+  operation?: string; // 기본: getScsbidListSttusThng
 }): Promise<{ items: G2BBidResult[]; totalCount: number }> {
-  const url = new URL(`${G2B_BASE}/getSuccBidInquireInfoServc`);
+  const op = params.operation ?? SCSBID_OPS[0];
+  const url = new URL(`${SCSBID_BASE}/${op}`);
   url.searchParams.set("serviceKey", bidResultApiKey());
   url.searchParams.set("numOfRows", String(params.numOfRows));
   url.searchParams.set("pageNo", String(params.pageNo));
   url.searchParams.set("type", "json");
-  url.searchParams.set("opengBgnDt", params.inqryBgnDt);  // 개찰일 기준
-  url.searchParams.set("opengEndDt", params.inqryEndDt);
+  url.searchParams.set("inqryDiv", "1");
+  url.searchParams.set("inqryBgnDt", params.inqryBgnDt);
+  url.searchParams.set("inqryEndDt", params.inqryEndDt);
 
   const controller2 = new AbortController();
   const tid2 = setTimeout(() => controller2.abort(), 15000);
@@ -165,6 +175,27 @@ export async function g2bFetchBidResultPage(params: {
     items: parseItems<G2BBidResult>(data.response.body.items),
     totalCount: data.response.body.totalCount ?? 0,
   };
+}
+
+/** 낙찰결과 4개 카테고리 전체 조회 (cron용) */
+export async function g2bFetchAllBidResults(
+  inqryBgnDt: string, inqryEndDt: string, numOfRows = 100
+): Promise<G2BBidResult[]> {
+  const all: G2BBidResult[] = [];
+  for (const op of SCSBID_OPS) {
+    let page = 1;
+    while (true) {
+      const { items, totalCount } = await g2bFetchBidResultPage({
+        pageNo: page, numOfRows, inqryBgnDt, inqryEndDt, operation: op,
+      });
+      if (items.length === 0) break;
+      all.push(...items);
+      if (page * numOfRows >= totalCount) break;
+      page++;
+      await new Promise(r => setTimeout(r, 200));
+    }
+  }
+  return all;
 }
 
 // ─── 헬퍼 ────────────────────────────────────────────────────────────────────

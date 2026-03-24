@@ -1,5 +1,12 @@
 import Decimal from "decimal.js";
 import { fetchBidResultPage, type G2BBidResult } from "./g2b-client";
+
+const SCSBID_OPS = [
+  "getScsbidListSttusThng",
+  "getScsbidListSttusCnstwk",
+  "getScsbidListSttusServc",
+  "getScsbidListSttusFrgcpt",
+];
 import type { BidResultRow } from "../parsers/bid-result";
 import { logger } from "../utils/logger";
 
@@ -11,7 +18,7 @@ function mapToRow(item: G2BBidResult): BidResultRow | null {
 
     const bidRateRaw   = (item.sucsfbidRate || "").replace(/[^0-9.]/g, "");
     const finalPriceRaw = (item.sucsfbidAmt || "").replace(/[^0-9]/g, "");
-    const numBiddersRaw = (item.totPrtcptCo || "0").replace(/[^0-9]/g, "");
+    const numBiddersRaw = (item.prtcptCnum || item.totPrtcptCo || "0").replace(/[^0-9]/g, "");
 
     if (!bidRateRaw || !finalPriceRaw) return null;
 
@@ -52,29 +59,29 @@ export async function fetchBidResults(
   logger.info(`G2B 낙찰결과 수집: ${inqryBgnDt} ~ ${inqryEndDt}`);
 
   const results: BidResultRow[] = [];
-  let page = 1;
 
-  while (page <= maxPages) {
-    const { items, totalCount } = await fetchBidResultPage({
-      pageNo: page,
-      numOfRows,
-      inqryBgnDt,
-      inqryEndDt,
-    });
+  // 4개 카테고리(물품/시설공사/용역/외자) 순회
+  for (const operation of SCSBID_OPS) {
+    let page = 1;
+    while (page <= maxPages) {
+      const { items, totalCount } = await fetchBidResultPage({
+        pageNo: page, numOfRows, inqryBgnDt, inqryEndDt, operation,
+      });
 
-    if (items.length === 0) break;
+      if (items.length === 0) break;
 
-    let saved = 0;
-    for (const item of items) {
-      const row = mapToRow(item);
-      if (row) { results.push(row); saved++; }
+      let saved = 0;
+      for (const item of items) {
+        const row = mapToRow(item);
+        if (row) { results.push(row); saved++; }
+      }
+
+      logger.info(`  [${operation}] 페이지 ${page}: ${items.length}건 수신 / ${saved}건 변환 (누적 ${results.length} / 총 ${totalCount})`);
+
+      if (page * numOfRows >= totalCount) break;
+      page++;
+      await new Promise((r) => setTimeout(r, 300));
     }
-
-    logger.info(`  페이지 ${page}: ${items.length}건 수신 / ${saved}건 변환 (누적 ${results.length} / 총 ${totalCount})`);
-
-    if (page * numOfRows >= totalCount) break;
-    page++;
-    await new Promise((r) => setTimeout(r, 300));
   }
 
   logger.info(`G2B 낙찰결과 수집 완료: ${results.length}건`);

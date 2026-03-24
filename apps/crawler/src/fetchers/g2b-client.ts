@@ -26,10 +26,14 @@ export interface G2BBidResult {
   bidNtceNm: string;       // 입찰공고명
   sucsfbidAmt: string;     // 낙찰금액
   sucsfbidRate: string;    // 낙찰률 (소수점 포함)
-  totPrtcptCo: string;     // 총참가사수
+  totPrtcptCo: string;     // 총참가사수 (구 필드, 하위호환)
+  prtcptCnum: string;      // 참여업체수 (ScsbidInfoService 필드)
   sucsfbidCorpNm: string;  // 낙찰업체명
+  bidwinnrNm: string;      // 낙찰업체명 (ScsbidInfoService 필드)
   opengDt: string;         // 개찰일시 YYYYMMDDHHMM
+  rlOpengDt: string;       // 실개찰일시 (ScsbidInfoService 필드)
   ntceInsttNm: string;     // 공고기관명
+  dminsttNm: string;       // 수요기관명 (ScsbidInfoService 필드)
   [key: string]: string;
 }
 
@@ -48,6 +52,13 @@ interface G2BResponse<T> {
 }
 
 const BASE_URL = "https://apis.data.go.kr/1230000/ad/BidPublicInfoService";
+const SCSBID_BASE = "https://apis.data.go.kr/1230000/as/ScsbidInfoService";
+const SCSBID_OPS = [
+  "getScsbidListSttusThng",      // 물품
+  "getScsbidListSttusCnstwk",    // 시설공사
+  "getScsbidListSttusServc",     // 용역
+  "getScsbidListSttusFrgcpt",    // 외자
+] as const;
 
 function getApiKey(): string {
   const key = process.env.G2B_API_KEY;
@@ -95,20 +106,23 @@ export async function fetchAnnouncementPage(params: {
   return { items: parseItems(body.items), totalCount: body.totalCount ?? 0 };
 }
 
-/** 낙찰결과 목록 조회 (개찰일 기준) */
+/** 낙찰결과 단일 operation 페이지 조회 (ScsbidInfoService) */
 export async function fetchBidResultPage(params: {
   pageNo: number;
   numOfRows: number;
-  inqryBgnDt: string; // YYYYMMDD0000 (개찰일 from)
-  inqryEndDt: string; // YYYYMMDD2359 (개찰일 to)
+  inqryBgnDt: string; // YYYYMMDD0000
+  inqryEndDt: string; // YYYYMMDD2359
+  operation?: string; // 기본: getScsbidListSttusThng
 }): Promise<{ items: G2BBidResult[]; totalCount: number }> {
-  const url = new URL(`${BASE_URL}/getSuccBidInquireInfoServc`);
+  const op = params.operation ?? SCSBID_OPS[0];
+  const url = new URL(`${SCSBID_BASE}/${op}`);
   url.searchParams.set("serviceKey", getApiKey());
   url.searchParams.set("numOfRows", String(params.numOfRows));
   url.searchParams.set("pageNo", String(params.pageNo));
   url.searchParams.set("type", "json");
-  url.searchParams.set("opengBgnDt", params.inqryBgnDt);  // 개찰일 기준
-  url.searchParams.set("opengEndDt", params.inqryEndDt);
+  url.searchParams.set("inqryDiv", "1");
+  url.searchParams.set("inqryBgnDt", params.inqryBgnDt);
+  url.searchParams.set("inqryEndDt", params.inqryEndDt);
 
   const res = await fetch(url.toString(), { signal: AbortSignal.timeout(15_000) });
   if (!res.ok) throw new Error(`G2B 낙찰결과 API 오류: ${res.status} ${res.statusText}`);
@@ -120,4 +134,16 @@ export async function fetchBidResultPage(params: {
     throw new Error(`G2B API 오류 코드: ${header.resultCode} - ${header.resultMsg}`);
 
   return { items: parseItems(body.items), totalCount: body.totalCount ?? 0 };
+}
+
+/** 낙찰결과 전체 조회 — 4개 카테고리(물품/시설공사/용역/외자) 합산 */
+export async function fetchAllBidResultPages(params: {
+  pageNo: number;
+  numOfRows: number;
+  inqryBgnDt: string;
+  inqryEndDt: string;
+  operationIndex: number; // 0~3
+}): Promise<{ items: G2BBidResult[]; totalCount: number }> {
+  const op = SCSBID_OPS[params.operationIndex] ?? SCSBID_OPS[0];
+  return fetchBidResultPage({ ...params, operation: op });
 }

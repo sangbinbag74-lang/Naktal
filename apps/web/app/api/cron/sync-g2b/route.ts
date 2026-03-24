@@ -8,7 +8,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import {
   g2bFetchAnnouncementPage,
-  g2bFetchBidResultPage,
+  g2bFetchAllBidResults,
   g2bExtractRegion,
   g2bParseDate,
   toYMD,
@@ -88,36 +88,31 @@ async function importAnnouncements(
 async function importBidResults(
   url: string, key: string, fromDate: string, toDate: string
 ): Promise<number> {
-  let page = 1, saved = 0;
-  while (true) {
-    const { items, totalCount } = await g2bFetchBidResultPage({
-      pageNo: page, numOfRows: NUM_OF_ROWS,
-      inqryBgnDt: `${fromDate}0000`, inqryEndDt: `${toDate}2359`,
+  const items = await g2bFetchAllBidResults(`${fromDate}0000`, `${toDate}2359`, NUM_OF_ROWS);
+  if (items.length === 0) return 0;
+
+  const rows = items.map((item: G2BBidResult) => {
+    const annId    = item.bidNtceNo?.trim();
+    const rateRaw  = (item.sucsfbidRate || "").replace(/[^0-9.]/g, "");
+    const priceRaw = (item.sucsfbidAmt  || "").replace(/[^0-9]/g, "");
+    if (!annId || !rateRaw || !priceRaw) return null;
+    return {
+      annId,
+      bidRate: parseFloat(rateRaw).toFixed(4),
+      finalPrice: String(parseInt(priceRaw, 10)),
+      numBidders: parseInt((item.prtcptCnum || item.totPrtcptCo || "0").replace(/[^0-9]/g, ""), 10),
+    };
+  }).filter(Boolean);
+
+  let saved = 0;
+  const BATCH = 500;
+  for (let i = 0; i < rows.length; i += BATCH) {
+    const r = await fetch(`${url}/rest/v1/BidResult`, {
+      method: "POST", headers: supabaseHeaders(key), body: JSON.stringify(rows.slice(i, i + BATCH)),
     });
-    if (items.length === 0) break;
-
-    const rows = items.map((item: G2BBidResult) => {
-      const annId     = item.bidNtceNo?.trim();
-      const rateRaw   = (item.sucsfbidRate || "").replace(/[^0-9.]/g, "");
-      const priceRaw  = (item.sucsfbidAmt  || "").replace(/[^0-9]/g, "");
-      if (!annId || !rateRaw || !priceRaw) return null;
-      return {
-        annId,
-        bidRate: parseFloat(rateRaw).toFixed(4),
-        finalPrice: String(parseInt(priceRaw, 10)),
-        numBidders: parseInt((item.totPrtcptCo || "0").replace(/[^0-9]/g, ""), 10),
-      };
-    }).filter(Boolean);
-
-    if (rows.length > 0) {
-      const r = await fetch(`${url}/rest/v1/BidResult`, {
-        method: "POST", headers: supabaseHeaders(key), body: JSON.stringify(rows),
-      });
-      if (r.ok) saved += rows.length;
-    }
-    if (page * NUM_OF_ROWS >= totalCount) break;
-    page++;
-    await sleep(200);
+    if (r.ok) saved += Math.min(BATCH, rows.length - i);
+    else console.error(`[importBidResults] upsert 실패 ${r.status}:`, await r.text());
+    await sleep(100);
   }
   return saved;
 }
