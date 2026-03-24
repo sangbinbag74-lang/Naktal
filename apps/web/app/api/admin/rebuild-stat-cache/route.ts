@@ -107,7 +107,7 @@ async function rebuildStatCache(db: ReturnType<typeof createClient>) {
   for (let i = 0; i < statRows.length; i += 1000) {
     const { error } = await db
       .from("NumberSelectionStat")
-      .upsert(statRows.slice(i, i + 1000), { onConflict: "category,budgetRange,region,bidderRange,rateInt" });
+      .upsert(statRows.slice(i, i + 1000) as any[], { onConflict: "category,budgetRange,region,bidderRange,rateInt" });
     if (!error) statUpserted += Math.min(1000, statRows.length - i);
   }
 
@@ -137,7 +137,7 @@ async function rebuildStatCache(db: ReturnType<typeof createClient>) {
   for (let i = 0; i < orgRows.length; i += 50) {
     const { error } = await db
       .from("OrgBiddingPattern")
-      .upsert(orgRows.slice(i, i + 50), { onConflict: "orgName" });
+      .upsert(orgRows.slice(i, i + 50) as any[], { onConflict: "orgName" });
     if (!error) orgUpserted += Math.min(50, orgRows.length - i);
   }
 
