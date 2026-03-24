@@ -232,6 +232,25 @@ export async function GET(request: NextRequest) {
       log.historical = { done: true, message: "2012년부터 현재까지 모든 데이터 수집 완료" };
     }
 
+    // ── 낙찰결과가 수집됐으면 통계 캐시 재집계 ─────────────────────────────
+    const totalBidResults =
+      ((log.recent as Record<string,number>)?.bidResults ?? 0) +
+      ((log.historical as Record<string,number>)?.bidResults ?? 0);
+
+    if (totalBidResults > 0) {
+      try {
+        const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://naktal.me";
+        await fetch(`${siteUrl}/api/admin/rebuild-stat-cache`, {
+          method: "POST",
+          headers: { "x-admin-key": process.env.ADMIN_SECRET_KEY ?? "" },
+        });
+        log.statCacheRebuild = "triggered";
+      } catch (e) {
+        console.error("[cron] 통계 캐시 재집계 실패:", e);
+        log.statCacheRebuild = "failed";
+      }
+    }
+
     return NextResponse.json({ ok: true, ...log });
   } catch (err) {
     console.error("[cron/sync-g2b]", err);

@@ -95,20 +95,20 @@ export async function fetchAnnouncementPage(params: {
   return { items: parseItems(body.items), totalCount: body.totalCount ?? 0 };
 }
 
-/** 낙찰결과 목록 조회 */
+/** 낙찰결과 목록 조회 (개찰일 기준) */
 export async function fetchBidResultPage(params: {
   pageNo: number;
   numOfRows: number;
-  inqryBgnDt: string; // YYYYMMDD0000
-  inqryEndDt: string; // YYYYMMDD2359
+  inqryBgnDt: string; // YYYYMMDD0000 (개찰일 from)
+  inqryEndDt: string; // YYYYMMDD2359 (개찰일 to)
 }): Promise<{ items: G2BBidResult[]; totalCount: number }> {
   const url = new URL(`${BASE_URL}/getSuccBidInquireInfoServc`);
   url.searchParams.set("serviceKey", getApiKey());
   url.searchParams.set("numOfRows", String(params.numOfRows));
   url.searchParams.set("pageNo", String(params.pageNo));
   url.searchParams.set("type", "json");
-  url.searchParams.set("inqryBgnDt", params.inqryBgnDt);
-  url.searchParams.set("inqryEndDt", params.inqryEndDt);
+  url.searchParams.set("opengBgnDt", params.inqryBgnDt);  // 개찰일 기준
+  url.searchParams.set("opengEndDt", params.inqryEndDt);
 
   const res = await fetch(url.toString(), { signal: AbortSignal.timeout(15_000) });
   if (!res.ok) throw new Error(`G2B 낙찰결과 API 오류: ${res.status} ${res.statusText}`);

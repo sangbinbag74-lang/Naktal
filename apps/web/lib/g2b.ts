@@ -3,8 +3,7 @@
  * apps/crawler와 별도로 순수 fetch 기반으로 구현
  */
 
-const G2B_BASE     = "https://apis.data.go.kr/1230000/ad/BidPublicInfoService";
-const G2B_RESULT_BASE = "https://apis.data.go.kr/1230000/ad/BidResultInfoService";
+const G2B_BASE = "https://apis.data.go.kr/1230000/ad/BidPublicInfoService";
 
 export interface G2BAnnouncement {
   bidNtceNo: string;
@@ -129,23 +128,23 @@ export async function g2bFetchAnnouncementByNo(bidNtceNo: string): Promise<G2BAn
   return null;
 }
 
-// ─── 낙찰결과 페이지 조회 ─────────────────────────────────────────────────────
+// ─── 낙찰결과 페이지 조회 (개찰일 기준) ─────────────────────────────────────
 export async function g2bFetchBidResultPage(params: {
   pageNo: number;
   numOfRows: number;
-  inqryBgnDt: string;
-  inqryEndDt: string;
+  inqryBgnDt: string; // YYYYMMDD0000 (개찰일 from)
+  inqryEndDt: string; // YYYYMMDD2359 (개찰일 to)
 }): Promise<{ items: G2BBidResult[]; totalCount: number }> {
-  const url = new URL(`${G2B_RESULT_BASE}/getBidResultListInfoServc`);
+  const url = new URL(`${G2B_BASE}/getSuccBidInquireInfoServc`);
   url.searchParams.set("serviceKey", bidResultApiKey());
   url.searchParams.set("numOfRows", String(params.numOfRows));
   url.searchParams.set("pageNo", String(params.pageNo));
   url.searchParams.set("type", "json");
-  url.searchParams.set("inqryBgnDt", params.inqryBgnDt);
-  url.searchParams.set("inqryEndDt", params.inqryEndDt);
+  url.searchParams.set("opengBgnDt", params.inqryBgnDt);  // 개찰일 기준
+  url.searchParams.set("opengEndDt", params.inqryEndDt);
 
   const controller2 = new AbortController();
-  const tid2 = setTimeout(() => controller2.abort(), 5000);
+  const tid2 = setTimeout(() => controller2.abort(), 15000);
   let res: Response;
   try {
     res = await fetch(url.toString(), { next: { revalidate: 0 }, signal: controller2.signal });
