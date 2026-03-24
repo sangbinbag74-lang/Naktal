@@ -53,7 +53,7 @@ async function rebuildStatCache(db: ReturnType<typeof createClient>) {
 
     if (error || !data || data.length === 0) break;
 
-    for (const row of data) {
+    for (const row of (data as any[])) {
       const ann = (row as any).Announcement;
       if (!ann) continue;
 
