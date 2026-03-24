@@ -105,9 +105,8 @@ async function rebuildStatCache(db: ReturnType<typeof createClient>) {
 
   let statUpserted = 0;
   for (let i = 0; i < statRows.length; i += 1000) {
-    const { error } = await db
-      .from("NumberSelectionStat")
-      .upsert(statRows.slice(i, i + 1000) as any[], { onConflict: "category,budgetRange,region,bidderRange,rateInt" });
+    const { error } = await (db.from("NumberSelectionStat") as any)
+      .upsert(statRows.slice(i, i + 1000), { onConflict: "category,budgetRange,region,bidderRange,rateInt" });
     if (!error) statUpserted += Math.min(1000, statRows.length - i);
   }
 
@@ -135,9 +134,8 @@ async function rebuildStatCache(db: ReturnType<typeof createClient>) {
 
   let orgUpserted = 0;
   for (let i = 0; i < orgRows.length; i += 50) {
-    const { error } = await db
-      .from("OrgBiddingPattern")
-      .upsert(orgRows.slice(i, i + 50) as any[], { onConflict: "orgName" });
+    const { error } = await (db.from("OrgBiddingPattern") as any)
+      .upsert(orgRows.slice(i, i + 50), { onConflict: "orgName" });
     if (!error) orgUpserted += Math.min(50, orgRows.length - i);
   }
 
@@ -161,7 +159,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
   try {
     const db = createClient(supabaseUrl, serviceKey, { auth: { persistSession: false } });
-    const result = await rebuildStatCache(db);
+    const result = await rebuildStatCache(db as any);
     console.log("[rebuild-stat-cache]", result);
     return NextResponse.json({ ok: true, ...result });
   } catch (err) {
