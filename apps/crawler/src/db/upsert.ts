@@ -1,5 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
-import { createHash } from "crypto";
+import { createHash, randomUUID } from "crypto";
 import type { AnnouncementRow } from "../parsers/announcement";
 import type { BidResultRow } from "../parsers/bid-result";
 
@@ -47,6 +47,7 @@ export async function upsertAnnouncement(data: AnnouncementRow): Promise<void> {
 export async function upsertBidResult(data: BidResultRow): Promise<void> {
   const { error } = await supabase.from("BidResult").upsert(
     {
+      id:         randomUUID(),
       annId:      data.annId,
       bidRate:    data.bidRate,
       finalPrice: data.finalPrice.toString(),
