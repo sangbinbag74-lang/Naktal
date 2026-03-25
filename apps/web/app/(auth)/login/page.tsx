@@ -277,7 +277,7 @@ export default function LoginPage() {
                   marginTop: 4,
                 }}
               >
-                {adminLoading ? "로그인 중..." : "관리자 로그인"}
+                {adminLoading ? "로그인 중..." : "파트너 로그인"}
               </button>
             </form>
           </div>
