@@ -2,44 +2,54 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 
-interface Outcome {
+interface Rec {
   id: string;
-  annId: string;
-  annTitle?: string;
-  annOrgName?: string;
-  annBudget?: string;
-  recommendationId?: string;
-  selectedNos: number[];
-  bidRate: number;
-  result: "WIN" | "LOSE" | "DISQUALIFIED" | "PENDING";
-  recommendHit?: boolean;
-  bidAt: string;
-  recommendation?: { combo1: number[]; combo2: number[]; combo3: number[] };
+  annId: string | null;
+  annTitle: string | null;
+  annOrgName: string | null;
+  annBudget: string | null;
+  annDeadline: string | null;
+  category: string | null;
+  budgetRange: string | null;
+  region: string | null;
+  combo1: number[];
+  combo2: number[];
+  combo3: number[];
+  hitRate1: number;
+  hitRate2: number;
+  hitRate3: number;
+  sampleSize: number;
+  modelVersion: string;
+  createdAt: string;
 }
 
-interface Stats {
-  total: number;
-  wins: number;
-  winRate: number;
-  hitRate: number;
+function NumBadge({ n, accent }: { n: number; accent: string }) {
+  return (
+    <span style={{
+      display: "inline-flex", alignItems: "center", justifyContent: "center",
+      width: 28, height: 28, borderRadius: "50%",
+      background: accent, color: "#fff", fontSize: 12, fontWeight: 700,
+    }}>
+      {String(n).padStart(2, "0")}
+    </span>
+  );
 }
-
-const RESULT_LABELS: Record<string, { label: string; color: string; bg: string }> = {
-  WIN: { label: "낙찰", color: "#059669", bg: "#ECFDF5" },
-  LOSE: { label: "유찰", color: "#DC2626", bg: "#FEF2F2" },
-  DISQUALIFIED: { label: "탈락", color: "#9CA3AF", bg: "#F9FAFB" },
-  PENDING: { label: "대기중", color: "#F59E0B", bg: "#FFFBEB" },
-};
 
 export default function HistoryPage() {
-  const [outcomes, setOutcomes] = useState<Outcome[]>([]);
-  const [stats, setStats] = useState<Stats | null>(null);
+  const [recs, setRecs] = useState<Rec[]>([]);
+  const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     fetch("/api/strategy/history")
       .then((r) => r.json())
-      .then((d) => { setOutcomes(d.outcomes ?? []); setStats(d.stats ?? null); })
+      .then((d) => {
+        if (d.error) { setError(d.error); return; }
+        setRecs(d.recommendations ?? []);
+        setTotal(d.total ?? 0);
+      })
+      .catch(() => setError("데이터를 불러오지 못했습니다."))
       .finally(() => setLoading(false));
   }, []);
 
@@ -47,75 +57,119 @@ export default function HistoryPage() {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
-      <div>
-        <h2 style={{ fontSize: 22, fontWeight: 700, color: "#0F172A", margin: "0 0 4px" }}>투찰 이력</h2>
-        <p style={{ fontSize: 13, color: "#64748B", margin: 0 }}>추천 번호 채택률과 낙찰 성과를 확인하세요.</p>
+      <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between" }}>
+        <div>
+          <h2 style={{ fontSize: 22, fontWeight: 700, color: "#0F172A", margin: "0 0 4px" }}>분석 이력</h2>
+          <p style={{ fontSize: 13, color: "#64748B", margin: 0 }}>번호 추천을 받은 공고 목록입니다.</p>
+        </div>
+        {total > 0 && (
+          <span style={{ fontSize: 13, color: "#64748B" }}>총 {total}건</span>
+        )}
       </div>
 
-      {stats && (
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12 }}>
-          {[
-            { label: "총 투찰", value: stats.total + "건" },
-            { label: "낙찰 건수", value: stats.wins + "건" },
-            { label: "낙찰률", value: stats.winRate.toFixed(1) + "%" },
-            { label: "추천 번호 적중률", value: stats.hitRate.toFixed(1) + "%" },
-          ].map(({ label, value }) => (
-            <div key={label} style={{ background: "#fff", borderRadius: 12, border: "1px solid #E8ECF2", padding: "16px" }}>
-              <div style={{ fontSize: 11, color: "#9CA3AF", marginBottom: 4 }}>{label}</div>
-              <div style={{ fontSize: 22, fontWeight: 800, color: "#1B3A6B" }}>{value}</div>
-            </div>
-          ))}
+      {error && (
+        <div style={{ background: "#FEF2F2", border: "1px solid #FECACA", borderRadius: 10, padding: "14px 18px", fontSize: 13, color: "#DC2626" }}>
+          {error}
         </div>
       )}
 
-      {outcomes.length === 0 ? (
-        <div style={{ background: "#fff", borderRadius: 14, border: "1px solid #E8ECF2", padding: "48px", textAlign: "center" }}>
-          <div style={{ fontSize: 40, marginBottom: 12 }}>📋</div>
-          <div style={{ fontSize: 15, fontWeight: 600, color: "#374151", marginBottom: 8 }}>투찰 이력이 없습니다</div>
-          <div style={{ fontSize: 13, color: "#9CA3AF", marginBottom: 20 }}>공고를 선택해 번호 분석을 받고 결과를 입력해보세요</div>
-          <Link href="/announcements" style={{ display: "inline-block", background: "#1B3A6B", color: "#fff", padding: "10px 24px", borderRadius: 10, textDecoration: "none", fontWeight: 600, fontSize: 14 }}>공고 목록 보기</Link>
+      {!error && recs.length === 0 && (
+        <div style={{ background: "#fff", borderRadius: 14, border: "1px solid #E8ECF2", padding: "56px 24px", textAlign: "center" }}>
+          <div style={{ fontSize: 40, marginBottom: 12 }}>🔍</div>
+          <div style={{ fontSize: 15, fontWeight: 600, color: "#374151", marginBottom: 8 }}>아직 번호 분석 이력이 없습니다</div>
+          <div style={{ fontSize: 13, color: "#9CA3AF", marginBottom: 20 }}>복수예가 공고에서 번호 추천을 받아보세요</div>
+          <Link href="/announcements" style={{
+            display: "inline-block", background: "#1B3A6B", color: "#fff",
+            padding: "10px 24px", borderRadius: 10, textDecoration: "none",
+            fontWeight: 600, fontSize: 14,
+          }}>
+            공고 목록 보기
+          </Link>
         </div>
-      ) : (
+      )}
+
+      {recs.length > 0 && (
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          {outcomes.map((o) => {
-            const tag = RESULT_LABELS[o.result] ?? { label: "대기중", color: "#F59E0B", bg: "#FFFBEB" };
+          {recs.map((r) => {
+            const isClosed = r.annDeadline ? new Date(r.annDeadline) < new Date() : true;
+            const dday = r.annDeadline
+              ? Math.ceil((new Date(r.annDeadline).getTime() - Date.now()) / 86400000)
+              : null;
             return (
-              <div key={o.id} style={{ background: "#fff", borderRadius: 12, border: "1px solid #E8ECF2", padding: "16px 20px", display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
-                <div style={{ flex: 1, minWidth: 180 }}>
-                  <div style={{ fontSize: 12, color: "#9CA3AF", marginBottom: 2 }}>{new Date(o.bidAt).toLocaleDateString("ko-KR")}</div>
-                  {o.annTitle ? (
-                    <div style={{ fontSize: 13, fontWeight: 600, color: "#0F172A", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{o.annTitle}</div>
-                  ) : (
-                    <div style={{ fontSize: 13, fontWeight: 600, color: "#94A3B8" }}>공고 정보 없음</div>
-                  )}
-                  {o.annOrgName && (
-                    <div style={{ fontSize: 11, color: "#64748B", marginTop: 1 }}>{o.annOrgName}{o.annBudget ? ` · ${o.annBudget}` : ""}</div>
-                  )}
-                </div>
-                <div style={{ flex: 1, minWidth: 120 }}>
-                  <div style={{ fontSize: 11, color: "#9CA3AF" }}>선택 번호</div>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: "#374151" }}>[{o.selectedNos.join(", ")}]</div>
-                </div>
-                {o.recommendation && (
-                  <div style={{ flex: 1, minWidth: 120 }}>
-                    <div style={{ fontSize: 11, color: "#9CA3AF" }}>추천 번호</div>
-                    <div style={{ fontSize: 13, color: "#60A5FA" }}>[{o.recommendation.combo1.join(", ")}]</div>
+              <div key={r.id} style={{
+                background: "#fff", borderRadius: 14, border: "1px solid #E8ECF2",
+                padding: "18px 22px", display: "flex", flexDirection: "column", gap: 14,
+              }}>
+                {/* 헤더 행 */}
+                <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12 }}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 11, color: "#94A3B8", marginBottom: 3 }}>
+                      {new Date(r.createdAt).toLocaleString("ko-KR", { year: "numeric", month: "long", day: "numeric", hour: "2-digit", minute: "2-digit" })}
+                      {r.modelVersion && <span style={{ marginLeft: 8, color: "#CBD5E1" }}>{r.modelVersion}</span>}
+                    </div>
+                    {r.annTitle ? (
+                      <div style={{ fontSize: 14, fontWeight: 700, color: "#0F172A", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                        {r.annTitle}
+                      </div>
+                    ) : (
+                      <div style={{ fontSize: 13, color: "#94A3B8" }}>공고 정보 없음 · {r.category || r.region || r.budgetRange}</div>
+                    )}
+                    {r.annOrgName && (
+                      <div style={{ fontSize: 12, color: "#64748B", marginTop: 2 }}>
+                        {r.annOrgName}{r.annBudget ? ` · ${r.annBudget}` : ""}
+                      </div>
+                    )}
                   </div>
-                )}
-                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                  {o.recommendHit !== null && o.recommendHit !== undefined && (
-                    <span style={{ fontSize: 11, padding: "3px 8px", borderRadius: 5, background: o.recommendHit ? "#ECFDF5" : "#FEF2F2", color: o.recommendHit ? "#059669" : "#DC2626", fontWeight: 700 }}>
-                      {o.recommendHit ? "추천 적중" : "미적중"}
-                    </span>
-                  )}
-                  <span style={{ fontSize: 12, padding: "4px 10px", borderRadius: 6, background: tag.bg, color: tag.color, fontWeight: 700 }}>{tag.label}</span>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
+                    {dday !== null && (
+                      <span style={{
+                        fontSize: 11, fontWeight: 700, padding: "3px 8px", borderRadius: 5,
+                        background: isClosed ? "#F1F5F9" : dday <= 2 ? "#FEF2F2" : dday <= 7 ? "#FFF7ED" : "#EEF2FF",
+                        color: isClosed ? "#94A3B8" : dday <= 2 ? "#DC2626" : dday <= 7 ? "#C2410C" : "#1B3A6B",
+                      }}>
+                        {isClosed ? "마감" : `D-${dday}`}
+                      </span>
+                    )}
+                    {r.annId && !isClosed && (
+                      <Link href={`/announcements/${r.annId}`} style={{
+                        fontSize: 12, padding: "4px 12px", borderRadius: 7,
+                        background: "#EEF2FF", color: "#1B3A6B", fontWeight: 600,
+                        textDecoration: "none",
+                      }}>
+                        공고 보기
+                      </Link>
+                    )}
+                  </div>
                 </div>
-                {o.result === "PENDING" && o.recommendationId && (
-                  <Link href={"/strategy/outcome/" + o.recommendationId}
-                    style={{ fontSize: 12, padding: "6px 14px", borderRadius: 8, background: "#1B3A6B", color: "#fff", textDecoration: "none", fontWeight: 600, whiteSpace: "nowrap" }}>
-                    결과 입력
-                  </Link>
-                )}
+
+                {/* 번호 조합 행 */}
+                <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
+                  {([
+                    { combo: r.combo1, hitRate: r.hitRate1, label: "조합 1", accent: "#1B3A6B" },
+                    { combo: r.combo2, hitRate: r.hitRate2, label: "조합 2", accent: "#1E40AF" },
+                    { combo: r.combo3, hitRate: r.hitRate3, label: "조합 3", accent: "#2563EB" },
+                  ] as const).map(({ combo, hitRate, label, accent }) => (
+                    <div key={label} style={{
+                      flex: 1, minWidth: 140,
+                      background: "#F8FAFC", borderRadius: 10, padding: "10px 14px",
+                      borderLeft: `3px solid ${accent}`,
+                    }}>
+                      <div style={{ fontSize: 10, fontWeight: 700, color: accent, marginBottom: 8, letterSpacing: "0.05em" }}>
+                        {label} · {hitRate?.toFixed(1) ?? "—"}%
+                      </div>
+                      <div style={{ display: "flex", gap: 6 }}>
+                        {(combo ?? []).map((n, i) => <NumBadge key={i} n={n} accent={accent} />)}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* 푸터 */}
+                <div style={{ fontSize: 11, color: "#CBD5E1" }}>
+                  분석 샘플 {(r.sampleSize ?? 0).toLocaleString()}건
+                  {r.category && ` · ${r.category}`}
+                  {r.region && ` · ${r.region}`}
+                </div>
               </div>
             );
           })}
