@@ -22,6 +22,50 @@ const PLAN_STYLE: Record<string, { background: string; color: string }> = {
   FREE:     { background: "#F1F5F9", color: "#64748B" },
 };
 
+function PlanSelect({ row, onChange }: { row: UserRow; onChange: (id: string, plan: string) => void }) {
+  const [saving, setSaving] = useState(false);
+  const s = PLAN_STYLE[row.plan] ?? PLAN_STYLE.FREE;
+
+  async function handleChange(newPlan: string) {
+    if (newPlan === row.plan) return;
+    setSaving(true);
+    await fetch(`/api/admin/users/${row.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ plan: newPlan, reason: "어드민 목록 직접 변경" }),
+    });
+    onChange(row.id, newPlan);
+    setSaving(false);
+  }
+
+  return (
+    <div style={{ position: "relative", display: "inline-block" }}>
+      <select
+        value={row.plan}
+        disabled={saving}
+        onChange={(e) => handleChange(e.target.value)}
+        style={{
+          appearance: "none",
+          fontSize: 11, fontWeight: 600,
+          padding: "2px 20px 2px 8px",
+          borderRadius: 4, border: "none",
+          cursor: saving ? "not-allowed" : "pointer",
+          opacity: saving ? 0.6 : 1,
+          ...s,
+        }}
+      >
+        <option value="FREE">무료</option>
+        <option value="STANDARD">스탠다드</option>
+        <option value="PRO">프로</option>
+      </select>
+      <span style={{
+        position: "absolute", right: 5, top: "50%", transform: "translateY(-50%)",
+        fontSize: 9, color: s.color, pointerEvents: "none",
+      }}>▼</span>
+    </div>
+  );
+}
+
 export default function AdminUsersPage() {
   const [data, setData] = useState<UserRow[]>([]);
   const [total, setTotal] = useState(0);
@@ -42,6 +86,10 @@ export default function AdminUsersPage() {
 
   useEffect(() => { void fetchData(); }, [fetchData]);
 
+  function handlePlanChange(userId: string, newPlan: string) {
+    setData((prev) => prev.map((r) => r.id === userId ? { ...r, plan: newPlan } : r));
+  }
+
   const inputStyle: React.CSSProperties = {
     height: 36, padding: "0 12px", fontSize: 13, border: "1px solid #E2E8F0",
     borderRadius: 8, background: "#fff", color: "#0F172A", outline: "none",
@@ -53,14 +101,7 @@ export default function AdminUsersPage() {
     { key: "ownerName", label: "대표자" },
     {
       key: "plan", label: "플랜",
-      render: (r: UserRow) => {
-        const s = PLAN_STYLE[r.plan] ?? PLAN_STYLE.FREE;
-        return (
-          <span style={{ fontSize: 11, fontWeight: 600, padding: "2px 8px", borderRadius: 4, ...s }}>
-            {PLAN_LABELS[r.plan] ?? r.plan}
-          </span>
-        );
-      },
+      render: (r: UserRow) => <PlanSelect row={r} onChange={handlePlanChange} />,
     },
     {
       key: "isActive", label: "상태",
@@ -122,7 +163,7 @@ export default function AdminUsersPage() {
       )}
 
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", fontSize: 13, color: "#64748B" }}>
-        <span>{(page - 1) * 50 + 1}–{Math.min(page * 50, total)} / {total}명</span>
+        <span>{total === 0 ? "0명" : `${(page - 1) * 50 + 1}–${Math.min(page * 50, total)} / ${total}명`}</span>
         <div style={{ display: "flex", gap: 8 }}>
           <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page === 1}
             style={{ padding: "6px 14px", background: "#fff", border: "1px solid #E2E8F0", borderRadius: 6, fontSize: 13, cursor: page === 1 ? "not-allowed" : "pointer", opacity: page === 1 ? 0.4 : 1 }}>
