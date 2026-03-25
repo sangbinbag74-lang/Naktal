@@ -99,6 +99,8 @@ export async function fetchAnnouncementPage(params: {
 
   const data = (await res.json()) as G2BResponse<G2BAnnouncement>;
   if (!data?.response) {
+    const altErr = (data as any)?.["nkoneps.com.response.ResponseError"];
+    if (altErr?.header?.resultCode === "07") return { items: [], totalCount: 0 };
     throw new Error(`G2B 공고 API 비정상 응답: ${JSON.stringify(data).slice(0, 300)}`);
   }
   const { header, body } = data.response;
@@ -134,6 +136,8 @@ export async function fetchBidResultPage(params: {
 
   const data = (await res.json()) as G2BResponse<G2BBidResult>;
   if (!data?.response) {
+    const altErr = (data as any)?.["nkoneps.com.response.ResponseError"];
+    if (altErr?.header?.resultCode === "07") return { items: [], totalCount: 0 };
     throw new Error(`G2B 낙찰결과 API 비정상 응답: ${JSON.stringify(data).slice(0, 300)}`);
   }
   const { header, body } = data.response;
