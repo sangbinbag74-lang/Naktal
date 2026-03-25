@@ -216,7 +216,6 @@ export function AnnouncementTabs({
 
   const tabStyle = (id: string): React.CSSProperties => ({
     padding: "10px 20px", fontSize: 14, fontWeight: 600, cursor: "pointer",
-    borderBottom: `3px solid ${activeTab === id ? "#1B3A6B" : "transparent"}`,
     color: activeTab === id ? "#1B3A6B" : "#64748B",
     background: "none", border: "none",
     borderBottom: `3px solid ${activeTab === id ? "#1B3A6B" : "transparent"}`,

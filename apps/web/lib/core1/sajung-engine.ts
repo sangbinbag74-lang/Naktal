@@ -253,7 +253,7 @@ export async function analyzeCompetition(params: {
   const entries = Object.entries(winnerCounts).sort((a, b) => b[1] - a[1]);
   const dominantCompany = entries[0]?.[0] ?? null;
   const dominantWinRate = dominantCompany
-    ? Math.round(((entries[0][1] / similar.length) * 1000)) / 1000
+    ? Math.round((((entries[0]?.[1] ?? 0) / similar.length) * 1000)) / 1000
     : null;
 
   const scoreLevel: CompetitionResult["scoreLevel"] =

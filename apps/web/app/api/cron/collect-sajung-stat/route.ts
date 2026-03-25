@@ -34,7 +34,9 @@ function percentile(sorted: number[], p: number): number {
   const idx = (p / 100) * (sorted.length - 1);
   const lo = Math.floor(idx);
   const hi = Math.ceil(idx);
-  return lo === hi ? sorted[lo] : sorted[lo] + (idx - lo) * (sorted[hi] - sorted[lo]);
+  const vlo = sorted[lo] ?? 0;
+  const vhi = sorted[hi] ?? 0;
+  return lo === hi ? vlo : vlo + (idx - lo) * (vhi - vlo);
 }
 
 function calcMode(rates: number[]): number {
@@ -43,7 +45,7 @@ function calcMode(rates: number[]): number {
     const b = Math.round(r * 10) / 10;
     buckets[b] = (buckets[b] ?? 0) + 1;
   }
-  return parseFloat(Object.entries(buckets).sort((a, b) => b[1] - a[1])[0][0]);
+  return parseFloat(Object.entries(buckets).sort((a, b) => b[1] - a[1])[0]?.[0] ?? "0");
 }
 
 function calcStats(rates: number[], months: number[]) {
@@ -57,7 +59,7 @@ function calcStats(rates: number[], months: number[]) {
   for (let i = 0; i < n; i++) {
     const m = String(months[i]);
     if (!monthMap[m]) monthMap[m] = [];
-    monthMap[m].push(rates[i]);
+    monthMap[m]!.push(rates[i] ?? 0);
   }
   const monthlyAvg: Record<string, number> = {};
   for (const [m, arr] of Object.entries(monthMap)) {
@@ -70,8 +72,8 @@ function calcStats(rates: number[], months: number[]) {
     p25:       Math.round(percentile(sorted, 25) * 100) / 100,
     p50:       Math.round(percentile(sorted, 50) * 100) / 100,
     p75:       Math.round(percentile(sorted, 75) * 100) / 100,
-    min:       Math.round(sorted[0] * 100) / 100,
-    max:       Math.round(sorted[n - 1] * 100) / 100,
+    min:       Math.round((sorted[0] ?? 0) * 100) / 100,
+    max:       Math.round((sorted[n - 1] ?? 0) * 100) / 100,
     mode:      calcMode(rates),
     monthlyAvg,
     sampleSize: n,
@@ -150,7 +152,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
 
     for (const [key, gdata] of groups) {
       if (gdata.rates.length < 3) continue;
-      const [orgName, category, budgetRange, region] = key.split("|");
+      const [orgName = "", category = "", budgetRange = "", region = ""] = key.split("|");
       records.push({ id: statKey(orgName, category, budgetRange, region), orgName, category, budgetRange, region, updatedAt: now, ...calcStats(gdata.rates, gdata.months) });
     }
 
@@ -165,7 +167,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     }
     for (const [key, gdata] of allGroups) {
       if (gdata.rates.length < 5) continue;
-      const [orgName, category, budgetRange, region] = key.split("|");
+      const [orgName = "", category = "", budgetRange = "", region = ""] = key.split("|");
       records.push({ id: statKey(orgName, category, budgetRange, region), orgName, category, budgetRange, region, updatedAt: now, ...calcStats(gdata.rates, gdata.months) });
     }
 
