@@ -123,18 +123,31 @@ export async function recommendNumbers(
     if (annIds.length === 0) return estimatedResult();
   }
 
-  // Step 2: BidResult 조회 (annId 필터 적용)
-  let query = supabase
-    .from("BidResult")
-    .select("bidRate, numBidders")
-    .order("createdAt", { ascending: false })
-    .limit(5000);
+  // Step 2: BidResult 조회 (annId 필터 적용 → 부족하면 전체 폴백)
+  let data: { bidRate: string | number; numBidders: number }[] | null = null;
+  let error: unknown = null;
 
-  if (annIds !== null) {
-    query = query.in("annId", annIds);
+  if (annIds !== null && annIds.length > 0) {
+    const res = await supabase
+      .from("BidResult")
+      .select("bidRate, numBidders")
+      .in("annId", annIds)
+      .order("createdAt", { ascending: false })
+      .limit(5000);
+    data = res.data;
+    error = res.error;
   }
 
-  const { data, error } = await query;
+  // annId 필터 결과 부족 → 전체 BidResult에서 샘플링 (카테고리 무관 빈도 활용)
+  if (!data || data.length < 30) {
+    const res = await supabase
+      .from("BidResult")
+      .select("bidRate, numBidders")
+      .order("createdAt", { ascending: false })
+      .limit(5000);
+    data = res.data;
+    error = res.error;
+  }
 
   if (error || !data || data.length < 30) {
     // 데이터 부족 → 통계 추정값 반환
