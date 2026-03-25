@@ -46,20 +46,12 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   const page           = Math.max(1, parseInt(searchParams.get("page") ?? "1", 10));
   const limit          = Math.min(50, parseInt(searchParams.get("limit") ?? "20", 10));
 
-  // ── 1순위: G2B API 실시간 ─────────────────────────────────────────────────
-  try {
-    const g2bItems = await fetchFromG2B();
-    if (g2bItems.length > 0) {
-      // G2B 아이템을 DB에 백그라운드 저장 (상세 페이지 조회를 위해)
-      upsertG2BItemsToDB(g2bItems).catch(e => console.error("[announcements] upsert 실패:", e));
-      return buildG2BResponse(g2bItems, { category, region, minBudget, maxBudget, keyword,
-        contractMethod, deadlineRange, konepsId, prtcptnLmt, ntceKind, sort, page, limit });
-    }
-  } catch (e) {
-    console.error("[announcements] G2B API 실패, DB 폴백:", String(e));
-  }
+  // G2B 최신 데이터 DB에 백그라운드 동기화 (응답에는 사용 안 함)
+  fetchFromG2B()
+    .then(items => { if (items.length > 0) upsertG2BItemsToDB(items).catch(() => {}); })
+    .catch(() => {});
 
-  // ── 2순위: Supabase DB 폴백 ───────────────────────────────────────────────
+  // DB에서 조회 (673K+ 데이터 활용)
   return fetchFromDB({ category, region, minBudget, maxBudget, keyword,
     contractMethod, deadlineRange, konepsId, prtcptnLmt, ntceKind, sort, page, limit });
 }
