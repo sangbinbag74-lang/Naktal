@@ -39,25 +39,29 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   const offset: number = typeof body.offset === "number" ? body.offset : 0;
 
   const pool = getPool();
+  const client = await pool.connect();
 
   try {
+    // statement_timeout 해제 (긴 집계 쿼리 타임아웃 방지)
+    await client.query("SET statement_timeout = 0");
+
     // ── 첫 청크: 테이블 초기화 ────────────────────────────────────────────
     if (offset === 0) {
-      await pool.query('TRUNCATE TABLE "NumberSelectionStat"');
-      await pool.query('TRUNCATE TABLE "OrgBiddingPattern"');
+      await client.query('TRUNCATE TABLE "NumberSelectionStat"');
+      await client.query('TRUNCATE TABLE "OrgBiddingPattern"');
     }
 
     // ── 전체 행 수 확인 (done 판단용) ─────────────────────────────────────
     const {
       rows: [{ count: totalStr }],
-    } = await pool.query(
+    } = await client.query(
       'SELECT COUNT(*) FROM "BidResult" br JOIN "Announcement" a ON a."konepsId" = br."annId"'
     );
     const totalRows = parseInt(totalStr, 10);
     const done = offset + CHUNK_SIZE >= totalRows;
 
     // ── NumberSelectionStat 청크 집계 + upsert (winCount 누적) ────────────
-    await pool.query(
+    await client.query(
       `
       WITH raw AS (
         SELECT
@@ -123,7 +127,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
     if (done) {
       // ── totalCount 보정: 그룹 내 winCount 전체 합산 ───────────────────────
-      await pool.query(`
+      await client.query(`
         UPDATE "NumberSelectionStat" nss
         SET "totalCount" = sub.total
         FROM (
@@ -140,11 +144,11 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
       const {
         rows: [{ count: sc }],
-      } = await pool.query('SELECT COUNT(*) FROM "NumberSelectionStat"');
+      } = await client.query('SELECT COUNT(*) FROM "NumberSelectionStat"');
       statRows = parseInt(sc, 10);
 
       // ── OrgBiddingPattern 전체 SQL 집계 ──────────────────────────────────
-      const { rowCount } = await pool.query(
+      const { rowCount } = await client.query(
         `
         WITH raw AS (
           SELECT a."orgName", br."bidRate"::text AS "bidRate"
@@ -215,6 +219,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     console.error("[rebuild-stat-cache]", err);
     return NextResponse.json({ error: String(err) }, { status: 500 });
   } finally {
+    client.release();
     await pool.end();
   }
 }
