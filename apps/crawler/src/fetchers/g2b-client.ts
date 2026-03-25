@@ -103,6 +103,8 @@ export async function fetchAnnouncementPage(params: {
   }
   const { header, body } = data.response;
 
+  // 코드 07 = 입력범위값 초과 → 페이지 끝으로 처리 (더 이상 데이터 없음)
+  if (header.resultCode === "07") return { items: [], totalCount: 0 };
   if (header.resultCode !== "00")
     throw new Error(`G2B API 오류 코드: ${header.resultCode} - ${header.resultMsg}`);
 
@@ -136,6 +138,8 @@ export async function fetchBidResultPage(params: {
   }
   const { header, body } = data.response;
 
+  // 코드 07 = 입력범위값 초과 → 페이지 끝으로 처리
+  if (header.resultCode === "07") return { items: [], totalCount: 0 };
   if (header.resultCode !== "00")
     throw new Error(`G2B API 오류 코드: ${header.resultCode} - ${header.resultMsg}`);
 
