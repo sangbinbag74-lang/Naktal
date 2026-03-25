@@ -63,7 +63,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   await supabase.from("User").update({ plan: "FREE" }).eq("id", (sub as { userId: string }).userId);
 
   await writeAdminLog({
-    adminId: guard.adminId,
+    adminId: "partner",
     action: "SUBSCRIPTION_CANCEL",
     targetId: body.subscriptionId,
     before: sub,

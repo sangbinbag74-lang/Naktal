@@ -51,7 +51,7 @@ export async function PATCH(request: NextRequest): Promise<NextResponse> {
   await supabase.from("Announcement").update(updates).eq("id", body.id);
 
   await writeAdminLog({
-    adminId: guard.adminId,
+    adminId: "partner",
     action: `ANNOUNCEMENT_${body.action.toUpperCase()}`,
     targetId: body.id,
     after: updates,

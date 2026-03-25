@@ -56,7 +56,7 @@ export async function PATCH(request: NextRequest, { params }: Params): Promise<N
   }
 
   await writeAdminLog({
-    adminId: guard.adminId,
+    adminId: "partner",
     action: "USER_UPDATE",
     targetId: id,
     before,
@@ -78,7 +78,7 @@ export async function POST(request: NextRequest, { params }: Params): Promise<Ne
   if (body.action === "deactivate") {
     await supabase.from("User").update({ isActive: false }).eq("id", id);
     await writeAdminLog({
-      adminId: guard.adminId,
+      adminId: "partner",
       action: "USER_DEACTIVATE",
       targetId: id,
       reason: body.reason,
@@ -89,7 +89,7 @@ export async function POST(request: NextRequest, { params }: Params): Promise<Ne
   if (body.action === "activate") {
     await supabase.from("User").update({ isActive: true }).eq("id", id);
     await writeAdminLog({
-      adminId: guard.adminId,
+      adminId: "partner",
       action: "USER_ACTIVATE",
       targetId: id,
       reason: body.reason,
