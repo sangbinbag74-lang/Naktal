@@ -167,7 +167,9 @@ async function fetchFromDB(opts: Record<string, string | number>): Promise<NextR
   const nowIso = now.toISOString();
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let q: any = admin.from("Announcement").select("*", { count: "exact" });
+  let q: any = admin.from("Announcement").select(
+    "id,konepsId,title,orgName,budget,deadline,category,region,createdAt,rawJson"
+  );
 
   if (category)       q = q.or(`category.ilike.%${category}%,title.ilike.%${category}%`);
   if (region)         q = q.filter("rawJson->>ntceInsttAddr", "ilike", `%${region}%`);
@@ -179,8 +181,7 @@ async function fetchFromDB(opts: Record<string, string | number>): Promise<NextR
   if (prtcptnLmt)     q = q.filter("rawJson->>prtcptnLmtNm", "ilike", `%${prtcptnLmt}%`);
   if (ntceKind)       q = q.filter("rawJson->>ntceKindNm", "ilike", `%${ntceKind}%`);
 
-  // 취소 공고 항상 제외 (JSONB 경로는 .filter + "not.ilike" 사용)
-  q = q.filter("rawJson->>ntceKindNm", "not.ilike", "%취소%");
+  // 취소 공고 제외: deadline 미래 필터로 대부분 처리됨 (JSONB full scan 방지)
 
   if (deadlineRange === "active") {
     // 진행중(기본값): 마감일 미래인 공고만
@@ -196,15 +197,19 @@ async function fetchFromDB(opts: Record<string, string | number>): Promise<NextR
   q = sort === "deadline"
     ? q.order("deadline", { ascending: true })
     : q.order("createdAt", { ascending: false });
-  q = q.range(offset, offset + limit - 1);
+  // limit+1개 가져와서 hasMore 판단 (count 쿼리 제거로 타임아웃 방지)
+  q = q.range(offset, offset + limit);
 
-  const { data, count, error } = await q;
+  const { data, error } = await q;
   if (error) {
     console.error("[announcements DB]", error.message, error.hint, error.details);
     return NextResponse.json({ data: [], total: 0, hasMore: false, page, limit, error: error.message });
   }
+  const rows = data ?? [];
+  const hasMore = rows.length > limit;
   return NextResponse.json({
-    data: data ?? [], total: count ?? 0,
-    hasMore: offset + limit < (count ?? 0), page, limit,
+    data: hasMore ? rows.slice(0, limit) : rows,
+    total: offset + rows.length,
+    hasMore, page, limit,
   });
 }
