@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 
 interface RecommendResult {
@@ -88,12 +88,26 @@ export function NumberAnalysisSection({ annId, isClosed, bidMethod }: Props) {
   const [result, setResult] = useState<RecommendResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [upgradeUrl, setUpgradeUrl] = useState<string | null>(null);
+  const [showForm, setShowForm] = useState(true);
+
+  const cacheKey = `naktal_analysis_${annId}`;
+
+  // 마운트 시 캐시된 결과 복원
+  useEffect(() => {
+    try {
+      const cached = localStorage.getItem(cacheKey);
+      if (cached) {
+        const parsed = JSON.parse(cached) as RecommendResult;
+        setResult(parsed);
+        setShowForm(false);
+      }
+    } catch { /* 무시 */ }
+  }, [cacheKey]);
 
   async function handleAnalyze() {
     if (loading || isClosed) return;
     setLoading(true);
     setError(null);
-    setResult(null);
     setUpgradeUrl(null);
     try {
       const res = await fetch("/api/strategy/recommend", {
@@ -115,11 +129,21 @@ export function NumberAnalysisSection({ annId, isClosed, bidMethod }: Props) {
         return;
       }
       setResult(data);
+      setShowForm(false);
+      try { localStorage.setItem(cacheKey, JSON.stringify(data)); } catch { /* 무시 */ }
     } catch {
       setError("네트워크 오류가 발생했습니다. 다시 시도해주세요.");
     } finally {
       setLoading(false);
     }
+  }
+
+  function handleReanalyze() {
+    setResult(null);
+    setShowForm(true);
+    setError(null);
+    setUpgradeUrl(null);
+    try { localStorage.removeItem(cacheKey); } catch { /* 무시 */ }
   }
 
   return (
@@ -137,7 +161,7 @@ export function NumberAnalysisSection({ annId, isClosed, bidMethod }: Props) {
         </div>
       )}
 
-      {!isClosed && (
+      {!isClosed && showForm && (
         <div style={{ background: "#fff", borderRadius: 12, border: "1px solid #E8ECF2", padding: "18px 20px" }}>
           <div style={{ display: "flex", gap: 12, alignItems: "flex-end" }}>
             <div style={{ flex: 1 }}>
@@ -202,11 +226,25 @@ export function NumberAnalysisSection({ annId, isClosed, bidMethod }: Props) {
             </div>
           )}
 
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-            <div style={{ fontSize: 14, fontWeight: 700, color: "#0F172A" }}>추천 번호 조합</div>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, flexWrap: "wrap" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <div style={{ fontSize: 14, fontWeight: 700, color: "#0F172A" }}>추천 번호 조합</div>
+              {!isClosed && (
+                <button
+                  onClick={handleReanalyze}
+                  style={{
+                    fontSize: 12, color: "#1B3A6B", fontWeight: 600,
+                    background: "#EEF2FF", border: "none", borderRadius: 6,
+                    padding: "3px 10px", cursor: "pointer",
+                  }}
+                >
+                  다시 분석하기
+                </button>
+              )}
+            </div>
             <div style={{ fontSize: 12, color: "#94A3B8" }}>
               분석 샘플 {result.sampleSize.toLocaleString()}건 · {result.modelVersion}
-              {result.limit > 0 && (
+              {result.limit > 0 && result.limit !== Infinity && (
                 <span style={{ marginLeft: 8, color: result.used >= result.limit ? "#DC2626" : "#64748B" }}>
                   이번 달 {result.used}/{result.limit}회
                 </span>

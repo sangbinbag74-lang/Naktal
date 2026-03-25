@@ -1,5 +1,5 @@
 import { Plan } from "@naktal/types";
-import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/server";
 
 export enum Feature {
   CORE1_NUMBER_RECOMMEND    = "CORE1_NUMBER_RECOMMEND",
@@ -56,7 +56,7 @@ export async function checkUsageLimit(
   const now = new Date();
   const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
 
-  const supabase = await createClient();
+  const supabase = createAdminClient();
   const { count } = await supabase
     .from("NumberRecommendation")
     .select("*", { count: "exact", head: true })
