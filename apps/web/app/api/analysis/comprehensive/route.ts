@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createServerClient } from "@/lib/supabase/server";
-import { createAdminClient } from "@/lib/supabase/server";
+import { createClient, createAdminClient } from "@/lib/supabase/server";
 import { predictOptimalBid, analyzeCompetition, classifyBudget } from "@/lib/core1/sajung-engine";
 import { recommendNumbers } from "@/lib/core1/frequency-engine";
 import { isMultiplePriceBid } from "@/lib/bid-utils";
@@ -9,7 +8,7 @@ const CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24시간
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
   // 인증
-  const supabase = createServerClient();
+  const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
