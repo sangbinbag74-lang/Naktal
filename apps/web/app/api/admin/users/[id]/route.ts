@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin, writeAdminLog } from "@/lib/admin-guard";
-import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/server";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -9,7 +9,7 @@ export async function GET(request: NextRequest, { params }: Params): Promise<Nex
   if (guard instanceof NextResponse) return guard;
 
   const { id } = await params;
-  const supabase = await createClient();
+  const supabase = createAdminClient();
 
   const [userRes, alertsRes, subRes] = await Promise.all([
     supabase.from("User").select("*").eq("id", id).single(),
@@ -29,7 +29,7 @@ export async function PATCH(request: NextRequest, { params }: Params): Promise<N
   if (guard instanceof NextResponse) return guard;
 
   const { id } = await params;
-  const supabase = await createClient();
+  const supabase = createAdminClient();
   const body = (await request.json()) as {
     plan?: string;
     adminMemo?: string;
@@ -72,7 +72,7 @@ export async function POST(request: NextRequest, { params }: Params): Promise<Ne
   if (guard instanceof NextResponse) return guard;
 
   const { id } = await params;
-  const supabase = await createClient();
+  const supabase = createAdminClient();
   const body = (await request.json()) as { action: string; reason?: string };
 
   if (body.action === "deactivate") {

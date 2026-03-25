@@ -12,8 +12,6 @@ interface CrawlLogRow {
   errors: string | null;
 }
 
-const ADMIN_SECRET = process.env.NEXT_PUBLIC_ADMIN_SECRET ?? "";
-
 // KST 기준 다음 자동 실행 시각 계산
 function nextCrawlTime(): string {
   const now = new Date();
@@ -26,6 +24,11 @@ function nextCrawlTime(): string {
   nextDate.setUTCHours(nextHour, 0, 0, 0);
   return new Date(nextDate.getTime() - kstOffset * 60 * 1000).toLocaleString("ko-KR", { timeZone: "Asia/Seoul" });
 }
+
+const inputStyle: React.CSSProperties = {
+  height: 36, padding: "0 12px", fontSize: 13, border: "1px solid #E2E8F0",
+  borderRadius: 8, background: "#fff", color: "#0F172A", outline: "none",
+};
 
 export default function AdminCrawlPage() {
   const [logs, setLogs] = useState<CrawlLogRow[]>([]);
@@ -56,7 +59,7 @@ export default function AdminCrawlPage() {
     try {
       const res = await fetch("/api/admin/crawl", {
         method: "POST",
-        headers: { "Content-Type": "application/json", "x-admin-secret": ADMIN_SECRET },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ type: crawlType, pages: parseInt(pages, 10) }),
       });
       const data = (await res.json()) as { ok?: boolean; message?: string };
@@ -75,60 +78,68 @@ export default function AdminCrawlPage() {
     {
       key: "status", label: "상태",
       render: (r: CrawlLogRow) => (
-        <span className={r.status === "SUCCESS" ? "text-green-400" : r.status === "FAILED" ? "text-red-400" : "text-yellow-400"}>
+        <span style={{
+          fontSize: 11, fontWeight: 600, padding: "2px 8px", borderRadius: 4,
+          background: r.status === "SUCCESS" ? "#DCFCE7" : r.status === "FAILED" ? "#FEE2E2" : "#FEF9C3",
+          color: r.status === "SUCCESS" ? "#166534" : r.status === "FAILED" ? "#991B1B" : "#854D0E",
+        }}>
           {r.status}
         </span>
       ),
     },
     { key: "count", label: "수집 건수" },
-    { key: "errors", label: "오류", render: (r: CrawlLogRow) => r.errors ? <span className="text-red-400 text-xs">{r.errors.slice(0, 60)}</span> : "-" },
+    { key: "errors", label: "오류", render: (r: CrawlLogRow) => r.errors ? <span style={{ color: "#DC2626", fontSize: 12 }}>{r.errors.slice(0, 60)}</span> : "-" },
   ] as Parameters<typeof AdminTable>[0]["columns"];
 
   return (
-    <div className="space-y-6">
-      <h1 className="text-xl font-bold text-white">크롤링 관리</h1>
+    <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+      <h1 style={{ fontSize: 18, fontWeight: 700, color: "#0F172A" }}>크롤링 관리</h1>
 
       {/* 다음 자동 실행 */}
-      <div className="bg-white/5 border border-white/10 rounded-lg p-4 flex items-center justify-between">
+      <div style={{ background: "#fff", border: "1px solid #E8ECF2", borderRadius: 12, padding: "16px 18px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <div>
-          <p className="text-xs text-white/50">다음 자동 실행 예정</p>
-          <p className="text-sm text-white font-medium mt-0.5">{nextCrawlTime()} (KST)</p>
+          <p style={{ fontSize: 12, color: "#64748B" }}>다음 자동 실행 예정</p>
+          <p style={{ fontSize: 14, fontWeight: 600, color: "#0F172A", marginTop: 4 }}>{nextCrawlTime()} (KST)</p>
         </div>
-        <span className="text-xs text-white/30">매일 06:00 / 12:00 / 18:00</span>
+        <span style={{ fontSize: 12, color: "#94A3B8" }}>매일 06:00 / 12:00 / 18:00</span>
       </div>
 
       {/* 수동 실행 */}
-      <div className="bg-white/5 border border-white/10 rounded-lg p-5 space-y-4">
-        <h2 className="text-sm font-semibold text-white/70">수동 크롤링 실행</h2>
-        <div className="flex gap-3 items-end">
+      <div style={{ background: "#fff", border: "1px solid #E8ECF2", borderRadius: 12, padding: "18px 20px" }}>
+        <h2 style={{ fontSize: 13, fontWeight: 600, color: "#475569", marginBottom: 14 }}>수동 크롤링 실행</h2>
+        <div style={{ display: "flex", gap: 12, alignItems: "flex-end" }}>
           <div>
-            <label className="block text-xs text-white/50 mb-1">유형</label>
-            <select value={crawlType} onChange={(e) => setCrawlType(e.target.value)}
-              className="bg-white/5 border border-white/10 rounded-md px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <label style={{ display: "block", fontSize: 12, color: "#64748B", marginBottom: 5 }}>유형</label>
+            <select value={crawlType} onChange={(e) => setCrawlType(e.target.value)} style={inputStyle}>
               <option value="all">전체</option>
               <option value="announcement">공고</option>
               <option value="bid-result">낙찰 결과</option>
             </select>
           </div>
           <div>
-            <label className="block text-xs text-white/50 mb-1">페이지 수</label>
+            <label style={{ display: "block", fontSize: 12, color: "#64748B", marginBottom: 5 }}>페이지 수</label>
             <input type="number" value={pages} onChange={(e) => setPages(e.target.value)} min={1} max={20}
-              className="w-20 bg-white/5 border border-white/10 rounded-md px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500" />
+              style={{ ...inputStyle, width: 80 }} />
           </div>
           <button onClick={handleRun} disabled={running}
-            className="px-5 py-2 text-sm font-medium bg-blue-600 hover:bg-blue-700 text-white rounded-md disabled:opacity-40 transition-colors flex items-center gap-2">
-            {running && <span className="inline-block w-3 h-3 border-2 border-white/40 border-t-white rounded-full animate-spin" />}
+            style={{
+              height: 36, padding: "0 20px", background: running ? "#94A3B8" : "#1B3A6B",
+              color: "#fff", borderRadius: 8, fontSize: 13, fontWeight: 600,
+              border: "none", cursor: running ? "not-allowed" : "pointer", display: "flex", alignItems: "center", gap: 6,
+            }}>
+            {running && <span style={{ display: "inline-block", width: 12, height: 12, border: "2px solid rgba(255,255,255,0.4)", borderTopColor: "#fff", borderRadius: "50%", animation: "spin 0.8s linear infinite" }} />}
             {running ? "실행 중..." : "크롤링 시작"}
           </button>
         </div>
-        {lastResult && <p className="text-sm text-white/70">{lastResult}</p>}
+        {lastResult && <p style={{ fontSize: 13, color: "#475569", marginTop: 12 }}>{lastResult}</p>}
       </div>
 
       {/* 로그 테이블 */}
       <div>
-        <div className="flex items-center justify-between mb-3">
-          <h2 className="text-sm font-semibold text-white/70">최근 크롤링 로그 (50건)</h2>
-          <button onClick={fetchLogs} disabled={loading} className="text-xs text-blue-400 hover:text-blue-300">
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+          <h2 style={{ fontSize: 13, fontWeight: 600, color: "#475569" }}>최근 크롤링 로그 (50건)</h2>
+          <button onClick={fetchLogs} disabled={loading}
+            style={{ fontSize: 12, color: "#1B3A6B", background: "none", border: "none", cursor: "pointer" }}>
             {loading ? "로딩 중..." : "새로고침"}
           </button>
         </div>

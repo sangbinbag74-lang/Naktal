@@ -18,47 +18,60 @@ export function AdminTable<T extends Record<string, unknown>>({
   keyField,
 }: AdminTableProps<T>) {
   return (
-    <div className="overflow-x-auto rounded-lg border border-white/10">
-      <table className="w-full text-sm">
-        <thead>
-          <tr className="border-b border-white/10 bg-white/5">
-            {columns.map((col) => (
-              <th
-                key={String(col.key)}
-                className="px-4 py-3 text-left text-xs font-semibold text-white/60 uppercase tracking-wider"
-              >
-                {col.label}
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {data.length === 0 && (
-            <tr>
-              <td
-                colSpan={columns.length}
-                className="px-4 py-8 text-center text-white/40"
-              >
-                데이터가 없습니다.
-              </td>
-            </tr>
-          )}
-          {data.map((row) => (
-            <tr
-              key={String(row[keyField])}
-              className="border-b border-white/5 hover:bg-white/5 transition-colors"
-            >
+    <div style={{ background: "#fff", border: "1px solid #E8ECF2", borderRadius: 10, overflow: "hidden" }}>
+      <div style={{ overflowX: "auto" }}>
+        <table style={{ width: "100%", fontSize: 13, borderCollapse: "collapse" }}>
+          <thead>
+            <tr style={{ background: "#F8F9FB", borderBottom: "1px solid #E8ECF2" }}>
               {columns.map((col) => (
-                <td key={String(col.key)} className="px-4 py-3 text-white/80">
-                  {col.render
-                    ? col.render(row)
-                    : String(row[col.key as keyof T] ?? "-")}
-                </td>
+                <th
+                  key={String(col.key)}
+                  style={{
+                    padding: "10px 14px",
+                    textAlign: "left",
+                    fontSize: 11,
+                    fontWeight: 600,
+                    color: "#64748B",
+                    textTransform: "uppercase",
+                    letterSpacing: "0.05em",
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  {col.label}
+                </th>
               ))}
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {data.length === 0 && (
+              <tr>
+                <td
+                  colSpan={columns.length}
+                  style={{ padding: "32px 14px", textAlign: "center", color: "#94A3B8" }}
+                >
+                  데이터가 없습니다.
+                </td>
+              </tr>
+            )}
+            {data.map((row) => (
+              <tr
+                key={String(row[keyField])}
+                style={{ borderBottom: "1px solid #F1F5F9", cursor: "default" }}
+                onMouseEnter={(e) => { (e.currentTarget as HTMLTableRowElement).style.background = "#F8FAFC"; }}
+                onMouseLeave={(e) => { (e.currentTarget as HTMLTableRowElement).style.background = ""; }}
+              >
+                {columns.map((col) => (
+                  <td key={String(col.key)} style={{ padding: "10px 14px", color: "#1E293B", verticalAlign: "middle" }}>
+                    {col.render
+                      ? col.render(row)
+                      : String(row[col.key as keyof T] ?? "-")}
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }

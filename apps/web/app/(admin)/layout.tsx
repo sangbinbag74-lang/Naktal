@@ -20,22 +20,20 @@ export default async function AdminLayout({
   if (!isAdmin) redirect("/admin-login");
 
   return (
-    <div className="flex min-h-screen bg-[#0F172A] text-white">
+    <div className="flex min-h-screen" style={{ background: "#F0F2F5" }}>
       {/* 사이드바 */}
-      <aside className="flex flex-col w-60 border-r border-white/10">
-        <div className="flex items-center gap-2 h-16 px-5 border-b border-white/10">
-          <span className="text-lg font-bold tracking-wider">NAKTAL</span>
-          <span className="text-xs font-semibold bg-red-600 text-white px-2 py-0.5 rounded">
-            ADMIN
-          </span>
+      <aside className="flex flex-col w-56 shrink-0" style={{ background: "#0F1E3C" }}>
+        <div className="flex items-center gap-2 h-14 px-4 border-b border-white/10">
+          <span className="text-base font-bold tracking-wider text-white">NAKTAL</span>
+          <span className="text-xs font-bold bg-red-600 text-white px-1.5 py-0.5 rounded">ADMIN</span>
         </div>
 
-        <nav className="flex-1 px-3 py-5 space-y-1">
+        <nav className="flex-1 px-2 py-3 space-y-0.5">
           {adminNav.map((item) => (
             <Link
               key={item.href}
               href={item.href}
-              className="flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium text-white/70 hover:bg-white/10 hover:text-white transition-colors"
+              className="flex items-center gap-2.5 px-3 py-2 rounded-md text-sm font-medium text-white/70 hover:bg-white/10 hover:text-white transition-colors"
             >
               <span>{item.icon}</span>
               <span>{item.label}</span>
@@ -43,22 +41,21 @@ export default async function AdminLayout({
           ))}
         </nav>
 
-        <div className="px-5 py-4 border-t border-white/10 space-y-2">
+        <div className="px-4 py-4 border-t border-white/10 space-y-2">
           <Link
             href="/dashboard"
-            className="flex items-center gap-2 text-xs text-white/50 hover:text-white transition-colors"
+            className="flex items-center gap-1.5 text-xs text-white/50 hover:text-white transition-colors"
           >
-            ← 일반 서비스로 돌아가기
+            ← 서비스로 돌아가기
           </Link>
           <AdminLogoutButton />
         </div>
       </aside>
 
       {/* 메인 */}
-      <div className="flex-1 flex flex-col">
-        {/* 상단 바 */}
-        <header className="flex items-center h-14 px-6 border-b border-white/10 bg-red-900/20">
-          <span className="text-sm font-semibold text-red-400">
+      <div className="flex-1 flex flex-col min-w-0">
+        <header className="flex items-center h-10 px-6" style={{ background: "#FFF1F1", borderBottom: "1px solid #FECACA" }}>
+          <span className="text-xs font-medium text-red-600">
             ⚠️ ADMIN MODE — 모든 조작은 AdminLog에 기록됩니다
           </span>
         </header>

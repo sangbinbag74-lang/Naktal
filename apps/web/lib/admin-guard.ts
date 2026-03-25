@@ -33,8 +33,8 @@ export async function writeAdminLog(opts: {
   after?: unknown;
   reason?: string;
 }): Promise<void> {
-  const { createClient } = await import("@/lib/supabase/server");
-  const supabase = await createClient();
+  const { createAdminClient } = await import("@/lib/supabase/server");
+  const supabase = createAdminClient();
   await supabase.from("AdminLog").insert({
     adminId: opts.adminId,
     action: opts.action,

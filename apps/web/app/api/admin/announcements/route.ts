@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin, writeAdminLog } from "@/lib/admin-guard";
-import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/server";
 
 export async function GET(request: NextRequest): Promise<NextResponse> {
   const guard = await requireAdmin(request);
   if (guard instanceof NextResponse) return guard;
 
-  const supabase = await createClient();
+  const supabase = createAdminClient();
   const { searchParams } = new URL(request.url);
   const q = searchParams.get("q") ?? "";
   const page = parseInt(searchParams.get("page") ?? "1", 10);
@@ -34,7 +34,7 @@ export async function PATCH(request: NextRequest): Promise<NextResponse> {
   const guard = await requireAdmin(request);
   if (guard instanceof NextResponse) return guard;
 
-  const supabase = await createClient();
+  const supabase = createAdminClient();
   const body = (await request.json()) as {
     id: string;
     action: "delete" | "restore" | "pin" | "unpin";

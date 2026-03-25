@@ -15,8 +15,12 @@ interface UserRow {
   createdAt: string;
 }
 
-const ADMIN_SECRET = process.env.NEXT_PUBLIC_ADMIN_SECRET ?? "";
 const PLAN_LABELS: Record<string, string> = { FREE: "무료", STANDARD: "스탠다드", PRO: "프로" };
+const PLAN_STYLE: Record<string, { background: string; color: string }> = {
+  PRO:      { background: "#EDE9FE", color: "#6D28D9" },
+  STANDARD: { background: "#DBEAFE", color: "#1D4ED8" },
+  FREE:     { background: "#F1F5F9", color: "#64748B" },
+};
 
 export default function AdminUsersPage() {
   const [data, setData] = useState<UserRow[]>([]);
@@ -29,9 +33,7 @@ export default function AdminUsersPage() {
   const fetchData = useCallback(async () => {
     setLoading(true);
     const params = new URLSearchParams({ page: String(page), q, plan: planFilter });
-    const res = await fetch(`/api/admin/users?${params}`, {
-      headers: { "x-admin-secret": ADMIN_SECRET },
-    });
+    const res = await fetch(`/api/admin/users?${params}`);
     const json = (await res.json()) as { data: UserRow[]; total: number };
     setData(json.data ?? []);
     setTotal(json.total ?? 0);
@@ -40,24 +42,37 @@ export default function AdminUsersPage() {
 
   useEffect(() => { void fetchData(); }, [fetchData]);
 
+  const inputStyle: React.CSSProperties = {
+    height: 36, padding: "0 12px", fontSize: 13, border: "1px solid #E2E8F0",
+    borderRadius: 8, background: "#fff", color: "#0F172A", outline: "none",
+  };
+
   const columns = [
     { key: "bizNo", label: "사업자번호" },
     { key: "bizName", label: "상호명" },
     { key: "ownerName", label: "대표자" },
     {
       key: "plan", label: "플랜",
-      render: (r: UserRow) => (
-        <span className={`text-xs px-2 py-0.5 rounded-full ${r.plan === "PRO" ? "bg-purple-900 text-purple-300" : r.plan === "STANDARD" ? "bg-blue-900 text-blue-300" : "bg-white/10 text-white/60"}`}>
-          {PLAN_LABELS[r.plan] ?? r.plan}
-        </span>
-      ),
+      render: (r: UserRow) => {
+        const s = PLAN_STYLE[r.plan] ?? PLAN_STYLE.FREE;
+        return (
+          <span style={{ fontSize: 11, fontWeight: 600, padding: "2px 8px", borderRadius: 4, ...s }}>
+            {PLAN_LABELS[r.plan] ?? r.plan}
+          </span>
+        );
+      },
     },
-    { key: "isActive", label: "상태", render: (r: UserRow) => r.isActive ? <span className="text-green-400">활성</span> : <span className="text-red-400">비활성</span> },
+    {
+      key: "isActive", label: "상태",
+      render: (r: UserRow) => r.isActive
+        ? <span style={{ color: "#16A34A", fontSize: 12, fontWeight: 600 }}>활성</span>
+        : <span style={{ color: "#DC2626", fontSize: 12, fontWeight: 600 }}>비활성</span>,
+    },
     { key: "createdAt", label: "가입일", render: (r: UserRow) => r.createdAt.slice(0, 10) },
     {
       key: "actions", label: "관리",
       render: (r: UserRow) => (
-        <Link href={`/admin/users/${r.id}`} className="text-blue-400 hover:text-blue-300 text-xs underline">
+        <Link href={`/admin/users/${r.id}`} style={{ color: "#1B3A6B", fontSize: 12, textDecoration: "underline" }}>
           상세
         </Link>
       ),
@@ -65,28 +80,29 @@ export default function AdminUsersPage() {
   ] as Parameters<typeof AdminTable>[0]["columns"];
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h1 className="text-xl font-bold text-white">사용자 관리 <span className="text-white/40 text-sm font-normal">({total.toLocaleString()}명)</span></h1>
+    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <h1 style={{ fontSize: 18, fontWeight: 700, color: "#0F172A" }}>
+          사용자 관리 <span style={{ fontSize: 13, color: "#94A3B8", fontWeight: 400 }}>({total.toLocaleString()}명)</span>
+        </h1>
         <CsvDownload
           data={data as unknown as Record<string, unknown>[]}
           filename={`users-${new Date().toISOString().slice(0, 10)}.csv`}
         />
       </div>
 
-      {/* 필터 */}
-      <div className="flex gap-3">
+      <div style={{ display: "flex", gap: 10 }}>
         <input
           type="text"
           value={q}
           onChange={(e) => { setQ(e.target.value); setPage(1); }}
           placeholder="사업자번호 / 상호명 검색"
-          className="bg-white/5 border border-white/10 rounded-md px-3 py-2 text-sm text-white placeholder-white/30 focus:outline-none focus:ring-2 focus:ring-blue-500 w-56"
+          style={{ ...inputStyle, width: 220 }}
         />
         <select
           value={planFilter}
           onChange={(e) => { setPlanFilter(e.target.value); setPage(1); }}
-          className="bg-white/5 border border-white/10 rounded-md px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+          style={inputStyle}
         >
           <option value="">전체 플랜</option>
           <option value="FREE">무료</option>
@@ -96,7 +112,7 @@ export default function AdminUsersPage() {
       </div>
 
       {loading ? (
-        <div className="text-white/40 py-10 text-center">로딩 중...</div>
+        <div style={{ color: "#94A3B8", padding: "40px 0", textAlign: "center" }}>로딩 중...</div>
       ) : (
         <AdminTable
           columns={columns}
@@ -105,12 +121,17 @@ export default function AdminUsersPage() {
         />
       )}
 
-      {/* 페이지네이션 */}
-      <div className="flex items-center justify-between text-sm text-white/50">
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", fontSize: 13, color: "#64748B" }}>
         <span>{(page - 1) * 50 + 1}–{Math.min(page * 50, total)} / {total}명</span>
-        <div className="flex gap-2">
-          <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page === 1} className="px-3 py-1.5 bg-white/10 rounded disabled:opacity-30 hover:bg-white/20">이전</button>
-          <button onClick={() => setPage((p) => p + 1)} disabled={page * 50 >= total} className="px-3 py-1.5 bg-white/10 rounded disabled:opacity-30 hover:bg-white/20">다음</button>
+        <div style={{ display: "flex", gap: 8 }}>
+          <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page === 1}
+            style={{ padding: "6px 14px", background: "#fff", border: "1px solid #E2E8F0", borderRadius: 6, fontSize: 13, cursor: page === 1 ? "not-allowed" : "pointer", opacity: page === 1 ? 0.4 : 1 }}>
+            이전
+          </button>
+          <button onClick={() => setPage((p) => p + 1)} disabled={page * 50 >= total}
+            style={{ padding: "6px 14px", background: "#fff", border: "1px solid #E2E8F0", borderRadius: 6, fontSize: 13, cursor: page * 50 >= total ? "not-allowed" : "pointer", opacity: page * 50 >= total ? 0.4 : 1 }}>
+            다음
+          </button>
         </div>
       </div>
     </div>

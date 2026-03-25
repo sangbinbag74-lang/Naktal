@@ -7,13 +7,18 @@ interface AdminStatCardProps {
 
 export function AdminStatCard({ title, value, sub, icon }: AdminStatCardProps) {
   return (
-    <div className="bg-white/5 border border-white/10 rounded-lg p-4 space-y-2">
-      <div className="flex items-center justify-between">
-        <p className="text-sm text-white/60">{title}</p>
-        {icon && <span className="text-xl">{icon}</span>}
+    <div style={{
+      background: "#fff",
+      border: "1px solid #E8ECF2",
+      borderRadius: 12,
+      padding: "16px 18px",
+    }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+        <p style={{ fontSize: 12, color: "#64748B", fontWeight: 500 }}>{title}</p>
+        {icon && <span style={{ fontSize: 18 }}>{icon}</span>}
       </div>
-      <p className="text-2xl font-bold text-white">{value}</p>
-      {sub && <p className="text-xs text-white/40">{sub}</p>}
+      <p style={{ fontSize: 22, fontWeight: 700, color: "#0F172A" }}>{value}</p>
+      {sub && <p style={{ fontSize: 11, color: "#94A3B8", marginTop: 4 }}>{sub}</p>}
     </div>
   );
 }

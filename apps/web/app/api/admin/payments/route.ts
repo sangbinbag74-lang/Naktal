@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin, writeAdminLog } from "@/lib/admin-guard";
-import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/server";
 
 const PLAN_PRICES: Record<string, number> = { STANDARD: 99000, PRO: 199000 };
 
@@ -8,7 +8,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   const guard = await requireAdmin(request);
   if (guard instanceof NextResponse) return guard;
 
-  const supabase = await createClient();
+  const supabase = createAdminClient();
   const { searchParams } = new URL(request.url);
   const status = searchParams.get("status") ?? "";
   const plan = searchParams.get("plan") ?? "";
@@ -48,7 +48,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   const guard = await requireAdmin(request);
   if (guard instanceof NextResponse) return guard;
 
-  const supabase = await createClient();
+  const supabase = createAdminClient();
   const body = (await request.json()) as { subscriptionId: string; reason?: string };
 
   const { data: sub } = await supabase
