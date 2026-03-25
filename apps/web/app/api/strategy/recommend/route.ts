@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { randomUUID } from "crypto";
 import { createClient, createAdminClient } from "@/lib/supabase/server";
 import { Feature, checkUsageLimit } from "@/lib/plan-guard";
 import { recommendNumbers } from "@/lib/core1/frequency-engine";
@@ -112,7 +113,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
   // 추천 이력 저장
   const { error: insertError } = await admin.from("NumberRecommendation").insert({
-    id: crypto.randomUUID(),
+    id: randomUUID(),
     userId: dbUser.id,
     annId: ann.id,
     category: ann.category,
