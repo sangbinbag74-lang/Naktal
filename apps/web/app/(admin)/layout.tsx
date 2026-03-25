@@ -20,31 +20,54 @@ export default async function AdminLayout({
   if (!isAdmin) redirect("/admin-login");
 
   return (
-    <div className="flex min-h-screen" style={{ background: "#F0F2F5" }}>
+    <div style={{ display: "flex", minHeight: "100vh", background: "#F0F2F5" }}>
       {/* 사이드바 */}
-      <aside className="flex flex-col w-56 shrink-0" style={{ background: "#0F1E3C" }}>
-        <div className="flex items-center gap-2 h-14 px-4 border-b border-white/10">
-          <span className="text-base font-bold tracking-wider text-white">NAKTAL</span>
-          <span className="text-xs font-bold bg-red-600 text-white px-1.5 py-0.5 rounded">ADMIN</span>
+      <aside style={{
+        width: 220, flexShrink: 0,
+        background: "#0F1E3C",
+        display: "flex", flexDirection: "column",
+      }}>
+        {/* 로고 */}
+        <div style={{
+          height: 56, padding: "0 16px",
+          display: "flex", alignItems: "center", gap: 8,
+          borderBottom: "1px solid rgba(255,255,255,0.1)",
+        }}>
+          <span style={{ fontSize: 15, fontWeight: 700, color: "#fff", letterSpacing: "0.05em" }}>NAKTAL</span>
+          <span style={{
+            fontSize: 10, fontWeight: 700, background: "#DC2626",
+            color: "#fff", padding: "2px 6px", borderRadius: 4,
+          }}>ADMIN</span>
         </div>
 
-        <nav className="flex-1 px-2 py-3 space-y-0.5">
+        {/* 네비게이션 */}
+        <nav style={{ flex: 1, padding: "12px 8px", display: "flex", flexDirection: "column", gap: 2 }}>
           {adminNav.map((item) => (
             <Link
               key={item.href}
               href={item.href}
-              className="flex items-center gap-2.5 px-3 py-2 rounded-md text-sm font-medium text-white/70 hover:bg-white/10 hover:text-white transition-colors"
+              style={{
+                display: "flex", alignItems: "center", gap: 10,
+                padding: "9px 12px", borderRadius: 8,
+                fontSize: 13, fontWeight: 500, color: "rgba(255,255,255,0.7)",
+                textDecoration: "none",
+              }}
             >
-              <span>{item.icon}</span>
+              <span style={{ fontSize: 16, lineHeight: 1 }}>{item.icon}</span>
               <span>{item.label}</span>
             </Link>
           ))}
         </nav>
 
-        <div className="px-4 py-4 border-t border-white/10 space-y-2">
+        {/* 하단 */}
+        <div style={{
+          padding: "12px 16px 16px",
+          borderTop: "1px solid rgba(255,255,255,0.1)",
+          display: "flex", flexDirection: "column", gap: 10,
+        }}>
           <Link
             href="/dashboard"
-            className="flex items-center gap-1.5 text-xs text-white/50 hover:text-white transition-colors"
+            style={{ fontSize: 12, color: "rgba(255,255,255,0.45)", textDecoration: "none" }}
           >
             ← 서비스로 돌아가기
           </Link>
@@ -52,15 +75,22 @@ export default async function AdminLayout({
         </div>
       </aside>
 
-      {/* 메인 */}
-      <div className="flex-1 flex flex-col min-w-0">
-        <header className="flex items-center h-10 px-6" style={{ background: "#FFF1F1", borderBottom: "1px solid #FECACA" }}>
-          <span className="text-xs font-medium text-red-600">
-            ⚠️ ADMIN MODE — 모든 조작은 AdminLog에 기록됩니다
-          </span>
-        </header>
+      {/* 메인 영역 */}
+      <div style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0 }}>
+        {/* 경고 바 */}
+        <div style={{
+          height: 40, padding: "0 24px",
+          display: "flex", alignItems: "center",
+          background: "#FFF1F1",
+          borderBottom: "1px solid #FECACA",
+          fontSize: 12, fontWeight: 500, color: "#DC2626",
+          flexShrink: 0,
+        }}>
+          ⚠️ ADMIN MODE — 모든 조작은 AdminLog에 기록됩니다
+        </div>
 
-        <main className="flex-1 p-6 overflow-auto">
+        {/* 콘텐츠 */}
+        <main style={{ flex: 1, padding: 24, overflow: "auto" }}>
           {children}
         </main>
       </div>

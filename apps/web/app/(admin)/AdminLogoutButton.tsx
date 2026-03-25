@@ -9,7 +9,11 @@ export function AdminLogoutButton() {
   return (
     <button
       onClick={handleLogout}
-      className="flex items-center gap-2 text-xs text-red-400/70 hover:text-red-400 transition-colors w-full text-left"
+      style={{
+        fontSize: 12, color: "rgba(248,113,113,0.7)",
+        background: "none", border: "none", cursor: "pointer",
+        textAlign: "left", padding: 0,
+      }}
     >
       로그아웃
     </button>
