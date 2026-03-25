@@ -179,8 +179,8 @@ async function fetchFromDB(opts: Record<string, string | number>): Promise<NextR
   if (prtcptnLmt)     q = q.filter("rawJson->>prtcptnLmtNm", "ilike", `%${prtcptnLmt}%`);
   if (ntceKind)       q = q.filter("rawJson->>ntceKindNm", "ilike", `%${ntceKind}%`);
 
-  // 취소 공고 항상 제외
-  q = q.not("rawJson->>ntceKindNm", "ilike", "%취소%");
+  // 취소 공고 항상 제외 (JSONB 경로는 .filter + "not.ilike" 사용)
+  q = q.filter("rawJson->>ntceKindNm", "not.ilike", "%취소%");
 
   if (deadlineRange === "active") {
     // 진행중(기본값): 마감일 미래인 공고만
@@ -200,8 +200,8 @@ async function fetchFromDB(opts: Record<string, string | number>): Promise<NextR
 
   const { data, count, error } = await q;
   if (error) {
-    console.error("[announcements DB]", error.message);
-    return NextResponse.json({ data: [], total: 0, hasMore: false, page, limit });
+    console.error("[announcements DB]", error.message, error.hint, error.details);
+    return NextResponse.json({ data: [], total: 0, hasMore: false, page, limit, error: error.message });
   }
   return NextResponse.json({
     data: data ?? [], total: count ?? 0,
