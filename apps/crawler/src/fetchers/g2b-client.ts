@@ -98,6 +98,9 @@ export async function fetchAnnouncementPage(params: {
   if (!res.ok) throw new Error(`G2B 공고 API 오류: ${res.status} ${res.statusText}`);
 
   const data = (await res.json()) as G2BResponse<G2BAnnouncement>;
+  if (!data?.response) {
+    throw new Error(`G2B 공고 API 비정상 응답: ${JSON.stringify(data).slice(0, 300)}`);
+  }
   const { header, body } = data.response;
 
   if (header.resultCode !== "00")
@@ -128,6 +131,9 @@ export async function fetchBidResultPage(params: {
   if (!res.ok) throw new Error(`G2B 낙찰결과 API 오류: ${res.status} ${res.statusText}`);
 
   const data = (await res.json()) as G2BResponse<G2BBidResult>;
+  if (!data?.response) {
+    throw new Error(`G2B 낙찰결과 API 비정상 응답: ${JSON.stringify(data).slice(0, 300)}`);
+  }
   const { header, body } = data.response;
 
   if (header.resultCode !== "00")
