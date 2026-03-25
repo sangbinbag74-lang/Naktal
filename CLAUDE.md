@@ -10,27 +10,44 @@
 - isMultiplePriceBid() 함수는 반드시 `@/lib/bid-utils`에서 import
 
 ## 서비스 한 줄 정의
-"이 공고 몇 번 넣어야 해요?"를 데이터로 답하는 유일한 서비스.
+"이 공고에 얼마를 넣어야 낙찰될 확률이 가장 높은가?"를 데이터로 답하는 유일한 서비스.
 ⚠️ "낙찰 보장" 표현은 코드·UI·주석 어디에도 절대 사용 금지.
 
-## 핵심 3대 엔진 (CORE)
+## 핵심 4대 엔진 (CORE)
 
-### CORE 1 — 번호 역이용 AI
+### CORE 1 — 사정율 기반 최적 투찰가 예측
+- 낙찰금액 + 낙찰률 → 예정가격 역산 → 사정율 = 예정가격 ÷ 기초금액 × 100
+- 발주처·업종·예산구간·지역·시즌별 사정율 분포(SajungRateStat) 학습
+- 최적 투찰가 = estimated × 0.9997, 낙찰확률 TypeScript 몬테카를로(N=5000)
+- API: POST /api/analysis/comprehensive (24시간 BidPricePrediction 캐시)
+- 사정율 유효범위 97~103% 엄격 필터, sampleSize<10 → "데이터 부족(N건)" 명시
+- 엔진: apps/web/lib/core1/sajung-engine.ts
+
+### CORE 2 (구 CORE 1) — 복수예가 번호 역이용 AI
 - 수만 건 개찰 데이터 → 번호별 선택 빈도 학습
 - 고빈도 번호(상위 30%) 자동 회피, 저빈도 조합 추천
 - 업종/금액/지역/시즌/참여자수 조건별 최적 조합 3세트 출력
 - API: POST /api/strategy/recommend
 - 플랜: 무료 월3회 / 스탠다드 월30회 / 프로 무제한
+- **복수예가 공고 전용** — 단일예가 공고는 CORE 1 사정율 분석으로 대체
 
-### CORE 2 — 실시간 참여자 수 예측 (Pro 전용)
+### CORE 3 — 실시간 참여자 수 예측 (Pro 전용)
 - 마감 3시간 전부터 나라장터 참여 신청 현황 크롤링
 - 예상 참여자 수 변화에 따라 번호 추천 실시간 갱신
 - UI: /realtime (Pro 미가입 시 블러 + 업그레이드 배너)
 
-### CORE 3 — 적격심사 통과 계산기
+### CORE 4 — 적격심사 통과 계산기
 - 업체 실적 DB(CompanyProfile) 기반 자동 심사 가능성 산출
 - API: POST /api/analysis/qualification
 - 무료: 기본 / 스탠다드·프로: 전체
+
+## 사정율 공식 (CORE 1 핵심)
+```
+사정율(%) = 예정가격 ÷ 기초금액(budget) × 100
+예정가격   = 낙찰금액(finalPrice) ÷ (낙찰률(bidRate) ÷ 100)
+유효범위   = 97% ~ 103% (이 범위 외는 이상값으로 제거)
+최적투찰가 = 예정가격 × 0.9997
+```
 
 ## 아키텍처
 Next.js (App Router) + Supabase + Prisma + TailwindCSS v4
@@ -78,8 +95,12 @@ Next.js (App Router) + Supabase + Prisma + TailwindCSS v4
 - NumberRecommendation: 번호 추천 이력 (사용량 추적)
 - ParticipantSnapshot: 실시간 참여자 수 스냅샷
 - Announcement: 나라장터 공고
-- BidResult: 낙찰 결과 (번호 빈도 학습 재료)
+- BidResult: 낙찰 결과 (winnerName 포함) — 사정율 학습 재료
 - CrawlLog: 크롤링 로그 + 역대 수집 커서
+- SajungRateStat: 발주처·업종·예산구간·지역별 사정율 통계 캐시 (@@unique[orgName,category,budgetRange,region])
+- BidPricePrediction: 공고별 최적 투찰가 예측 24시간 캐시 (@@unique annId)
+- CompetitorProfile: 경쟁사 프로필 (avgSajungRate, winRate 등)
+- WinProbSimulation: 사용자 커스텀 투찰금액 시뮬레이션 이력
 
 ## plan-guard.ts Feature enum
 - CORE1_NUMBER_RECOMMEND: 번호 추천 (무료3/스탠다드30/프로∞)
@@ -204,7 +225,7 @@ CORE 1 DB 데이터 부족 → estimated-v1 폴백 + isEstimated:true UI 표시
 - [x] /strategy/outcome/[recommendId] — 투찰 결과 입력 UI + API
 - [x] /history — 투찰 이력 대시보드 (통계 + 타임라인)
 - [x] apps/crawler/src/pipelines/auto-outcome.ts — 자동 결과 수집 파이프라인
-- [x] lib/core1/org-pattern.ts — 발주처별 빈도 패턴 오버레이 (CORE 1 v2)
+- [x] lib/core1/org-pattern.ts — 발주처별 빈도 패턴 오버레이 (CORE 2 v2)
 - [x] lib/notifications/kakao.ts — 카카오 알림톡 + 이메일 폴백
 - [x] /admin/model — 모델 적중률 모니터링 대시보드
 - [x] /admin/outcomes — 결과 데이터 관리
@@ -213,23 +234,49 @@ CORE 1 DB 데이터 부족 → estimated-v1 폴백 + isEstimated:true UI 표시
 - [x] Sidebar.tsx — 투찰 이력 + 어드민 섹션 추가
 - [x] app/layout.tsx — PWA manifest 링크 추가
 
+## Step 5 완료 ✅ — 빅데이터 분석 고도화 (사정율 기반)
+- [x] Prisma: SajungRateStat / BidPricePrediction / CompetitorProfile / WinProbSimulation 모델 추가
+- [x] BidResult.winnerName 필드 추가 (경쟁사 분석용)
+- [x] apps/crawler winnerName 파싱 (sucsfbidCorpNm || bidwinnrNm)
+- [x] apps/crawler/src/pipelines/collect-sajung-stat.ts — 사정율 통계 수집 파이프라인
+- [x] apps/web/lib/core1/sajung-engine.ts — 사정율 예측 + 몬테카를로 낙찰확률 엔진
+- [x] POST /api/analysis/comprehensive — 24시간 캐시 + 복수예가 번호추천 통합
+- [x] GET /api/analysis/predictions — 배치 BidPricePrediction 조회 (카드 표시용)
+- [x] components/naktal/WinProbCalculator.tsx — 프론트 전용 실시간 확률 계산기
+- [x] components/naktal/AnnouncementTabs.tsx — 3탭 (투찰전략/경쟁분석/참여적합성)
+- [x] announcements/[id]/page.tsx — 3탭 구조로 리팩토링
+- [x] announcements/page.tsx — 카드 AI추천투찰가 + 낙찰확률(AI) 표시
+- [x] /admin/model — 사정율 예측 MAE + 데이터 부족 발주처 섹션 추가
+- [x] CLAUDE.md — CORE 재정의, 사정율 공식, 신규 모델 문서화
+
 ## ⚠️ 개발자 직접 처리 필요 (코드 외)
 1. **Supabase RLS**: SQL Editor에서 Task 1 SQL 실행 (CLAUDE.md 상단 Step 3 스펙 참고)
 2. **Prisma 마이그레이션**:
    - `pnpm prisma migrate dev --name add-rate-limit-beta`
    - `pnpm prisma migrate dev --name add-bid-outcome-org-pattern`
-3. **통신판매업 신고** (정부24) → 신고번호 푸터에 기재
-4. **포트원 실서비스 모드 전환** → Vercel ENV 업데이트
-5. **Sentry 설정**: `npx @sentry/wizard@latest -i nextjs` → SENTRY_DSN 등록
-6. **Vercel ENV 22개 등록** (CLAUDE.md 환경변수 목록 참고, KAKAO_* 4개 추가)
-7. **베타 모집**: 건설협회 커뮤니티, 네이버 카페, 지인 소개
-8. **사업자 정보 업데이트**: landing-page.tsx + Footer.tsx의 "000-00-00000" 실제 번호로 교체
-9. **카카오 알림톡**: Kakao Developers 앱 등록 → 템플릿 심사 → KAKAO_* 환경변수 등록
-10. **pg_cron 설정**: Supabase SQL Editor에서 `18:00 KST auto-outcome` 크론 등록
+   - `pnpm prisma migrate dev --name add-bigdata-analysis-tables`
+3. **사정율 초기 수집**: `pnpm ts-node src/pipelines/collect-sajung-stat.ts`
+4. **pg_cron** (Supabase SQL Editor):
+   - `0 4 * * *` — collect-sajung-stat 트리거
+   - `0 18 * * *` — auto-outcome KST
+5. **통신판매업 신고** (정부24) → 신고번호 푸터에 기재
+6. **포트원 실서비스 모드 전환** → Vercel ENV 업데이트
+7. **Sentry 설정**: `npx @sentry/wizard@latest -i nextjs` → SENTRY_DSN 등록
+8. **Vercel ENV 등록** (CLAUDE.md 환경변수 목록 참고)
+9. **베타 모집**: 건설협회 커뮤니티, 네이버 카페, 지인 소개
+10. **카카오 알림톡**: Kakao Developers 앱 등록 → 템플릿 심사 → KAKAO_* 환경변수 등록
 
-## CORE 1 알고리즘 메모
+## CORE 2 알고리즘 메모 (복수예가 번호)
 - 낙찰률(sucsfbidRate) 소수점 이하 3자리(millidigit) 추출
 - 0~999 범위 빈도맵 구성 → 상위 30% 고빈도 제거
 - 나머지 저빈도 구간을 3개 존으로 분리해 combo 추천
 - DB 데이터 30건 미만이면 통계 추정값(estimated-v1) 반환
 - freqMap을 프론트로 전달 → 히트맵 시각화
+
+## CORE 1 알고리즘 메모 (사정율 예측)
+- SajungRateStat 조회: orgName+category+budgetRange+region 우선, sampleSize<10이면 'ALL' 폴백
+- predicted = avg×0.7 + monthlyAvg[month]×0.3
+- estimatedPrice = budget × (predicted/100)
+- optimalBid = estimatedPrice × 0.9997
+- 몬테카를로 N=5000: Box-Muller 정규분포, 낙찰하한가 이하 시뮬레이션은 0 처리
+- BidPricePrediction 24시간 캐시, 만료 전 재호출 금지

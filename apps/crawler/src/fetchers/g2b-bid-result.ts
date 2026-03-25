@@ -28,7 +28,9 @@ function mapToRow(item: G2BBidResult): BidResultRow | null {
 
     if (finalPrice <= 0n) return null;
 
-    return { annId, bidRate, finalPrice, numBidders };
+    const winnerName = (item.sucsfbidCorpNm || item.bidwinnrNm || "").trim() || undefined;
+
+    return { annId, bidRate, finalPrice, numBidders, winnerName };
   } catch {
     return null;
   }

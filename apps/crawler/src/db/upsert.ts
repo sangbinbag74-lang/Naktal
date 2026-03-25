@@ -52,6 +52,7 @@ export async function upsertBidResult(data: BidResultRow): Promise<void> {
       bidRate:    data.bidRate,
       finalPrice: data.finalPrice.toString(),
       numBidders: data.numBidders,
+      winnerName: data.winnerName ?? null,
     },
     { onConflict: "annId" }
   );

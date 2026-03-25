@@ -119,6 +119,11 @@ const NTCE_KINDS = [
   { value: "협상에의한계약", label: "협상계약" },
 ];
 
+interface PredictionCache {
+  optimalBidPrice: string;
+  winProbability: number;
+}
+
 export default function AnnouncementsPage() {
   const router = useRouter();
   const [navigatingId, setNavigatingId] = useState<string | null>(null);
@@ -128,6 +133,7 @@ export default function AnnouncementsPage() {
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
   const [folderIds, setFolderIds] = useState<string[]>([]);
+  const [predictions, setPredictions] = useState<Map<string, PredictionCache>>(new Map());
 
   useEffect(() => { setFolderIds(getFolderIds()); }, []);
 
@@ -164,9 +170,25 @@ export default function AnnouncementsPage() {
         if (ntceKind)       params.set("ntceKind", ntceKind);
         const res = await fetch(`/api/announcements?${params}`);
         const json = (await res.json()) as ApiResponse;
-        setItems((prev) => (reset ? (json.data ?? []) : [...prev, ...(json.data ?? [])]));
+        const newItems: Announcement[] = json.data ?? [];
+        setItems((prev) => (reset ? newItems : [...prev, ...newItems]));
         setHasMore(json.hasMore);
         setTotal(json.total);
+
+        // 예측 캐시 배치 조회 (없으면 "-" 표시)
+        if (newItems.length > 0) {
+          const ids = newItems.map((a) => a.id).join(",");
+          fetch(`/api/analysis/predictions?annIds=${ids}`)
+            .then((r) => r.json())
+            .then((map: Record<string, PredictionCache>) => {
+              setPredictions((prev) => {
+                const next = new Map(prev);
+                for (const [id, pred] of Object.entries(map)) next.set(id, pred);
+                return next;
+              });
+            })
+            .catch(() => {/* 예측 없으면 "-" 표시 유지 */});
+        }
       } catch {
         console.error("공고 목록 불러오기 실패");
       } finally {
@@ -497,8 +519,20 @@ export default function AnnouncementsPage() {
                 {(() => {
                   const rj = (ann.rawJson ?? {}) as Record<string, string>;
                   const lwltRate = rj.sucsfbidLwltRate;
-                  const bidMethod = rj.bidMthdNm || rj.cntrctMthdNm || rj.ntceKindNm || "-";
-                  const isMultiple = isMultiplePriceBid(ann.rawJson);
+                  const pred = predictions.get(ann.id);
+                  const optimalBid = pred
+                    ? formatBudget(pred.optimalBidPrice)
+                    : "-";
+                  const winProb = pred
+                    ? `${Math.round(pred.winProbability * 100)}%`
+                    : "-";
+                  const probColor = pred
+                    ? pred.winProbability >= 0.5
+                      ? "#059669"
+                      : pred.winProbability >= 0.3
+                        ? "#C2410C"
+                        : "#94A3B8"
+                    : "#94A3B8";
                   return (
                     <div style={{
                       padding: "8px 16px",
@@ -510,9 +544,9 @@ export default function AnnouncementsPage() {
                       gap: 8,
                     }}>
                       {[
-                        { label: "낙찰하한율", value: lwltRate ? `${lwltRate}%` : "-", color: lwltRate ? "#DC2626" : "#94A3B8" },
-                        { label: "낙찰방법",   value: bidMethod,                        color: "#1B3A6B" },
-                        { label: "예가방법",   value: isMultiple ? "복수예가" : "단일예가", color: isMultiple ? "#059669" : "#64748B" },
+                        { label: "낙찰하한율",    value: lwltRate ? `${lwltRate}%` : "-", color: lwltRate ? "#DC2626" : "#94A3B8" },
+                        { label: "AI추천투찰가",  value: optimalBid,                       color: pred ? "#1B3A6B" : "#94A3B8" },
+                        { label: "낙찰확률(AI)",  value: winProb,                          color: probColor },
                       ].map((item) => (
                         <div key={item.label} style={{ textAlign: "center" }}>
                           <div style={{ fontSize: 10, color: "#94A3B8", marginBottom: 2 }}>{item.label}</div>

@@ -67,6 +67,7 @@ model Announcement {
   deletedAt            DateTime?
   createdAt            DateTime              @default(now())
   participantSnapshots ParticipantSnapshot[]
+  bidPricePrediction   BidPricePrediction?
 }
 
 model AdminLog {
@@ -84,12 +85,13 @@ model AdminLog {
 }
 
 model BidResult {
-  id         String   @id @default(cuid())
-  annId      String   @unique
-  bidRate    Decimal  @db.Decimal(10, 4)
-  finalPrice BigInt
-  numBidders Int
-  createdAt  DateTime @default(now())
+  id          String   @id @default(cuid())
+  annId       String   @unique
+  bidRate     Decimal  @db.Decimal(10, 4)
+  finalPrice  BigInt
+  numBidders  Int
+  winnerName  String?
+  createdAt   DateTime @default(now())
 }
 
 model CrawlLog {
@@ -235,6 +237,83 @@ model ParticipantSnapshot {
   snapshotAt   DateTime     @default(now())
 
   @@index([annId, snapshotAt])
+}
+
+// ─── 빅데이터 분석 고도화 모델 ─────────────────────────────────────────────────
+
+model SajungRateStat {
+  id          String   @id @default(cuid())
+  orgName     String   // 'ALL' = 전체 평균 폴백
+  category    String
+  budgetRange String
+  region      String
+  avg         Float
+  stddev      Float
+  p25         Float
+  p50         Float
+  p75         Float
+  min         Float
+  max         Float
+  mode        Float
+  monthlyAvg  Json     // { "1": 98.7, ..., "12": 98.8 }
+  sampleSize  Int
+  updatedAt   DateTime @updatedAt
+  createdAt   DateTime @default(now())
+
+  @@unique([orgName, category, budgetRange, region])
+  @@index([orgName, category, budgetRange, region])
+}
+
+model BidPricePrediction {
+  id                  String       @id @default(cuid())
+  annId               String       @unique
+  announcement        Announcement @relation(fields: [annId], references: [id])
+  predictedSajungRate Float
+  sajungRateRange     Json         // { min, max, p25, p75 }
+  sampleSize          Int
+  optimalBidPrice     BigInt
+  bidPriceRangeLow    BigInt
+  bidPriceRangeHigh   BigInt
+  lowerLimitPrice     BigInt
+  winProbability      Float
+  competitionScore    Int
+  expectedBidders     Int
+  dominantCompany     String?
+  dominantWinRate     Float?
+  modelVersion        String
+  expiresAt           DateTime     // 24시간 캐시
+  createdAt           DateTime     @default(now())
+
+  @@index([annId, expiresAt])
+}
+
+model CompetitorProfile {
+  id            String   @id @default(cuid())
+  companyName   String
+  category      String
+  region        String
+  avgSajungRate Float
+  sajungRateStd Float
+  bidStyle      String   // "conservative" | "aggressive" | "balanced"
+  winRate       Float
+  sampleSize    Int
+  updatedAt     DateTime @updatedAt
+  createdAt     DateTime @default(now())
+
+  @@unique([companyName, category, region])
+  @@index([category, region])
+}
+
+model WinProbSimulation {
+  id          String   @id @default(cuid())
+  userId      String
+  annId       String
+  inputPrice  BigInt
+  inputSajung Float
+  probability Float
+  createdAt   DateTime @default(now())
+
+  @@index([userId, annId])
 }
 
 enum Plan {

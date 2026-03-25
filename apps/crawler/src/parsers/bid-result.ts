@@ -5,6 +5,7 @@ export interface BidResultRow {
   bidRate: string;   // Decimal 문자열 ("87.3450")
   finalPrice: bigint;
   numBidders: number;
+  winnerName?: string;
 }
 
 /**
