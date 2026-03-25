@@ -141,7 +141,7 @@ export default async function AnnouncementDetailPage({
       .in("annId", konepsIds)
       .order("createdAt", { ascending: false })
       .limit(10);
-    bidHistoryRaw = (bidData ?? []) as BidResultDb[];
+    bidHistoryRaw = (bidData ?? []) as unknown as BidResultDb[];
   }
 
   // 사정율 계산 (유효 97~103%)
