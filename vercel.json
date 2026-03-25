@@ -10,13 +10,9 @@
     "apps/web/app/api/cron/sync-g2b/route.ts": { "maxDuration": 300 }
   },
   "crons": [
-    {
-      "path": "/api/cron/sync-g2b",
-      "schedule": "0 18 * * *"
-    },
-    {
-      "path": "/api/cron/sync-g2b?mode=recent",
-      "schedule": "0 * * * *"
-    }
+    { "path": "/api/cron/sync-g2b", "schedule": "0 0 * * *" },
+    { "path": "/api/cron/sync-g2b", "schedule": "0 3 * * *" },
+    { "path": "/api/cron/sync-g2b", "schedule": "0 6 * * *" },
+    { "path": "/api/cron/sync-g2b", "schedule": "0 9 * * *" }
   ]
 }
