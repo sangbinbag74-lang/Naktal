@@ -28,57 +28,49 @@ function FreqHeatmap({ freqMap, combo1, combo2, combo3 }: {
   combo2: number[];
   combo3: number[];
 }) {
-  const BUCKETS = 50;
-  const buckets: number[] = Array(BUCKETS).fill(0);
-  for (let i = 0; i < BUCKETS; i++) {
-    let sum = 0, cnt = 0;
-    for (let j = i * 20; j < i * 20 + 20; j++) {
-      const v = (freqMap as Record<number, number>)[j] ?? freqMap[String(j)];
-      if (v !== undefined) { sum += v; cnt++; }
-    }
-    buckets[i] = cnt > 0 ? sum / cnt : 0;
-  }
-  const valid = buckets.filter((v) => v > 0);
-  const maxFreq = valid.length ? Math.max(...valid) : 1;
-  const minFreq = valid.length ? Math.min(...valid) : 0;
-  const markedBuckets: Record<number, string> = {};
+  // freqMap keys are 번호 1~15
+  const vals = Array.from({ length: 15 }, (_, i) => {
+    const k = i + 1;
+    return (freqMap as Record<number, number>)[k] ?? freqMap[String(k)] ?? 0;
+  });
+  const maxFreq = Math.max(...vals, 1);
+  const minFreq = Math.min(...vals.filter(v => v > 0), 0);
+
+  const markedNums: Record<number, string> = {};
   for (const { nums, color } of [
     { nums: combo1, color: "#1B3A6B" },
     { nums: combo2, color: "#1E40AF" },
     { nums: combo3, color: "#2563EB" },
   ]) {
     for (const n of nums) {
-      const b = Math.min(BUCKETS - 1, Math.floor(n / 20));
-      if (!markedBuckets[b]) markedBuckets[b] = color;
+      if (!markedNums[n]) markedNums[n] = color;
     }
   }
+
   return (
     <div style={{ background: "#fff", borderRadius: 12, border: "1px solid #E8ECF2", padding: "18px 20px" }}>
       <div style={{ marginBottom: 12 }}>
-        <div style={{ fontSize: 13, fontWeight: 700, color: "#0F172A", marginBottom: 2 }}>번호 선택 빈도 히트맵</div>
+        <div style={{ fontSize: 13, fontWeight: 700, color: "#0F172A", marginBottom: 2 }}>번호별 낙찰 빈도 히트맵</div>
         <div style={{ fontSize: 11, color: "#64748B" }}>초록 = 저빈도(추천) · 빨강 = 고빈도(회피) · <strong style={{ color: "#1B3A6B" }}>▲</strong> = 추천 번호</div>
       </div>
-      <div style={{ display: "flex", gap: 2, alignItems: "flex-end" }}>
-        {buckets.map((freq, i) => {
+      <div style={{ display: "flex", gap: 4, alignItems: "flex-end" }}>
+        {vals.map((freq, i) => {
+          const num = i + 1;
           const ratio = (maxFreq - minFreq) > 0 ? (freq - minFreq) / (maxFreq - minFreq) : 0;
           const bg = freq === 0 ? "#F1F5F9" : `hsl(${Math.round((1 - ratio) * 120)},65%,50%)`;
-          const isMark = !!markedBuckets[i];
+          const markColor = markedNums[num];
           return (
-            <div key={i} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 2 }}>
-              {isMark && <div style={{ fontSize: 7, color: markedBuckets[i], lineHeight: 1, fontWeight: 900 }}>▲</div>}
+            <div key={num} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 2 }}>
+              {markColor && <div style={{ fontSize: 8, color: markColor, lineHeight: 1, fontWeight: 900 }}>▲</div>}
               <div style={{
-                height: 28, width: "100%", background: bg, borderRadius: 3,
-                border: isMark ? `2px solid ${markedBuckets[i]}` : "1px solid transparent",
+                height: 32, width: "100%", background: bg, borderRadius: 4,
+                border: markColor ? `2px solid ${markColor}` : "1px solid transparent",
                 boxSizing: "border-box",
-              }} title={`.${String(i * 20).padStart(3, "0")}~.${String(i * 20 + 19).padStart(3, "0")}: ${freq.toFixed(2)}%`} />
+              }} title={`번호 ${num}: ${freq.toFixed(1)}%`} />
+              <div style={{ fontSize: 9, color: "#94A3B8", marginTop: 1 }}>{num}</div>
             </div>
           );
         })}
-      </div>
-      <div style={{ display: "flex", justifyContent: "space-between", marginTop: 4 }}>
-        {[".000", ".200", ".400", ".600", ".800", ".999"].map((v) => (
-          <span key={v} style={{ fontSize: 9, color: "#94A3B8" }}>{v}</span>
-        ))}
       </div>
     </div>
   );
@@ -248,9 +240,9 @@ export function NumberAnalysisSection({ annId, isClosed, bidMethod }: Props) {
                 </div>
               </div>
               <div style={{ textAlign: "right", flexShrink: 0 }}>
-                <div style={{ fontSize: 11, color: "#94A3B8", marginBottom: 2 }}>예상 적중률</div>
+                <div style={{ fontSize: 11, color: "#94A3B8", marginBottom: 2 }}>낙찰 점유율</div>
                 <div style={{ fontSize: 24, fontWeight: 800, color: accent }}>
-                  {(hitRate * 100).toFixed(1)}<span style={{ fontSize: 13, fontWeight: 600 }}>%</span>
+                  {hitRate.toFixed(1)}<span style={{ fontSize: 13, fontWeight: 600 }}>%</span>
                 </div>
               </div>
             </div>

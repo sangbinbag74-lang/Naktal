@@ -39,50 +39,39 @@ function extractMillidigit(rate: string): number | null {
   return Math.round((n % 1) * 1000) % 1000;
 }
 
-// 빈도맵에서 저빈도 상위 N개 (빈도 낮은 순)
-function lowFreqNumbers(freqMap: Record<number, number>, n: number): number[] {
-  return Object.entries(freqMap)
-    .map(([k, v]) => ({ num: parseInt(k), freq: v }))
-    .sort((a, b) => a.freq - b.freq)
-    .slice(0, n)
-    .map((x) => x.num);
+// millidigit (0~999) → 번호 1~15 (균등 구간)
+function millidigitToNum15(md: number): number {
+  return Math.min(15, Math.floor((md * 15) / 1000) + 1);
 }
 
-// 빈도맵 → 히트율 (해당 번호들이 낙찰된 비율)
-function calcHitRate(freqMap: Record<number, number>, numbers: number[]): number {
-  const total = Object.values(freqMap).reduce((s, v) => s + v, 0);
-  if (total === 0) return 0;
+// 빈도맵 → 히트율 (해당 번호들의 낙찰 점유율 %)
+function calcHitRate(freqMap: Record<number, number>, numbers: number[], validCount: number): number {
+  if (validCount === 0) return 0;
   const hits = numbers.reduce((s, n) => s + (freqMap[n] ?? 0), 0);
-  return parseFloat(((hits / total) * 100).toFixed(1));
+  return parseFloat(((hits / validCount) * 100).toFixed(1));
 }
 
 // 통계 추정 기본값 (DB 데이터 부족 시)
 function estimatedResult(): RecommendResult {
-  // 한국 적격심사 방식 통계 기반 기본 추정치
-  // 실제 데이터: 87~90% 대역, 끝 3자리는 균등 분포에 가깝지만 "0", "5" 배수 집중
+  // 한국 적격심사 방식: 번호 1~15 중 0·5 배수 끝자리(번호 1,5,10,15)가 상대적 고빈도
+  // 통계 기반 추정: 번호 3,7,11이 저빈도 경향
   const baseFreqMap: Record<number, number> = {};
-  for (let i = 0; i < 1000; i++) {
-    // 0, 5 배수(끝자리 0,5)는 2배 선택률
-    const endDigit = i % 10;
-    baseFreqMap[i] = endDigit === 0 || endDigit === 5 ? 0.2 : 0.1;
+  for (let i = 1; i <= 15; i++) {
+    // 번호 5·10·15는 끝자리 집중으로 상대적 고빈도
+    baseFreqMap[i] = (i % 5 === 0) ? 8.0 : 5.0;
   }
 
-  // 저빈도 번호: 1, 3, 7, 9 끝자리 중 랜덤
-  const lowFreq = [311, 317, 323, 331, 337, 343, 351, 357, 363, 371, 377, 383, 391, 397, 403];
-  const midFreq = [289, 293, 297, 301, 307, 313, 319, 327, 333, 339, 347, 353, 359, 367, 373];
-  const highFreq = [267, 271, 277, 283, 287, 291, 299, 309, 321, 329, 341, 349, 361, 369, 381];
-
-  const toCombo = (nums: number[], zone: "low" | "mid" | "high"): NumberCombo => ({
-    numbers: nums.slice(0, 3),
-    hitRate: zone === "low" ? 14.2 : zone === "mid" ? 11.8 : 10.1,
+  const toCombo = (nums: number[], hitRate: number, zone: "low" | "mid" | "high"): NumberCombo => ({
+    numbers: nums,
+    hitRate,
     freqMap: baseFreqMap,
     zone,
   });
 
   return {
-    combo1: toCombo(lowFreq, "low"),
-    combo2: toCombo(midFreq, "mid"),
-    combo3: toCombo(highFreq, "high"),
+    combo1: toCombo([3, 7, 11], 14.2, "low"),
+    combo2: toCombo([2, 8, 13], 11.8, "mid"),
+    combo3: toCombo([4, 9, 14], 10.1, "high"),
     sampleSize: 0,
     modelVersion: "estimated-v1",
     isEstimated: true,
@@ -134,59 +123,61 @@ export async function recommendNumbers(
     return estimatedResult();
   }
 
-  // 낙찰률 → millidigit 빈도맵 구성
-  const freqMap: Record<number, number> = {};
+  // 낙찰률 → 번호 1~15 빈도맵 구성
+  // millidigit(0~999)을 15개 구간으로 균등 분할 → 번호 1~15
+  const numFreqMap: Record<number, number> = {};
+  for (let i = 1; i <= 15; i++) numFreqMap[i] = 0; // 모든 번호 초기화
   let validCount = 0;
 
   for (const row of data) {
     const md = extractMillidigit(String(row.bidRate));
     if (md === null) continue;
-    freqMap[md] = (freqMap[md] ?? 0) + 1;
+    const num = millidigitToNum15(md);
+    numFreqMap[num] = (numFreqMap[num] ?? 0) + 1;
     validCount++;
   }
 
   if (validCount < 30) return estimatedResult();
 
-  // 전체 빈도 → 비율(%) 변환
+  // 전체 빈도 → 비율(%) 변환 (프론트 히트맵용)
   const freqPctMap: Record<number, number> = {};
-  for (const [k, v] of Object.entries(freqMap)) {
-    freqPctMap[parseInt(k)] = parseFloat(((v / validCount) * 100).toFixed(2));
+  for (const [k, v] of Object.entries(numFreqMap)) {
+    freqPctMap[parseInt(k)] = parseFloat(((v / validCount) * 100).toFixed(1));
   }
 
   // 입찰자 수에 따른 대역 분류
   const bidderRange = classifyBidderRange(estimatedBidders);
 
-  // 저빈도 번호 선별 (상위30% 고빈도 제거 후 추천)
-  const sorted = Object.entries(freqPctMap)
+  // 번호 1~15를 빈도 낮은 순 정렬 → 상위 70% (저빈도) 추천 대상
+  const sorted = Object.entries(numFreqMap)
     .map(([k, v]) => ({ num: parseInt(k), freq: v }))
     .sort((a, b) => a.freq - b.freq);
 
-  const bottom70 = sorted.slice(0, Math.floor(sorted.length * 0.7));
-
-  // 3개 구간으로 나눠서 콤보 생성
-  const third = Math.floor(bottom70.length / 3);
-  const zone1 = bottom70.slice(0, third).map((x) => x.num);         // 극저빈도
-  const zone2 = bottom70.slice(third, third * 2).map((x) => x.num); // 저빈도
-  const zone3 = bottom70.slice(third * 2).map((x) => x.num);        // 중저빈도
+  // bottom 70% = 약 10개 번호를 3구간으로 분할
+  const bottom = sorted.slice(0, Math.max(3, Math.floor(sorted.length * 0.7)));
+  const third = Math.max(1, Math.floor(bottom.length / 3));
+  const zone1 = bottom.slice(0, third).map((x) => x.num);           // 극저빈도
+  const zone2 = bottom.slice(third, third * 2).map((x) => x.num);   // 저빈도
+  const zone3 = bottom.slice(third * 2).map((x) => x.num);          // 중저빈도
 
   const pick = (arr: number[], n = 3) => arr.slice(0, n);
 
   return {
     combo1: {
       numbers: pick(zone1),
-      hitRate: calcHitRate(freqPctMap, pick(zone1)),
+      hitRate: calcHitRate(numFreqMap, pick(zone1), validCount),
       freqMap: freqPctMap,
       zone: "low",
     },
     combo2: {
       numbers: pick(zone2),
-      hitRate: calcHitRate(freqPctMap, pick(zone2)),
+      hitRate: calcHitRate(numFreqMap, pick(zone2), validCount),
       freqMap: freqPctMap,
       zone: "mid",
     },
     combo3: {
       numbers: pick(zone3),
-      hitRate: calcHitRate(freqPctMap, pick(zone3)),
+      hitRate: calcHitRate(numFreqMap, pick(zone3), validCount),
       freqMap: freqPctMap,
       zone: "high",
     },
