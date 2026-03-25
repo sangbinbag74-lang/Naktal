@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { isMultiplePriceBid } from "@/lib/bid-utils";
 
 const FOLDER_KEY = "naktal_folder";
@@ -120,6 +120,8 @@ const NTCE_KINDS = [
 ];
 
 export default function AnnouncementsPage() {
+  const router = useRouter();
+  const [navigatingId, setNavigatingId] = useState<string | null>(null);
   const [items, setItems] = useState<Announcement[]>([]);
   const [hasMore, setHasMore] = useState(true);
   const [loading, setLoading] = useState(false);
@@ -217,7 +219,14 @@ export default function AnnouncementsPage() {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-      <style>{`@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.45} }`}</style>
+      <style>{`
+        @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.45} }
+        .ann-card { transition: box-shadow 0.15s ease, opacity 0.15s ease; cursor: pointer; }
+        .ann-card:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.08); }
+        .ann-card.navigating { opacity: 0.6; pointer-events: none; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .ann-card-spinner { animation: spin 0.7s linear infinite; }
+      `}</style>
       {/* 헤더 */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <div>
@@ -408,19 +417,31 @@ export default function AnnouncementsPage() {
         ))}
         {items.map((ann) => {
           const dday = getDDay(ann.deadline);
+          const isNavigating = navigatingId === ann.id;
           return (
-            <Link key={ann.id} href={`/announcements/${ann.id}`} style={{ textDecoration: "none" }}>
+            <div
+              key={ann.id}
+              className={`ann-card${isNavigating ? " navigating" : ""}`}
+              onClick={() => {
+                setNavigatingId(ann.id);
+                router.push(`/announcements/${ann.id}`);
+              }}
+              style={{ textDecoration: "none" }}
+            >
               <div style={{
                 background: "#fff",
                 borderRadius: 12,
                 border: "1px solid #E8ECF2",
                 overflow: "hidden",
-                transition: "box-shadow 0.15s ease",
-                cursor: "pointer",
-              }}
-                onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.boxShadow = "0 4px 16px rgba(0,0,0,0.08)"; }}
-                onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.boxShadow = "none"; }}
-              >
+                position: "relative",
+              }}>
+                {/* 로딩 오버레이 */}
+                {isNavigating && (
+                  <div style={{ position: "absolute", top: 10, right: 12, zIndex: 10, display: "flex", alignItems: "center", gap: 5 }}>
+                    <div className="ann-card-spinner" style={{ width: 14, height: 14, border: "2px solid #E8ECF2", borderTopColor: "#1B3A6B", borderRadius: "50%" }} />
+                    <span style={{ fontSize: 11, color: "#1B3A6B", fontWeight: 600 }}>불러오는 중...</span>
+                  </div>
+                )}
                 {/* card-top */}
                 <div style={{ padding: "14px 16px 10px", display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 16 }}>
                   <div style={{ flex: 1, minWidth: 0 }}>
@@ -543,7 +564,7 @@ export default function AnnouncementsPage() {
                   </div>
                 </div>
               </div>
-            </Link>
+            </div>
           );
         })}
 
