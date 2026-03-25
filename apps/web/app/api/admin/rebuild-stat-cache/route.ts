@@ -9,7 +9,7 @@ import { createClient } from "@supabase/supabase-js";
 
 export const maxDuration = 300;
 
-const PAGE_SIZE = 5000;
+const PAGE_SIZE = 1000;
 const MIN_ORG_SAMPLE = 10;
 
 // ─── 분류 함수 ───────────────────────────────────────────────────────────────
