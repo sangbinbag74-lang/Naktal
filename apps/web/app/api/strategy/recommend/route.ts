@@ -112,6 +112,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
   // 추천 이력 저장
   const { error: insertError } = await admin.from("NumberRecommendation").insert({
+    id: crypto.randomUUID(),
     userId: dbUser.id,
     annId: ann.id,
     category: ann.category,
