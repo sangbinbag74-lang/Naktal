@@ -1,4 +1,7 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
+import { verifyAdminSession } from "@/lib/admin-auth";
+import { AdminLogoutButton } from "./AdminLogoutButton";
 
 const adminNav = [
   { href: "/admin", label: "대시보드", icon: "📊" },
@@ -8,11 +11,14 @@ const adminNav = [
   { href: "/admin/announcements", label: "공고 관리", icon: "📋" },
 ];
 
-export default function AdminLayout({
+export default async function AdminLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const isAdmin = await verifyAdminSession();
+  if (!isAdmin) redirect("/admin-login");
+
   return (
     <div className="flex min-h-screen bg-[#0F172A] text-white">
       {/* 사이드바 */}
@@ -37,13 +43,14 @@ export default function AdminLayout({
           ))}
         </nav>
 
-        <div className="px-5 py-4 border-t border-white/10">
+        <div className="px-5 py-4 border-t border-white/10 space-y-2">
           <Link
             href="/dashboard"
             className="flex items-center gap-2 text-xs text-white/50 hover:text-white transition-colors"
           >
             ← 일반 서비스로 돌아가기
           </Link>
+          <AdminLogoutButton />
         </div>
       </aside>
 

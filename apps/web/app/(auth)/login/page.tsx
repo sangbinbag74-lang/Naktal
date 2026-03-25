@@ -124,11 +124,32 @@ export default function LoginPage() {
           </Link>
         </div>
 
-        {/* 보안 문구 */}
+        {/* 파트너 로그인 */}
         <div style={{
-          marginTop: 28,
+          marginTop: 20,
           paddingTop: 16,
           borderTop: "1px solid #F1F5F9",
+          textAlign: "center",
+        }}>
+          <Link
+            href="/admin-login"
+            style={{
+              display: "inline-block",
+              fontSize: 12,
+              color: "#94A3B8",
+              textDecoration: "none",
+              padding: "6px 14px",
+              border: "1px solid #E2E8F0",
+              borderRadius: 6,
+            }}
+          >
+            파트너 로그인
+          </Link>
+        </div>
+
+        {/* 보안 문구 */}
+        <div style={{
+          marginTop: 16,
           textAlign: "center",
           fontSize: 11,
           color: "#CBD5E1",
