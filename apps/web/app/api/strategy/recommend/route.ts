@@ -111,7 +111,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   });
 
   // 추천 이력 저장
-  await admin.from("NumberRecommendation").insert({
+  const { error: insertError } = await admin.from("NumberRecommendation").insert({
     userId: dbUser.id,
     annId: ann.id,
     category: ann.category,
@@ -127,6 +127,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     sampleSize: result.sampleSize,
     modelVersion: result.modelVersion,
   });
+  if (insertError) console.error("[recommend] NumberRecommendation insert error:", insertError.message);
 
   return NextResponse.json({
     combo1: result.combo1.numbers,

@@ -98,22 +98,40 @@ export async function recommendNumbers(
 
   const supabase = createClient(supabaseUrl, supabaseKey);
 
-  // BidResult에서 해당 조건과 유사한 낙찰률 조회
-  // Announcement 조인을 통해 필터링
+  // Step 1: 조건에 맞는 Announcement ID 목록 조회
+  // (Supabase 조인 필터는 NOT VALID FK에서 불안정 → 2단계 쿼리로 변경)
+  let annIds: string[] | null = null;
+  const hasFilter = (category && category !== "전체") || (region && region !== "전국");
+
+  if (hasFilter) {
+    let annQuery = supabase
+      .from("Announcement")
+      .select("id")
+      .limit(3000);
+
+    if (category && category !== "전체") {
+      annQuery = annQuery.ilike("category", `%${category.split(" ")[0]}%`);
+    }
+    if (region && region !== "전국") {
+      annQuery = annQuery.ilike("region", `%${region}%`);
+    }
+
+    const { data: annData } = await annQuery;
+    annIds = (annData ?? []).map((a: { id: string }) => a.id);
+
+    // 조건에 맞는 공고가 없으면 통계 추정값 반환
+    if (annIds.length === 0) return estimatedResult();
+  }
+
+  // Step 2: BidResult 조회 (annId 필터 적용)
   let query = supabase
     .from("BidResult")
-    .select("bidRate, numBidders, Announcement!inner(category, region, budget)")
+    .select("bidRate, numBidders")
     .order("createdAt", { ascending: false })
     .limit(5000);
 
-  // 카테고리 필터 (부분 매칭)
-  if (category && category !== "전체") {
-    query = query.ilike("Announcement.category", `%${category.split(" ")[0]}%`);
-  }
-
-  // 지역 필터
-  if (region && region !== "전국") {
-    query = query.ilike("Announcement.region", `%${region}%`);
+  if (annIds !== null) {
+    query = query.in("annId", annIds);
   }
 
   const { data, error } = await query;
