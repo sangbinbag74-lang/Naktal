@@ -235,11 +235,19 @@ export async function GET(request: NextRequest) {
     if (totalBidResults > 0) {
       try {
         const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://naktal.me";
-        await fetch(`${siteUrl}/api/admin/rebuild-stat-cache`, {
-          method: "POST",
-          headers: { "x-admin-key": process.env.ADMIN_SECRET_KEY ?? "" },
-        });
-        log.statCacheRebuild = "triggered";
+        const adminKey = process.env.ADMIN_SECRET_KEY ?? "";
+        let offset = 0;
+        while (true) {
+          const r = await fetch(`${siteUrl}/api/admin/rebuild-stat-cache`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json", "x-admin-key": adminKey },
+            body: JSON.stringify({ offset }),
+          });
+          const json = await r.json() as { done?: boolean; nextOffset?: number };
+          if (json.done || !json.nextOffset) break;
+          offset = json.nextOffset;
+        }
+        log.statCacheRebuild = "done";
       } catch (e) {
         console.error("[cron] 통계 캐시 재집계 실패:", e);
         log.statCacheRebuild = "failed";
