@@ -57,58 +57,68 @@ function addMonths(ym: string, n: number): string {
 }
 
 /** CLI 인수 파싱 */
-function parseArgs(): { from: string; to: string } {
+function parseArgs(): { from: string; to: string; skipBid: boolean; skipAnn: boolean } {
   const args = process.argv.slice(2);
   let from = "201201";
   let to   = currentYM();
+  let skipBid = false;
+  let skipAnn = false;
   for (let i = 0; i < args.length; i++) {
-    if (args[i] === "--from" && args[i + 1]) from = args[i + 1];
-    if (args[i] === "--to"   && args[i + 1]) to   = args[i + 1];
+    if (args[i] === "--from"     && args[i + 1]) from = args[i + 1];
+    if (args[i] === "--to"       && args[i + 1]) to   = args[i + 1];
+    if (args[i] === "--skip-bid") skipBid = true;
+    if (args[i] === "--skip-ann") skipAnn = true;
   }
-  return { from, to };
+  return { from, to, skipBid, skipAnn };
 }
 
 // ─── 월별 수집 ────────────────────────────────────────────────────────────────
 
-async function importMonth(ym: string): Promise<{ ann: number; bid: number }> {
+async function importMonth(
+  ym: string,
+  opts: { skipBid: boolean; skipAnn: boolean }
+): Promise<{ ann: number; bid: number }> {
   const fromDate = `${ym}01`;
   const toDate   = lastDay(ym);
   let ann = 0, bid = 0;
 
   // 공고 수집
-  try {
-    const rows = await fetchAnnouncements({ fromDate, toDate, numOfRows: 100, maxPages: 999 });
-    for (const row of rows) {
-      try { await upsertAnnouncement(row); ann++; } catch (e) {
-        logger.error(`  저장 실패 (${row.konepsId}): ${e instanceof Error ? e.message : String(e)}`);
+  if (!opts.skipAnn) {
+    try {
+      const rows = await fetchAnnouncements({ fromDate, toDate, numOfRows: 999, maxPages: 999 });
+      for (const row of rows) {
+        try { await upsertAnnouncement(row); ann++; } catch (e) {
+          logger.error(`  저장 실패 (${row.konepsId}): ${e instanceof Error ? e.message : String(e)}`);
+        }
       }
+    } catch (e) {
+      logger.error(`[${ym}] 공고 수집 오류`, e);
     }
-  } catch (e) {
-    logger.error(`[${ym}] 공고 수집 오류`, e);
+    await sleep(300);
   }
-
-  await sleep(500);
 
   // 낙찰결과 수집
-  try {
-    const rows = await fetchBidResults({ fromDate, toDate, numOfRows: 100, maxPages: 999 });
-    for (const row of rows) {
-      try { await upsertBidResult(row); bid++; } catch (e) {
-        logger.error(`  낙찰결과 저장 실패 (${row.annId}): ${e instanceof Error ? e.message : String(e)}`);
+  if (!opts.skipBid) {
+    try {
+      const rows = await fetchBidResults({ fromDate, toDate, numOfRows: 999, maxPages: 999 });
+      for (const row of rows) {
+        try { await upsertBidResult(row); bid++; } catch (e) {
+          logger.error(`  낙찰결과 저장 실패 (${row.annId}): ${e instanceof Error ? e.message : String(e)}`);
+        }
       }
+    } catch (e) {
+      logger.error(`[${ym}] 낙찰결과 수집 오류`, e);
     }
-  } catch (e) {
-    logger.error(`[${ym}] 낙찰결과 수집 오류`, e);
+    await sleep(300);
   }
 
-  await sleep(500);
   return { ann, bid };
 }
 
 // ─── 메인 ────────────────────────────────────────────────────────────────────
 
 async function main(): Promise<void> {
-  const { from, to } = parseArgs();
+  const { from, to, skipBid, skipAnn } = parseArgs();
 
   // 수집할 월 목록 생성 (오래된 순)
   const months: string[] = [];
@@ -118,7 +128,8 @@ async function main(): Promise<void> {
     cur = addMonths(cur, 1);
   }
 
-  logger.info(`=== 전체 수집 시작: ${from} ~ ${to} (총 ${months.length}개월) ===`);
+  const mode = skipBid ? "공고만" : skipAnn ? "낙찰결과만" : "공고+낙찰결과";
+  logger.info(`=== 전체 수집 시작: ${from} ~ ${to} (총 ${months.length}개월, ${mode}, numOfRows=999) ===`);
 
   let totalAnn = 0, totalBid = 0;
   const startTime = Date.now();
@@ -129,7 +140,7 @@ async function main(): Promise<void> {
     const pct = Math.round(((i + 1) / months.length) * 100);
     logger.info(`[${i + 1}/${months.length}] ${ym} 수집 중... (${pct}% / 경과 ${elapsed}초)`);
 
-    const { ann, bid } = await importMonth(ym);
+    const { ann, bid } = await importMonth(ym, { skipBid, skipAnn });
     totalAnn += ann;
     totalBid += bid;
 

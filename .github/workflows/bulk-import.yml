@@ -11,6 +11,14 @@ on:
         description: "수집 종료월 (YYYYMM, 기본 현재월)"
         required: false
         default: ""
+      skip_bid:
+        description: "낙찰결과 수집 건너뜀 (공고만 수집, true/false)"
+        required: false
+        default: "false"
+      skip_ann:
+        description: "공고 수집 건너뜀 (낙찰결과만 수집, true/false)"
+        required: false
+        default: "false"
 
 jobs:
   bulk-import:
@@ -44,5 +52,10 @@ jobs:
           if [ -z "$TO" ]; then
             TO=$(date +%Y%m)
           fi
-          echo "수집 범위: $FROM ~ $TO"
-          pnpm ts-node src/bulk-import.ts --from "$FROM" --to "$TO"
+          SKIP_BID="${{ github.event.inputs.skip_bid }}"
+          SKIP_ANN="${{ github.event.inputs.skip_ann }}"
+          CMD="pnpm ts-node src/bulk-import.ts --from $FROM --to $TO"
+          if [ "$SKIP_BID" = "true" ]; then CMD="$CMD --skip-bid"; fi
+          if [ "$SKIP_ANN" = "true" ]; then CMD="$CMD --skip-ann"; fi
+          echo "실행: $CMD"
+          eval $CMD
