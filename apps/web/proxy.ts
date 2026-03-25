@@ -32,7 +32,10 @@ export async function proxy(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
 
   // 비로그인 사용자가 보호된 경로 접근 시 /login redirect
-  if (!user && (pathname.startsWith("/dashboard") || (pathname.startsWith("/admin") && pathname !== "/admin-login"))) {
+  // /admin 경로는 naktal_admin 쿠키가 있으면 admin layout이 자체 검증하므로 통과
+  const hasAdminCookie = request.cookies.has("naktal_admin");
+  const isAdminPath = pathname.startsWith("/admin") && pathname !== "/admin-login";
+  if (!user && (pathname.startsWith("/dashboard") || (isAdminPath && !hasAdminCookie))) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     return NextResponse.redirect(url);
