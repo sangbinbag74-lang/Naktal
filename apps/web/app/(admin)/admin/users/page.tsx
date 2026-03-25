@@ -24,7 +24,7 @@ const PLAN_STYLE: Record<string, { background: string; color: string }> = {
 
 function PlanSelect({ row, onChange }: { row: UserRow; onChange: (id: string, plan: string) => void }) {
   const [saving, setSaving] = useState(false);
-  const s = PLAN_STYLE[row.plan] ?? PLAN_STYLE.FREE;
+  const s: { background: string; color: string } = PLAN_STYLE[row.plan] ?? { background: "#F1F5F9", color: "#64748B" };
 
   async function handleChange(newPlan: string) {
     if (newPlan === row.plan) return;
