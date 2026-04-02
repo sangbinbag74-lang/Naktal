@@ -184,7 +184,7 @@ export default function LandingPage() {
         display: "flex", alignItems: "center", padding: "0 32px",
         justifyContent: "space-between", position: "sticky", top: 0, zIndex: 100,
       }}>
-        <span style={{ fontSize: 18, fontWeight: 800, color: "#1B3A6B", letterSpacing: "-0.02em" }}>NAKTAL.AI</span>
+        <span style={{ fontSize: 18, fontWeight: 800, color: "#1B3A6B", letterSpacing: "-0.02em" }}>낙찰AI</span>
         <nav style={{ display: "flex", gap: 20, alignItems: "center" }}>
           <Link href="/pricing" style={{ fontSize: 14, color: "#374151", textDecoration: "none" }}>요금제</Link>
           <Link href="/faq" style={{ fontSize: 14, color: "#374151", textDecoration: "none" }}>FAQ</Link>
@@ -294,7 +294,7 @@ export default function LandingPage() {
       <section style={{ background: "#fff", padding: "72px 24px" }}>
         <div style={{ maxWidth: 720, margin: "0 auto" }}>
           <div style={{ textAlign: "center", marginBottom: 44 }}>
-            <h2 style={{ fontSize: 28, fontWeight: 800, color: "#0F172A", marginBottom: 10 }}>왜 낙탈AI인가요?</h2>
+            <h2 style={{ fontSize: 28, fontWeight: 800, color: "#0F172A", marginBottom: 10 }}>왜 낙찰AI인가요?</h2>
             <p style={{ fontSize: 14, color: "#64748B" }}>사실에 기반한 비교입니다.</p>
           </div>
           <div style={{ overflowX: "auto" }}>
@@ -302,7 +302,7 @@ export default function LandingPage() {
               <thead>
                 <tr style={{ background: "#F8FAFC" }}>
                   <th style={{ padding: "12px 16px", textAlign: "left", color: "#374151", fontWeight: 600, borderBottom: "2px solid #E8ECF2" }}>기능</th>
-                  <th style={{ padding: "12px 16px", textAlign: "center", color: "#1B3A6B", fontWeight: 800, borderBottom: "2px solid #1B3A6B", background: "#EFF6FF" }}>낙탈AI</th>
+                  <th style={{ padding: "12px 16px", textAlign: "center", color: "#1B3A6B", fontWeight: 800, borderBottom: "2px solid #1B3A6B", background: "#EFF6FF" }}>낙찰AI</th>
                   <th style={{ padding: "12px 16px", textAlign: "center", color: "#374151", fontWeight: 600, borderBottom: "2px solid #E8ECF2" }}>인포21C</th>
                   <th style={{ padding: "12px 16px", textAlign: "center", color: "#374151", fontWeight: 600, borderBottom: "2px solid #E8ECF2" }}>고비드</th>
                 </tr>
@@ -374,7 +374,7 @@ export default function LandingPage() {
         </div>
         <div>상호명: 주식회사 호라이즌 | 대표자: 박상빈 | 사업자등록번호: 398-87-03453</div>
         <div>주소: 대전광역시 유성구 장대로 106, 2층 제이321호 | 호스팅: Vercel Inc.</div>
-        <div style={{ fontSize: 11, color: "rgba(255,255,255,0.35)", marginTop: 8 }}>© 2025 낙탈AI. All rights reserved.</div>
+        <div style={{ fontSize: 11, color: "rgba(255,255,255,0.35)", marginTop: 8 }}>© 2025 낙찰AI. All rights reserved.</div>
       </footer>
     </div>
   );
