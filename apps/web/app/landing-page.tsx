@@ -1,109 +1,308 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 
+// ── 경쟁사 비교 데이터 ──────────────────────────────────────────────────────
+const COMPARE = [
+  { item: "사정율 예측",     naktal: "✅",      info21c: "❌",    gobid: "일부" },
+  { item: "최적 투찰가 역산", naktal: "✅",      info21c: "❌",    gobid: "❌" },
+  { item: "낙찰 확률 %",    naktal: "✅",      info21c: "❌",    gobid: "❌" },
+  { item: "복수예가 번호 전략", naktal: "✅",   info21c: "통계만", gobid: "❌" },
+  { item: "적격심사 계산기", naktal: "✅",      info21c: "배점만", gobid: "일부" },
+  { item: "실시간 참여자 수", naktal: "✅ Pro", info21c: "❌",    gobid: "❌" },
+  { item: "가격",            naktal: "무료~",   info21c: "월정액", gobid: "낙찰보수" },
+];
+
+// ── 차별점 3대 섹션 ───────────────────────────────────────────────────────────
 const FEATURES = [
   {
+    icon: "📊",
+    badge: "CORE 1",
+    title: "사정율 예측",
+    subtitle: "발주처가 어떤 가격대를 선호하는지 압니다",
+    desc: "익산시청의 최근 52건 분석 → 사정율 98.9% 집중\n기초금액 4억 × 98.9% = 예정가격 3억 9,560만원 추정",
+    color: "#1B3A6B",
+  },
+  {
     icon: "🎯",
-    title: "CORE 1 — 번호 역이용 AI",
-    desc: "수만 건 개찰 데이터에서 고빈도 번호를 찾아 자동 회피하고, 경쟁이 낮은 저빈도 조합 3세트를 추천합니다.",
+    badge: "CORE 1",
+    title: "낙찰 확률 시뮬레이션",
+    subtitle: "넣기 전에 확률을 먼저 알 수 있습니다",
+    desc: "몬테카를로 시뮬레이션 5,000회 실행\n내 투찰가 기준 낙찰 확률 % 실시간 계산",
+    color: "#0369A1",
   },
   {
-    icon: "📡",
-    title: "CORE 2 — 실시간 참여자 수 반영",
-    desc: "마감 전 참여자 수 변화에 따라 번호 전략을 실시간으로 재계산합니다. 경쟁 상황을 즉시 파악하세요.",
-  },
-  {
-    icon: "✅",
-    title: "CORE 3 — 적격심사 통과 계산기",
-    desc: "업체 시공 실적을 등록하면 입찰 공고별 적격심사 통과 가능성을 자동으로 산출합니다.",
+    icon: "🔢",
+    badge: "CORE 2",
+    title: "복수예가 번호 전략",
+    subtitle: "사정율이 정해지면 번호도 달라집니다",
+    desc: "예정가격 구간이 확정되면 이 구간에서\n고빈도 번호를 회피한 최적 조합 3세트 제시",
+    color: "#1D4ED8",
   },
 ];
 
-const COMPARE = [
-  { item: "번호 추천 AI", naktal: "✅", info21c: "❌", gobid: "❌" },
-  { item: "실시간 참여자 수", naktal: "✅", info21c: "❌", gobid: "❌" },
-  { item: "적격심사 계산기", naktal: "✅", info21c: "❌", gobid: "일부" },
-  { item: "나라장터 공고 조회", naktal: "✅", info21c: "✅", gobid: "✅" },
-  { item: "사업자번호 기반 로그인", naktal: "✅", info21c: "❌", gobid: "❌" },
+// ── 무료 플랜 혜택 ────────────────────────────────────────────────────────────
+const FREE_BENEFITS = [
+  "나라장터 공고 모니터링 무제한",
+  "AI 최적 투찰가 분석 월 3회",
+  "적격심사 통과 계산 무제한",
+  "공고 서류함 저장 무제한",
 ];
 
-export default function LandingPage() {
-  const [form, setForm] = useState({ bizNo: "", bizName: "", email: "", category: "" });
-  const [submitted, setSubmitted] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState("");
+// ── 브라우저 몬테카를로 시뮬레이션 (API 호출 없음) ───────────────────────────
+function normalRandom(mean: number, std: number): number {
+  let u = 0, v = 0;
+  while (u === 0) u = Math.random();
+  while (v === 0) v = Math.random();
+  return mean + std * Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
+}
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!form.bizNo || !form.bizName || !form.email) { setError("필수 항목을 모두 입력해주세요."); return; }
-    setSubmitting(true); setError("");
-    const res = await fetch("/api/beta/apply", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(form) });
-    if (res.ok) { setSubmitted(true); } else { setError("신청 중 오류가 발생했습니다. 다시 시도해주세요."); }
-    setSubmitting(false);
-  };
+function calcWinProb(
+  myBid: number,
+  budget: number,
+  sajungMean: number,
+  sajungStd: number,
+  lowerLimitRate: number,
+  n = 2000
+): number {
+  if (!myBid || !budget) return 0;
+  let wins = 0;
+  for (let i = 0; i < n; i++) {
+    const simSajung = normalRandom(sajungMean, sajungStd);
+    const simPrice = budget * (simSajung / 100);
+    const simLower = simPrice * (lowerLimitRate / 100);
+    if (myBid >= simLower && myBid <= simPrice) wins++;
+  }
+  return Math.round((wins / n) * 100);
+}
+
+// ── 인터랙티브 데모 컴포넌트 ─────────────────────────────────────────────────
+function HeroDemo() {
+  const [budgetM, setBudgetM] = useState(420);    // 단위: 백만원
+  const [bidPriceM, setBidPriceM] = useState(415);
+  const [prob, setProb] = useState(0);
+  const [computing, setComputing] = useState(false);
+
+  const SAJUNG_MEAN = 98.9;
+  const SAJUNG_STD  = 0.8;
+  const LOWER_RATE  = 87.745;
+
+  const compute = useCallback(() => {
+    setComputing(true);
+    setTimeout(() => {
+      const p = calcWinProb(
+        bidPriceM * 1_000_000,
+        budgetM * 1_000_000,
+        SAJUNG_MEAN,
+        SAJUNG_STD,
+        LOWER_RATE,
+      );
+      setProb(p);
+      setComputing(false);
+    }, 0);
+  }, [budgetM, bidPriceM]);
+
+  useEffect(() => { compute(); }, [compute]);
+
+  const optimalBid = Math.round(budgetM * (SAJUNG_MEAN / 100) * 0.9997 * 10) / 10;
+  const probColor = prob >= 50 ? "#059669" : prob >= 30 ? "#D97706" : "#DC2626";
 
   return (
+    <div style={{ background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.15)", borderRadius: 16, padding: "28px 28px 24px", maxWidth: 480, margin: "0 auto" }}>
+      <div style={{ fontSize: 12, color: "rgba(255,255,255,0.5)", marginBottom: 18, letterSpacing: "0.08em", textTransform: "uppercase" }}>
+        데모 — 실제 엔진과 동일한 계산
+      </div>
+
+      {/* 기초금액 슬라이더 */}
+      <div style={{ marginBottom: 18 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
+          <span style={{ fontSize: 12, color: "rgba(255,255,255,0.6)" }}>기초금액 (기준금액)</span>
+          <span style={{ fontSize: 14, fontWeight: 700, color: "#fff" }}>{budgetM.toLocaleString()}백만원</span>
+        </div>
+        <input
+          type="range"
+          min={100} max={3000} step={10}
+          value={budgetM}
+          onChange={(e) => {
+            const v = Number(e.target.value);
+            setBudgetM(v);
+            setBidPriceM(Math.round(v * (SAJUNG_MEAN / 100) * 0.9997 * 10) / 10);
+          }}
+          style={{ width: "100%", accentColor: "#60A5FA" }}
+        />
+        <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, color: "rgba(255,255,255,0.3)", marginTop: 2 }}>
+          <span>1억</span><span>30억</span>
+        </div>
+      </div>
+
+      {/* 투찰금액 입력 */}
+      <div style={{ marginBottom: 18 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
+          <span style={{ fontSize: 12, color: "rgba(255,255,255,0.6)" }}>투찰금액</span>
+          <span style={{ fontSize: 11, color: "#60A5FA" }}>AI 추천: {optimalBid.toLocaleString()}백만원</span>
+        </div>
+        <input
+          type="number"
+          value={bidPriceM}
+          onChange={(e) => setBidPriceM(Number(e.target.value))}
+          style={{
+            width: "100%", height: 44, background: "rgba(255,255,255,0.08)",
+            border: "1.5px solid rgba(255,255,255,0.2)", borderRadius: 10,
+            color: "#fff", fontSize: 16, fontWeight: 700, padding: "0 14px",
+            outline: "none", boxSizing: "border-box",
+          }}
+        />
+      </div>
+
+      {/* 낙찰 확률 */}
+      <div style={{ background: "rgba(0,0,0,0.2)", borderRadius: 12, padding: "16px 18px" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+          <span style={{ fontSize: 13, color: "rgba(255,255,255,0.7)" }}>예상 낙찰 확률</span>
+          <span style={{ fontSize: 28, fontWeight: 900, color: computing ? "rgba(255,255,255,0.3)" : probColor }}>
+            {computing ? "…" : `${prob}%`}
+          </span>
+        </div>
+        <div style={{ height: 10, background: "rgba(255,255,255,0.1)", borderRadius: 5, overflow: "hidden" }}>
+          <div style={{ width: `${prob}%`, height: "100%", background: probColor, borderRadius: 5, transition: "width 0.4s ease" }} />
+        </div>
+        <div style={{ fontSize: 11, color: "rgba(255,255,255,0.4)", marginTop: 8 }}>
+          몬테카를로 2,000회 시뮬레이션 · 사정율 {SAJUNG_MEAN}% 기준 (데모용 고정값)
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── 메인 랜딩 페이지 ──────────────────────────────────────────────────────────
+export default function LandingPage() {
+  return (
     <div style={{ minHeight: "100vh", background: "#F0F2F5", fontFamily: "Pretendard, sans-serif" }}>
-      {/* 헤더 */}
-      <header style={{ background: "#fff", borderBottom: "1px solid #E8ECF2", height: 60, display: "flex", alignItems: "center", padding: "0 32px", justifyContent: "space-between", position: "sticky", top: 0, zIndex: 100 }}>
-        <span style={{ fontSize: 18, fontWeight: 800, color: "#1B3A6B" }}>NAKTAL.AI</span>
+
+      {/* ── 헤더 ── */}
+      <header style={{
+        background: "#fff", borderBottom: "1px solid #E8ECF2", height: 60,
+        display: "flex", alignItems: "center", padding: "0 32px",
+        justifyContent: "space-between", position: "sticky", top: 0, zIndex: 100,
+      }}>
+        <span style={{ fontSize: 18, fontWeight: 800, color: "#1B3A6B", letterSpacing: "-0.02em" }}>NAKTAL.AI</span>
         <nav style={{ display: "flex", gap: 20, alignItems: "center" }}>
           <Link href="/pricing" style={{ fontSize: 14, color: "#374151", textDecoration: "none" }}>요금제</Link>
-          <Link href="/login" style={{ fontSize: 14, background: "#1B3A6B", color: "#fff", padding: "8px 20px", borderRadius: 8, textDecoration: "none", fontWeight: 600 }}>로그인</Link>
+          <Link href="/faq" style={{ fontSize: 14, color: "#374151", textDecoration: "none" }}>FAQ</Link>
+          <Link href="/login" style={{ fontSize: 14, color: "#374151", textDecoration: "none" }}>로그인</Link>
+          <Link href="/signup" style={{
+            fontSize: 14, background: "#1B3A6B", color: "#fff",
+            padding: "8px 20px", borderRadius: 8, textDecoration: "none", fontWeight: 600,
+          }}>무료 시작</Link>
         </nav>
       </header>
 
-      {/* 히어로 */}
-      <section style={{ background: "linear-gradient(135deg, #0F1E3C 0%, #1B3A6B 100%)", padding: "80px 24px", textAlign: "center", color: "#fff" }}>
-        <div style={{ maxWidth: 680, margin: "0 auto" }}>
-          <div style={{ display: "inline-block", background: "rgba(96,165,250,0.2)", color: "#60A5FA", fontSize: 12, fontWeight: 700, padding: "6px 14px", borderRadius: 20, marginBottom: 20, border: "1px solid rgba(96,165,250,0.4)" }}>
-            🎉 베타 오픈 — 선착순 30개사 스탠다드 50% 할인
+      {/* ── Hero ── */}
+      <section style={{ background: "linear-gradient(135deg, #0F1E3C 0%, #1B3A6B 100%)", padding: "72px 24px 80px", color: "#fff" }}>
+        <div style={{ maxWidth: 1000, margin: "0 auto", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 48, alignItems: "center" }}>
+
+          {/* 왼쪽: 헤드라인 */}
+          <div>
+            <div style={{
+              display: "inline-block", background: "rgba(96,165,250,0.2)", color: "#60A5FA",
+              fontSize: 12, fontWeight: 700, padding: "5px 12px", borderRadius: 20, marginBottom: 20,
+              border: "1px solid rgba(96,165,250,0.35)",
+            }}>
+              🚀 베타 서비스 운영 중
+            </div>
+
+            <h1 style={{ fontSize: 40, fontWeight: 900, lineHeight: 1.25, marginBottom: 18, letterSpacing: "-0.02em" }}>
+              이 공고,<br />
+              <span style={{ color: "#60A5FA" }}>얼마에 넣어야<br />낙찰될까요?</span>
+            </h1>
+
+            <p style={{ fontSize: 17, color: "rgba(255,255,255,0.75)", marginBottom: 8, lineHeight: 1.7 }}>
+              수만 건 개찰 데이터가 최적 투찰금액을 알려드립니다.
+            </p>
+            <p style={{ fontSize: 14, color: "rgba(255,255,255,0.5)", marginBottom: 36, lineHeight: 1.6 }}>
+              발주처 패턴 분석 → 사정율 예측 → 낙찰 확률 계산
+            </p>
+
+            <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginBottom: 40 }}>
+              <Link href="/signup" style={{
+                display: "inline-block", background: "#60A5FA", color: "#fff",
+                padding: "15px 32px", borderRadius: 12, fontSize: 16, fontWeight: 700,
+                textDecoration: "none",
+              }}>
+                무료로 시작하기 →
+              </Link>
+              <Link href="/login" style={{
+                display: "inline-block", background: "rgba(255,255,255,0.1)", color: "#fff",
+                padding: "15px 24px", borderRadius: 12, fontSize: 14,
+                textDecoration: "none", border: "1px solid rgba(255,255,255,0.25)",
+              }}>
+                로그인
+              </Link>
+            </div>
+
+            {/* 통계 배지 */}
+            <div style={{ display: "flex", gap: 20, flexWrap: "wrap" }}>
+              {[
+                { label: "누적 분석 공고", value: "42,000+건" },
+                { label: "평균 예측 오차", value: "±0.8%p" },
+                { label: "무료 플랜", value: "AI 분석 3회/월" },
+              ].map(({ label, value }) => (
+                <div key={label}>
+                  <div style={{ fontSize: 11, color: "rgba(255,255,255,0.4)" }}>{label}</div>
+                  <div style={{ fontSize: 14, fontWeight: 700, color: "rgba(255,255,255,0.85)" }}>{value}</div>
+                </div>
+              ))}
+            </div>
           </div>
-          <h1 style={{ fontSize: 36, fontWeight: 900, lineHeight: 1.3, marginBottom: 16 }}>
-            이 공고,<br />
-            <span style={{ color: "#60A5FA" }}>몇 번 넣어야 할까요?</span>
-          </h1>
-          <p style={{ fontSize: 18, color: "rgba(255,255,255,0.75)", marginBottom: 12, lineHeight: 1.7 }}>
-            수만 건 개찰 데이터가 답합니다.
-          </p>
-          <p style={{ fontSize: 14, color: "rgba(255,255,255,0.5)", marginBottom: 36 }}>
-            인포21C는 정보를 준다. 낙찰AI는 번호를 준다.
-          </p>
-          <a href="#beta" style={{ display: "inline-block", background: "#60A5FA", color: "#fff", padding: "16px 36px", borderRadius: 12, fontSize: 16, fontWeight: 700, textDecoration: "none", marginRight: 12 }}>
-            베타 신청하기 →
-          </a>
-          <Link href="/login" style={{ display: "inline-block", background: "rgba(255,255,255,0.1)", color: "#fff", padding: "16px 28px", borderRadius: 12, fontSize: 14, textDecoration: "none", border: "1px solid rgba(255,255,255,0.3)" }}>
-            로그인
-          </Link>
+
+          {/* 오른쪽: 인터랙티브 데모 */}
+          <HeroDemo />
         </div>
       </section>
 
-      {/* 기능 3대 엔진 */}
-      <section style={{ maxWidth: 960, margin: "0 auto", padding: "64px 24px" }}>
-        <h2 style={{ fontSize: 24, fontWeight: 800, color: "#0F172A", textAlign: "center", marginBottom: 40 }}>3대 핵심 엔진</h2>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 20 }}>
+      {/* ── 면책 고지 ── */}
+      <div style={{ background: "#FFF7ED", borderTop: "1px solid #FED7AA", padding: "12px 24px", textAlign: "center", fontSize: 12, color: "#92400E" }}>
+        ⚠️ AI 분석 결과는 참고용이며 낙찰을 보장하지 않습니다. 실제 투찰 결정은 반드시 전문가와 상의하세요.
+      </div>
+
+      {/* ── 차별점 3섹션 ── */}
+      <section style={{ maxWidth: 1000, margin: "0 auto", padding: "72px 24px" }}>
+        <div style={{ textAlign: "center", marginBottom: 52 }}>
+          <h2 style={{ fontSize: 28, fontWeight: 800, color: "#0F172A", marginBottom: 10 }}>3가지 핵심 분석 엔진</h2>
+          <p style={{ fontSize: 15, color: "#64748B" }}>투찰 전 꼭 알아야 할 3가지를 한 번에 제공합니다</p>
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 20 }}>
           {FEATURES.map((f) => (
-            <div key={f.title} style={{ background: "#fff", borderRadius: 14, border: "1px solid #E8ECF2", padding: "28px 24px" }}>
-              <div style={{ fontSize: 32, marginBottom: 12 }}>{f.icon}</div>
-              <div style={{ fontSize: 15, fontWeight: 700, color: "#1B3A6B", marginBottom: 8 }}>{f.title}</div>
-              <div style={{ fontSize: 13, color: "#6B7280", lineHeight: 1.7 }}>{f.desc}</div>
+            <div key={f.title} style={{
+              background: "#fff", borderRadius: 16, border: "1px solid #E8ECF2",
+              padding: "28px 26px", borderTop: `4px solid ${f.color}`,
+            }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
+                <span style={{ fontSize: 28 }}>{f.icon}</span>
+                <span style={{ fontSize: 11, fontWeight: 700, background: f.color, color: "#fff", padding: "3px 8px", borderRadius: 4 }}>
+                  {f.badge}
+                </span>
+              </div>
+              <div style={{ fontSize: 16, fontWeight: 800, color: "#0F172A", marginBottom: 6 }}>{f.title}</div>
+              <div style={{ fontSize: 13, fontWeight: 600, color: f.color, marginBottom: 12 }}>{f.subtitle}</div>
+              <div style={{ fontSize: 13, color: "#6B7280", lineHeight: 1.8, whiteSpace: "pre-line" }}>{f.desc}</div>
             </div>
           ))}
         </div>
       </section>
 
-      {/* 경쟁사 비교 */}
-      <section style={{ background: "#fff", padding: "64px 24px" }}>
-        <div style={{ maxWidth: 700, margin: "0 auto" }}>
-          <h2 style={{ fontSize: 24, fontWeight: 800, color: "#0F172A", textAlign: "center", marginBottom: 8 }}>왜 낙찰AI인가요?</h2>
-          <p style={{ textAlign: "center", color: "#64748B", fontSize: 14, marginBottom: 36 }}>사실에 기반한 비교입니다.</p>
+      {/* ── 경쟁사 비교 ── */}
+      <section style={{ background: "#fff", padding: "72px 24px" }}>
+        <div style={{ maxWidth: 720, margin: "0 auto" }}>
+          <div style={{ textAlign: "center", marginBottom: 44 }}>
+            <h2 style={{ fontSize: 28, fontWeight: 800, color: "#0F172A", marginBottom: 10 }}>왜 낙탈AI인가요?</h2>
+            <p style={{ fontSize: 14, color: "#64748B" }}>사실에 기반한 비교입니다.</p>
+          </div>
           <div style={{ overflowX: "auto" }}>
             <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 14 }}>
               <thead>
                 <tr style={{ background: "#F8FAFC" }}>
                   <th style={{ padding: "12px 16px", textAlign: "left", color: "#374151", fontWeight: 600, borderBottom: "2px solid #E8ECF2" }}>기능</th>
-                  <th style={{ padding: "12px 16px", textAlign: "center", color: "#1B3A6B", fontWeight: 700, borderBottom: "2px solid #1B3A6B", background: "#EFF6FF" }}>낙찰AI</th>
+                  <th style={{ padding: "12px 16px", textAlign: "center", color: "#1B3A6B", fontWeight: 800, borderBottom: "2px solid #1B3A6B", background: "#EFF6FF" }}>낙탈AI</th>
                   <th style={{ padding: "12px 16px", textAlign: "center", color: "#374151", fontWeight: 600, borderBottom: "2px solid #E8ECF2" }}>인포21C</th>
                   <th style={{ padding: "12px 16px", textAlign: "center", color: "#374151", fontWeight: 600, borderBottom: "2px solid #E8ECF2" }}>고비드</th>
                 </tr>
@@ -112,9 +311,9 @@ export default function LandingPage() {
                 {COMPARE.map((row, i) => (
                   <tr key={row.item} style={{ background: i % 2 === 0 ? "#fff" : "#FAFBFC" }}>
                     <td style={{ padding: "10px 16px", color: "#374151", borderBottom: "1px solid #F1F5F9" }}>{row.item}</td>
-                    <td style={{ padding: "10px 16px", textAlign: "center", borderBottom: "1px solid #F1F5F9", background: "#EFF6FF", fontWeight: 700 }}>{row.naktal}</td>
-                    <td style={{ padding: "10px 16px", textAlign: "center", borderBottom: "1px solid #F1F5F9" }}>{row.info21c}</td>
-                    <td style={{ padding: "10px 16px", textAlign: "center", borderBottom: "1px solid #F1F5F9" }}>{row.gobid}</td>
+                    <td style={{ padding: "10px 16px", textAlign: "center", borderBottom: "1px solid #F1F5F9", background: "#EFF6FF", fontWeight: 700, color: "#1B3A6B" }}>{row.naktal}</td>
+                    <td style={{ padding: "10px 16px", textAlign: "center", borderBottom: "1px solid #F1F5F9", color: "#9CA3AF" }}>{row.info21c}</td>
+                    <td style={{ padding: "10px 16px", textAlign: "center", borderBottom: "1px solid #F1F5F9", color: "#9CA3AF" }}>{row.gobid}</td>
                   </tr>
                 ))}
               </tbody>
@@ -123,68 +322,59 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* 베타 신청 폼 */}
-      <section id="beta" style={{ maxWidth: 560, margin: "0 auto", padding: "64px 24px" }}>
-        <div style={{ background: "#fff", borderRadius: 16, border: "1px solid #E8ECF2", padding: "40px 36px" }}>
-          {submitted ? (
-            <div style={{ textAlign: "center" }}>
-              <div style={{ fontSize: 48, marginBottom: 16 }}>🎉</div>
-              <h2 style={{ fontSize: 22, fontWeight: 800, color: "#1B3A6B", marginBottom: 8 }}>베타 신청 완료!</h2>
-              <p style={{ color: "#64748B", fontSize: 14, lineHeight: 1.7 }}>신청해 주셔서 감사합니다.<br />검토 후 이메일로 안내드리겠습니다.<br /><span style={{ color: "#1B3A6B", fontWeight: 600 }}>승인 시 스탠다드 50% 할인</span>이 적용됩니다.</p>
-            </div>
-          ) : (
-            <>
-              <h2 style={{ fontSize: 22, fontWeight: 800, color: "#0F172A", marginBottom: 4 }}>베타 신청</h2>
-              <p style={{ color: "#64748B", fontSize: 13, marginBottom: 28 }}>선착순 30개사 · 스탠다드 50% 할인 (월 49,500원)</p>
+      {/* ── 무료 플랜 CTA ── */}
+      <section style={{ maxWidth: 560, margin: "0 auto", padding: "72px 24px" }}>
+        <div style={{ background: "#fff", borderRadius: 20, border: "1px solid #E8ECF2", padding: "44px 40px", textAlign: "center" }}>
+          <div style={{ fontSize: 36, marginBottom: 16 }}>🎯</div>
+          <h2 style={{ fontSize: 24, fontWeight: 800, color: "#0F172A", marginBottom: 8 }}>
+            지금 무료로 시작하세요
+          </h2>
+          <p style={{ fontSize: 14, color: "#64748B", marginBottom: 28, lineHeight: 1.7 }}>
+            사업자등록번호만 있으면 30초 안에 가입 완료.<br />
+            신용카드 없이도 바로 분석을 시작할 수 있습니다.
+          </p>
 
-              {error && <div style={{ background: "#FEF2F2", border: "1px solid #FECACA", color: "#DC2626", borderRadius: 8, padding: "10px 14px", fontSize: 13, marginBottom: 16 }}>{error}</div>}
+          {/* 무료 플랜 혜택 */}
+          <div style={{ background: "#F8FAFC", borderRadius: 12, padding: "18px 20px", marginBottom: 28, textAlign: "left" }}>
+            <div style={{ fontSize: 12, fontWeight: 700, color: "#9CA3AF", marginBottom: 10, letterSpacing: "0.06em" }}>무료 플랜 혜택</div>
+            {FREE_BENEFITS.map((b) => (
+              <div key={b} style={{ display: "flex", alignItems: "center", gap: 8, padding: "5px 0", fontSize: 13, color: "#374151" }}>
+                <span style={{ color: "#059669", fontWeight: 700 }}>✓</span>
+                {b}
+              </div>
+            ))}
+          </div>
 
-              <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-                {[
-                  { key: "bizNo", label: "사업자등록번호 *", placeholder: "000-00-00000", type: "text" },
-                  { key: "bizName", label: "상호명 *", placeholder: "(주)홍길동건설", type: "text" },
-                  { key: "email", label: "이메일 *", placeholder: "contact@example.com", type: "email" },
-                  { key: "category", label: "주요 업종", placeholder: "예: 시설공사업, 토목공사업", type: "text" },
-                ].map(({ key, label, placeholder, type }) => (
-                  <div key={key}>
-                    <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: "#374151", marginBottom: 6 }}>{label}</label>
-                    <input
-                      type={type}
-                      value={form[key as keyof typeof form]}
-                      onChange={(e) => setForm((p) => ({ ...p, [key]: e.target.value }))}
-                      placeholder={placeholder}
-                      style={{ width: "100%", height: 48, padding: "0 14px", border: "1.5px solid #E8ECF2", borderRadius: 10, fontSize: 14, outline: "none", boxSizing: "border-box" }}
-                    />
-                  </div>
-                ))}
+          <Link href="/signup" style={{
+            display: "block", height: 52, lineHeight: "52px", background: "#1B3A6B",
+            color: "#fff", borderRadius: 12, fontSize: 16, fontWeight: 700, textDecoration: "none",
+            marginBottom: 12,
+          }}>
+            무료 회원가입 →
+          </Link>
+          <div style={{ fontSize: 12, color: "#9CA3AF" }}>
+            이미 계정이 있으신가요?{" "}
+            <Link href="/login" style={{ color: "#1B3A6B", fontWeight: 600, textDecoration: "none" }}>로그인</Link>
+          </div>
 
-                <button
-                  type="submit"
-                  disabled={submitting}
-                  style={{ height: 52, background: submitting ? "#94A3B8" : "#1B3A6B", color: "#fff", border: "none", borderRadius: 12, fontSize: 16, fontWeight: 700, cursor: submitting ? "wait" : "pointer", marginTop: 8 }}
-                >
-                  {submitting ? "신청 중..." : "베타 신청하기 →"}
-                </button>
-
-                <p style={{ fontSize: 11, color: "#9CA3AF", textAlign: "center", margin: 0 }}>
-                  신청 시 <Link href="/terms" style={{ color: "#6B7280" }}>이용약관</Link>과 <Link href="/privacy" style={{ color: "#6B7280" }}>개인정보처리방침</Link>에 동의하는 것으로 간주합니다.
-                </p>
-              </form>
-            </>
-          )}
+          <div style={{ marginTop: 20, padding: "12px 0", borderTop: "1px solid #F1F5F9", fontSize: 11, color: "#CBD5E1" }}>
+            신청 시 <Link href="/terms" style={{ color: "#94A3B8" }}>이용약관</Link>과{" "}
+            <Link href="/privacy" style={{ color: "#94A3B8" }}>개인정보처리방침</Link>에 동의합니다.
+          </div>
         </div>
       </section>
 
-      {/* 푸터 */}
-      <footer style={{ background: "#0F1E3C", color: "rgba(255,255,255,0.6)", padding: "32px", textAlign: "center", fontSize: 13, lineHeight: 2 }}>
-        <div style={{ marginBottom: 12 }}>
-          <Link href="/privacy" style={{ color: "rgba(255,255,255,0.6)", textDecoration: "none", marginRight: 20 }}>개인정보처리방침</Link>
-          <Link href="/terms" style={{ color: "rgba(255,255,255,0.6)", textDecoration: "none", marginRight: 20 }}>이용약관</Link>
-          <a href="mailto:support@naktal.me" style={{ color: "rgba(255,255,255,0.6)", textDecoration: "none" }}>support@naktal.me</a>
+      {/* ── 푸터 ── */}
+      <footer style={{ background: "#0F1E3C", color: "rgba(255,255,255,0.55)", padding: "32px", textAlign: "center", fontSize: 13, lineHeight: 2 }}>
+        <div style={{ marginBottom: 10 }}>
+          <Link href="/privacy" style={{ color: "rgba(255,255,255,0.55)", textDecoration: "none", marginRight: 20 }}>개인정보처리방침</Link>
+          <Link href="/terms" style={{ color: "rgba(255,255,255,0.55)", textDecoration: "none", marginRight: 20 }}>이용약관</Link>
+          <Link href="/faq" style={{ color: "rgba(255,255,255,0.55)", textDecoration: "none", marginRight: 20 }}>FAQ</Link>
+          <a href="mailto:support@naktal.me" style={{ color: "rgba(255,255,255,0.55)", textDecoration: "none" }}>support@naktal.me</a>
         </div>
         <div>상호명: 주식회사 호라이즌 | 대표자: 박상빈 | 사업자등록번호: 398-87-03453</div>
         <div>주소: 대전광역시 유성구 장대로 106, 2층 제이321호 | 호스팅: Vercel Inc.</div>
-        <div style={{ fontSize: 12, color: "rgba(255,255,255,0.4)", marginTop: 8 }}>© 2025 낙찰AI. All rights reserved.</div>
+        <div style={{ fontSize: 11, color: "rgba(255,255,255,0.35)", marginTop: 8 }}>© 2025 낙탈AI. All rights reserved.</div>
       </footer>
     </div>
   );

@@ -7,17 +7,21 @@ const geist = Geist({ subsets: ["latin"], variable: "--font-sans" });
 
 export const metadata: Metadata = {
   title: {
-    default: "낙찰AI — 번호 전략으로 입찰을 이기다",
-    template: "%s — 낙찰AI",
+    default: "낙탈AI — 나라장터 입찰 최적 투찰가 AI 분석",
+    template: "%s — 낙탈AI",
   },
   description:
-    "나라장터 복수예가 번호 최적화 AI. 수만 건 개찰 데이터로 최적 번호 조합을 제안하고, 적격심사 통과 가능성을 자동 산출합니다.",
-  keywords: ["나라장터", "입찰", "복수예가", "번호 추천", "적격심사", "낙찰", "공공입찰"],
+    "나라장터 복수예가 최적 투찰금액과 낙찰 확률을 AI로 계산합니다. " +
+    "발주처별 사정율 패턴 분석, 몬테카를로 낙찰확률 시뮬레이션.",
+  keywords: [
+    "나라장터", "입찰분석", "복수예가", "사정율", "낙찰확률",
+    "투찰금액", "번호추천", "적격심사", "공공입찰AI",
+  ],
   openGraph: {
-    title: "낙찰AI — 이 공고 몇 번 넣어야 해요?",
-    description: "수만 건 개찰 데이터가 답합니다. 번호 역이용 AI + 실시간 참여자 수 + 적격심사 계산기.",
+    title: "낙탈AI — 이 공고, 얼마에 넣어야 낙찰될까요?",
+    description: "수만 건 개찰 데이터가 최적 투찰금액을 알려드립니다. 발주처 패턴 분석 → 사정율 예측 → 낙찰 확률 계산.",
     url: "https://naktal.me",
-    siteName: "낙찰AI",
+    siteName: "낙탈AI",
     locale: "ko_KR",
     type: "website",
   },
