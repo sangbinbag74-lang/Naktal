@@ -92,9 +92,14 @@ export async function g2bFetchAnnouncementPage(params: {
   if (!res!.ok) throw new Error(`G2B 공고 API ${res!.status}`);
 
   const data = await res.json() as {
-    response: { header: { resultCode: string; resultMsg: string }; body: { items: unknown; totalCount: number } };
+    response?: { header: { resultCode: string; resultMsg: string }; body: { items: unknown; totalCount: number } };
   };
 
+  if (!data.response) {
+    const altErr = (data as any)?.["nkoneps.com.response.ResponseError"];
+    if (altErr?.header?.resultCode === "07") return { items: [], totalCount: 0 };
+    throw new Error(`G2B 공고 비정상 응답: ${JSON.stringify(data).slice(0, 200)}`);
+  }
   if (data.response.header.resultCode !== "00") {
     throw new Error(`G2B 오류: ${data.response.header.resultMsg}`);
   }
@@ -164,9 +169,14 @@ export async function g2bFetchBidResultPage(params: {
   if (!res!.ok) throw new Error(`G2B 낙찰결과 API ${res!.status}`);
 
   const data = await res.json() as {
-    response: { header: { resultCode: string; resultMsg: string }; body: { items: unknown; totalCount: number } };
+    response?: { header: { resultCode: string; resultMsg: string }; body: { items: unknown; totalCount: number } };
   };
 
+  if (!data.response) {
+    const altErr = (data as any)?.["nkoneps.com.response.ResponseError"];
+    if (altErr?.header?.resultCode === "07") return { items: [], totalCount: 0 };
+    throw new Error(`G2B 낙찰결과 비정상 응답: ${JSON.stringify(data).slice(0, 200)}`);
+  }
   if (data.response.header.resultCode !== "00") {
     throw new Error(`G2B 오류: ${data.response.header.resultMsg}`);
   }
