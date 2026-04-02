@@ -101,6 +101,7 @@ async function importBidResults(
       bidRate: parseFloat(rateRaw).toFixed(4),
       finalPrice: String(parseInt(priceRaw, 10)),
       numBidders: parseInt((item.prtcptCnum || item.totPrtcptCo || "0").replace(/[^0-9]/g, ""), 10),
+      winnerName: item.sucsfbidCorpNm?.trim() || item.bidwinnrNm?.trim() || null,
     };
   }).filter(Boolean);
 
