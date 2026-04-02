@@ -202,9 +202,12 @@ model BidOutcome {
   recommendationId String?
   selectedNos      Int[]
   bidRate          Decimal       @db.Decimal(10, 4)
+  bidPrice         BigInt?                         // 실제 투찰금액 (원) — CORE 1 피드백
   result           OutcomeResult @default(PENDING)
   finalWinningNos  Int[]
   actualBidRate    Decimal?      @db.Decimal(10, 4)
+  actualFinalPrice BigInt?                         // 실제 낙찰금액 (원)
+  actualSajungRate Decimal?      @db.Decimal(8, 4) // 실제 사정율 % — CORE 1 정확도 측정
   numBidders       Int?
   recommendHit     Boolean?
   bidAt            DateTime
