@@ -10,6 +10,8 @@ import { createAdminClient } from "@/lib/supabase/server";
 
 // ─── 타입 ─────────────────────────────────────────────────────────────────────
 
+export type ConfidenceLevel = "HIGH" | "MEDIUM" | "LOW";
+
 export interface SajungPrediction {
   predictedSajungRate: number;
   sajungRateRange: { min: number; max: number; p25: number; p75: number };
@@ -20,7 +22,14 @@ export interface SajungPrediction {
   lowerLimitPrice: number;
   winProbability: number;
   isFallback: boolean;    // 'ALL' orgName 폴백 여부
+  confidenceLevel: ConfidenceLevel;
   modelVersion: string;
+}
+
+function getConfidenceLevel(sampleSize: number, stddev: number): ConfidenceLevel {
+  if (sampleSize >= 30 && stddev <= 0.5) return "HIGH";
+  if (sampleSize >= 10 && stddev <= 1.0) return "MEDIUM";
+  return "LOW";
 }
 
 export interface CompetitionResult {
@@ -143,6 +152,7 @@ export async function predictOptimalBid(params: {
       lowerLimitPrice: Math.round(lowerLimit),
       winProbability: 0.35,
       isFallback: true,
+      confidenceLevel: "LOW" as ConfidenceLevel,
       modelVersion: "sajung-v1.0-default",
     };
   }
@@ -174,6 +184,7 @@ export async function predictOptimalBid(params: {
     lowerLimitPrice: Math.round(lowerLimit),
     winProbability: Math.round(winProb * 1000) / 1000,
     isFallback,
+    confidenceLevel: getConfidenceLevel(stat.sampleSize, stat.stddev),
     modelVersion: "sajung-v1.0",
   };
 }

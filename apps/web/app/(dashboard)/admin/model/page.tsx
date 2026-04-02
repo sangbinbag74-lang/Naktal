@@ -83,10 +83,10 @@ export default async function AdminModelPage() {
     .order("sampleSize", { ascending: true })
     .limit(50);
 
-  // SajungRateStat 전체 요약
+  // SajungRateStat 전체 요약 + 신뢰도 분류
   const { data: statSummary } = await admin
     .from("SajungRateStat")
-    .select("sampleSize,avg")
+    .select("sampleSize,avg,stddev")
     .neq("orgName", "ALL");
 
   const totalStatRows = statSummary?.length ?? 0;
@@ -94,6 +94,17 @@ export default async function AdminModelPage() {
   const avgSajung = statSummary && statSummary.length > 0
     ? statSummary.reduce((s: number, r: any) => s + r.avg, 0) / statSummary.length
     : null;
+
+  // 신뢰도 구간별 발주처 수 계산
+  let highCount = 0, mediumCount = 0, lowCount = 0;
+  for (const r of statSummary ?? []) {
+    const ss = r.sampleSize ?? 0;
+    const sd = r.stddev ?? 99;
+    if (ss >= 30 && sd <= 0.5) highCount++;
+    else if (ss >= 10 && sd <= 1.0) mediumCount++;
+    else lowCount++;
+  }
+  const confidenceTotal = highCount + mediumCount + lowCount;
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
@@ -163,6 +174,48 @@ export default async function AdminModelPage() {
               <div style={{ fontSize: 22, fontWeight: 800, color }}>{value}</div>
             </div>
           ))}
+        </div>
+
+        {/* 신뢰도 분포 */}
+        <div style={{ background: "#fff", borderRadius: 14, border: "1px solid #E8ECF2", padding: "20px", marginBottom: 12 }}>
+          <div style={{ fontSize: 14, fontWeight: 700, color: "#0F172A", marginBottom: 12 }}>
+            신뢰도 구간 분포
+            <span style={{ fontSize: 12, fontWeight: 400, color: "#9CA3AF", marginLeft: 8 }}>
+              발주처 {confidenceTotal}개 기준
+            </span>
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10, marginBottom: 16 }}>
+            {[
+              { label: "HIGH", count: highCount, desc: "N≥30 & stddev≤0.5", bg: "#ECFDF5", color: "#059669", border: "#A7F3D0" },
+              { label: "MEDIUM", count: mediumCount, desc: "N≥10 & stddev≤1.0", bg: "#FFFBEB", color: "#D97706", border: "#FCD34D" },
+              { label: "LOW", count: lowCount, desc: "그 외 (데이터 부족)", bg: "#FEF2F2", color: "#DC2626", border: "#FECACA" },
+            ].map(({ label, count, desc, bg, color, border }) => (
+              <div key={label} style={{ background: bg, borderRadius: 10, border: `1px solid ${border}`, padding: "14px 16px" }}>
+                <div style={{ fontSize: 11, color, fontWeight: 700, marginBottom: 4 }}>{label}</div>
+                <div style={{ fontSize: 24, fontWeight: 800, color }}>{count}개</div>
+                <div style={{ fontSize: 11, color: "#9CA3AF", marginTop: 4 }}>{desc}</div>
+                <div style={{ fontSize: 12, color, marginTop: 6, fontWeight: 600 }}>
+                  {confidenceTotal > 0 ? ((count / confidenceTotal) * 100).toFixed(1) : "0.0"}%
+                </div>
+              </div>
+            ))}
+          </div>
+          {/* 비율 바 */}
+          {confidenceTotal > 0 && (
+            <div style={{ height: 10, borderRadius: 5, overflow: "hidden", display: "flex" }}>
+              <div style={{ width: `${(highCount / confidenceTotal) * 100}%`, background: "#059669" }} />
+              <div style={{ width: `${(mediumCount / confidenceTotal) * 100}%`, background: "#D97706" }} />
+              <div style={{ width: `${(lowCount / confidenceTotal) * 100}%`, background: "#DC2626" }} />
+            </div>
+          )}
+          {/* 오픈 가능 기준 판단 */}
+          <div style={{ marginTop: 14, padding: "10px 14px", borderRadius: 8, background: sajungMAE !== null && sajungMAE <= 0.5 && highCount >= 10 ? "#ECFDF5" : "#FEF2F2", border: `1px solid ${sajungMAE !== null && sajungMAE <= 0.5 && highCount >= 10 ? "#A7F3D0" : "#FECACA"}`, fontSize: 13 }}>
+            <strong>오픈 가능 기준:</strong>{" "}
+            {sajungMAE !== null && sajungMAE <= 0.5 && highCount >= 10
+              ? <span style={{ color: "#059669" }}>✅ 충족 — HIGH 발주처 MAE ≤ 0.5%p ({sajungMAE?.toFixed(3)}%), HIGH {highCount}개</span>
+              : <span style={{ color: "#DC2626" }}>❌ 미충족 — HIGH 발주처 MAE ≤ 0.5%p 기준 ({sajungMAE != null ? `현재 ${sajungMAE.toFixed(3)}%` : "백테스트 데이터 없음"}, HIGH {highCount}개)</span>
+            }
+          </div>
         </div>
 
         {/* 데이터 부족 발주처 */}

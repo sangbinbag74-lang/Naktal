@@ -252,35 +252,57 @@ export function AnnouncementTabs({
               <div style={{ color: "#94A3B8", textAlign: "center", padding: "40px 0" }}>분석 데이터를 불러올 수 없습니다.</div>
             ) : (
               <>
-                {/* 핵심 지표 3카드 */}
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12 }}>
-                  {[
-                    {
-                      label: "AI 추천 투찰가",
-                      value: fmt(bs.optimalBidPrice),
-                      sub: `범위: ${fmt(bs.bidPriceRangeLow)} ~ ${fmt(bs.bidPriceRangeHigh)}`,
-                      color: "#1B3A6B",
-                    },
-                    {
-                      label: "낙찰 확률",
-                      value: `${Math.round(bs.winProbability * 100)}%`,
-                      sub: analysis?.meta.isFallback ? `데이터 부족 (${bs.sampleSize}건)` : `${bs.sampleSize}건 기반`,
-                      color: bs.winProbability >= 0.6 ? "#16A34A" : bs.winProbability >= 0.35 ? "#D97706" : "#DC2626",
-                    },
-                    {
-                      label: "경쟁 강도",
-                      value: comp ? `${comp.competitionScore}점` : "-",
-                      sub: comp ? `예상 ${comp.expectedBidders}개사 참여` : "",
-                      color: comp && comp.competitionScore >= 75 ? "#DC2626" : comp && comp.competitionScore >= 50 ? "#D97706" : "#64748B",
-                    },
-                  ].map(c => (
-                    <div key={c.label} style={{ background: "#F8FAFC", borderRadius: 10, padding: "14px 16px", textAlign: "center" }}>
-                      <div style={{ fontSize: 11, color: "#94A3B8", marginBottom: 4 }}>{c.label}</div>
-                      <div style={{ fontSize: 17, fontWeight: 800, color: c.color }}>{c.value}</div>
-                      <div style={{ fontSize: 11, color: "#94A3B8", marginTop: 4 }}>{c.sub}</div>
+                {/* 신뢰도 경고 배너 */}
+                {(() => {
+                  const cl = bs.confidenceLevel ?? (bs.isFallback ? "LOW" : bs.sampleSize >= 30 ? "HIGH" : "MEDIUM");
+                  if (cl === "MEDIUM") return (
+                    <div style={{ padding: "10px 14px", background: "#FFFBEB", border: "1px solid #FCD34D", borderRadius: 10, fontSize: 13, color: "#92400E" }}>
+                      ⚠️ 데이터가 충분하지 않아 예측 정확도가 낮을 수 있습니다. ({bs.sampleSize}건 기준)
                     </div>
-                  ))}
-                </div>
+                  );
+                  if (cl === "LOW") return (
+                    <div style={{ padding: "12px 16px", background: "#FEF2F2", border: "1px solid #FECACA", borderRadius: 10, fontSize: 13, color: "#7F1D1D" }}>
+                      <div style={{ fontWeight: 700, marginBottom: 4 }}>⛔ 이 발주처의 분석 데이터가 부족합니다 ({bs.sampleSize}건)</div>
+                      업종·지역 평균 기준으로 참고용 수치를 제공합니다. 낙찰하한가 <strong>{fmt(bs.lowerLimitPrice)}</strong> 이상 투찰 필수.
+                    </div>
+                  );
+                  return null;
+                })()}
+
+                {/* 핵심 지표 3카드 */}
+                {(() => {
+                  const cl = bs.confidenceLevel ?? (bs.isFallback ? "LOW" : bs.sampleSize >= 30 ? "HIGH" : "MEDIUM");
+                  return (
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12 }}>
+                      {[
+                        {
+                          label: "AI 추천 투찰가",
+                          value: cl === "LOW" ? "데이터 부족" : fmt(bs.optimalBidPrice),
+                          sub: cl === "LOW" ? `${bs.sampleSize}건` : `범위: ${fmt(bs.bidPriceRangeLow)} ~ ${fmt(bs.bidPriceRangeHigh)}`,
+                          color: cl === "LOW" ? "#94A3B8" : "#1B3A6B",
+                        },
+                        {
+                          label: "낙찰 확률",
+                          value: cl === "LOW" ? "-" : `${Math.round(bs.winProbability * 100)}%`,
+                          sub: bs.isFallback ? `데이터 부족 (${bs.sampleSize}건)` : `${bs.sampleSize}건 기반`,
+                          color: cl === "LOW" ? "#94A3B8" : bs.winProbability >= 0.6 ? "#16A34A" : bs.winProbability >= 0.35 ? "#D97706" : "#DC2626",
+                        },
+                        {
+                          label: "경쟁 강도",
+                          value: comp ? `${comp.competitionScore}점` : "-",
+                          sub: comp ? `예상 ${comp.expectedBidders}개사 참여` : "",
+                          color: comp && comp.competitionScore >= 75 ? "#DC2626" : comp && comp.competitionScore >= 50 ? "#D97706" : "#64748B",
+                        },
+                      ].map(c => (
+                        <div key={c.label} style={{ background: "#F8FAFC", borderRadius: 10, padding: "14px 16px", textAlign: "center" }}>
+                          <div style={{ fontSize: 11, color: "#94A3B8", marginBottom: 4 }}>{c.label}</div>
+                          <div style={{ fontSize: 17, fontWeight: 800, color: c.color }}>{c.value}</div>
+                          <div style={{ fontSize: 11, color: "#94A3B8", marginTop: 4 }}>{c.sub}</div>
+                        </div>
+                      ))}
+                    </div>
+                  );
+                })()}
 
                 {/* 사정율 예측 + 분포 */}
                 <div style={{ background: "#F8FAFC", borderRadius: 10, padding: "16px 18px" }}>
