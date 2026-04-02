@@ -164,6 +164,8 @@ export function AnnouncementTabs({
   const [analysis, setAnalysis] = useState<ComprehensiveResult | null>(null);
   const [analysisLoading, setAnalysisLoading] = useState(true);
   const [qualification, setQualification] = useState<QualificationResult | null>(null);
+  const [qualLoading, setQualLoading] = useState(false);
+  const [qualError, setQualError] = useState<string | null>(null);
 
   // URL 해시 → 탭 동기화
   useEffect(() => {
@@ -195,19 +197,27 @@ export function AnnouncementTabs({
 
   // 적격심사 API 호출 (탭3 클릭 시)
   const fetchQualification = useCallback(async () => {
-    if (qualification) return;
+    if (qualification || qualLoading) return;
+    setQualLoading(true);
+    setQualError(null);
     try {
       const res = await fetch("/api/analysis/qualification", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ annId: annDbId }),
       });
-      if (res.ok) {
-        const data = (await res.json()) as QualificationResult;
-        setQualification(data);
+      const data = await res.json();
+      if (!res.ok || data.error) {
+        setQualError(data.error ?? "적격심사 분석 중 오류가 발생했습니다.");
+      } else {
+        setQualification(data as QualificationResult);
       }
-    } catch { /* 무시 */ }
-  }, [annDbId, qualification]);
+    } catch {
+      setQualError("네트워크 오류가 발생했습니다. 다시 시도해 주세요.");
+    } finally {
+      setQualLoading(false);
+    }
+  }, [annDbId, qualification, qualLoading]);
 
   useEffect(() => { void fetchAnalysis(); }, [fetchAnalysis]);
 
@@ -247,7 +257,13 @@ export function AnnouncementTabs({
         {activeTab === "strategy" && (
           <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
             {analysisLoading ? (
-              <div style={{ color: "#94A3B8", textAlign: "center", padding: "40px 0" }}>AI 분석 중...</div>
+              <div style={{ textAlign: "center", padding: "36px 0" }}>
+                <div style={{ fontSize: 14, color: "#64748B", marginBottom: 8 }}>AI가 분석을 진행중입니다...</div>
+                <div style={{ fontSize: 12, color: "#94A3B8" }}>
+                  사정율·낙찰확률 분석은 <strong style={{ color: "#059669" }}>무제한 무료</strong>입니다.
+                  <br />번호 추천만 플랜 한도가 적용됩니다.
+                </div>
+              </div>
             ) : !bs ? (
               <div style={{ color: "#94A3B8", textAlign: "center", padding: "40px 0" }}>분석 데이터를 불러올 수 없습니다.</div>
             ) : (
@@ -350,29 +366,46 @@ export function AnnouncementTabs({
               </div>
             ) : (
               <>
-                <div style={{ display: "flex", gap: 24, alignItems: "flex-start", flexWrap: "wrap" }}>
-                  <SemicircleGauge value={comp.competitionScore} />
-                  <div style={{ flex: 1, minWidth: 180 }}>
-                    <div style={{ fontSize: 14, fontWeight: 700, color: "#0F172A", marginBottom: 10 }}>
-                      경쟁 분석 요약
+                {/* fallback이면 게이지 대신 수집 중 안내 */}
+                {analysis?.meta?.isFallback ? (
+                  <div style={{ padding: "20px", background: "#F8FAFC", borderRadius: 12, border: "1px solid #E8ECF2", textAlign: "center" }}>
+                    <div style={{ fontSize: 22, marginBottom: 10 }}>📊</div>
+                    <div style={{ fontSize: 14, fontWeight: 700, color: "#374151", marginBottom: 6 }}>
+                      이 발주처의 낙찰 데이터를 수집 중입니다
                     </div>
-                    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                      {[
-                        { label: "예상 참여사 수", value: `약 ${comp.expectedBidders}개사` },
-                        { label: "독점 기업", value: comp.dominantCompany ?? "특이 패턴 없음" },
-                        ...(comp.dominantWinRate !== null ? [{ label: "독점 낙찰률", value: `${Math.round(comp.dominantWinRate * 100)}%` }] : []),
-                      ].map(row => (
-                        <div key={row.label} style={{ display: "flex", gap: 12 }}>
-                          <span style={{ fontSize: 12, color: "#94A3B8", minWidth: 100 }}>{row.label}</span>
-                          <span style={{ fontSize: 13, fontWeight: 600, color: "#0F172A" }}>{row.value}</span>
-                        </div>
-                      ))}
+                    <div style={{ fontSize: 13, color: "#64748B", lineHeight: 1.6 }}>
+                      업종·지역 평균 기준으로 예측값을 제공하고 있습니다.<br />
+                      개찰 후 실제 낙찰 데이터가 쌓이면 정확도가 높아집니다.
+                    </div>
+                    <div style={{ fontSize: 12, color: "#94A3B8", marginTop: 10 }}>
+                      참고 — 예상 참여사 약 {comp.expectedBidders}개사
                     </div>
                   </div>
-                </div>
+                ) : (
+                  <div style={{ display: "flex", gap: 24, alignItems: "flex-start", flexWrap: "wrap" }}>
+                    <SemicircleGauge value={comp.competitionScore} />
+                    <div style={{ flex: 1, minWidth: 180 }}>
+                      <div style={{ fontSize: 14, fontWeight: 700, color: "#0F172A", marginBottom: 10 }}>
+                        경쟁 분석 요약
+                      </div>
+                      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                        {[
+                          { label: "예상 참여사 수", value: `약 ${comp.expectedBidders}개사` },
+                          { label: "독점 기업", value: comp.dominantCompany ?? "특이 패턴 없음" },
+                          ...(comp.dominantWinRate !== null ? [{ label: "독점 낙찰률", value: `${Math.round(comp.dominantWinRate * 100)}%` }] : []),
+                        ].map(row => (
+                          <div key={row.label} style={{ display: "flex", gap: 12 }}>
+                            <span style={{ fontSize: 12, color: "#94A3B8", minWidth: 100 }}>{row.label}</span>
+                            <span style={{ fontSize: 13, fontWeight: 600, color: "#0F172A" }}>{row.value}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
 
                 {/* 독점 패턴 경고 */}
-                {comp.dominantWinRate !== null && comp.dominantWinRate >= 0.4 && (
+                {!analysis?.meta?.isFallback && comp.dominantWinRate !== null && comp.dominantWinRate >= 0.4 && (
                   <div style={{ padding: "12px 16px", background: "#FEF2F2", borderRadius: 10, border: "1px solid #FECACA" }}>
                     <div style={{ fontSize: 13, fontWeight: 700, color: "#DC2626", marginBottom: 4 }}>
                       ⚠️ 독점 패턴 감지
@@ -384,7 +417,7 @@ export function AnnouncementTabs({
                   </div>
                 )}
 
-                {/* 발주처 낙찰이력 (사정율 컬럼 추가) */}
+                {/* 발주처 낙찰이력 */}
                 <div>
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
                     <div style={{ fontSize: 14, fontWeight: 700, color: "#0F172A" }}>발주처 낙찰이력</div>
@@ -395,8 +428,9 @@ export function AnnouncementTabs({
                     )}
                   </div>
                   {bidHistory.length === 0 ? (
-                    <div style={{ fontSize: 13, color: "#94A3B8", textAlign: "center", padding: "24px 0" }}>
-                      낙찰이력 데이터가 없습니다.
+                    <div style={{ background: "#F8FAFC", borderRadius: 10, padding: "20px", textAlign: "center" }}>
+                      <div style={{ fontSize: 13, color: "#94A3B8", marginBottom: 4 }}>낙찰이력 데이터가 없습니다.</div>
+                      <div style={{ fontSize: 12, color: "#CBD5E1" }}>개찰 후 낙찰 데이터가 자동으로 수집됩니다.</div>
                     </div>
                   ) : (
                     <div style={{ overflowX: "auto" }}>
@@ -433,9 +467,30 @@ export function AnnouncementTabs({
         {/* ─── 탭3: 참여 적합성 ─── */}
         {activeTab === "qualification" && (
           <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-            {!qualification ? (
+            {qualError ? (
+              <div style={{ background: qualError.includes("회사 정보") ? "#EFF6FF" : "#FEF2F2", border: `1px solid ${qualError.includes("회사 정보") ? "#BFDBFE" : "#FECACA"}`, borderRadius: 12, padding: "20px 24px" }}>
+                <div style={{ fontSize: 15, fontWeight: 700, color: qualError.includes("회사 정보") ? "#1D4ED8" : "#DC2626", marginBottom: 8 }}>
+                  {qualError.includes("회사 정보") ? "🏢 업체 정보가 등록되지 않았습니다" : "⚠️ 분석을 완료할 수 없습니다"}
+                </div>
+                <div style={{ fontSize: 13, color: qualError.includes("회사 정보") ? "#1E3A8A" : "#7F1D1D", marginBottom: qualError.includes("회사 정보") ? 16 : 0, lineHeight: 1.6 }}>
+                  {qualError.includes("회사 정보")
+                    ? "적격심사를 분석하려면 업체 실적 정보가 필요합니다. 내 업체 정보 페이지에서 사업자번호, 업종, 실적을 등록하면 자동으로 분석됩니다."
+                    : qualError}
+                </div>
+                {qualError.includes("회사 정보") && (
+                  <a href="/profile" style={{ display: "inline-block", padding: "8px 16px", background: "#1B3A6B", color: "#fff", borderRadius: 8, fontSize: 13, fontWeight: 600, textDecoration: "none" }}>
+                    업체 정보 등록하기 →
+                  </a>
+                )}
+              </div>
+            ) : qualLoading ? (
               <div style={{ color: "#94A3B8", textAlign: "center", padding: "40px 0" }}>
-                적격심사 데이터를 불러오는 중...
+                <div style={{ fontSize: 14, marginBottom: 8 }}>적격심사를 분석하는 중입니다...</div>
+                <div style={{ fontSize: 12 }}>업체 실적과 공고 조건을 비교하고 있습니다.</div>
+              </div>
+            ) : !qualification ? (
+              <div style={{ color: "#94A3B8", textAlign: "center", padding: "40px 0" }}>
+                탭을 클릭하면 적격심사 분석이 시작됩니다.
               </div>
             ) : (
               <>
