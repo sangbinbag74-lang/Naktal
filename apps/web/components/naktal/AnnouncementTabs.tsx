@@ -25,6 +25,8 @@ interface ComprehensiveResult {
     lowerLimitPrice: number;
     winProbability: number;
     numberStrategy: unknown;
+    confidenceLevel?: "HIGH" | "MEDIUM" | "LOW";
+    isFallback?: boolean;
   };
   competition: {
     competitionScore: number;
