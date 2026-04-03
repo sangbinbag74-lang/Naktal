@@ -35,7 +35,7 @@ function getConfidenceLevel(sampleSize: number, stddev: number): ConfidenceLevel
 export interface CompetitionResult {
   competitionScore: number;      // 0~100
   scoreLevel: "낮음" | "보통" | "높음" | "매우높음";
-  expectedBidders: number;
+  expectedBidders: number | null;
   dominantCompany: string | null;
   dominantWinRate: number | null;  // 0~1
   seasonEffect: boolean;
@@ -227,10 +227,24 @@ export async function analyzeCompetition(params: {
   });
 
   if (similar.length === 0) {
+    // category 기반 넓은 폴백 조회
+    const { data: broader } = await supabase
+      .from("BidResult")
+      .select("numBidders,Announcement!annId(category)")
+      .not("numBidders", "is", null)
+      .limit(50);
+    type BroaderRow = { numBidders: number; Announcement: { category: string } | null };
+    const broaderRows = (broader as BroaderRow[] | null) ?? [];
+    const bidderNums = broaderRows
+      .filter(r => r.Announcement?.category === params.category && r.numBidders > 0)
+      .map(r => r.numBidders);
+    const expectedBidders = bidderNums.length > 0
+      ? Math.round(bidderNums.reduce((a, b) => a + b, 0) / bidderNums.length)
+      : null;
     return {
       competitionScore: 50,
       scoreLevel: "보통",
-      expectedBidders: 10,
+      expectedBidders,
       dominantCompany: null,
       dominantWinRate: null,
       seasonEffect: false,

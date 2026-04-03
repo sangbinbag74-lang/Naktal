@@ -30,6 +30,7 @@ function calcWinProb(
   lowerLimitRate: number,
   n = 5000
 ): number {
+  if (lowerLimitRate <= 0) return 0;
   let wins = 0;
   for (let i = 0; i < n; i++) {
     const simSajung = normalRandom(sajungMean, sajungStd);
@@ -73,6 +74,7 @@ export function WinProbCalculator({
 
   const compute = useCallback(() => {
     if (!myBid || myBid <= 0) { setProb(null); return; }
+    if (lowerLimitPrice > 0 && myBid < lowerLimitPrice) { setProb(0); return; }
     setComputing(true);
     // setTimeout으로 UI 렌더 후 계산 실행
     setTimeout(() => {
@@ -80,7 +82,7 @@ export function WinProbCalculator({
       setProb(p);
       setComputing(false);
     }, 0);
-  }, [myBid, budget, sajungMean, sajungStd, lowerLimitRate]);
+  }, [myBid, budget, sajungMean, sajungStd, lowerLimitRate, lowerLimitPrice]);
 
   useEffect(() => {
     const timer = setTimeout(compute, 400); // debounce

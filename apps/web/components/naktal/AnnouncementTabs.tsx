@@ -30,7 +30,7 @@ interface ComprehensiveResult {
   };
   competition: {
     competitionScore: number;
-    expectedBidders: number;
+    expectedBidders: number | null;
     dominantCompany: string | null;
     dominantWinRate: number | null;
   };
@@ -272,7 +272,7 @@ export function AnnouncementTabs({
               <>
                 {/* 신뢰도 경고 배너 */}
                 {(() => {
-                  const cl = bs.confidenceLevel ?? (bs.isFallback ? "LOW" : bs.sampleSize >= 30 ? "HIGH" : "MEDIUM");
+                  const cl = bs.confidenceLevel ?? (bs.isFallback ? "LOW" : bs.sampleSize >= 30 ? "HIGH" : bs.sampleSize >= 10 ? "MEDIUM" : "LOW");
                   if (cl === "MEDIUM") return (
                     <div style={{ padding: "10px 14px", background: "#FFFBEB", border: "1px solid #FCD34D", borderRadius: 10, fontSize: 13, color: "#92400E" }}>
                       ⚠️ 데이터가 충분하지 않아 예측 정확도가 낮을 수 있습니다. ({bs.sampleSize}건 기준)
@@ -289,7 +289,7 @@ export function AnnouncementTabs({
 
                 {/* 핵심 지표 3카드 */}
                 {(() => {
-                  const cl = bs.confidenceLevel ?? (bs.isFallback ? "LOW" : bs.sampleSize >= 30 ? "HIGH" : "MEDIUM");
+                  const cl = bs.confidenceLevel ?? (bs.isFallback ? "LOW" : bs.sampleSize >= 30 ? "HIGH" : bs.sampleSize >= 10 ? "MEDIUM" : "LOW");
                   return (
                     <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12 }}>
                       {[
@@ -308,7 +308,7 @@ export function AnnouncementTabs({
                         {
                           label: "경쟁 강도",
                           value: comp ? `${comp.competitionScore}점` : "-",
-                          sub: comp ? `예상 ${comp.expectedBidders}개사 참여` : "",
+                          sub: comp ? `예상 ${comp.expectedBidders ?? "?"}개사 참여` : "",
                           color: comp && comp.competitionScore >= 75 ? "#DC2626" : comp && comp.competitionScore >= 50 ? "#D97706" : "#64748B",
                         },
                       ].map(c => (
@@ -355,7 +355,7 @@ export function AnnouncementTabs({
                       annId={annId}
                       isClosed={isClosed}
                       bidMethod={bidMethod}
-                      defaultBidders={analysis?.competition?.expectedBidders}
+                      defaultBidders={analysis?.competition?.expectedBidders ?? undefined}
                     />
                   </div>
                 )}
