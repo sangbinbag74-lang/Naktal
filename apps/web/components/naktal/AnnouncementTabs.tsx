@@ -351,7 +351,12 @@ export function AnnouncementTabs({
                 {/* 복수예가 번호 전략 */}
                 {multiplePrice && (
                   <div style={{ border: "2px solid #C7D2FE", borderRadius: 12, padding: "20px 24px" }}>
-                    <NumberAnalysisSection annId={annId} isClosed={isClosed} bidMethod={bidMethod} />
+                    <NumberAnalysisSection
+                      annId={annId}
+                      isClosed={isClosed}
+                      bidMethod={bidMethod}
+                      defaultBidders={analysis?.competition?.expectedBidders}
+                    />
                   </div>
                 )}
               </>

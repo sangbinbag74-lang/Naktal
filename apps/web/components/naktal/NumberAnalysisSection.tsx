@@ -80,10 +80,13 @@ interface Props {
   annId: string;
   isClosed: boolean;
   bidMethod?: string;
+  defaultBidders?: number;
 }
 
-export function NumberAnalysisSection({ annId, isClosed, bidMethod }: Props) {
-  const [estimatedBidders, setEstimatedBidders] = useState("");
+export function NumberAnalysisSection({ annId, isClosed, bidMethod, defaultBidders }: Props) {
+  const [estimatedBidders, setEstimatedBidders] = useState(
+    defaultBidders ? String(defaultBidders) : ""
+  );
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<RecommendResult | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -183,6 +186,11 @@ export function NumberAnalysisSection({ annId, isClosed, bidMethod }: Props) {
                 onFocus={(e) => { (e.target as HTMLInputElement).style.borderColor = "#1B3A6B"; }}
                 onBlur={(e) => { (e.target as HTMLInputElement).style.borderColor = "#E8ECF2"; }}
               />
+              {defaultBidders && (
+                <div style={{ fontSize: 11, color: "#94A3B8", marginTop: 4 }}>
+                  이전 발주 내역 기준 자동 추천값 ({defaultBidders}개사)
+                </div>
+              )}
             </div>
             <button
               onClick={handleAnalyze}
