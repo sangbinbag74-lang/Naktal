@@ -73,7 +73,7 @@ async function upsertG2BItemsToDB(items: G2BAnnouncement[]): Promise<void> {
       konepsId, title, orgName,
       budget: budgetNum,
       deadline,
-      category: i.indutyCtgryNm || i.ntceKindNm || "",
+      category: i.pubPrcrmntMidClsfcNm || i.pubPrcrmntLrgClsfcNm || i.ntceKindNm || "",
       region: g2bExtractRegion(i.ntceInsttAddr || ""),
       rawJson,
     };
@@ -145,7 +145,7 @@ function buildG2BResponse(allItems: G2BAnnouncement[], opts: Record<string, stri
       orgName: i.ntceInsttNm || i.demInsttNm || "",
       budget: +(i.asignBdgtAmt||i.presmptPrce||"0").replace(/[^0-9]/g,""),
       deadline: g2bParseDate(i.bidClseDt) ?? "",
-      category: i.indutyCtgryNm || i.ntceKindNm || "",
+      category: i.pubPrcrmntMidClsfcNm || i.pubPrcrmntLrgClsfcNm || i.ntceKindNm || "",
       region: g2bExtractRegion(i.ntceInsttAddr || ""),
       rawJson, createdAt: g2bParseDate(i.bidNtceDt) ?? "",
     };
@@ -171,7 +171,7 @@ async function fetchFromDB(opts: Record<string, string | number>): Promise<NextR
     "id,konepsId,title,orgName,budget,deadline,category,region,createdAt,rawJson"
   );
 
-  if (category)       q = q.or(`category.ilike.%${category}%,title.ilike.%${category}%`);
+  if (category)       q = q.or(`category.ilike.%${category}%,title.ilike.%${category}%,rawJson->>pubPrcrmntMidClsfcNm.ilike.%${category}%,rawJson->>pubPrcrmntLrgClsfcNm.ilike.%${category}%`);
   if (region)         q = q.filter("rawJson->>ntceInsttAddr", "ilike", `%${region}%`);
   if (keyword)        q = q.or(`title.ilike.%${keyword}%,orgName.ilike.%${keyword}%`);
   if (minBudget)      q = q.gte("budget", minBudget);

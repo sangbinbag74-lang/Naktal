@@ -12,9 +12,11 @@ export interface G2BAnnouncement {
   presmptPrce: string;     // 추정가격
   bidClseDt: string;       // 입찰마감일시 YYYYMMDDHHMM
   bidNtceDt: string;       // 공고일시 YYYYMMDDHHMM
-  ntceKindNm: string;      // 공고종류명 (시설공사 / 물품 / 용역)
+  ntceKindNm: string;      // 공고종류명 (등록공고 / 재공고 / 취소공고 / 변경공고)
   cntrctMthdNm: string;    // 계약방법명
-  indutyCtgryNm: string;   // 업종카테고리명
+  indutyCtgryNm: string;   // 업종카테고리명 (G2B API 미반환 — 항상 빈값)
+  pubPrcrmntLrgClsfcNm: string; // 공공조달분류 대분류 (시설공사 / 물품 / 기술용역 등)
+  pubPrcrmntMidClsfcNm: string; // 공공조달분류 중분류 (토목공사 / 건축공사 / 전기공사 등)
   ntceInsttAddr: string;   // 공고기관주소 (지역 추출용)
   sucsfbidLwltRate: string;// 낙찰하한율
   rbidPermsnYn: string;    // 재입찰허용여부
