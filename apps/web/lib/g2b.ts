@@ -65,14 +65,22 @@ function bidResultApiKey(): string {
 }
 
 // ─── 공고 목록 페이지 조회 ────────────────────────────────────────────────────
+const NTCE_OPS = [
+  "getBidPblancListInfoServc",    // 용역
+  "getBidPblancListInfoCnstwk",   // 시설공사
+  "getBidPblancListInfoThng",     // 물품
+] as const;
+
 export async function g2bFetchAnnouncementPage(params: {
   pageNo: number;
   numOfRows: number;
   inqryBgnDt: string; // YYYYMMDD0000
   inqryEndDt: string; // YYYYMMDD2359
   inqryDiv?: "1" | "2";
+  operation?: typeof NTCE_OPS[number];
 }): Promise<{ items: G2BAnnouncement[]; totalCount: number }> {
-  const url = new URL(`${G2B_BASE}/getBidPblancListInfoServc`);
+  const op = params.operation ?? NTCE_OPS[0];
+  const url = new URL(`${G2B_BASE}/${op}`);
   url.searchParams.set("serviceKey", announcementApiKey());
   url.searchParams.set("numOfRows", String(params.numOfRows));
   url.searchParams.set("pageNo", String(params.pageNo));

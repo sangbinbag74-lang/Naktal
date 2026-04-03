@@ -1,5 +1,5 @@
 import Decimal from "decimal.js";
-import { fetchAnnouncementPage, type G2BAnnouncement } from "./g2b-client";
+import { fetchAnnouncementPage, NTCE_OPS, type G2BAnnouncement } from "./g2b-client";
 import type { AnnouncementRow } from "../parsers/announcement";
 import { logger } from "../utils/logger";
 
@@ -106,30 +106,34 @@ export async function fetchAnnouncements(
   logger.info(`G2B 공고 수집: ${inqryBgnDt} ~ ${inqryEndDt}`);
 
   const results: AnnouncementRow[] = [];
-  let page = 1;
 
-  while (page <= maxPages) {
-    const { items, totalCount } = await fetchAnnouncementPage({
-      pageNo: page,
-      numOfRows,
-      inqryDiv: "1",
-      inqryBgnDt,
-      inqryEndDt,
-    });
+  // 3개 타입(용역/시설공사/물품) 순회 — 낙찰결과 수집과 동일 패턴
+  for (const operation of NTCE_OPS) {
+    let page = 1;
+    while (page <= maxPages) {
+      const { items, totalCount } = await fetchAnnouncementPage({
+        pageNo: page,
+        numOfRows,
+        inqryDiv: "1",
+        inqryBgnDt,
+        inqryEndDt,
+        operation,
+      });
 
-    if (items.length === 0) break;
+      if (items.length === 0) break;
 
-    let saved = 0;
-    for (const item of items) {
-      const row = mapToRow(item);
-      if (row) { results.push(row); saved++; }
+      let saved = 0;
+      for (const item of items) {
+        const row = mapToRow(item);
+        if (row) { results.push(row); saved++; }
+      }
+
+      logger.info(`  [${operation}] 페이지 ${page}: ${items.length}건 수신 / ${saved}건 변환 (누적 ${results.length} / 총 ${totalCount})`);
+
+      if (page * numOfRows >= totalCount) break;
+      page++;
+      await new Promise((r) => setTimeout(r, 300)); // API rate limit 방지
     }
-
-    logger.info(`  페이지 ${page}: ${items.length}건 수신 / ${saved}건 변환 (누적 ${results.length} / 총 ${totalCount})`);
-
-    if (page * numOfRows >= totalCount) break;
-    page++;
-    await new Promise((r) => setTimeout(r, 300)); // API rate limit 방지
   }
 
   logger.info(`G2B 공고 수집 완료: ${results.length}건`);

@@ -55,6 +55,15 @@ interface G2BResponse<T> {
 
 const BASE_URL = "https://apis.data.go.kr/1230000/ad/BidPublicInfoService";
 const SCSBID_BASE = "https://apis.data.go.kr/1230000/as/ScsbidInfoService";
+
+// 공고 타입별 엔드포인트 (낙찰결과 SCSBID_OPS와 동일 구조)
+export const NTCE_OPS = [
+  "getBidPblancListInfoServc",    // 용역
+  "getBidPblancListInfoCnstwk",   // 시설공사
+  "getBidPblancListInfoThng",     // 물품
+] as const;
+export type NtceOp = typeof NTCE_OPS[number];
+
 const SCSBID_OPS = [
   "getScsbidListSttusThng",      // 물품
   "getScsbidListSttusCnstwk",    // 시설공사
@@ -79,15 +88,17 @@ function parseItems<T>(items: G2BBody<T>["items"]): T[] {
   return [];
 }
 
-/** 입찰공고 목록 조회 */
+/** 입찰공고 목록 조회 (operation으로 용역/시설공사/물품 구분) */
 export async function fetchAnnouncementPage(params: {
   pageNo: number;
   numOfRows: number;
   inqryDiv?: "1" | "2"; // 1=공고일시 기준, 2=마감일시 기준
   inqryBgnDt: string;   // YYYYMMDD0000
   inqryEndDt: string;   // YYYYMMDD2359
+  operation?: NtceOp;   // 기본: getBidPblancListInfoServc (용역)
 }): Promise<{ items: G2BAnnouncement[]; totalCount: number }> {
-  const url = new URL(`${BASE_URL}/getBidPblancListInfoServc`);
+  const op = params.operation ?? NTCE_OPS[0];
+  const url = new URL(`${BASE_URL}/${op}`);
   url.searchParams.set("serviceKey", getApiKey());
   url.searchParams.set("numOfRows", String(params.numOfRows));
   url.searchParams.set("pageNo", String(params.pageNo));

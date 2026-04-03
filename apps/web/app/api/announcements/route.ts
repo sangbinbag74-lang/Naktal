@@ -11,19 +11,27 @@ import {
 export const maxDuration = 60;
 
 // ─── G2B API 직접 조회 (실시간) ───────────────────────────────────────────────
-// 최근 3일치 공고 조회 → 대부분 마감이 미래인 진행중 공고
+// 최근 3일치 공고 조회 — 용역/시설공사/물품 3개 타입 모두 수집
+const NTCE_OPS_WEB = [
+  "getBidPblancListInfoServc",
+  "getBidPblancListInfoCnstwk",
+  "getBidPblancListInfoThng",
+] as const;
+
 async function fetchFromG2B(): Promise<G2BAnnouncement[]> {
   const nowTime = Date.now();
   const inqryBgnDt = toYMD(new Date(nowTime - 3 * 86400000)) + "0000";
   const inqryEndDt = toYMD(new Date()) + "2359";
 
   const items: G2BAnnouncement[] = [];
-  for (let p = 1; p <= 5; p++) {
-    const result = await g2bFetchAnnouncementPage({
-      pageNo: p, numOfRows: 100, inqryBgnDt, inqryEndDt,
-    });
-    items.push(...result.items);
-    if (result.items.length < 100) break;
+  for (const operation of NTCE_OPS_WEB) {
+    for (let p = 1; p <= 5; p++) {
+      const result = await g2bFetchAnnouncementPage({
+        pageNo: p, numOfRows: 100, inqryBgnDt, inqryEndDt, operation,
+      });
+      items.push(...result.items);
+      if (result.items.length < 100) break;
+    }
   }
   return items;
 }
@@ -171,7 +179,7 @@ async function fetchFromDB(opts: Record<string, string | number>): Promise<NextR
     "id,konepsId,title,orgName,budget,deadline,category,region,createdAt,rawJson"
   );
 
-  if (category)       q = q.or(`category.ilike.%${category}%,title.ilike.%${category}%,rawJson->>pubPrcrmntMidClsfcNm.ilike.%${category}%,rawJson->>pubPrcrmntLrgClsfcNm.ilike.%${category}%`);
+  if (category)       q = q.or(`category.ilike.%${category}%,rawJson->>pubPrcrmntMidClsfcNm.ilike.%${category}%,rawJson->>pubPrcrmntLrgClsfcNm.ilike.%${category}%`);
   if (region)         q = q.filter("rawJson->>ntceInsttAddr", "ilike", `%${region}%`);
   if (keyword)        q = q.or(`title.ilike.%${keyword}%,orgName.ilike.%${keyword}%`);
   if (minBudget)      q = q.gte("budget", minBudget);
