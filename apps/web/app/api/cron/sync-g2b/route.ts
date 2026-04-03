@@ -34,15 +34,23 @@ function supabaseHeaders(key: string): SupabaseHeaders {
   };
 }
 
-// ─── 공고 upsert ──────────────────────────────────────────────────────────────
-async function importAnnouncements(
-  url: string, key: string, fromDate: string, toDate: string
+// ─── 공고 upsert (operation 단위) ─────────────────────────────────────────────
+const NTCE_OPS_CRON = [
+  "getBidPblancListInfoServc",    // 용역
+  "getBidPblancListInfoCnstwk",   // 시설공사
+  "getBidPblancListInfoThng",     // 물품
+] as const;
+
+async function importAnnouncementsOp(
+  url: string, key: string, fromDate: string, toDate: string,
+  operation: typeof NTCE_OPS_CRON[number],
 ): Promise<number> {
   let page = 1, saved = 0;
   while (true) {
     const { items, totalCount } = await g2bFetchAnnouncementPage({
       pageNo: page, numOfRows: NUM_OF_ROWS,
       inqryBgnDt: `${fromDate}0000`, inqryEndDt: `${toDate}2359`,
+      operation,
     });
     if (items.length === 0) break;
 
@@ -60,21 +68,20 @@ async function importAnnouncements(
         konepsId, title, orgName,
         budget: budgetNum,
         deadline,
-        category: item.indutyCtgryNm || item.ntceKindNm || "",
+        category: item.pubPrcrmntMidClsfcNm || item.pubPrcrmntLrgClsfcNm || item.ntceKindNm || "",
         region: g2bExtractRegion(item.ntceInsttAddr || ""),
         rawJson,
       };
     }).filter(Boolean);
 
     if (rows.length > 0) {
-      // on_conflict=konepsId: konepsId 중복 시 기존 행 업데이트
       const r = await fetch(`${url}/rest/v1/Announcement?on_conflict=konepsId`, {
         method: "POST", headers: supabaseHeaders(key), body: JSON.stringify(rows),
       });
       if (r.ok) saved += rows.length;
       else {
         const errText = await r.text();
-        console.error(`[importAnnouncements] upsert 실패 ${r.status}:`, errText);
+        console.error(`[importAnnouncements:${operation}] upsert 실패 ${r.status}:`, errText);
       }
     }
     if (page * NUM_OF_ROWS >= totalCount) break;
@@ -82,6 +89,16 @@ async function importAnnouncements(
     await sleep(200);
   }
   return saved;
+}
+
+async function importAnnouncements(
+  url: string, key: string, fromDate: string, toDate: string
+): Promise<number> {
+  let total = 0;
+  for (const op of NTCE_OPS_CRON) {
+    total += await importAnnouncementsOp(url, key, fromDate, toDate, op);
+  }
+  return total;
 }
 
 // ─── 낙찰결과 upsert ──────────────────────────────────────────────────────────
