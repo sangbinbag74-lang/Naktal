@@ -6,7 +6,7 @@ loadEnv();
 import { fetchAnnouncements } from "./fetchers/g2b-announcement";
 import { fetchBidResults } from "./fetchers/g2b-bid-result";
 import {
-  upsertAnnouncement,
+  upsertAnnouncementBatch,
   upsertBidResult,
   logCrawl,
 } from "./db/upsert";
@@ -73,19 +73,16 @@ async function runAnnouncementCrawl(args: CliArgs): Promise<void> {
   const rows = await fetchAnnouncements({
     fromDate: args.from,
     toDate: args.to,
-    numOfRows: 100,
+    numOfRows: 999,
     maxPages: args.pages,
   });
 
-  for (const row of rows) {
-    try {
-      await upsertAnnouncement(row);
-      count++;
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      logger.error(`upsert 실패: ${row.konepsId}`, err);
-      errorMsgs.push(msg);
-    }
+  try {
+    count = await upsertAnnouncementBatch(rows);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    logger.error(`배치 upsert 실패`, err);
+    errorMsgs.push(msg);
   }
 
   const status = errorMsgs.length === 0 ? "SUCCESS" : count > 0 ? "PARTIAL" : "FAILED";
@@ -102,7 +99,7 @@ async function runBidResultCrawl(args: CliArgs): Promise<void> {
   const rows = await fetchBidResults({
     fromDate: args.from,
     toDate: args.to,
-    numOfRows: 100,
+    numOfRows: 999,
     maxPages: args.pages,
   });
 

@@ -42,6 +42,39 @@ export async function upsertAnnouncement(data: AnnouncementRow): Promise<void> {
   if (error) throw new Error(`upsertAnnouncement 실패 (${data.konepsId}): ${error.message}`);
 }
 
+export async function upsertAnnouncementBatch(rows: AnnouncementRow[]): Promise<number> {
+  if (rows.length === 0) return 0;
+  // 같은 배치 내 중복 konepsId 제거 (3개 타입 API에서 동일 공고 반환 시 ON CONFLICT 오류 방지)
+  const seen = new Set<string>();
+  const unique = rows.filter((r) => {
+    if (seen.has(r.konepsId)) return false;
+    seen.add(r.konepsId);
+    return true;
+  });
+  const BATCH = 100;
+  let saved = 0;
+  for (let i = 0; i < unique.length; i += BATCH) {
+    const chunk = unique.slice(i, i + BATCH);
+    const { error } = await supabase.from("Announcement").upsert(
+      chunk.map((data) => ({
+        id:       konepsIdToUuid(data.konepsId),
+        konepsId: data.konepsId,
+        title:    data.title,
+        orgName:  data.orgName,
+        budget:   data.budget.toString(),
+        deadline: data.deadline.toISOString(),
+        category: data.category,
+        region:   data.region,
+        rawJson:  data.rawJson,
+      })),
+      { onConflict: "konepsId" }
+    );
+    if (error) throw new Error(`upsertAnnouncementBatch 실패 (chunk ${i}~${i + chunk.length}): ${error.message}`);
+    saved += chunk.length;
+  }
+  return saved;
+}
+
 // ─── BidResult ───────────────────────────────────────────────────────────────
 
 export async function upsertBidResult(data: BidResultRow): Promise<void> {

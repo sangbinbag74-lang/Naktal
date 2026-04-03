@@ -11,7 +11,7 @@ loadEnv();
 
 import { fetchAnnouncements } from "./fetchers/g2b-announcement";
 import { fetchBidResults } from "./fetchers/g2b-bid-result";
-import { upsertAnnouncement, upsertBidResult } from "./db/upsert";
+import { upsertAnnouncementBatch, upsertBidResult } from "./db/upsert";
 import { logger } from "./utils/logger";
 
 function loadEnv(): void {
@@ -86,10 +86,10 @@ async function importMonth(
   if (!opts.skipAnn) {
     try {
       const rows = await fetchAnnouncements({ fromDate, toDate, numOfRows: 999, maxPages: 999 });
-      for (const row of rows) {
-        try { await upsertAnnouncement(row); ann++; } catch (e) {
-          logger.error(`  저장 실패 (${row.konepsId}): ${e instanceof Error ? e.message : String(e)}`);
-        }
+      try {
+        ann = await upsertAnnouncementBatch(rows);
+      } catch (e) {
+        logger.error(`  배치 저장 실패: ${e instanceof Error ? e.message : String(e)}`);
       }
     } catch (e) {
       logger.error(`[${ym}] 공고 수집 오류`, e);

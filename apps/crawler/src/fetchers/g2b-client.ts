@@ -107,7 +107,7 @@ export async function fetchAnnouncementPage(params: {
   url.searchParams.set("inqryBgnDt", params.inqryBgnDt);
   url.searchParams.set("inqryEndDt", params.inqryEndDt);
 
-  const res = await fetch(url.toString(), { signal: AbortSignal.timeout(30_000) });
+  const res = await fetch(url.toString(), { signal: AbortSignal.timeout(60_000) });
   if (!res.ok) throw new Error(`G2B 공고 API 오류: ${res.status} ${res.statusText}`);
 
   const data = (await res.json()) as G2BResponse<G2BAnnouncement>;
