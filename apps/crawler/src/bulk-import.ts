@@ -11,7 +11,7 @@ loadEnv();
 
 import { fetchAnnouncements } from "./fetchers/g2b-announcement";
 import { fetchBidResults } from "./fetchers/g2b-bid-result";
-import { upsertAnnouncementBatch, upsertBidResult } from "./db/upsert";
+import { upsertAnnouncementBatch, upsertBidResultBatch } from "./db/upsert";
 import { logger } from "./utils/logger";
 
 function loadEnv(): void {
@@ -101,10 +101,10 @@ async function importMonth(
   if (!opts.skipBid) {
     try {
       const rows = await fetchBidResults({ fromDate, toDate, numOfRows: 999, maxPages: 999 });
-      for (const row of rows) {
-        try { await upsertBidResult(row); bid++; } catch (e) {
-          logger.error(`  낙찰결과 저장 실패 (${row.annId}): ${e instanceof Error ? e.message : String(e)}`);
-        }
+      try {
+        bid = await upsertBidResultBatch(rows);
+      } catch (e) {
+        logger.error(`  낙찰결과 배치 저장 실패: ${e instanceof Error ? e.message : String(e)}`);
       }
     } catch (e) {
       logger.error(`[${ym}] 낙찰결과 수집 오류`, e);

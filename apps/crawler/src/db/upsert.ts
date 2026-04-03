@@ -92,6 +92,36 @@ export async function upsertBidResult(data: BidResultRow): Promise<void> {
   if (error) throw new Error(`upsertBidResult 실패 (${data.annId}): ${error.message}`);
 }
 
+export async function upsertBidResultBatch(rows: BidResultRow[]): Promise<number> {
+  if (rows.length === 0) return 0;
+  // 배치 내 중복 annId 제거
+  const seen = new Set<string>();
+  const unique = rows.filter((r) => {
+    if (seen.has(r.annId)) return false;
+    seen.add(r.annId);
+    return true;
+  });
+  const BATCH = 100;
+  let saved = 0;
+  for (let i = 0; i < unique.length; i += BATCH) {
+    const chunk = unique.slice(i, i + BATCH);
+    const { error } = await supabase.from("BidResult").upsert(
+      chunk.map((data) => ({
+        id:         randomUUID(),
+        annId:      data.annId,
+        bidRate:    data.bidRate,
+        finalPrice: data.finalPrice.toString(),
+        numBidders: data.numBidders,
+        winnerName: data.winnerName ?? null,
+      })),
+      { onConflict: "annId" }
+    );
+    if (error) throw new Error(`upsertBidResultBatch 실패 (chunk ${i}~${i + chunk.length}): ${error.message}`);
+    saved += chunk.length;
+  }
+  return saved;
+}
+
 // ─── CrawlLog ─────────────────────────────────────────────────────────────────
 
 export interface CrawlLogInput {
