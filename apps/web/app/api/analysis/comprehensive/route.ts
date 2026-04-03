@@ -80,7 +80,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         category: ann.category as string,
         budgetRange: classifyBudget(budget),
         region: ann.region as string,
-        estimatedBidders: competition.expectedBidders,
+        estimatedBidders: competition.expectedBidders ?? undefined,
       });
     } catch {
       // 번호 추천 실패는 무시
