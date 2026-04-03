@@ -55,7 +55,7 @@ function mapToRow(item: G2BAnnouncement): AnnouncementRow | null {
     const deadline = parseG2BDate(item.bidClseDt);
     if (!deadline) return null;
 
-    const category = item.ntceKindNm || item.indutyCtgryNm || "";
+    const category = item.indutyCtgryNm || item.ntceKindNm || "";
     const region   = extractRegion(item.ntceInsttAddr || "");
 
     const rawJson: Record<string, string> = {};
