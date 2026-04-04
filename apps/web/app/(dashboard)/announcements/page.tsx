@@ -255,12 +255,16 @@ export default function AnnouncementsPage() {
     [keyword, konepsId, categories, regions, sort, contractMethod, deadlineRange, minBudget, maxBudget, rgnType, ntceKind]
   );
 
-  useEffect(() => {
+  // 최초 마운트 1회만 자동 조회
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { fetchData(1, true); }, []);
+
+  const handleSearch = () => {
     setPage(1);
     setItems([]);
     setHasMore(true);
     fetchData(1, true);
-  }, [keyword, konepsId, categories, regions, sort, contractMethod, deadlineRange, minBudget, maxBudget, rgnType, ntceKind, fetchData]);
+  };
 
   useEffect(() => {
     if (observerRef.current) observerRef.current.disconnect();
@@ -332,6 +336,7 @@ export default function AnnouncementsPage() {
             type="text"
             value={keyword}
             onChange={(e) => setKeyword(e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Enter") handleSearch(); }}
             placeholder="공고명, 발주기관 검색..."
             style={{
               flex: 1,
@@ -493,6 +498,18 @@ export default function AnnouncementsPage() {
             <option value="latest">최신순</option>
             <option value="deadline">마감임박순</option>
           </select>
+          <button
+            onClick={handleSearch}
+            disabled={loading}
+            style={{
+              height: 38, padding: "0 20px", borderRadius: 9, fontSize: 13, fontWeight: 700,
+              background: loading ? "#94A3B8" : "#1B3A6B", color: "#fff",
+              border: "none", cursor: loading ? "default" : "pointer",
+              whiteSpace: "nowrap", flexShrink: 0,
+            }}
+          >
+            {loading ? "검색 중..." : "검색"}
+          </button>
         </div>
 
         {/* 공고번호 검색 */}
