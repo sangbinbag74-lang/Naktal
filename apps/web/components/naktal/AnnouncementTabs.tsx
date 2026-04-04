@@ -262,7 +262,7 @@ export function AnnouncementTabs({
               <div style={{ textAlign: "center", padding: "36px 0" }}>
                 <div style={{ fontSize: 14, color: "#64748B", marginBottom: 8 }}>AI가 분석을 진행중입니다...</div>
                 <div style={{ fontSize: 12, color: "#94A3B8" }}>
-                  사정율·낙찰확률 분석은 <strong style={{ color: "#059669" }}>무제한 무료</strong>입니다.
+                  사정율·구간 분석은 <strong style={{ color: "#059669" }}>무제한 무료</strong>입니다.
                   <br />번호 추천만 플랜 한도가 적용됩니다.
                 </div>
               </div>
@@ -300,7 +300,7 @@ export function AnnouncementTabs({
                           color: cl === "LOW" ? "#94A3B8" : "#1B3A6B",
                         },
                         {
-                          label: "낙찰 확률",
+                          label: "구간 적중 확률",
                           value: cl === "LOW" ? "-" : `${Math.round(bs.winProbability * 100)}%`,
                           sub: bs.isFallback ? `데이터 부족 (${bs.sampleSize}건)` : `${bs.sampleSize}건 기반`,
                           color: cl === "LOW" ? "#94A3B8" : bs.winProbability >= 0.6 ? "#16A34A" : bs.winProbability >= 0.35 ? "#D97706" : "#DC2626",

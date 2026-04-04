@@ -801,7 +801,7 @@ export default function AnnouncementsPage() {
                       {[
                         { label: "낙찰하한율",    value: lwltRate ? `${lwltRate}%` : "-", color: lwltRate ? "#DC2626" : "#94A3B8" },
                         { label: "AI추천투찰가",  value: optimalBid,                       color: pred ? "#1B3A6B" : "#94A3B8" },
-                        { label: "낙찰확률(AI)",  value: winProb,                          color: probColor },
+                        { label: "구간확률(AI)",  value: winProb,                          color: probColor },
                       ].map((item) => (
                         <div key={item.label} style={{ textAlign: "center" }}>
                           <div style={{ fontSize: 10, color: "#94A3B8", marginBottom: 2 }}>{item.label}</div>

@@ -143,7 +143,25 @@ export async function predictOptimalBid(params: {
     isFallback = true;
   }
 
-  // 3. 전체 폴백도 없으면 기본값 (업계 일반 추정)
+  // 3. budgetRange 무관 ALL 카테고리 폴백 (가장 샘플 많은 구간 사용)
+  if (!stat || stat.sampleSize < 5) {
+    const supabase = createAdminClient();
+    const { data: anyData } = await supabase
+      .from("SajungRateStat")
+      .select("avg,stddev,p25,p50,p75,min,max,mode,monthlyAvg,sampleSize")
+      .eq("orgName", "ALL")
+      .eq("category", params.category)
+      .eq("region", "")
+      .order("sampleSize", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (anyData && (anyData as SajungStatRow).sampleSize >= 5) {
+      stat = anyData as SajungStatRow;
+    }
+    isFallback = true;
+  }
+
+  // 4. 전체 폴백도 없으면 기본값 (업계 일반 추정)
   if (!stat || stat.sampleSize < 5) {
     const fallbackRate = 98.5;
     const estimated = params.budget * (fallbackRate / 100);

@@ -162,10 +162,10 @@ export function WinProbCalculator({
         </div>
       )}
 
-      {/* 낙찰 확률 */}
+      {/* 유효 구간 확률 */}
       <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
         <div>
-          <div style={{ fontSize: 11, color: "#94A3B8", marginBottom: 2 }}>예상 낙찰 확률</div>
+          <div style={{ fontSize: 11, color: "#94A3B8", marginBottom: 2 }}>유효 구간 적중 확률</div>
           <div style={{ fontSize: 28, fontWeight: 800, color: probColor }}>
             {computing ? "..." : prob !== null ? `${prob}%` : "—"}
           </div>
@@ -187,7 +187,7 @@ export function WinProbCalculator({
 
       {/* 면책 고지 */}
       <div style={{ marginTop: 14, padding: "8px 12px", background: "#FFFBEB", borderRadius: 8, fontSize: 11, color: "#92400E" }}>
-        ※ 예측 결과는 통계적 참고 자료입니다. 실제 낙찰을 보장하지 않습니다.
+        ※ 이 수치는 <strong>예정가 이하·하한가 이상</strong>인 구간에 내 금액이 들어올 통계적 확률입니다. 경쟁자 수·낙찰 방식은 반영되지 않으며, 실제 낙찰 확률과 다를 수 있습니다.
       </div>
     </div>
   );
