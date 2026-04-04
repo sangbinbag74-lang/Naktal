@@ -23,15 +23,6 @@ interface Announcement {
   rawJson: Record<string, string> | null;
 }
 
-interface BidResultDb {
-  bidRate: string;
-  finalPrice: string;
-  numBidders: number;
-  annId: string;
-  winnerName: string | null;
-  Announcement: { budget: string } | null;
-}
-
 function fmt(n: string) {
   const num = parseInt(n, 10);
   return isNaN(num) ? n : new Intl.NumberFormat("ko-KR").format(num) + "원";
@@ -124,45 +115,6 @@ export default async function AnnouncementDetailPage({
   const budgetNum = parseInt(a.budget, 10);
   const estimatedPrice = isNaN(budgetNum) ? null : Math.round(budgetNum * 1.03);
 
-  // 발주처 낙찰이력
-  const { data: orgAnns } = await admin
-    .from("Announcement")
-    .select("konepsId")
-    .ilike("orgName", `%${a.orgName}%`)
-    .order("createdAt", { ascending: false })
-    .limit(30);
-
-  const konepsIds = (orgAnns ?? []).map((x: { konepsId: string }) => x.konepsId);
-  let bidHistoryRaw: BidResultDb[] = [];
-  if (konepsIds.length > 0) {
-    const { data: bidData } = await admin
-      .from("BidResult")
-      .select("bidRate,finalPrice,numBidders,annId,winnerName,Announcement!annId(budget)")
-      .in("annId", konepsIds)
-      .order("createdAt", { ascending: false })
-      .limit(10);
-    bidHistoryRaw = (bidData ?? []) as unknown as BidResultDb[];
-  }
-
-  // 사정율 계산 (유효 97~103%)
-  const bidHistory = bidHistoryRaw.map((r) => {
-    const bidRate = parseFloat(r.bidRate);
-    const finalPrice = parseFloat(r.finalPrice);
-    const bgt = parseFloat(r.Announcement?.budget ?? "0");
-    let sajungRate: number | null = null;
-    if (bidRate > 0 && finalPrice > 0 && bgt > 0) {
-      const est = finalPrice / (bidRate / 100);
-      const raw = (est / bgt) * 100;
-      sajungRate = raw >= 97 && raw <= 103 ? Math.round(raw * 100) / 100 : null;
-    }
-    return { bidRate: r.bidRate, finalPrice: r.finalPrice, numBidders: r.numBidders, sajungRate, winnerName: r.winnerName };
-  });
-
-  const avgBidRate =
-    bidHistory.length > 0
-      ? (bidHistory.reduce((s, r) => s + parseFloat(r.bidRate), 0) / bidHistory.length).toFixed(3)
-      : null;
-
   return (
     <div style={{ maxWidth: 800, display: "flex", flexDirection: "column", gap: 16 }}>
       <Link href="/announcements" style={{ fontSize: 13, color: "#64748B", display: "inline-flex", alignItems: "center", gap: 4, textDecoration: "none" }}>
@@ -253,7 +205,7 @@ export default async function AnnouncementDetailPage({
         </div>
       </div>
 
-      {/* 3탭 분석 영역 */}
+      {/* 투찰 전략 분석 */}
       <AnnouncementTabs
         annId={a.konepsId}
         annDbId={a.id}
@@ -267,8 +219,6 @@ export default async function AnnouncementDetailPage({
         multiplePrice={multiplePrice}
         isClosed={isClosed}
         bidMethod={bidMethodDisplay}
-        bidHistory={bidHistory}
-        avgBidRate={avgBidRate}
       />
 
       {/* 면책 고지 */}

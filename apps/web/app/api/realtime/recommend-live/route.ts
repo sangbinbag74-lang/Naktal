@@ -42,6 +42,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   };
 
   const result = await recommendNumbers({
+    annId: body.annId,
     category: body.category,
     budgetRange: body.budgetRange,
     region: body.region,
