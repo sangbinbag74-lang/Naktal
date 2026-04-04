@@ -16,6 +16,15 @@ function toggleFolder(id: string): boolean {
   return !exists;
 }
 
+const FILTERS_KEY = "naktal_ann_filters";
+function getSavedFilters(): Record<string, unknown> {
+  if (typeof window === "undefined") return {};
+  try { return JSON.parse(localStorage.getItem(FILTERS_KEY) ?? "{}") as Record<string, unknown>; } catch { return {}; }
+}
+function saveFilters(filters: Record<string, unknown>) {
+  try { localStorage.setItem(FILTERS_KEY, JSON.stringify(filters)); } catch { /* 무시 */ }
+}
+
 interface Announcement {
   id: string;
   konepsId: string;
@@ -192,20 +201,20 @@ export default function AnnouncementsPage() {
 
   useEffect(() => { setFolderIds(getFolderIds()); }, []);
 
-  const [keyword, setKeyword] = useState("");
+  const [keyword, setKeyword] = useState<string>(() => String(getSavedFilters().keyword ?? ""));
   const [konepsId, setKonepsId] = useState("");
-  const [categories, setCategories] = useState<string[]>([]);
+  const [categories, setCategories] = useState<string[]>(() => { const s = getSavedFilters().categories; return Array.isArray(s) ? s as string[] : []; });
   const [catPanelOpen, setCatPanelOpen] = useState(false);
-  const [regions, setRegions] = useState<string[]>([]);
+  const [regions, setRegions] = useState<string[]>(() => { const s = getSavedFilters().regions; return Array.isArray(s) ? s as string[] : []; });
   const [regionPanelOpen, setRegionPanelOpen] = useState(false);
-  const [sort, setSort] = useState("latest");
-  const [contractMethod, setContractMethod] = useState("");
-  const [deadlineRange, setDeadlineRange] = useState("active");
-  const [minBudget, setMinBudget] = useState("");
-  const [maxBudget, setMaxBudget] = useState("");
-  const [budgetPreset, setBudgetPreset] = useState("");
-  const [rgnType, setRgnType] = useState("");
-  const [ntceKind, setNtceKind] = useState("");
+  const [sort, setSort] = useState<string>(() => String(getSavedFilters().sort ?? "latest"));
+  const [contractMethod, setContractMethod] = useState<string>(() => String(getSavedFilters().contractMethod ?? ""));
+  const [deadlineRange, setDeadlineRange] = useState<string>(() => String(getSavedFilters().deadlineRange ?? "active"));
+  const [minBudget, setMinBudget] = useState<string>(() => String(getSavedFilters().minBudget ?? ""));
+  const [maxBudget, setMaxBudget] = useState<string>(() => String(getSavedFilters().maxBudget ?? ""));
+  const [budgetPreset, setBudgetPreset] = useState<string>(() => String(getSavedFilters().budgetPreset ?? ""));
+  const [rgnType, setRgnType] = useState<string>(() => String(getSavedFilters().rgnType ?? ""));
+  const [ntceKind, setNtceKind] = useState<string>(() => String(getSavedFilters().ntceKind ?? ""));
 
   const observerRef = useRef<IntersectionObserver | null>(null);
   const sentinelRef = useRef<HTMLDivElement | null>(null);
@@ -260,6 +269,7 @@ export default function AnnouncementsPage() {
   useEffect(() => { fetchData(1, true); }, []);
 
   const handleSearch = () => {
+    saveFilters({ keyword, categories, regions, sort, contractMethod, deadlineRange, minBudget, maxBudget, budgetPreset, rgnType, ntceKind });
     setPage(1);
     setItems([]);
     setHasMore(true);
