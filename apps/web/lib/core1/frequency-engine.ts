@@ -125,19 +125,31 @@ function buildResult(
     freqPctMap[parseInt(k)] = parseFloat(((v / totalCount) * 100).toFixed(1));
   }
 
-  // 번호를 빈도 낮은 순 정렬 → 하위 9개를 후보로 확보
+  // 빈도 낮은 순 정렬
   const sorted = Object.entries(numFreqMap)
     .map(([k, v]) => ({ num: parseInt(k), freq: v }))
     .sort((a, b) => a.freq - b.freq);
 
-  // 후보 9개를 annId 시드로 셔플 → 3+3+3으로 분할
-  // (zone이 3개밖에 없을 때 전부 뽑아 다양성이 없던 문제 해결)
-  const candidates = sorted.slice(0, 9).map((x) => x.num);
-  shuffle(candidates, rand);
+  // 가중치 기반 비복원 추출 (낮은 빈도 = 높은 가중치)
+  // → 같은 "저빈도 9개"를 순서만 바꾸는 게 아니라, annId마다 뽑히는 숫자 자체가 달라짐
+  const pool = sorted.map((x) => ({ num: x.num, weight: 1 / (x.freq + 1) }));
+  const picks: number[] = [];
 
-  const c1 = candidates.slice(0, 3);
-  const c2 = candidates.slice(3, 6);
-  const c3 = candidates.slice(6, 9);
+  for (let i = 0; i < 9 && pool.length > 0; i++) {
+    const total = pool.reduce((s, x) => s + x.weight, 0);
+    let r = rand() * total;
+    let idx = pool.length - 1;
+    for (let j = 0; j < pool.length; j++) {
+      r -= pool[j].weight;
+      if (r <= 0) { idx = j; break; }
+    }
+    picks.push(pool[idx].num);
+    pool.splice(idx, 1);
+  }
+
+  const c1 = picks.slice(0, 3);
+  const c2 = picks.slice(3, 6);
+  const c3 = picks.slice(6, 9);
 
   return {
     combo1: {
