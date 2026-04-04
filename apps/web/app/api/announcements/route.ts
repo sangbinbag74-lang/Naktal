@@ -43,7 +43,8 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
 
   const category       = searchParams.get("category") ?? "";
   const categories     = searchParams.get("categories") ?? "";   // 쉼표 구분 다중 선택
-  const region         = searchParams.get("region") ?? "";
+  const region         = searchParams.get("region") ?? "";       // 하위호환 단일 지역
+  const regions        = searchParams.get("regions") ?? "";      // 쉼표 구분 다중 지역
   const minBudget      = searchParams.get("minBudget") ?? "";
   const maxBudget      = searchParams.get("maxBudget") ?? "";
   const keyword        = searchParams.get("keyword") ?? "";
@@ -63,7 +64,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     .catch(() => {});
 
   // DB에서 조회 (673K+ 데이터 활용)
-  return fetchFromDB({ category, categories, region, minBudget, maxBudget, keyword,
+  return fetchFromDB({ category, categories, region, regions, minBudget, maxBudget, keyword,
     contractMethod, deadlineRange, konepsId, prtcptnLmt, rgnType, ntceKind, sort, page, limit });
 }
 
@@ -166,8 +167,11 @@ function buildG2BResponse(allItems: G2BAnnouncement[], opts: Record<string, stri
 }
 
 // ─── DB 폴백 ──────────────────────────────────────────────────────────────────
+const PROVINCE_CODES = ["서울","부산","대구","인천","광주","대전","울산","세종",
+  "경기","강원","충북","충남","전북","전남","경북","경남","제주"];
+
 async function fetchFromDB(opts: Record<string, string | number>): Promise<NextResponse> {
-  const { category, categories, region, minBudget, maxBudget, keyword, contractMethod,
+  const { category, categories, region, regions, minBudget, maxBudget, keyword, contractMethod,
     deadlineRange, konepsId, prtcptnLmt, rgnType, ntceKind, sort } = opts as Record<string, string>;
   const page  = Number(opts.page);
   const limit = Number(opts.limit);
@@ -192,7 +196,17 @@ async function fetchFromDB(opts: Record<string, string | number>): Promise<NextR
   } else if (category) {
     q = q.or(`category.ilike.%${category}%,rawJson->>pubPrcrmntMidClsfcNm.ilike.%${category}%,rawJson->>pubPrcrmntLrgClsfcNm.ilike.%${category}%`);
   }
-  if (region)         q = q.filter("rawJson->>ntceInsttAddr", "ilike", `%${region}%`);
+  if (regions) {
+    const all = regions.split(",").map((r: string) => r.trim()).filter(Boolean);
+    const provinces = all.filter((r: string) => PROVINCE_CODES.includes(r));
+    const cities    = all.filter((r: string) => !PROVINCE_CODES.includes(r));
+    const orParts: string[] = [];
+    if (provinces.length) orParts.push(`region.in.(${provinces.join(",")})`);
+    cities.forEach((c: string) => orParts.push(`rawJson->>ntceInsttAddr.ilike.%${c}%`));
+    if (orParts.length) q = q.or(orParts.join(","));
+  } else if (region) {
+    q = q.filter("rawJson->>ntceInsttAddr", "ilike", `%${region}%`);
+  }
   if (keyword)        q = q.or(`title.ilike.%${keyword}%,orgName.ilike.%${keyword}%`);
   if (minBudget)      q = q.gte("budget", minBudget);
   if (maxBudget)      q = q.lte("budget", maxBudget);

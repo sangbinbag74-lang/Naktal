@@ -95,13 +95,66 @@ const CATEGORY_GROUPS: { label: string; items: string[] }[] = [
   { label: "── 물품/기타", items: ["물품","기타"] },
 ];
 
-const REGION_GROUPS: { label: string; items: string[] }[] = [
-  { label: "── 수도권", items: ["서울","경기","인천"] },
-  { label: "── 경기 주요시", items: ["수원시","성남시","용인시","고양시","화성시","안산시","남양주시","안양시","평택시","시흥시","부천시","광명시","광주시","이천시","파주시","김포시","의정부시"] },
-  { label: "── 충청", items: ["충북","충남","대전","세종"] },
-  { label: "── 전라", items: ["전북","전남","광주"] },
-  { label: "── 경상", items: ["경북","경남","부산","대구","울산"] },
-  { label: "── 강원/제주", items: ["강원","제주"] },
+type RegionItem = { code: string; label: string; type: "province" | "city" };
+
+const REGION_GROUPS: { label: string; items: RegionItem[] }[] = [
+  { label: "수도권", items: [
+    { code: "서울", label: "서울특별시", type: "province" },
+    { code: "경기", label: "경기도 전체", type: "province" },
+    { code: "수원시", label: "수원시", type: "city" },
+    { code: "성남시", label: "성남시", type: "city" },
+    { code: "용인시", label: "용인시", type: "city" },
+    { code: "고양시", label: "고양시", type: "city" },
+    { code: "화성시", label: "화성시", type: "city" },
+    { code: "안산시", label: "안산시", type: "city" },
+    { code: "평택시", label: "평택시", type: "city" },
+    { code: "남양주시", label: "남양주시", type: "city" },
+    { code: "안양시", label: "안양시", type: "city" },
+    { code: "인천", label: "인천광역시", type: "province" },
+  ]},
+  { label: "충청권", items: [
+    { code: "대전", label: "대전광역시", type: "province" },
+    { code: "세종", label: "세종특별자치시", type: "province" },
+    { code: "충북", label: "충청북도 전체", type: "province" },
+    { code: "청주시", label: "청주시", type: "city" },
+    { code: "충주시", label: "충주시", type: "city" },
+    { code: "충남", label: "충청남도 전체", type: "province" },
+    { code: "천안시", label: "천안시", type: "city" },
+    { code: "아산시", label: "아산시", type: "city" },
+  ]},
+  { label: "전라권", items: [
+    { code: "광주", label: "광주광역시", type: "province" },
+    { code: "전북", label: "전북특별자치도 전체", type: "province" },
+    { code: "전주시", label: "전주시", type: "city" },
+    { code: "익산시", label: "익산시", type: "city" },
+    { code: "군산시", label: "군산시", type: "city" },
+    { code: "정읍시", label: "정읍시", type: "city" },
+    { code: "남원시", label: "남원시", type: "city" },
+    { code: "전남", label: "전라남도 전체", type: "province" },
+    { code: "여수시", label: "여수시", type: "city" },
+    { code: "순천시", label: "순천시", type: "city" },
+    { code: "목포시", label: "목포시", type: "city" },
+  ]},
+  { label: "경상권", items: [
+    { code: "부산", label: "부산광역시", type: "province" },
+    { code: "대구", label: "대구광역시", type: "province" },
+    { code: "울산", label: "울산광역시", type: "province" },
+    { code: "경북", label: "경상북도 전체", type: "province" },
+    { code: "포항시", label: "포항시", type: "city" },
+    { code: "구미시", label: "구미시", type: "city" },
+    { code: "경주시", label: "경주시", type: "city" },
+    { code: "경남", label: "경상남도 전체", type: "province" },
+    { code: "창원시", label: "창원시", type: "city" },
+    { code: "진주시", label: "진주시", type: "city" },
+    { code: "김해시", label: "김해시", type: "city" },
+  ]},
+  { label: "강원/제주", items: [
+    { code: "강원", label: "강원특별자치도 전체", type: "province" },
+    { code: "춘천시", label: "춘천시", type: "city" },
+    { code: "원주시", label: "원주시", type: "city" },
+    { code: "강릉시", label: "강릉시", type: "city" },
+    { code: "제주", label: "제주특별자치도", type: "province" },
+  ]},
 ];
 
 const RGN_TYPE_FILTERS = [
@@ -143,7 +196,10 @@ export default function AnnouncementsPage() {
   const [konepsId, setKonepsId] = useState("");
   const [categories, setCategories] = useState<string[]>([]);
   const [catPanelOpen, setCatPanelOpen] = useState(false);
-  const [region, setRegion] = useState("");
+  const [regions, setRegions] = useState<string[]>([]);
+  const [regionPanelOpen, setRegionPanelOpen] = useState(false);
+  const [myRegionLoading, setMyRegionLoading] = useState(false);
+  const [myRegionError, setMyRegionError] = useState("");
   const [sort, setSort] = useState("latest");
   const [contractMethod, setContractMethod] = useState("");
   const [deadlineRange, setDeadlineRange] = useState("active");
@@ -164,7 +220,7 @@ export default function AnnouncementsPage() {
         if (keyword)            params.set("keyword", keyword);
         if (konepsId)           params.set("konepsId", konepsId);
         if (categories.length)  params.set("categories", categories.join(","));
-        if (region)             params.set("region", region);
+        if (regions.length)     params.set("regions", regions.join(","));
         if (contractMethod) params.set("contractMethod", contractMethod);
         if (deadlineRange)  params.set("deadlineRange", deadlineRange);
         if (minBudget)      params.set("minBudget", minBudget);
@@ -198,7 +254,7 @@ export default function AnnouncementsPage() {
         setLoading(false);
       }
     },
-    [keyword, konepsId, categories, region, sort, contractMethod, deadlineRange, minBudget, maxBudget, rgnType, ntceKind]
+    [keyword, konepsId, categories, regions, sort, contractMethod, deadlineRange, minBudget, maxBudget, rgnType, ntceKind]
   );
 
   useEffect(() => {
@@ -206,7 +262,7 @@ export default function AnnouncementsPage() {
     setItems([]);
     setHasMore(true);
     fetchData(1, true);
-  }, [keyword, konepsId, categories, region, sort, contractMethod, deadlineRange, minBudget, maxBudget, rgnType, ntceKind, fetchData]);
+  }, [keyword, konepsId, categories, regions, sort, contractMethod, deadlineRange, minBudget, maxBudget, rgnType, ntceKind, fetchData]);
 
   useEffect(() => {
     if (observerRef.current) observerRef.current.disconnect();
@@ -363,14 +419,118 @@ export default function AnnouncementsPage() {
           <select value={ntceKind} onChange={(e) => setNtceKind(e.target.value)} style={selectStyle}>
             {NTCE_KINDS.map((k) => <option key={k.value} value={k.value}>{k.label}</option>)}
           </select>
-          <select value={region} onChange={(e) => setRegion(e.target.value)} style={selectStyle}>
-            <option value="">전체 지역</option>
-            {REGION_GROUPS.map((g) => (
-              <optgroup key={g.label} label={g.label}>
-                {g.items.map((r) => <option key={r} value={r}>{r}</option>)}
-              </optgroup>
-            ))}
-          </select>
+          <div style={{ position: "relative" }}>
+            <button
+              onClick={() => setRegionPanelOpen(o => !o)}
+              style={{
+                ...selectStyle,
+                display: "flex", alignItems: "center", gap: 6,
+                paddingRight: 28, minWidth: 120,
+                background: regions.length > 0 ? "#EEF2FF" : "#fff",
+                borderColor: regions.length > 0 ? "#1B3A6B" : "#E8ECF2",
+                color: regions.length > 0 ? "#1B3A6B" : "#374151",
+                fontWeight: regions.length > 0 ? 600 : 400,
+              }}
+            >
+              {regions.length === 0 ? "전체 지역" : `지역 ${regions.length}개`}
+              <span style={{ position: "absolute", right: 8, fontSize: 10, color: "#94A3B8" }}>▾</span>
+            </button>
+            {regionPanelOpen && (
+              <>
+                <div style={{ position: "fixed", inset: 0, zIndex: 99 }} onClick={() => setRegionPanelOpen(false)} />
+                <div style={{
+                  position: "absolute", top: 42, left: 0, zIndex: 100,
+                  background: "#fff", border: "1px solid #E8ECF2", borderRadius: 12,
+                  boxShadow: "0 8px 24px rgba(0,0,0,0.12)", padding: "12px 0",
+                  minWidth: 240, maxHeight: 460, overflowY: "auto",
+                }}>
+                  <div style={{ padding: "4px 14px 8px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <span style={{ fontSize: 11, color: "#94A3B8", fontWeight: 600 }}>발주지역 선택</span>
+                    <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                      <button
+                        onClick={async () => {
+                          setMyRegionLoading(true);
+                          setMyRegionError("");
+                          try {
+                            const res = await fetch("/api/profile");
+                            const profile = await res.json();
+                            const addr: string = profile?.address ?? "";
+                            const PROV = ["서울","부산","대구","인천","광주","대전","울산","세종",
+                              "경기","강원","충북","충남","전북","전남","경북","경남","제주"];
+                            const code = PROV.find(p => addr.includes(p)) ?? null;
+                            if (code) {
+                              setRegions([code]);
+                            } else {
+                              setMyRegionError("/profile에서 업체 주소를 먼저 입력해주세요");
+                              setTimeout(() => setMyRegionError(""), 3000);
+                            }
+                          } catch {
+                            setMyRegionError("불러오기 실패");
+                            setTimeout(() => setMyRegionError(""), 3000);
+                          } finally {
+                            setMyRegionLoading(false);
+                          }
+                        }}
+                        style={{
+                          fontSize: 11, color: "#059669", background: "#F0FDF4",
+                          border: "1px solid #BBF7D0", borderRadius: 6,
+                          padding: "2px 8px", cursor: "pointer",
+                          display: "flex", alignItems: "center", gap: 4,
+                        }}
+                      >
+                        {myRegionLoading ? (
+                          <span style={{ display: "inline-block", width: 10, height: 10, border: "2px solid #BBF7D0", borderTopColor: "#059669", borderRadius: "50%", animation: "spin 0.7s linear infinite" }} />
+                        ) : "📍"} 내 업체 지역
+                      </button>
+                      {regions.length > 0 && (
+                        <button onClick={() => setRegions([])} style={{ fontSize: 11, color: "#DC2626", background: "none", border: "none", cursor: "pointer", padding: 0 }}>
+                          전체해제
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                  {myRegionError && (
+                    <div style={{ fontSize: 11, color: "#DC2626", padding: "0 14px 6px" }}>{myRegionError}</div>
+                  )}
+                  {REGION_GROUPS.map((g) => (
+                    <div key={g.label}>
+                      <div style={{ fontSize: 10, color: "#94A3B8", padding: "4px 14px", fontWeight: 600, letterSpacing: "0.02em" }}>
+                        {g.label}
+                      </div>
+                      {g.items.map((item) => {
+                        const checked = regions.includes(item.code);
+                        return (
+                          <label key={item.code} style={{
+                            display: "flex", alignItems: "center", gap: 8,
+                            padding: `6px 14px 6px ${item.type === "city" ? "28px" : "14px"}`,
+                            cursor: "pointer",
+                            background: checked ? "#EEF2FF" : "transparent",
+                            fontSize: 13,
+                          }}
+                            onMouseEnter={e => { if (!checked) (e.currentTarget as HTMLElement).style.background = "#F8FAFC"; }}
+                            onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = checked ? "#EEF2FF" : "transparent"; }}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={checked}
+                              onChange={() => setRegions(prev =>
+                                checked ? prev.filter(r => r !== item.code) : [...prev, item.code]
+                              )}
+                              style={{ accentColor: "#1B3A6B", width: 14, height: 14, cursor: "pointer" }}
+                            />
+                            <span style={{
+                              color: checked ? "#1B3A6B" : "#374151",
+                              fontWeight: item.type === "province" ? (checked ? 700 : 600) : (checked ? 600 : 400),
+                            }}>{item.label}</span>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
           <select value={sort} onChange={(e) => setSort(e.target.value)} style={selectStyle}>
             <option value="latest">최신순</option>
             <option value="deadline">마감임박순</option>
@@ -418,6 +578,31 @@ export default function AnnouncementsPage() {
                 }}>×</button>
               </span>
             ))}
+          </div>
+        )}
+
+        {/* 선택된 지역 태그 */}
+        {regions.length > 0 && (
+          <div style={{ display: "flex", gap: 5, flexWrap: "wrap", alignItems: "center" }}>
+            <span style={{ fontSize: 11, color: "#94A3B8", minWidth: 40 }}>지역</span>
+            {regions.map(code => {
+              const label = REGION_GROUPS.flatMap(g => g.items).find(i => i.code === code)?.label ?? code;
+              return (
+                <span key={code} style={{
+                  display: "inline-flex", alignItems: "center", gap: 4,
+                  fontSize: 11, fontWeight: 600,
+                  background: "#EEF2FF", color: "#1B3A6B",
+                  padding: "2px 8px", borderRadius: 99,
+                  border: "1px solid #C7D2FE",
+                }}>
+                  {label}
+                  <button onClick={() => setRegions(prev => prev.filter(r => r !== code))} style={{
+                    background: "none", border: "none", cursor: "pointer",
+                    fontSize: 11, color: "#6366F1", padding: 0, lineHeight: 1,
+                  }}>×</button>
+                </span>
+              );
+            })}
           </div>
         )}
 
