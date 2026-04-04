@@ -76,6 +76,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   if (isMultiplePriceBid(rawJson)) {
     try {
       numberStrategy = await recommendNumbers({
+        annId: ann.id as string,
         supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL!,
         supabaseKey: process.env.SUPABASE_SERVICE_ROLE_KEY!,
         category: ann.category as string,
