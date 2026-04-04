@@ -101,23 +101,29 @@ export async function upsertBidResultBatch(rows: BidResultRow[]): Promise<number
     seen.add(r.annId);
     return true;
   });
-  const BATCH = 100;
+  const BATCH = 50;
   let saved = 0;
   for (let i = 0; i < unique.length; i += BATCH) {
     const chunk = unique.slice(i, i + BATCH);
-    const { error } = await supabase.from("BidResult").upsert(
-      chunk.map((data) => ({
-        id:         randomUUID(),
-        annId:      data.annId,
-        bidRate:    data.bidRate,
-        finalPrice: data.finalPrice.toString(),
-        numBidders: data.numBidders,
-        winnerName: data.winnerName ?? null,
-      })),
-      { onConflict: "annId" }
-    );
-    if (error) throw new Error(`upsertBidResultBatch 실패 (chunk ${i}~${i + chunk.length}): ${error.message}`);
+    const payload = chunk.map((data) => ({
+      id:         randomUUID(),
+      annId:      data.annId,
+      bidRate:    data.bidRate,
+      finalPrice: data.finalPrice.toString(),
+      numBidders: data.numBidders,
+      winnerName: data.winnerName ?? null,
+    }));
+    // 재시도 3회 (지수 백오프: 5s → 15s → 45s)
+    let lastErr: string | null = null;
+    for (let attempt = 0; attempt < 3; attempt++) {
+      if (attempt > 0) await new Promise((r) => setTimeout(r, 5000 * Math.pow(3, attempt - 1)));
+      const { error } = await supabase.from("BidResult").upsert(payload, { onConflict: "annId" });
+      if (!error) { lastErr = null; break; }
+      lastErr = error.message;
+    }
+    if (lastErr) throw new Error(`upsertBidResultBatch 실패 (chunk ${i}~${i + chunk.length}): ${lastErr}`);
     saved += chunk.length;
+    await new Promise((r) => setTimeout(r, 200)); // chunk 간 짧은 대기
   }
   return saved;
 }
