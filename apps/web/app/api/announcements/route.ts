@@ -112,8 +112,13 @@ function buildG2BResponse(allItems: G2BAnnouncement[], opts: Record<string, stri
   if (keyword)        { const kw = keyword.toLowerCase(); filtered = filtered.filter(i =>
     i.bidNtceNm?.toLowerCase().includes(kw) || (i.ntceInsttNm||"").toLowerCase().includes(kw)); }
   if (region)         filtered = filtered.filter(i => (i.ntceInsttAddr||"").toLowerCase().includes(region.toLowerCase()));
-  if (contractMethod) filtered = filtered.filter(i => (i.cntrctMthdNm||"").toLowerCase().includes(contractMethod.toLowerCase()));
+  if (contractMethod) filtered = filtered.filter(i =>
+    (i.bidMthdNm||i.cntrctMthdNm||"").toLowerCase().includes(contractMethod.toLowerCase()));
   if (prtcptnLmt)     filtered = filtered.filter(i => (i.prtcptnLmtNm||"").includes(prtcptnLmt));
+  if (rgnType === "전국")  filtered = filtered.filter(i => !(i.prtcptnLmtNm||"").trim() || (i.prtcptnLmtNm||"").includes("전국"));
+  if (rgnType === "관내")  filtered = filtered.filter(i => (i.prtcptnLmtNm||"").includes("관내"));
+  if (rgnType === "도")    filtered = filtered.filter(i => /도/.test(i.prtcptnLmtNm||"") && !/시/.test(i.prtcptnLmtNm||""));
+  if (rgnType === "시")    filtered = filtered.filter(i => /시/.test(i.prtcptnLmtNm||""));
   if (ntceKind)       filtered = filtered.filter(i => (i.ntceKindNm||"").toLowerCase().includes(ntceKind.toLowerCase()));
   if (minBudget) { const min = +minBudget; filtered = filtered.filter(i =>
     +(i.asignBdgtAmt||i.presmptPrce||"0").replace(/[^0-9]/g,"") >= min); }
@@ -218,22 +223,19 @@ async function fetchFromDB(opts: Record<string, string | number>): Promise<NextR
   if (keyword)        q = q.or(`title.ilike.%${keyword}%,orgName.ilike.%${keyword}%`);
   if (minBudget)      q = q.gte("budget", minBudget);
   if (maxBudget)      q = q.lte("budget", maxBudget);
-  if (contractMethod) q = q.filter("rawJson->>cntrctMthdNm", "ilike", `%${contractMethod}%`);
+  if (contractMethod) q = q.or(`rawJson->>bidMthdNm.ilike.%${contractMethod}%,rawJson->>cntrctMthdNm.ilike.%${contractMethod}%`);
   if (konepsId)       q = q.ilike("konepsId", `%${konepsId}%`);
   if (prtcptnLmt)     q = q.filter("rawJson->>prtcptnLmtNm", "ilike", `%${prtcptnLmt}%`);
   if (rgnType === "전국") {
-    // 지역제한 없음: rgnLmtBidLocplcJdgmBssNm 비어있음
-    q = q.filter("rawJson->>rgnLmtBidLocplcJdgmBssNm", "eq", "");
-  } else if (rgnType === "도") {
-    // 도 단위 업체 참가 가능: incntvRgnNm1이 도(경기도, 충청북도 등) 포함
-    q = q.ilike("rawJson->>incntvRgnNm1", "%도");
-  } else if (rgnType === "시") {
-    // 광역시/특별시 업체 참가 가능: incntvRgnNm1에 광역시 or 특별시 포함
-    q = q.or("rawJson->>incntvRgnNm1.ilike.%광역시,rawJson->>incntvRgnNm1.ilike.%특별시");
+    q = q.or("rawJson->>prtcptnLmtNm.eq.,rawJson->>prtcptnLmtNm.ilike.%전국%");
   } else if (rgnType === "관내") {
-    // 관내: 지역제한은 있으나 특정 지역명 미지정 (발주처 소재지 관내)
-    q = q.not("rawJson->>rgnLmtBidLocplcJdgmBssNm", "eq", "")
-         .filter("rawJson->>incntvRgnNm1", "eq", "");
+    q = q.filter("rawJson->>prtcptnLmtNm", "ilike", "%관내%");
+  } else if (rgnType === "도") {
+    // 도 단위: 도 포함, 시는 미포함 (예: "경기도" 제한, "경기도 수원시" 제외)
+    q = q.filter("rawJson->>prtcptnLmtNm", "ilike", "%도%")
+         .not("rawJson->>prtcptnLmtNm", "ilike", "%시%");
+  } else if (rgnType === "시") {
+    q = q.filter("rawJson->>prtcptnLmtNm", "ilike", "%시%");
   }
   if (ntceKind)       q = q.filter("rawJson->>ntceKindNm", "ilike", `%${ntceKind}%`);
 
