@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import { useRouter } from "next/navigation";
 import { isMultiplePriceBid } from "@/lib/bid-utils";
 
 const FOLDER_KEY = "naktal_folder";
@@ -189,7 +188,6 @@ interface PredictionCache {
 }
 
 export default function AnnouncementsPage() {
-  const router = useRouter();
   const [navigatingId, setNavigatingId] = useState<string | null>(null);
   const [items, setItems] = useState<Announcement[]>([]);
   const [hasMore, setHasMore] = useState(true);
@@ -701,7 +699,8 @@ export default function AnnouncementsPage() {
               className={`ann-card${isNavigating ? " navigating" : ""}`}
               onClick={() => {
                 setNavigatingId(ann.id);
-                router.push(`/announcements/${ann.id}`);
+                window.open(`/announcements/${ann.id}`, "_blank");
+                setNavigatingId(null);
               }}
               style={{ textDecoration: "none" }}
             >
