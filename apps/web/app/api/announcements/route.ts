@@ -42,6 +42,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   const { searchParams } = new URL(request.url);
 
   const category       = searchParams.get("category") ?? "";
+  const categories     = searchParams.get("categories") ?? "";   // 쉼표 구분 다중 선택
   const region         = searchParams.get("region") ?? "";
   const minBudget      = searchParams.get("minBudget") ?? "";
   const maxBudget      = searchParams.get("maxBudget") ?? "";
@@ -61,7 +62,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     .catch(() => {});
 
   // DB에서 조회 (673K+ 데이터 활용)
-  return fetchFromDB({ category, region, minBudget, maxBudget, keyword,
+  return fetchFromDB({ category, categories, region, minBudget, maxBudget, keyword,
     contractMethod, deadlineRange, konepsId, prtcptnLmt, ntceKind, sort, page, limit });
 }
 
@@ -165,7 +166,7 @@ function buildG2BResponse(allItems: G2BAnnouncement[], opts: Record<string, stri
 
 // ─── DB 폴백 ──────────────────────────────────────────────────────────────────
 async function fetchFromDB(opts: Record<string, string | number>): Promise<NextResponse> {
-  const { category, region, minBudget, maxBudget, keyword, contractMethod,
+  const { category, categories, region, minBudget, maxBudget, keyword, contractMethod,
     deadlineRange, konepsId, prtcptnLmt, ntceKind, sort } = opts as Record<string, string>;
   const page  = Number(opts.page);
   const limit = Number(opts.limit);
@@ -180,7 +181,16 @@ async function fetchFromDB(opts: Record<string, string | number>): Promise<NextR
     "id,konepsId,title,orgName,budget,deadline,category,region,createdAt,rawJson"
   );
 
-  if (category)       q = q.or(`category.ilike.%${category}%,rawJson->>pubPrcrmntMidClsfcNm.ilike.%${category}%,rawJson->>pubPrcrmntLrgClsfcNm.ilike.%${category}%`);
+  if (categories) {
+    const cats = categories.split(",").map(c => c.trim()).filter(Boolean);
+    if (cats.length === 1) {
+      q = q.ilike("category", `%${cats[0]}%`);
+    } else if (cats.length > 1) {
+      q = q.in("category", cats);
+    }
+  } else if (category) {
+    q = q.or(`category.ilike.%${category}%,rawJson->>pubPrcrmntMidClsfcNm.ilike.%${category}%,rawJson->>pubPrcrmntLrgClsfcNm.ilike.%${category}%`);
+  }
   if (region)         q = q.filter("rawJson->>ntceInsttAddr", "ilike", `%${region}%`);
   if (keyword)        q = q.or(`title.ilike.%${keyword}%,orgName.ilike.%${keyword}%`);
   if (minBudget)      q = q.gte("budget", minBudget);

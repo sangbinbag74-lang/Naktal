@@ -139,7 +139,8 @@ export default function AnnouncementsPage() {
 
   const [keyword, setKeyword] = useState("");
   const [konepsId, setKonepsId] = useState("");
-  const [category, setCategory] = useState("");
+  const [categories, setCategories] = useState<string[]>([]);
+  const [catPanelOpen, setCatPanelOpen] = useState(false);
   const [region, setRegion] = useState("");
   const [sort, setSort] = useState("latest");
   const [contractMethod, setContractMethod] = useState("");
@@ -158,10 +159,10 @@ export default function AnnouncementsPage() {
       setLoading(true);
       try {
         const params = new URLSearchParams({ page: String(currentPage), limit: "20", sort });
-        if (keyword)        params.set("keyword", keyword);
-        if (konepsId)       params.set("konepsId", konepsId);
-        if (category)       params.set("category", category);
-        if (region)         params.set("region", region);
+        if (keyword)            params.set("keyword", keyword);
+        if (konepsId)           params.set("konepsId", konepsId);
+        if (categories.length)  params.set("categories", categories.join(","));
+        if (region)             params.set("region", region);
         if (contractMethod) params.set("contractMethod", contractMethod);
         if (deadlineRange)  params.set("deadlineRange", deadlineRange);
         if (minBudget)      params.set("minBudget", minBudget);
@@ -195,7 +196,7 @@ export default function AnnouncementsPage() {
         setLoading(false);
       }
     },
-    [keyword, konepsId, category, region, sort, contractMethod, deadlineRange, minBudget, maxBudget, prtcptnLmt, ntceKind]
+    [keyword, konepsId, categories, region, sort, contractMethod, deadlineRange, minBudget, maxBudget, prtcptnLmt, ntceKind]
   );
 
   useEffect(() => {
@@ -203,7 +204,7 @@ export default function AnnouncementsPage() {
     setItems([]);
     setHasMore(true);
     fetchData(1, true);
-  }, [keyword, konepsId, category, region, sort, contractMethod, deadlineRange, minBudget, maxBudget, prtcptnLmt, ntceKind, fetchData]);
+  }, [keyword, konepsId, categories, region, sort, contractMethod, deadlineRange, minBudget, maxBudget, prtcptnLmt, ntceKind, fetchData]);
 
   useEffect(() => {
     if (observerRef.current) observerRef.current.disconnect();
@@ -289,14 +290,74 @@ export default function AnnouncementsPage() {
             onFocus={(e) => { (e.target as HTMLInputElement).style.borderColor = "#1B3A6B"; }}
             onBlur={(e) => { (e.target as HTMLInputElement).style.borderColor = "#E8ECF2"; }}
           />
-          <select value={category} onChange={(e) => setCategory(e.target.value)} style={selectStyle}>
-            <option value="">전체 업종</option>
-            {CATEGORY_GROUPS.map((g) => (
-              <optgroup key={g.label} label={g.label}>
-                {g.items.map((c) => <option key={c} value={c}>{c}</option>)}
-              </optgroup>
-            ))}
-          </select>
+          <div style={{ position: "relative" }}>
+            <button
+              onClick={() => setCatPanelOpen(o => !o)}
+              style={{
+                ...selectStyle,
+                display: "flex", alignItems: "center", gap: 6,
+                paddingRight: 28, minWidth: 120,
+                background: categories.length > 0 ? "#EEF2FF" : "#fff",
+                borderColor: categories.length > 0 ? "#1B3A6B" : "#E8ECF2",
+                color: categories.length > 0 ? "#1B3A6B" : "#374151",
+                fontWeight: categories.length > 0 ? 600 : 400,
+              }}
+            >
+              {categories.length === 0 ? "전체 업종" : `업종 ${categories.length}개`}
+              <span style={{ position: "absolute", right: 8, fontSize: 10, color: "#94A3B8" }}>▾</span>
+            </button>
+            {catPanelOpen && (
+              <>
+                <div style={{ position: "fixed", inset: 0, zIndex: 99 }} onClick={() => setCatPanelOpen(false)} />
+                <div style={{
+                  position: "absolute", top: 42, left: 0, zIndex: 100,
+                  background: "#fff", border: "1px solid #E8ECF2", borderRadius: 12,
+                  boxShadow: "0 8px 24px rgba(0,0,0,0.12)", padding: "12px 0",
+                  minWidth: 220, maxHeight: 420, overflowY: "auto",
+                }}>
+                  <div style={{ padding: "4px 14px 8px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <span style={{ fontSize: 11, color: "#94A3B8", fontWeight: 600 }}>업종 선택</span>
+                    {categories.length > 0 && (
+                      <button onClick={() => setCategories([])} style={{ fontSize: 11, color: "#DC2626", background: "none", border: "none", cursor: "pointer", padding: 0 }}>
+                        전체해제
+                      </button>
+                    )}
+                  </div>
+                  {CATEGORY_GROUPS.map((g) => (
+                    <div key={g.label}>
+                      <div style={{ fontSize: 10, color: "#94A3B8", padding: "4px 14px", fontWeight: 600, letterSpacing: "0.02em" }}>
+                        {g.label}
+                      </div>
+                      {g.items.map((cat) => {
+                        const checked = categories.includes(cat);
+                        return (
+                          <label key={cat} style={{
+                            display: "flex", alignItems: "center", gap: 8,
+                            padding: "6px 14px", cursor: "pointer",
+                            background: checked ? "#EEF2FF" : "transparent",
+                            fontSize: 13,
+                          }}
+                            onMouseEnter={e => { if (!checked) (e.currentTarget as HTMLElement).style.background = "#F8FAFC"; }}
+                            onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = checked ? "#EEF2FF" : "transparent"; }}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={checked}
+                              onChange={() => setCategories(prev =>
+                                checked ? prev.filter(c => c !== cat) : [...prev, cat]
+                              )}
+                              style={{ accentColor: "#1B3A6B", width: 14, height: 14, cursor: "pointer" }}
+                            />
+                            <span style={{ color: checked ? "#1B3A6B" : "#374151", fontWeight: checked ? 600 : 400 }}>{cat}</span>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
           <select value={ntceKind} onChange={(e) => setNtceKind(e.target.value)} style={selectStyle}>
             {NTCE_KINDS.map((k) => <option key={k.value} value={k.value}>{k.label}</option>)}
           </select>
@@ -335,6 +396,28 @@ export default function AnnouncementsPage() {
             onBlur={(e) => { (e.target as HTMLInputElement).style.borderColor = "#E8ECF2"; }}
           />
         </div>
+
+        {/* 선택된 업종 태그 */}
+        {categories.length > 0 && (
+          <div style={{ display: "flex", gap: 5, flexWrap: "wrap", alignItems: "center" }}>
+            <span style={{ fontSize: 11, color: "#94A3B8", minWidth: 40 }}>업종</span>
+            {categories.map(cat => (
+              <span key={cat} style={{
+                display: "inline-flex", alignItems: "center", gap: 4,
+                fontSize: 11, fontWeight: 600,
+                background: "#EEF2FF", color: "#1B3A6B",
+                padding: "2px 8px", borderRadius: 99,
+                border: "1px solid #C7D2FE",
+              }}>
+                {cat}
+                <button onClick={() => setCategories(prev => prev.filter(c => c !== cat))} style={{
+                  background: "none", border: "none", cursor: "pointer",
+                  fontSize: 11, color: "#6366F1", padding: 0, lineHeight: 1,
+                }}>×</button>
+              </span>
+            ))}
+          </div>
+        )}
 
         {/* 마감일 */}
         <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
