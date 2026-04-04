@@ -18,7 +18,10 @@ export interface VisitedAnn {
   region: string;
   isClosed: boolean;
   multiplePrice: boolean;
-  visitedAt: number;
+  visitedAt: string | number;
+  optimalBidPrice?: number | null;
+  predictedSajungRate?: number | null;
+  sampleSize?: number | null;
 }
 
 interface BidHistoryRow {
@@ -216,18 +219,18 @@ export function AnnouncementTabs({
     try { localStorage.setItem(cacheKey(userId, id), JSON.stringify(data)); } catch { /* 무시 */ }
   }
 
-  // ─── 방문 이력 저장 (history 페이지 데이터 소스) ──────────────────────────
-  function saveVisited(userId: string): void {
-    if (typeof window === "undefined") return;
-    try {
-      const key = `visited_${userId}`;
-      const existing: VisitedAnn[] = JSON.parse(localStorage.getItem(key) ?? "[]") as VisitedAnn[];
-      // 동일 annDbId 제거 후 맨 앞에 추가 (최신순)
-      const filtered = existing.filter((v) => v.annDbId !== annDbId);
-      const record: VisitedAnn = { annDbId, annId, title, orgName, budget, deadline, category, region, isClosed, multiplePrice, visitedAt: Date.now() };
-      filtered.unshift(record);
-      localStorage.setItem(key, JSON.stringify(filtered.slice(0, 200))); // 최대 200개
-    } catch { /* 무시 */ }
+  // ─── 방문 이력 서버 저장 ────────────────────────────────────────────────────
+  function saveVisitToServer(analysisData?: ComprehensiveResult): void {
+    void fetch("/api/history/visits", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        annDbId, annId, title, orgName, budget, deadline, category, region, isClosed, multiplePrice,
+        optimalBidPrice: analysisData?.bidStrategy?.optimalBidPrice ?? null,
+        predictedSajungRate: analysisData?.bidStrategy?.predictedSajungRate ?? null,
+        sampleSize: analysisData?.bidStrategy?.sampleSize ?? null,
+      }),
+    });
   }
 
   // 통합 분석 API 호출 (마운트 시 1회 — 사용자별 로컬 캐시 우선, 영구 보존)
@@ -240,12 +243,15 @@ export function AnnouncementTabs({
     }
     const uid = userIdRef.current;
 
-    // 방문 기록 저장 (분석 결과 유무와 무관하게 즉시)
-    saveVisited(uid);
-
     // 로컬 캐시 확인 (영구)
     const cached = loadCachedAnalysis(uid, annDbId);
-    if (cached) { setAnalysis(cached); setAnalysisLoading(false); return; }
+    if (cached) {
+      setAnalysis(cached);
+      setAnalysisLoading(false);
+      // 방문 기록은 캐시 hit여도 서버에 기록 (visitedAt 갱신)
+      saveVisitToServer(cached);
+      return;
+    }
 
     setAnalysisLoading(true);
     try {
@@ -258,8 +264,12 @@ export function AnnouncementTabs({
         const data = (await res.json()) as ComprehensiveResult;
         setAnalysis(data);
         saveCachedAnalysis(uid, annDbId, data);
+        saveVisitToServer(data);
+      } else {
+        // 분석 실패해도 방문 기록은 저장
+        saveVisitToServer();
       }
-    } catch { /* 분석 실패는 무시 */ }
+    } catch { saveVisitToServer(); }
     setAnalysisLoading(false);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [annDbId]);

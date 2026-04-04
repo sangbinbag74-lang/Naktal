@@ -1,7 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { createClient } from "@/lib/supabase/client";
 import type { VisitedAnn } from "@/components/naktal/AnnouncementTabs";
 
 interface CachedAnalysis {
@@ -32,23 +31,20 @@ export default function HistoryPage() {
 
   useEffect(() => {
     async function load() {
-      const supabase = createClient();
-      const { data: { user } } = await supabase.auth.getUser();
-      const uid = user?.id ?? "anon";
-
-      const visited: VisitedAnn[] = JSON.parse(localStorage.getItem(`visited_${uid}`) ?? "[]") as VisitedAnn[];
-
-      const result = visited.map((v) => {
-        try {
-          const raw = localStorage.getItem(`analysis_${uid}_${v.annDbId}`);
-          const analysis = raw ? JSON.parse(raw) as CachedAnalysis : null;
-          return { visited: v, analysis };
-        } catch {
-          return { visited: v, analysis: null };
-        }
-      });
-
-      setItems(result);
+      try {
+        const res = await fetch("/api/history/visits");
+        if (!res.ok) throw new Error("fetch failed");
+        const json = await res.json() as { visits: VisitedAnn[] };
+        const result = (json.visits ?? []).map((v) => ({
+          visited: v,
+          analysis: (v.optimalBidPrice != null && v.predictedSajungRate != null && v.sampleSize != null)
+            ? { bidStrategy: { optimalBidPrice: v.optimalBidPrice, predictedSajungRate: v.predictedSajungRate, sampleSize: v.sampleSize, lowerLimitPrice: 0, winProbability: 0 } } as CachedAnalysis
+            : null,
+        }));
+        setItems(result);
+      } catch {
+        setItems([]);
+      }
       setLoading(false);
     }
     void load();
@@ -60,7 +56,7 @@ export default function HistoryPage() {
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
       <div>
         <h2 style={{ fontSize: 22, fontWeight: 700, color: "#0F172A", margin: "0 0 4px" }}>분석 이력</h2>
-        <p style={{ fontSize: 13, color: "#64748B", margin: 0 }}>확인한 공고 {items.length}건 · 분석 결과는 내 기기에 저장됩니다</p>
+        <p style={{ fontSize: 13, color: "#64748B", margin: 0 }}>확인한 공고 {items.length}건 · 분석 결과는 계정에 저장됩니다</p>
       </div>
 
       {items.length === 0 ? (
