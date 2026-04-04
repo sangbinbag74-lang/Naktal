@@ -126,14 +126,20 @@ export async function predictOptimalBid(params: {
   const budgetRange = classifyBudget(params.budget);
   let isFallback = false;
 
-  // 1. 발주처 특화 통계 조회
+  // 1. 발주처 특화 통계 조회 (region 일치 → region= 폴백)
   let stat = await querySajungStat(
     params.orgName, params.category, budgetRange, params.region
   );
+  if (!stat && params.region) {
+    stat = await querySajungStat(params.orgName, params.category, budgetRange, "");
+  }
 
-  // 2. sampleSize < 10 → 카테고리 전체 폴백
+  // 2. sampleSize < 10 → ALL 카테고리 폴백 (region 일치 → region= 폴백)
   if (!stat || stat.sampleSize < 10) {
     stat = await querySajungStat("ALL", params.category, budgetRange, params.region);
+    if ((!stat || stat.sampleSize < 5) && params.region) {
+      stat = await querySajungStat("ALL", params.category, budgetRange, "");
+    }
     isFallback = true;
   }
 
