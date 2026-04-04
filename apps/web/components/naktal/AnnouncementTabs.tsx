@@ -384,9 +384,11 @@ export function AnnouncementTabs({
                       업종·지역 평균 기준으로 예측값을 제공하고 있습니다.<br />
                       개찰 후 실제 낙찰 데이터가 쌓이면 정확도가 높아집니다.
                     </div>
-                    <div style={{ fontSize: 12, color: "#94A3B8", marginTop: 10 }}>
-                      참고 — 예상 참여사 약 {comp.expectedBidders}개사
-                    </div>
+                    {comp.expectedBidders !== null && (
+                      <div style={{ fontSize: 12, color: "#94A3B8", marginTop: 10 }}>
+                        참고 — 예상 참여사 약 {comp.expectedBidders}개사
+                      </div>
+                    )}
                   </div>
                 ) : (
                   <div style={{ display: "flex", gap: 24, alignItems: "flex-start", flexWrap: "wrap" }}>
@@ -397,7 +399,7 @@ export function AnnouncementTabs({
                       </div>
                       <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                         {[
-                          { label: "예상 참여사 수", value: `약 ${comp.expectedBidders}개사` },
+                          { label: "예상 참여사 수", value: comp.expectedBidders !== null ? `약 ${comp.expectedBidders}개사` : "데이터 부족" },
                           { label: "독점 기업", value: comp.dominantCompany ?? "특이 패턴 없음" },
                           ...(comp.dominantWinRate !== null ? [{ label: "독점 낙찰률", value: `${Math.round(comp.dominantWinRate * 100)}%` }] : []),
                         ].map(row => (
