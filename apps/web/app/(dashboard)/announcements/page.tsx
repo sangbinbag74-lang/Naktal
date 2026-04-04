@@ -104,9 +104,11 @@ const REGION_GROUPS: { label: string; items: string[] }[] = [
   { label: "── 강원/제주", items: ["강원","제주"] },
 ];
 
-const PRTCPTN_FILTERS = [
+const RGN_TYPE_FILTERS = [
   { key: "", label: "전체" },
   { key: "전국", label: "전국" },
+  { key: "도", label: "도 업체" },
+  { key: "시", label: "시 업체" },
   { key: "관내", label: "관내" },
 ];
 
@@ -148,7 +150,7 @@ export default function AnnouncementsPage() {
   const [minBudget, setMinBudget] = useState("");
   const [maxBudget, setMaxBudget] = useState("");
   const [budgetPreset, setBudgetPreset] = useState("");
-  const [prtcptnLmt, setPrtcptnLmt] = useState("");
+  const [rgnType, setRgnType] = useState("");
   const [ntceKind, setNtceKind] = useState("");
 
   const observerRef = useRef<IntersectionObserver | null>(null);
@@ -167,7 +169,7 @@ export default function AnnouncementsPage() {
         if (deadlineRange)  params.set("deadlineRange", deadlineRange);
         if (minBudget)      params.set("minBudget", minBudget);
         if (maxBudget)      params.set("maxBudget", maxBudget);
-        if (prtcptnLmt)     params.set("prtcptnLmt", prtcptnLmt);
+        if (rgnType)        params.set("rgnType", rgnType);
         if (ntceKind)       params.set("ntceKind", ntceKind);
         const res = await fetch(`/api/announcements?${params}`);
         const json = (await res.json()) as ApiResponse;
@@ -196,7 +198,7 @@ export default function AnnouncementsPage() {
         setLoading(false);
       }
     },
-    [keyword, konepsId, categories, region, sort, contractMethod, deadlineRange, minBudget, maxBudget, prtcptnLmt, ntceKind]
+    [keyword, konepsId, categories, region, sort, contractMethod, deadlineRange, minBudget, maxBudget, rgnType, ntceKind]
   );
 
   useEffect(() => {
@@ -204,7 +206,7 @@ export default function AnnouncementsPage() {
     setItems([]);
     setHasMore(true);
     fetchData(1, true);
-  }, [keyword, konepsId, categories, region, sort, contractMethod, deadlineRange, minBudget, maxBudget, prtcptnLmt, ntceKind, fetchData]);
+  }, [keyword, konepsId, categories, region, sort, contractMethod, deadlineRange, minBudget, maxBudget, rgnType, ntceKind, fetchData]);
 
   useEffect(() => {
     if (observerRef.current) observerRef.current.disconnect();
@@ -455,13 +457,13 @@ export default function AnnouncementsPage() {
           })}
         </div>
 
-        {/* 참가지역 */}
+        {/* 참가제한 */}
         <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
           <span style={{ fontSize: 11, color: "#94A3B8", minWidth: 40 }}>참가</span>
-          {PRTCPTN_FILTERS.map((f) => {
-            const isActive = prtcptnLmt === f.key;
+          {RGN_TYPE_FILTERS.map((f) => {
+            const isActive = rgnType === f.key;
             return (
-              <button key={f.key} onClick={() => setPrtcptnLmt(f.key)} style={{
+              <button key={f.key} onClick={() => setRgnType(f.key)} style={{
                 height: 28, padding: "0 12px", borderRadius: 99, fontSize: 12,
                 fontWeight: isActive ? 600 : 400,
                 border: `1px solid ${isActive ? "#1B3A6B" : "#E2E8F0"}`,
