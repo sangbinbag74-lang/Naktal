@@ -79,6 +79,8 @@ export default function HistoryPage() {
               <Link
                 key={v.annDbId}
                 href={`/announcements/${v.annDbId}`}
+                target="_blank"
+                rel="noopener noreferrer"
                 style={{ textDecoration: "none" }}
               >
                 <div style={{

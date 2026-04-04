@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 
 type Result = "PASS" | "UNCERTAIN" | "FAIL";
@@ -16,11 +16,25 @@ const resultConfig: Record<Result, { label: string; icon: string; bg: string; co
   FAIL:      { label: "통과 불가", icon: "❌", bg: "#FEF2F2", color: "#991B1B", border: "#FCA5A5" },
 };
 
+interface CompanyProfile {
+  bizName?: string;
+  mainCategory?: string;
+  constructionRecords?: { amount: number }[];
+  creditScore?: number;
+}
+
 export default function QualificationPage() {
   const [annId, setAnnId] = useState("");
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<QualificationResult | null>(null);
   const [error, setError] = useState("");
+  const [profile, setProfile] = useState<CompanyProfile | null>(null);
+
+  useEffect(() => {
+    void fetch("/api/profile").then(r => r.ok ? r.json() : null).then((data: CompanyProfile | null) => {
+      if (data && (data.bizName || data.mainCategory)) setProfile(data);
+    }).catch(() => {});
+  }, []);
 
   const inp: React.CSSProperties = { height: 44, border: "1.5px solid #E8ECF2", borderRadius: 10, fontSize: 13, padding: "0 12px", color: "#374151", background: "#fff", outline: "none", width: "100%", boxSizing: "border-box" };
   const card: React.CSSProperties = { background: "#fff", borderRadius: 14, border: "1px solid #E8ECF2", padding: "24px" };
@@ -44,22 +58,34 @@ export default function QualificationPage() {
       <div>
         <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
           <h2 style={{ fontSize: 22, fontWeight: 700, color: "#0F172A", margin: 0 }}>적격심사 계산기</h2>
-          <span style={{ fontSize: 11, fontWeight: 700, background: "#F0FDF4", color: "#166534", padding: "3px 8px", borderRadius: 5 }}>CORE 3</span>
         </div>
         <p style={{ fontSize: 13, color: "#64748B", margin: 0 }}>내 업체 실적 기반으로 적격심사 통과 가능성을 자동으로 계산합니다.</p>
       </div>
 
-      {/* 업체 정보 등록 안내 */}
-      <div style={{ ...card, background: "#F8FAFC", border: "1px dashed #CBD5E1" }}>
+      {/* 업체 정보 카드 */}
+      <div style={{ ...card, background: "#F8FAFC", border: profile ? "1px solid #BFDBFE" : "1px dashed #CBD5E1" }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
             <span style={{ fontSize: 28 }}>🏢</span>
-            <div>
-              <div style={{ fontSize: 14, fontWeight: 600, color: "#374151" }}>내 업체 정보가 등록되어 있나요?</div>
-              <div style={{ fontSize: 12, color: "#9CA3AF", marginTop: 2 }}>업체 실적·업종을 등록하면 더 정확한 판정이 가능합니다.</div>
-            </div>
+            {profile ? (
+              <div>
+                <div style={{ fontSize: 14, fontWeight: 600, color: "#1B3A6B" }}>{profile.bizName ?? "내 업체"}</div>
+                <div style={{ fontSize: 12, color: "#64748B", marginTop: 2 }}>
+                  {profile.mainCategory && <span>{profile.mainCategory}</span>}
+                  {profile.constructionRecords?.length ? <span> · 실적 {profile.constructionRecords.length}건</span> : null}
+                  {profile.creditScore ? <span> · 신용 {profile.creditScore}점</span> : null}
+                </div>
+              </div>
+            ) : (
+              <div>
+                <div style={{ fontSize: 14, fontWeight: 600, color: "#374151" }}>내 업체 정보가 등록되어 있나요?</div>
+                <div style={{ fontSize: 12, color: "#9CA3AF", marginTop: 2 }}>업체 실적·업종을 등록하면 더 정확한 판정이 가능합니다.</div>
+              </div>
+            )}
           </div>
-          <Link href="/profile" style={{ background: "#1B3A6B", color: "#fff", borderRadius: 8, padding: "8px 16px", fontSize: 13, fontWeight: 600, textDecoration: "none", flexShrink: 0 }}>업체 정보 등록</Link>
+          <Link href="/profile" style={{ background: "#1B3A6B", color: "#fff", borderRadius: 8, padding: "8px 16px", fontSize: 13, fontWeight: 600, textDecoration: "none", flexShrink: 0 }}>
+            {profile ? "업체 정보 수정" : "업체 정보 등록"}
+          </Link>
         </div>
       </div>
 

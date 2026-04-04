@@ -3,9 +3,9 @@
 import { useState } from "react";
 
 const PLANS = [
-  { id: "FREE", name: "무료", priceLabel: "0원", priceSub: "영원히 무료", features: ["CORE 1 번호 추천 월 3회","CORE 3 적격심사 기본","공고 목록 열람","알림 1개"], cta: "현재 플랜", disabled: true, recommended: false, accent: "#475569" },
-  { id: "STANDARD", name: "스탠다드", priceLabel: "99,000원", priceSub: "월 / 부가세 포함", features: ["CORE 1 번호 추천 월 30회","CORE 3 적격심사 전체","공고 알림 무제한","마감 임박 알림","투찰 이력 관리"], cta: "스탠다드 시작", disabled: false, recommended: true, accent: "#1B3A6B" },
-  { id: "PRO", name: "프로", priceLabel: "199,000원", priceSub: "월 / 부가세 포함", features: ["CORE 1 번호 추천 무제한","CORE 2 실시간 참여자 모니터","CORE 3 적격심사 전체","공고 알림 무제한","투찰 이력 관리"], cta: "프로 시작", disabled: false, recommended: false, accent: "#0F172A" },
+  { id: "FREE", name: "무료", priceLabel: "0원", priceSub: "영원히 무료", features: ["번호 추천 월 3회","적격심사 기본","공고 목록 열람","알림 1개"], cta: "현재 플랜", disabled: true, recommended: false, accent: "#475569" },
+  { id: "STANDARD", name: "스탠다드", priceLabel: "99,000원", priceSub: "월 / 부가세 포함", features: ["번호 추천 월 30회","적격심사 전체","공고 알림 무제한","마감 임박 알림","투찰 이력 관리"], cta: "스탠다드 시작", disabled: false, recommended: true, accent: "#1B3A6B" },
+  { id: "PRO", name: "프로", priceLabel: "199,000원", priceSub: "월 / 부가세 포함", features: ["번호 추천 무제한","실시간 참여자 모니터","적격심사 전체","공고 알림 무제한","투찰 이력 관리"], cta: "프로 시작", disabled: false, recommended: false, accent: "#0F172A" },
 ] as const;
 
 export default function PricingPage() {

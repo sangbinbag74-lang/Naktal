@@ -13,7 +13,7 @@ const MENU_SECTIONS = [
   {
     label: "핵심 기능",
     items: [
-      { href: "/announcements", label: "공고 목록",       icon: "≡",  badge: "CORE" },
+      { href: "/announcements", label: "공고 목록",       icon: "≡" },
       { href: "/qualification", label: "적격심사 계산기",  icon: "✅" },
       { href: "/realtime",      label: "실시간 모니터",    icon: "📡", proOnly: true },
     ],
