@@ -38,8 +38,15 @@ function parseG2BDate(raw: string): Date | null {
   return isNaN(dt.getTime()) ? null : dt;
 }
 
+// ─── 엔드포인트 → 업무 분류 매핑 ────────────────────────────────────────────
+const OP_TO_CATEGORY: Record<string, string> = {
+  getBidPblancListInfoServc:   "용역",
+  getBidPblancListInfoCnstwk:  "시설공사",
+  getBidPblancListInfoThng:    "물품",
+};
+
 // ─── G2B 항목 → AnnouncementRow 변환 ─────────────────────────────────────────
-function mapToRow(item: G2BAnnouncement): AnnouncementRow | null {
+function mapToRow(item: G2BAnnouncement, operation: string): AnnouncementRow | null {
   try {
     const konepsId = item.bidNtceNo?.trim();
     const title    = item.bidNtceNm?.trim();
@@ -55,7 +62,8 @@ function mapToRow(item: G2BAnnouncement): AnnouncementRow | null {
     const deadline = parseG2BDate(item.bidClseDt);
     if (!deadline) return null;
 
-    const category = item.pubPrcrmntMidClsfcNm || item.pubPrcrmntLrgClsfcNm || item.ntceKindNm || "";
+    // category: 중분류 → 대분류 → 엔드포인트 기반(시설공사/용역/물품) → ntceKindNm
+    const category = item.pubPrcrmntMidClsfcNm || item.pubPrcrmntLrgClsfcNm || OP_TO_CATEGORY[operation] || item.ntceKindNm || "";
     const region   = extractRegion(item.ntceInsttAddr || "");
 
     const rawJson: Record<string, string> = {};
@@ -124,7 +132,7 @@ export async function fetchAnnouncements(
 
       let saved = 0;
       for (const item of items) {
-        const row = mapToRow(item);
+        const row = mapToRow(item, operation);
         if (row) { results.push(row); saved++; }
       }
 
