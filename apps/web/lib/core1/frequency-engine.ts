@@ -72,19 +72,20 @@ function calcHitRate(freqMap: Record<number, number>, numbers: number[], totalCo
   return parseFloat(((hits / totalCount) * 100).toFixed(1));
 }
 
-// 통계 추정 기본값 (DB 데이터 부족 시)
-function estimatedResult(): RecommendResult {
+// 통계 추정 기본값 (DB 데이터 부족 시) — annId 시드로 공고마다 다른 번호 반환
+function estimatedResult(annId: string): RecommendResult {
+  const rand = mulberry32(annSeed(annId));
+  const nums = Array.from({ length: 15 }, (_, i) => i + 1);
+  shuffle(nums, rand);
   const baseFreqMap: Record<number, number> = {};
-  for (let i = 1; i <= 15; i++) {
-    baseFreqMap[i] = (i % 5 === 0) ? 8.0 : 5.0;
-  }
-  const toCombo = (nums: number[], hitRate: number, zone: "low" | "mid" | "high"): NumberCombo => ({
-    numbers: nums, hitRate, freqMap: baseFreqMap, zone,
+  for (let i = 1; i <= 15; i++) baseFreqMap[i] = 6.7;
+  const toCombo = (ns: number[], zone: "low" | "mid" | "high"): NumberCombo => ({
+    numbers: ns, hitRate: 20.0, freqMap: baseFreqMap, zone,
   });
   return {
-    combo1: toCombo([3, 7, 11], 14.2, "low"),
-    combo2: toCombo([2, 8, 13], 11.8, "mid"),
-    combo3: toCombo([4, 9, 14], 10.1, "high"),
+    combo1: toCombo(nums.slice(0, 3), "low"),
+    combo2: toCombo(nums.slice(3, 6), "mid"),
+    combo3: toCombo(nums.slice(6, 9), "high"),
     sampleSize: 0,
     modelVersion: "estimated-v1",
     isEstimated: true,
@@ -124,37 +125,36 @@ function buildResult(
     freqPctMap[parseInt(k)] = parseFloat(((v / totalCount) * 100).toFixed(1));
   }
 
-  // 번호를 빈도 낮은 순 정렬 → 하위 70% 추천 대상
+  // 번호를 빈도 낮은 순 정렬 → 하위 9개를 후보로 확보
   const sorted = Object.entries(numFreqMap)
     .map(([k, v]) => ({ num: parseInt(k), freq: v }))
     .sort((a, b) => a.freq - b.freq);
 
-  const bottom = sorted.slice(0, Math.max(3, Math.floor(sorted.length * 0.7)));
-  const third = Math.max(1, Math.floor(bottom.length / 3));
+  // 후보 9개를 annId 시드로 셔플 → 3+3+3으로 분할
+  // (zone이 3개밖에 없을 때 전부 뽑아 다양성이 없던 문제 해결)
+  const candidates = sorted.slice(0, 9).map((x) => x.num);
+  shuffle(candidates, rand);
 
-  // 각 존 내에서 공고 ID 기반 셔플 → 공고마다 다른 번호, 동일 공고는 항상 같은 번호
-  const zone1 = shuffle(bottom.slice(0, third).map((x) => x.num), rand);
-  const zone2 = shuffle(bottom.slice(third, third * 2).map((x) => x.num), rand);
-  const zone3 = shuffle(bottom.slice(third * 2).map((x) => x.num), rand);
-
-  const pick = (arr: number[], n = 3) => arr.slice(0, n);
+  const c1 = candidates.slice(0, 3);
+  const c2 = candidates.slice(3, 6);
+  const c3 = candidates.slice(6, 9);
 
   return {
     combo1: {
-      numbers: pick(zone1),
-      hitRate: calcHitRate(numFreqMap, pick(zone1), totalCount),
+      numbers: c1,
+      hitRate: calcHitRate(numFreqMap, c1, totalCount),
       freqMap: freqPctMap,
       zone: "low",
     },
     combo2: {
-      numbers: pick(zone2),
-      hitRate: calcHitRate(numFreqMap, pick(zone2), totalCount),
+      numbers: c2,
+      hitRate: calcHitRate(numFreqMap, c2, totalCount),
       freqMap: freqPctMap,
       zone: "mid",
     },
     combo3: {
-      numbers: pick(zone3),
-      hitRate: calcHitRate(numFreqMap, pick(zone3), totalCount),
+      numbers: c3,
+      hitRate: calcHitRate(numFreqMap, c3, totalCount),
       freqMap: freqPctMap,
       zone: "high",
     },
@@ -233,6 +233,6 @@ export async function recommendNumbers(
     }
   }
 
-  // 모든 시도 실패 → 통계 추정값
-  return estimatedResult();
+  // 모든 시도 실패 → 통계 추정값 (annId 시드 적용)
+  return estimatedResult(annId);
 }
