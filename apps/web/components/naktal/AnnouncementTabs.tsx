@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { NumberAnalysisSection } from "./NumberAnalysisSection";
 import { WinProbCalculator } from "./WinProbCalculator";
+import { createClient } from "@/lib/supabase/client";
 
 // ─── 타입 ─────────────────────────────────────────────────────────────────────
 
@@ -168,6 +169,7 @@ export function AnnouncementTabs({
   const [qualification, setQualification] = useState<QualificationResult | null>(null);
   const [qualLoading, setQualLoading] = useState(false);
   const [qualError, setQualError] = useState<string | null>(null);
+  const userIdRef = useRef<string | null>(null);
 
   // URL 해시 → 탭 동기화
   useEffect(() => {
@@ -180,8 +182,35 @@ export function AnnouncementTabs({
     window.history.replaceState(null, "", `#tab-${id}`);
   }
 
-  // 통합 분석 API 호출 (마운트 시 1회)
+  // ─── 분석 결과 로컬 캐시 (영구, 사용자별 분리) ───────────────────────────
+  function cacheKey(userId: string, id: string) { return `analysis_${userId}_${id}`; }
+  function loadCachedAnalysis(userId: string, id: string): ComprehensiveResult | null {
+    if (typeof window === "undefined") return null;
+    try {
+      const raw = localStorage.getItem(cacheKey(userId, id));
+      if (!raw) return null;
+      return JSON.parse(raw) as ComprehensiveResult;
+    } catch { return null; }
+  }
+  function saveCachedAnalysis(userId: string, id: string, data: ComprehensiveResult): void {
+    if (typeof window === "undefined") return;
+    try { localStorage.setItem(cacheKey(userId, id), JSON.stringify(data)); } catch { /* 무시 */ }
+  }
+
+  // 통합 분석 API 호출 (마운트 시 1회 — 사용자별 로컬 캐시 우선, 영구 보존)
   const fetchAnalysis = useCallback(async () => {
+    // userId 확인 (캐시 키에 필요)
+    if (!userIdRef.current) {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      userIdRef.current = user?.id ?? "anon";
+    }
+    const uid = userIdRef.current;
+
+    // 로컬 캐시 확인 (영구)
+    const cached = loadCachedAnalysis(uid, annDbId);
+    if (cached) { setAnalysis(cached); setAnalysisLoading(false); return; }
+
     setAnalysisLoading(true);
     try {
       const res = await fetch("/api/analysis/comprehensive", {
@@ -192,9 +221,11 @@ export function AnnouncementTabs({
       if (res.ok) {
         const data = (await res.json()) as ComprehensiveResult;
         setAnalysis(data);
+        saveCachedAnalysis(uid, annDbId, data);
       }
     } catch { /* 분석 실패는 무시 */ }
     setAnalysisLoading(false);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [annDbId]);
 
   // 적격심사 API 호출 (탭3 클릭 시)
@@ -352,7 +383,7 @@ export function AnnouncementTabs({
                 {multiplePrice && (
                   <div style={{ border: "2px solid #C7D2FE", borderRadius: 12, padding: "20px 24px" }}>
                     <NumberAnalysisSection
-                      annId={annId}
+                      annId={annDbId}
                       isClosed={isClosed}
                       bidMethod={bidMethod}
                       defaultBidders={analysis?.competition?.expectedBidders ?? undefined}

@@ -11,16 +11,25 @@ interface WinProbCalculatorProps {
   lowerLimitPrice: number;   // 낙찰하한가 (원)
 }
 
-// ─── Box-Muller 정규분포 ─────────────────────────────────────────────────────
+// ─── 결정론적 시드 기반 PRNG (Mulberry32) ────────────────────────────────────
 
-function normalRandom(mean: number, std: number): number {
+function mulberry32(seed: number) {
+  return function () {
+    let t = (seed += 0x6d2b79f5);
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+function normalRandomSeeded(rand: () => number, mean: number, std: number): number {
   let u = 0, v = 0;
-  while (u === 0) u = Math.random();
-  while (v === 0) v = Math.random();
+  while (u === 0) u = rand();
+  while (v === 0) v = rand();
   return mean + std * Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
 }
 
-// ─── 프론트 JS 몬테카를로 (N=5000, 서버 호출 없음) ───────────────────────────
+// ─── 프론트 JS 몬테카를로 (N=5000, 시드 고정 → 동일 입력 = 동일 결과) ────────
 
 function calcWinProb(
   myBid: number,
@@ -31,9 +40,12 @@ function calcWinProb(
   n = 5000
 ): number {
   if (lowerLimitRate <= 0) return 0;
+  // 입력값 기반 결정론적 시드 → 새로고침해도 동일한 확률
+  const seed = Math.abs(Math.round(myBid / 1000) ^ Math.round(sajungMean * 100) ^ Math.round(lowerLimitRate * 10));
+  const rand = mulberry32(seed || 42);
   let wins = 0;
   for (let i = 0; i < n; i++) {
-    const simSajung = normalRandom(sajungMean, sajungStd);
+    const simSajung = normalRandomSeeded(rand, sajungMean, sajungStd);
     const simPrice  = budget * (simSajung / 100);
     const simLower  = simPrice * (lowerLimitRate / 100);
     if (myBid >= simLower && myBid <= simPrice) wins++;
