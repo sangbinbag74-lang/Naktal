@@ -127,11 +127,6 @@ export function Sidebar({ plan = "FREE", isAdmin = false }: SidebarProps) {
                 >
                   <span style={{ fontSize: 14, width: 18, textAlign: "center" }}>{item.icon}</span>
                   <span style={{ flex: 1 }}>{item.label}</span>
-                  {"badge" in item && item.badge && (
-                    <span style={{ fontSize: 9, fontWeight: 700, color: "#60A5FA", background: "rgba(96,165,250,0.15)", padding: "1px 5px", borderRadius: 4 }}>
-                      {item.badge}
-                    </span>
-                  )}
                   {isProLocked && (
                     <span style={{ fontSize: 10, color: "#475569" }}>🔒</span>
                   )}
