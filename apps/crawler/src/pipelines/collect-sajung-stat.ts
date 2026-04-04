@@ -52,8 +52,9 @@ const supabase: SupabaseClient = createClient(SUPABASE_URL, SERVICE_KEY, {
 });
 
 const PAGE_SIZE = 1000; // Supabase PostgREST 기본 max-rows
-const SAJUNG_MIN = 97;
-const SAJUNG_MAX = 103;
+// 물품/용역은 97~103%, 공사는 복수예가로 105~115% → 전체 커버
+const SAJUNG_MIN = 85;
+const SAJUNG_MAX = 125;
 
 // ─── 분류 ─────────────────────────────────────────────────────────────────────
 
