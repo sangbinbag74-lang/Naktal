@@ -198,8 +198,6 @@ export default function AnnouncementsPage() {
   const [catPanelOpen, setCatPanelOpen] = useState(false);
   const [regions, setRegions] = useState<string[]>([]);
   const [regionPanelOpen, setRegionPanelOpen] = useState(false);
-  const [myRegionLoading, setMyRegionLoading] = useState(false);
-  const [myRegionError, setMyRegionError] = useState("");
   const [sort, setSort] = useState("latest");
   const [contractMethod, setContractMethod] = useState("");
   const [deadlineRange, setDeadlineRange] = useState("active");
@@ -446,52 +444,12 @@ export default function AnnouncementsPage() {
                 }}>
                   <div style={{ padding: "4px 14px 8px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                     <span style={{ fontSize: 11, color: "#94A3B8", fontWeight: 600 }}>발주지역 선택</span>
-                    <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                      <button
-                        onClick={async () => {
-                          setMyRegionLoading(true);
-                          setMyRegionError("");
-                          try {
-                            const res = await fetch("/api/profile");
-                            const profile = await res.json();
-                            const addr: string = profile?.address ?? "";
-                            const PROV = ["서울","부산","대구","인천","광주","대전","울산","세종",
-                              "경기","강원","충북","충남","전북","전남","경북","경남","제주"];
-                            const code = PROV.find(p => addr.includes(p)) ?? null;
-                            if (code) {
-                              setRegions([code]);
-                            } else {
-                              setMyRegionError("/profile에서 업체 주소를 먼저 입력해주세요");
-                              setTimeout(() => setMyRegionError(""), 3000);
-                            }
-                          } catch {
-                            setMyRegionError("불러오기 실패");
-                            setTimeout(() => setMyRegionError(""), 3000);
-                          } finally {
-                            setMyRegionLoading(false);
-                          }
-                        }}
-                        style={{
-                          fontSize: 11, color: "#059669", background: "#F0FDF4",
-                          border: "1px solid #BBF7D0", borderRadius: 6,
-                          padding: "2px 8px", cursor: "pointer",
-                          display: "flex", alignItems: "center", gap: 4,
-                        }}
-                      >
-                        {myRegionLoading ? (
-                          <span style={{ display: "inline-block", width: 10, height: 10, border: "2px solid #BBF7D0", borderTopColor: "#059669", borderRadius: "50%", animation: "spin 0.7s linear infinite" }} />
-                        ) : "📍"} 내 업체 지역
+                    {regions.length > 0 && (
+                      <button onClick={() => setRegions([])} style={{ fontSize: 11, color: "#DC2626", background: "none", border: "none", cursor: "pointer", padding: 0 }}>
+                        전체해제
                       </button>
-                      {regions.length > 0 && (
-                        <button onClick={() => setRegions([])} style={{ fontSize: 11, color: "#DC2626", background: "none", border: "none", cursor: "pointer", padding: 0 }}>
-                          전체해제
-                        </button>
-                      )}
-                    </div>
+                    )}
                   </div>
-                  {myRegionError && (
-                    <div style={{ fontSize: 11, color: "#DC2626", padding: "0 14px 6px" }}>{myRegionError}</div>
-                  )}
                   {REGION_GROUPS.map((g) => (
                     <div key={g.label}>
                       <div style={{ fontSize: 10, color: "#94A3B8", padding: "4px 14px", fontWeight: 600, letterSpacing: "0.02em" }}>
