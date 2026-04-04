@@ -299,7 +299,7 @@ export function NumberAnalysisSection({ annId, isClosed, bidMethod, defaultBidde
           )}
 
           <div style={{ background: "#FFF7ED", border: "1px solid #FDE68A", borderRadius: 8, padding: "10px 14px", fontSize: 12, color: "#92400E", fontWeight: 500 }}>
-            ⚠ 위 번호 조합은 과거 낙찰 데이터 통계를 기반으로 한 참고 자료이며, 낙찰을 보장하지 않습니다. 실제 입찰 전 반드시 전문가와 검토하세요.
+            ⚠ 위 번호 조합은 과거 낙찰 데이터 통계를 기반으로 한 참고 자료이며, 낙찰을 보장하지 않습니다.
           </div>
         </div>
       )}

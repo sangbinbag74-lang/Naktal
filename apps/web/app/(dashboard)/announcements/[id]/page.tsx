@@ -269,7 +269,7 @@ export default async function AnnouncementDetailPage({
 
       {/* 면책 고지 */}
       <div style={{ background: "#FFF7ED", border: "1px solid #FDE68A", borderRadius: 8, padding: "10px 12px", fontSize: 12, color: "#92400E", fontWeight: 500 }}>
-        ⚠ AI 분석 결과는 통계적 참고 자료입니다. 낙찰을 보장하지 않습니다. 실제 입찰 전 반드시 전문가와 검토하세요.
+        ⚠ AI 분석 결과는 통계적 참고 자료입니다. 낙찰을 보장하지 않습니다.
       </div>
     </div>
   );
