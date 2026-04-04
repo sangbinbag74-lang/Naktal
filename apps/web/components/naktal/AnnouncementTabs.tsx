@@ -7,6 +7,20 @@ import { createClient } from "@/lib/supabase/client";
 
 // ─── 타입 ─────────────────────────────────────────────────────────────────────
 
+export interface VisitedAnn {
+  annDbId: string;
+  annId: string;
+  title: string;
+  orgName: string;
+  budget: number;
+  deadline: string;
+  category: string;
+  region: string;
+  isClosed: boolean;
+  multiplePrice: boolean;
+  visitedAt: number;
+}
+
 interface BidHistoryRow {
   bidRate: string;
   finalPrice: string;
@@ -51,8 +65,12 @@ interface QualificationResult {
 export interface AnnouncementTabsProps {
   annId: string;
   annDbId: string;
+  title: string;
   orgName: string;
   budget: number;
+  deadline: string;
+  category: string;
+  region: string;
   lowerLimitRate: number;    // %
   multiplePrice: boolean;
   isClosed: boolean;
@@ -160,7 +178,8 @@ const TABS = [
 ];
 
 export function AnnouncementTabs({
-  annId, annDbId, orgName, budget, lowerLimitRate, multiplePrice, isClosed, bidMethod,
+  annId, annDbId, title, orgName, budget, deadline, category, region,
+  lowerLimitRate, multiplePrice, isClosed, bidMethod,
   bidHistory, avgBidRate,
 }: AnnouncementTabsProps) {
   const [activeTab, setActiveTab] = useState("strategy");
@@ -197,6 +216,20 @@ export function AnnouncementTabs({
     try { localStorage.setItem(cacheKey(userId, id), JSON.stringify(data)); } catch { /* 무시 */ }
   }
 
+  // ─── 방문 이력 저장 (history 페이지 데이터 소스) ──────────────────────────
+  function saveVisited(userId: string): void {
+    if (typeof window === "undefined") return;
+    try {
+      const key = `visited_${userId}`;
+      const existing: VisitedAnn[] = JSON.parse(localStorage.getItem(key) ?? "[]") as VisitedAnn[];
+      // 동일 annDbId 제거 후 맨 앞에 추가 (최신순)
+      const filtered = existing.filter((v) => v.annDbId !== annDbId);
+      const record: VisitedAnn = { annDbId, annId, title, orgName, budget, deadline, category, region, isClosed, multiplePrice, visitedAt: Date.now() };
+      filtered.unshift(record);
+      localStorage.setItem(key, JSON.stringify(filtered.slice(0, 200))); // 최대 200개
+    } catch { /* 무시 */ }
+  }
+
   // 통합 분석 API 호출 (마운트 시 1회 — 사용자별 로컬 캐시 우선, 영구 보존)
   const fetchAnalysis = useCallback(async () => {
     // userId 확인 (캐시 키에 필요)
@@ -206,6 +239,9 @@ export function AnnouncementTabs({
       userIdRef.current = user?.id ?? "anon";
     }
     const uid = userIdRef.current;
+
+    // 방문 기록 저장 (분석 결과 유무와 무관하게 즉시)
+    saveVisited(uid);
 
     // 로컬 캐시 확인 (영구)
     const cached = loadCachedAnalysis(uid, annDbId);

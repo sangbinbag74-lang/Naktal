@@ -257,8 +257,12 @@ export default async function AnnouncementDetailPage({
       <AnnouncementTabs
         annId={a.konepsId}
         annDbId={a.id}
+        title={a.title}
         orgName={a.orgName}
         budget={budgetNum || 0}
+        deadline={a.deadline}
+        category={a.category}
+        region={a.region}
         lowerLimitRate={lowerLimitRate}
         multiplePrice={multiplePrice}
         isClosed={isClosed}
