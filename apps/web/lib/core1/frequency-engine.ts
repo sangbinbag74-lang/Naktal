@@ -140,10 +140,10 @@ function buildResult(
     let r = rand() * total;
     let idx = pool.length - 1;
     for (let j = 0; j < pool.length; j++) {
-      r -= pool[j].weight;
+      r -= (pool[j] as { num: number; weight: number }).weight;
       if (r <= 0) { idx = j; break; }
     }
-    picks.push(pool[idx].num);
+    picks.push((pool[idx] as { num: number; weight: number }).num);
     pool.splice(idx, 1);
   }
 
