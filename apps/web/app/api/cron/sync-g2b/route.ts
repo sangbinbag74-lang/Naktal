@@ -11,6 +11,7 @@ import {
   g2bFetchAllBidResults,
   g2bExtractRegion,
   g2bParseDate,
+  g2bGetCategory,
   toYMD,
   daysAgo,
   type G2BAnnouncement,
@@ -68,7 +69,7 @@ async function importAnnouncementsOp(
         konepsId, title, orgName,
         budget: budgetNum,
         deadline,
-        category: item.pubPrcrmntMidClsfcNm || item.pubPrcrmntLrgClsfcNm || item.ntceKindNm || "",
+        category: g2bGetCategory(item, operation),
         region: g2bExtractRegion(item.ntceInsttAddr || ""),
         rawJson,
       };

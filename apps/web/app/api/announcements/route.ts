@@ -4,6 +4,7 @@ import {
   g2bFetchAnnouncementPage,
   g2bParseDate,
   g2bExtractRegion,
+  g2bGetCategory,
   toYMD,
   type G2BAnnouncement,
 } from "@/lib/g2b";
@@ -18,18 +19,18 @@ const NTCE_OPS_WEB = [
   "getBidPblancListInfoThng",
 ] as const;
 
-async function fetchFromG2B(): Promise<G2BAnnouncement[]> {
+async function fetchFromG2B(): Promise<{ item: G2BAnnouncement; operation: string }[]> {
   const nowTime = Date.now();
   const inqryBgnDt = toYMD(new Date(nowTime - 3 * 86400000)) + "0000";
   const inqryEndDt = toYMD(new Date()) + "2359";
 
-  const items: G2BAnnouncement[] = [];
+  const items: { item: G2BAnnouncement; operation: string }[] = [];
   for (const operation of NTCE_OPS_WEB) {
     for (let p = 1; p <= 5; p++) {
       const result = await g2bFetchAnnouncementPage({
         pageNo: p, numOfRows: 100, inqryBgnDt, inqryEndDt, operation,
       });
-      items.push(...result.items);
+      items.push(...result.items.map(item => ({ item, operation })));
       if (result.items.length < 100) break;
     }
   }
@@ -56,7 +57,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
 
   // G2B 최신 데이터 DB에 백그라운드 동기화 (응답에는 사용 안 함)
   fetchFromG2B()
-    .then(items => { if (items.length > 0) upsertG2BItemsToDB(items).catch(() => {}); })
+    .then(pairs => { if (pairs.length > 0) upsertG2BItemsToDB(pairs).catch(() => {}); })
     .catch(() => {});
 
   // DB에서 조회 (673K+ 데이터 활용)
@@ -65,9 +66,9 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
 }
 
 // ─── G2B 아이템 DB 저장 (상세 페이지 조회용) ──────────────────────────────────
-async function upsertG2BItemsToDB(items: G2BAnnouncement[]): Promise<void> {
+async function upsertG2BItemsToDB(pairs: { item: G2BAnnouncement; operation: string }[]): Promise<void> {
   const admin = createAdminClient();
-  const rows = items.map(i => {
+  const rows = pairs.map(({ item: i, operation }) => {
     const rawJson: Record<string, string> = {};
     for (const [k, v] of Object.entries(i)) rawJson[k] = String(v ?? "");
     const budgetNum = +(i.asignBdgtAmt || i.presmptPrce || "0").replace(/[^0-9]/g, "");
@@ -81,7 +82,7 @@ async function upsertG2BItemsToDB(items: G2BAnnouncement[]): Promise<void> {
       konepsId, title, orgName,
       budget: budgetNum,
       deadline,
-      category: i.pubPrcrmntMidClsfcNm || i.pubPrcrmntLrgClsfcNm || i.ntceKindNm || "",
+      category: g2bGetCategory(i, operation),
       region: g2bExtractRegion(i.ntceInsttAddr || ""),
       rawJson,
     };
