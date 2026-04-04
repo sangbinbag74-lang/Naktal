@@ -200,10 +200,18 @@ async function fetchFromDB(opts: Record<string, string | number>): Promise<NextR
     const all = regions.split(",").map((r: string) => r.trim()).filter(Boolean);
     const provinces = all.filter((r: string) => PROVINCE_CODES.includes(r));
     const cities    = all.filter((r: string) => !PROVINCE_CODES.includes(r));
-    const orParts: string[] = [];
-    if (provinces.length) orParts.push(`region.in.(${provinces.join(",")})`);
-    cities.forEach((c: string) => orParts.push(`rawJson->>ntceInsttAddr.ilike.%${c}%`));
-    if (orParts.length) q = q.or(orParts.join(","));
+    if (provinces.length && cities.length === 0) {
+      // province만: 인덱스 컬럼 .in() 직접 사용 (가장 안정적)
+      q = q.in("region", provinces);
+    } else if (cities.length && provinces.length === 0) {
+      // city만: JSONB ilike OR
+      q = q.or(cities.map((c: string) => `rawJson->>ntceInsttAddr.ilike.%${c}%`).join(","));
+    } else if (provinces.length && cities.length) {
+      // 혼합: province in + city ilike OR 결합
+      const orParts: string[] = [`region.in.(${provinces.join(",")})`];
+      cities.forEach((c: string) => orParts.push(`rawJson->>ntceInsttAddr.ilike.%${c}%`));
+      q = q.or(orParts.join(","));
+    }
   } else if (region) {
     q = q.filter("rawJson->>ntceInsttAddr", "ilike", `%${region}%`);
   }
