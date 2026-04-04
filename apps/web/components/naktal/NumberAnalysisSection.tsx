@@ -261,24 +261,35 @@ export function NumberAnalysisSection({ annId, isClosed, bidMethod, defaultBidde
           </div>
 
           {([
-            { combo: result.combo1, hitRate: result.hitRate1, label: "조합 1", accent: "#1B3A6B" },
-            { combo: result.combo2, hitRate: result.hitRate2, label: "조합 2", accent: "#1E40AF" },
-            { combo: result.combo3, hitRate: result.hitRate3, label: "조합 3", accent: "#2563EB" },
-          ] as const).map(({ combo, hitRate, label, accent }) => (
+            { combo: result.combo1, hitRate: result.hitRate1, label: "조합 1", accent: "#1B3A6B", best: true },
+            { combo: result.combo2, hitRate: result.hitRate2, label: "조합 2", accent: "#475569", best: false },
+            { combo: result.combo3, hitRate: result.hitRate3, label: "조합 3", accent: "#94A3B8", best: false },
+          ] as const).map(({ combo, hitRate, label, accent, best }) => (
             <div key={label} style={{
-              background: "#fff", borderRadius: 12, border: "1px solid #E8ECF2",
-              borderLeft: `4px solid ${accent}`, padding: "18px 22px",
+              background: best ? "#EEF2FF" : "#fff",
+              borderRadius: 12,
+              border: best ? "2px solid #1B3A6B" : "1px solid #E8ECF2",
+              borderLeft: `4px solid ${accent}`,
+              padding: "18px 22px",
               display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16,
             }}>
               <div>
-                <div style={{ fontSize: 10, fontWeight: 700, color: accent, marginBottom: 10, letterSpacing: "0.05em" }}>{label}</div>
+                <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 10 }}>
+                  <span style={{ fontSize: 10, fontWeight: 700, color: accent, letterSpacing: "0.05em" }}>{label}</span>
+                  {best && (
+                    <span style={{
+                      fontSize: 10, fontWeight: 700, background: "#1B3A6B", color: "#fff",
+                      padding: "1px 6px", borderRadius: 4, letterSpacing: "0.03em",
+                    }}>추천★</span>
+                  )}
+                </div>
                 <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                   {combo.map((n, i) => (
                     <div key={i} style={{
-                      width: 46, height: 46, borderRadius: "50%",
+                      width: best ? 50 : 44, height: best ? 50 : 44, borderRadius: "50%",
                       background: accent, color: "#fff",
                       display: "flex", alignItems: "center", justifyContent: "center",
-                      fontSize: 14, fontWeight: 700,
+                      fontSize: best ? 15 : 13, fontWeight: 700,
                     }}>
                       {String(n).padStart(2, "0")}
                     </div>
@@ -287,8 +298,8 @@ export function NumberAnalysisSection({ annId, isClosed, bidMethod, defaultBidde
               </div>
               <div style={{ textAlign: "right", flexShrink: 0 }}>
                 <div style={{ fontSize: 11, color: "#94A3B8", marginBottom: 2 }}>낙찰 점유율</div>
-                <div style={{ fontSize: 24, fontWeight: 800, color: accent }}>
-                  {hitRate.toFixed(1)}<span style={{ fontSize: 13, fontWeight: 600 }}>%</span>
+                <div style={{ fontSize: best ? 28 : 22, fontWeight: 800, color: accent }}>
+                  {hitRate.toFixed(1)}<span style={{ fontSize: best ? 14 : 12, fontWeight: 600 }}>%</span>
                 </div>
               </div>
             </div>
