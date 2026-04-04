@@ -103,6 +103,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   const budgetRange = getBudgetRange(budgetNum);
 
   const result = await recommendNumbers({
+    annId: ann.id,
     category: ann.category,
     budgetRange,
     region: ann.region,

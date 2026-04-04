@@ -23,6 +23,36 @@ export interface RecommendResult {
   isEstimated: boolean;
 }
 
+// 공고 ID 기반 시드 생성 (결정론적)
+function annSeed(annId: string): number {
+  let h = 0x12345678;
+  for (let i = 0; i < annId.length; i++) {
+    h = Math.imul(h ^ annId.charCodeAt(i), 0x9e3779b9);
+    h = (h << 13) | (h >>> 19);
+  }
+  return h >>> 0;
+}
+
+// Mulberry32 PRNG
+function mulberry32(seed: number) {
+  let s = seed;
+  return () => {
+    s += 0x6d2b79f5;
+    let t = Math.imul(s ^ (s >>> 15), s | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+// Fisher-Yates 셔플 (in-place)
+function shuffle<T>(arr: T[], rand: () => number): T[] {
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(rand() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+
 // rateInt (투찰률 × 1000, 예: 87345) → millidigit (소수점 3자리, 예: 345)
 function rateIntToMillidigit(rateInt: number): number {
   return rateInt % 1000;
@@ -82,7 +112,10 @@ function buildResult(
   totalCount: number,
   bidderRange: string,
   matchLevel: string,
+  annId: string,
 ): RecommendResult {
+  const rand = mulberry32(annSeed(annId));
+
   // 빈도 → 비율(%) 변환 (프론트 히트맵용)
   const freqPctMap: Record<number, number> = {};
   for (const [k, v] of Object.entries(numFreqMap)) {
@@ -96,9 +129,11 @@ function buildResult(
 
   const bottom = sorted.slice(0, Math.max(3, Math.floor(sorted.length * 0.7)));
   const third = Math.max(1, Math.floor(bottom.length / 3));
-  const zone1 = bottom.slice(0, third).map((x) => x.num);
-  const zone2 = bottom.slice(third, third * 2).map((x) => x.num);
-  const zone3 = bottom.slice(third * 2).map((x) => x.num);
+
+  // 각 존 내에서 공고 ID 기반 셔플 → 공고마다 다른 번호, 동일 공고는 항상 같은 번호
+  const zone1 = shuffle(bottom.slice(0, third).map((x) => x.num), rand);
+  const zone2 = shuffle(bottom.slice(third, third * 2).map((x) => x.num), rand);
+  const zone3 = shuffle(bottom.slice(third * 2).map((x) => x.num), rand);
 
   const pick = (arr: number[], n = 3) => arr.slice(0, n);
 
@@ -128,6 +163,7 @@ function buildResult(
 }
 
 export interface RecommendParams {
+  annId: string;
   category: string;
   budgetRange: string;
   region: string;
@@ -153,7 +189,7 @@ function classifyBidderRange(n?: number): string {
 export async function recommendNumbers(
   params: RecommendParams,
 ): Promise<RecommendResult> {
-  const { supabaseUrl, supabaseKey, category, budgetRange, region, estimatedBidders } = params;
+  const { supabaseUrl, supabaseKey, annId, category, budgetRange, region, estimatedBidders } = params;
   const supabase = createClient(supabaseUrl, supabaseKey);
   const bidderRange = classifyBidderRange(estimatedBidders);
   const MIN_SAMPLE = 50;
@@ -191,7 +227,7 @@ export async function recommendNumbers(
     const rows = await queryStat(filter);
     const { numFreqMap, totalCount } = buildNumFreqMap(rows);
     if (totalCount >= MIN_SAMPLE) {
-      return buildResult(numFreqMap, totalCount, bidderRange, label);
+      return buildResult(numFreqMap, totalCount, bidderRange, label, annId);
     }
   }
 
