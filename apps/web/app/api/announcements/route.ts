@@ -86,7 +86,7 @@ async function upsertG2BItemsToDB(pairs: { item: G2BAnnouncement; operation: str
       budget: budgetNum,
       deadline,
       category: g2bGetCategory(i, operation),
-      region: g2bExtractRegion(i.ntceInsttAddr || ""),
+      region: g2bExtractRegion(i.ntceInsttAddr || i.ntceInsttNm || i.demInsttNm || ""),
       rawJson,
     };
   }).filter(Boolean);
@@ -158,7 +158,7 @@ function buildG2BResponse(allItems: G2BAnnouncement[], opts: Record<string, stri
       budget: +(i.asignBdgtAmt||i.presmptPrce||"0").replace(/[^0-9]/g,""),
       deadline: g2bParseDate(i.bidClseDt) ?? "",
       category: i.pubPrcrmntMidClsfcNm || i.pubPrcrmntLrgClsfcNm || i.ntceKindNm || "",
-      region: g2bExtractRegion(i.ntceInsttAddr || ""),
+      region: g2bExtractRegion(i.ntceInsttAddr || i.ntceInsttNm || i.demInsttNm || ""),
       rawJson, createdAt: g2bParseDate(i.bidNtceDt) ?? "",
     };
   });

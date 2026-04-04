@@ -119,7 +119,7 @@ function mapToRow(item: G2BAnnouncement, operation: string): AnnouncementRow | n
     const category = operation === "getBidPblancListInfoCnstwk"
       ? (MAIN_CNSTWK_MAP[item.mainCnsttyNm ?? ""] || "시설공사")
       : (item.pubPrcrmntMidClsfcNm || item.pubPrcrmntLrgClsfcNm || OP_TO_CATEGORY[operation] || item.ntceKindNm || "");
-    const region   = extractRegion(item.ntceInsttAddr || "");
+    const region   = extractRegion(item.ntceInsttAddr || item.ntceInsttNm || item.demInsttNm || "");
 
     const rawJson: Record<string, string> = {};
     for (const [k, v] of Object.entries(item)) rawJson[k] = String(v ?? "");
