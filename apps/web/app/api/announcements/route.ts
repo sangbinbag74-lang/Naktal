@@ -99,7 +99,7 @@ async function upsertG2BItemsToDB(pairs: { item: G2BAnnouncement; operation: str
 // ─── G2B 결과 처리 ────────────────────────────────────────────────────────────
 function buildG2BResponse(allItems: G2BAnnouncement[], opts: Record<string, string | number>) {
   const { category, region, minBudget, maxBudget, keyword, contractMethod,
-    deadlineRange, konepsId, prtcptnLmt, ntceKind, sort } = opts as Record<string, string>;
+    deadlineRange, konepsId, prtcptnLmt, rgnType, ntceKind, sort } = opts as Record<string, string>;
   const page  = Number(opts.page);
   const limit = Number(opts.limit);
   const now = Date.now();
