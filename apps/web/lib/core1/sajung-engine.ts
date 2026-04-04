@@ -201,46 +201,62 @@ export async function analyzeCompetition(params: {
   const supabase = createAdminClient();
   const budgetRange = classifyBudget(params.budget);
 
-  // 유사 낙찰 결과 조회 (동일 발주처 OR 동일 카테고리+예산구간+지역)
-  const { data: bidResults } = await supabase
-    .from("BidResult")
-    .select("numBidders,winnerName,bidRate,Announcement!annId(orgName,category,region,budget)")
-    .not("numBidders", "is", null)
-    .limit(200);
+  // Step 1: 유사 공고 konepsId 조회 (동일 발주처 OR 동일 카테고리+예산구간+지역)
+  // BidResult.annId = konepsId 값이므로 Announcement에서 먼저 조회
+  const { data: orgAnns } = await supabase
+    .from("Announcement")
+    .select("konepsId,budget")
+    .eq("orgName", params.orgName)
+    .limit(100);
 
-  type BidRow = {
-    numBidders: number;
-    winnerName: string | null;
-    bidRate: string;
-    Announcement: { orgName: string; category: string; region: string; budget: string } | null;
-  };
+  const { data: similarAnns } = await supabase
+    .from("Announcement")
+    .select("konepsId,budget")
+    .eq("category", params.category)
+    .eq("region", params.region)
+    .limit(100);
 
-  const rows = (bidResults as BidRow[] | null) ?? [];
+  const konepsIds = Array.from(new Set([
+    ...(orgAnns ?? []).map(a => a.konepsId as string),
+    ...(similarAnns ?? [])
+      .filter(a => classifyBudget(Number(a.budget)) === budgetRange)
+      .map(a => a.konepsId as string),
+  ])).filter(Boolean);
 
-  // 유사 공고 필터 (발주처 일치 OR 카테고리+예산+지역 일치)
-  const similar = rows.filter((r) => {
-    const ann = r.Announcement;
-    if (!ann) return false;
-    if (ann.orgName === params.orgName) return true;
-    const br = classifyBudget(Number(ann.budget));
-    return ann.category === params.category && br === budgetRange && ann.region === params.region;
-  });
+  type BidRow = { numBidders: number; winnerName: string | null; bidRate: string };
+  let similar: BidRow[] = [];
+
+  if (konepsIds.length > 0) {
+    const { data: bids } = await supabase
+      .from("BidResult")
+      .select("numBidders,winnerName,bidRate")
+      .in("annId", konepsIds)
+      .not("numBidders", "is", null)
+      .limit(200);
+    similar = (bids as BidRow[] | null) ?? [];
+  }
 
   if (similar.length === 0) {
-    // category 기반 넓은 폴백 조회
-    const { data: broader } = await supabase
-      .from("BidResult")
-      .select("numBidders,Announcement!annId(category)")
-      .not("numBidders", "is", null)
-      .limit(50);
-    type BroaderRow = { numBidders: number; Announcement: { category: string } | null };
-    const broaderRows = (broader as BroaderRow[] | null) ?? [];
-    const bidderNums = broaderRows
-      .filter(r => r.Announcement?.category === params.category && r.numBidders > 0)
-      .map(r => r.numBidders);
-    const expectedBidders = bidderNums.length > 0
-      ? Math.round(bidderNums.reduce((a, b) => a + b, 0) / bidderNums.length)
-      : null;
+    // 카테고리 전체 폴백: 동일 category 공고의 평균 참여자 수
+    const { data: catAnns } = await supabase
+      .from("Announcement")
+      .select("konepsId")
+      .eq("category", params.category)
+      .limit(200);
+    const catIds = (catAnns ?? []).map(a => a.konepsId as string).filter(Boolean);
+    let expectedBidders: number | null = null;
+    if (catIds.length > 0) {
+      const { data: catBids } = await supabase
+        .from("BidResult")
+        .select("numBidders")
+        .in("annId", catIds)
+        .not("numBidders", "is", null)
+        .limit(100);
+      const nums = (catBids ?? []).map(r => (r as { numBidders: number }).numBidders).filter(n => n > 0);
+      if (nums.length > 0) {
+        expectedBidders = Math.round(nums.reduce((a, b) => a + b, 0) / nums.length);
+      }
+    }
     return {
       competitionScore: 50,
       scoreLevel: "보통",

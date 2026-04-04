@@ -38,7 +38,8 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     .gt("expiresAt", new Date().toISOString())
     .maybeSingle();
 
-  if (cached) {
+  // sampleSize=0 캐시는 스킵하여 재분석 (데이터 없는 상태로 캐싱된 경우)
+  if (cached && (cached.sampleSize as number) > 0) {
     return NextResponse.json(buildResponse(ann, cached, null));
   }
 
