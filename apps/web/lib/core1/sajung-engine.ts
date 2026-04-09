@@ -27,7 +27,7 @@ export interface SajungPrediction {
 }
 
 function getConfidenceLevel(sampleSize: number, stddev: number): ConfidenceLevel {
-  if (sampleSize >= 30 && stddev <= 0.5) return "HIGH";
+  if (sampleSize >= 10 && stddev <= 0.6) return "HIGH";  // 5.8% 해당 (74,697건 기준)
   if (sampleSize >= 10 && stddev <= 1.0) return "MEDIUM";
   return "LOW";
 }
@@ -161,14 +161,14 @@ export async function predictOptimalBid(params: {
     isFallback = true;
   }
 
-  // 4. 전체 폴백도 없으면 기본값 (업계 일반 추정)
+  // 4. 전체 폴백도 없으면 기본값 (DB 전체 가중평균 기준: 103.8%)
   if (!stat || stat.sampleSize < 5) {
-    const fallbackRate = 98.5;
+    const fallbackRate = 103.8; // SajungRateStat ALL orgName 가중평균 (측정값: 103.77)
     const estimated = params.budget * (fallbackRate / 100);
     const lowerLimit = estimated * (params.lowerLimitRate / 100);
     return {
       predictedSajungRate: fallbackRate,
-      sajungRateRange: { min: 97, max: 103, p25: 98, p75: 99.5 },
+      sajungRateRange: { min: 97, max: 112, p25: 101, p75: 106 },
       sampleSize: 0,
       optimalBidPrice: Math.round(estimated * 0.9997),
       bidPriceRangeLow: Math.round(Math.max(lowerLimit, estimated * 0.998)),

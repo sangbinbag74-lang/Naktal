@@ -52,8 +52,10 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   const deadline = new Date(ann.deadline as string);
   const deadlineMonth = deadline.getMonth() + 1;
 
-  // ─── 병렬 분석 ─────────────────────────────────────────────────────────────
-  const [sajung, competition] = await Promise.all([
+  // ─── 병렬 분석 (sajung + competition + numberStrategy 동시 실행) ──────────
+  const isMultiple = isMultiplePriceBid(rawJson);
+
+  const [sajung, competition, numberStrategy] = await Promise.all([
     predictOptimalBid({
       orgName: ann.orgName as string,
       category: ann.category as string,
@@ -69,25 +71,17 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       region: ann.region as string,
       deadlineMonth,
     }),
+    isMultiple
+      ? recommendNumbers({
+          annId: ann.id as string,
+          supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL!,
+          supabaseKey: process.env.SUPABASE_SERVICE_ROLE_KEY!,
+          category: ann.category as string,
+          budgetRange: classifyBudget(budget),
+          region: ann.region as string,
+        }).catch(() => null)
+      : Promise.resolve(null),
   ]);
-
-  // 복수예가 번호 추천 (복수예가 공고만)
-  let numberStrategy = null;
-  if (isMultiplePriceBid(rawJson)) {
-    try {
-      numberStrategy = await recommendNumbers({
-        annId: ann.id as string,
-        supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        supabaseKey: process.env.SUPABASE_SERVICE_ROLE_KEY!,
-        category: ann.category as string,
-        budgetRange: classifyBudget(budget),
-        region: ann.region as string,
-        estimatedBidders: competition.expectedBidders ?? undefined,
-      });
-    } catch {
-      // 번호 추천 실패는 무시
-    }
-  }
 
   // ─── BidPricePrediction 저장 ───────────────────────────────────────────────
   const predRecord = {

@@ -3,7 +3,7 @@
  * 미가입 또는 동의 없으면 Resend 이메일로 fallback
  *
  * 환경변수:
- *   KAKAO_REST_API_KEY
+ *   KAKAO_API_KEY
  *   KAKAO_TEMPLATE_ID_ALERT
  *   KAKAO_TEMPLATE_ID_OUTCOME
  *   KAKAO_TEMPLATE_ID_REMIND
@@ -18,7 +18,7 @@ interface KakaoTemplateParams {
 }
 
 async function sendKakaoAlimtalk(params: KakaoTemplateParams): Promise<boolean> {
-  const key = process.env.KAKAO_REST_API_KEY;
+  const key = process.env.KAKAO_API_KEY;
   if (!key) return false;
 
   try {
