@@ -41,46 +41,45 @@ export async function GET(req: NextRequest) {
   const rawJson = (ann.rawJson ?? {}) as Record<string, string>;
   const lwltStr = rawJson.sucsfbidLwltRate ?? "";
   const lowerLimitRate = parseFloat(lwltStr.replace(/[^0-9.]/g, "")) || 87.745;
-  const budget = Number(ann.budget);
 
   // Fetch BidResult rows for this specific announcement via konepsId
   const { data: directResults } = await admin
     .from("BidResult")
-    .select("finalPrice, bidRate")
+    .select("finalPrice, bidRate, annId")
     .eq("annId", ann.konepsId as string)
     .gt("bidRate", 0)
     .gt("finalPrice", 0)
     .limit(500);
 
-  const rows = directResults ?? [];
+  const directRows = directResults ?? [];
 
   // If no direct results, fall back to same orgName+category
-  if (rows.length === 0) {
-    const { data: annIds } = await admin
+  if (directRows.length === 0) {
+    const { data: annList } = await admin
       .from("Announcement")
       .select("konepsId")
       .eq("orgName", ann.orgName as string)
       .eq("category", ann.category as string)
       .limit(200);
 
-    const konepsIds = (annIds ?? []).map((a: { konepsId: string }) => a.konepsId).filter(Boolean);
+    const konepsIds = (annList ?? []).map((a: { konepsId: string }) => a.konepsId).filter(Boolean);
 
     if (konepsIds.length === 0) {
       return emptyResponse(lowerLimitRate);
     }
 
-    const { data: fallbackResults } = await admin
+    const { data: fallbackBidResults } = await admin
       .from("BidResult")
-      .select("finalPrice, bidRate")
+      .select("finalPrice, bidRate, annId")
       .in("annId", konepsIds)
       .gt("bidRate", 0)
       .gt("finalPrice", 0)
       .limit(500);
 
-    return buildHistogramResponse(fallbackResults ?? [], budget, lowerLimitRate);
+    return await buildHistogramResponse(fallbackBidResults ?? [], admin, lowerLimitRate);
   }
 
-  return buildHistogramResponse(rows, budget, lowerLimitRate);
+  return await buildHistogramResponse(directRows, admin, lowerLimitRate);
 }
 
 function emptyResponse(lowerLimitRate: number): NextResponse {
@@ -92,15 +91,32 @@ function emptyResponse(lowerLimitRate: number): NextResponse {
   });
 }
 
-function buildHistogramResponse(
-  results: { finalPrice: number | string; bidRate: number | string }[],
-  budget: number,
+async function buildHistogramResponse(
+  results: { finalPrice: number | string; bidRate: number | string; annId: string }[],
+  admin: ReturnType<typeof createAdminClient>,
   lowerLimitRate: number,
-): NextResponse {
+): Promise<NextResponse> {
+  if (results.length === 0) return emptyResponse(lowerLimitRate);
+
+  // Fetch each announcement's own budget (correct per-record denominator)
+  const uniqueAnnIds = [...new Set(results.map((r) => r.annId).filter(Boolean))];
+  const { data: annBudgets } = await admin
+    .from("Announcement")
+    .select("konepsId, budget")
+    .in("konepsId", uniqueAnnIds);
+
+  const budgetMap = new Map<string, number>(
+    (annBudgets ?? []).map((a: { konepsId: string; budget: string | number }) => [
+      a.konepsId as string,
+      Number(a.budget),
+    ]),
+  );
+
   const rates: number[] = [];
   for (const r of results) {
     const fp = Number(r.finalPrice);
     const br = Number(r.bidRate);
+    const budget = budgetMap.get(r.annId) ?? 0;
     if (fp <= 0 || br <= 0 || budget <= 0) continue;
     const estimatedPrice = fp / (br / 100);
     const sajungRate = (estimatedPrice / budget) * 100;
@@ -110,7 +126,6 @@ function buildHistogramResponse(
   }
 
   if (rates.length === 0) return emptyResponse(lowerLimitRate);
-
   rates.sort((a, b) => a - b);
 
   // Build 0.1%p buckets
