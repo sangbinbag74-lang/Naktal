@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { NumberAnalysisSection } from "./NumberAnalysisSection";
 import { WinProbCalculator } from "./WinProbCalculator";
+import { SajungHistogram } from "./SajungHistogram";
 import { createClient } from "@/lib/supabase/client";
 
 // ─── 타입 ─────────────────────────────────────────────────────────────────────
@@ -272,6 +273,21 @@ export function AnnouncementTabs({
               {" · "}예상 예정가 <strong>{fmt(budget * (bs.predictedSajungRate / 100))}</strong>
               {" · "}낙찰하한가 <strong style={{ color: "#DC2626" }}>{fmt(bs.lowerLimitPrice)}</strong>
             </div>
+          </div>
+
+          {/* 사정율 분포 히스토그램 */}
+          <div style={{ background: "#fff", border: "1px solid #E8ECF2", borderRadius: 10, padding: "16px 18px" }}>
+            <div style={{ fontSize: 13, fontWeight: 700, color: "#0F172A", marginBottom: 12 }}>
+              사정율 분포 히스토그램
+              <span style={{ fontSize: 12, color: "#64748B", fontWeight: 400, marginLeft: 8 }}>
+                이 발주처의 역대 사정율 분포
+              </span>
+            </div>
+            <SajungHistogram
+              annId={annDbId}
+              predictedSajungRate={bs?.predictedSajungRate}
+              lowerLimitRate={lowerLimitRate}
+            />
           </div>
 
           {/* WinProbCalculator */}
