@@ -30,20 +30,38 @@ export async function buildBudgetMap(
   );
 }
 
-/** 동일 orgName + category 공고의 konepsId 목록 조회 */
+/** 동일 orgName + category 공고의 konepsId 목록 조회
+ *  - category 일치 건수 < minForCategory 이면 category 조건 제거(발주처 전체)로 폴백
+ */
 export async function fetchOrgKonepsIds(
   supabase: SupabaseClient,
   orgName: string,
   category: string,
   limit = 200,
+  minForCategory = 20,
 ): Promise<string[]> {
-  const { data } = await supabase
+  const { data: exact } = await supabase
     .from("Announcement")
     .select("konepsId")
     .eq("orgName", orgName)
     .eq("category", category)
     .limit(limit);
-  return (data ?? [])
+
+  const exactIds = (exact ?? [])
+    .map((a: { konepsId: string }) => a.konepsId)
+    .filter(Boolean) as string[];
+
+  // category 일치 건수가 충분하면 그대로 반환
+  if (exactIds.length >= minForCategory) return exactIds;
+
+  // 부족하면 category 조건 없이 발주처 전체로 폴백
+  const { data: all } = await supabase
+    .from("Announcement")
+    .select("konepsId")
+    .eq("orgName", orgName)
+    .limit(limit);
+
+  return (all ?? [])
     .map((a: { konepsId: string }) => a.konepsId)
     .filter(Boolean) as string[];
 }
