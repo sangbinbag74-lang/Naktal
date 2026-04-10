@@ -5,7 +5,7 @@ const CACHE_TTL_DAYS = 7;
 export async function getCachedAnalysis(
   annId: string,
   period: string,
-  cacheType: "histogram" | "trend" | "topten",
+  cacheType: "histogram" | "trend" | "trend_v2" | "topten",
   userId = "",
 ): Promise<Record<string, unknown> | null> {
   const supabase = createAdminClient();
@@ -29,7 +29,7 @@ export async function getCachedAnalysis(
 export async function setCachedAnalysis(
   annId: string,
   period: string,
-  cacheType: "histogram" | "trend" | "topten",
+  cacheType: "histogram" | "trend" | "trend_v2" | "topten",
   result: unknown,
   sampleSize: number,
   userId = "",

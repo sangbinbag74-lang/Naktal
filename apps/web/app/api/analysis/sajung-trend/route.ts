@@ -9,15 +9,23 @@ export interface TrendPoint {
   mineSajung: number | null;
 }
 
-export interface ScatterPoint {
-  x: number; // year * 12 + month (e.g. 2024-03 → 24291)
-  y: number; // sajung rate
+/** 발주처 개별 낙찰 건 (순번 + 날짜 + 사정율) */
+export interface OrgPoint {
+  seq: number;   // 1-based ordinal (날짜순 정렬)
+  date: string;  // "YYYY-MM"
+  sajung: number;
+}
+
+/** 내 투찰 이력 */
+export interface MyPoint {
+  date: string;  // "YYYY-MM"
+  sajung: number;
 }
 
 export interface SajungTrendResponse {
-  trend: TrendPoint[];
-  orgPoints: ScatterPoint[];
-  myPoints: ScatterPoint[];
+  trend?: TrendPoint[];
+  orgPoints: OrgPoint[];
+  myPoints: MyPoint[];
   orgCount: number;
   mineCount: number;
   orgAvg: number | null;
@@ -32,9 +40,9 @@ export async function GET(req: NextRequest) {
   const period = req.nextUrl.searchParams.get("period") ?? "3y";
   if (!annId) return NextResponse.json({ error: "annId required" }, { status: 400 });
 
-  // ── 캐시 확인 (trend는 userId도 캐시 키) ────────────────────────────────────
+  // ── 캐시 확인 (v2: 인터페이스 변경으로 기존 캐시 무효화) ──────────────────
   const cacheUserId = userId && userId !== "anon" ? userId : "";
-  const cached = await getCachedAnalysis(annId, period, "trend", cacheUserId);
+  const cached = await getCachedAnalysis(annId, period, "trend_v2", cacheUserId);
   if (cached) return NextResponse.json({ ...cached, fromCache: true });
 
   const admin = createAdminClient();
@@ -49,10 +57,10 @@ export async function GET(req: NextRequest) {
 
   const sinceDate = periodToDate(period);
 
-  // ── 1. 발주처 사정율 시계열 ──────────────────────────────────────────────────
+  // ── 1. 발주처 사정율 개별 건 수집 ──────────────────────────────────────────
   const konepsIds = await fetchOrgKonepsIds(admin, ann.orgName as string, ann.category as string, 300);
   const orgByMonth = new Map<string, number[]>();
-  const orgPoints: ScatterPoint[] = [];
+  const orgRaw: { date: string; sajung: number }[] = [];
 
   if (konepsIds.length > 0) {
     let q = admin
@@ -79,14 +87,18 @@ export async function GET(req: NextRequest) {
       const rounded = Math.round(sajung * 100) / 100;
       if (!orgByMonth.has(date)) orgByMonth.set(date, []);
       orgByMonth.get(date)!.push(rounded);
-      const [yrStr, moStr] = date.split("-");
-      orgPoints.push({ x: Number(yrStr) * 12 + Number(moStr), y: rounded });
+      orgRaw.push({ date, sajung: rounded });
     }
   }
 
-  // ── 2. 내 투찰 이력 시계열 ──────────────────────────────────────────────────
+  // 날짜순 정렬 후 seq 부여
+  const orgPoints: OrgPoint[] = orgRaw
+    .sort((a, b) => a.date.localeCompare(b.date))
+    .map((p, i) => ({ seq: i + 1, date: p.date, sajung: p.sajung }));
+
+  // ── 2. 내 투찰 이력 수집 ────────────────────────────────────────────────────
   const mineByMonth = new Map<string, number[]>();
-  const myPoints: ScatterPoint[] = [];
+  const myPoints: MyPoint[] = [];
 
   if (userId && userId !== "anon") {
     let q = admin
@@ -106,25 +118,11 @@ export async function GET(req: NextRequest) {
       const rounded = Math.round(sajung * 100) / 100;
       if (!mineByMonth.has(date)) mineByMonth.set(date, []);
       mineByMonth.get(date)!.push(rounded);
-      const [yrStr2, moStr2] = date.split("-");
-      myPoints.push({ x: Number(yrStr2) * 12 + Number(moStr2), y: rounded });
+      myPoints.push({ date, sajung: rounded });
     }
   }
 
-  // ── 3. 머지 + 통계 ──────────────────────────────────────────────────────────
-  const allDates = [...new Set([...orgByMonth.keys(), ...mineByMonth.keys()])].sort();
-  const trend: TrendPoint[] = allDates.map((date) => {
-    const orgArr = orgByMonth.get(date) ?? [];
-    const mineArr = mineByMonth.get(date) ?? [];
-    const orgSajung = orgArr.length
-      ? Math.round((orgArr.reduce((s, v) => s + v, 0) / orgArr.length) * 100) / 100
-      : null;
-    const mineSajung = mineArr.length
-      ? Math.round((mineArr.reduce((s, v) => s + v, 0) / mineArr.length) * 100) / 100
-      : null;
-    return { date, orgSajung, mineSajung };
-  });
-
+  // ── 3. 통계 ─────────────────────────────────────────────────────────────────
   const allOrgVals = [...orgByMonth.values()].flat();
   const allMineVals = [...mineByMonth.values()].flat();
   const orgAvg = allOrgVals.length
@@ -138,7 +136,6 @@ export async function GET(req: NextRequest) {
     : null;
 
   const result: SajungTrendResponse = {
-    trend,
     orgPoints,
     myPoints,
     orgCount: allOrgVals.length,
@@ -149,7 +146,7 @@ export async function GET(req: NextRequest) {
   };
 
   // ── 캐시 저장 ──────────────────────────────────────────────────────────────
-  await setCachedAnalysis(annId, period, "trend", result , allOrgVals.length, cacheUserId);
+  await setCachedAnalysis(annId, period, "trend_v2", result, allOrgVals.length, cacheUserId);
 
   return NextResponse.json<SajungTrendResponse>(result);
 }

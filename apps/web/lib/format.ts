@@ -38,3 +38,9 @@ export function fmtSajungDiff(diff: number): string {
   const sign = diff >= 0 ? "+" : "";
   return `${sign}${diff.toFixed(2)}%p`;
 }
+
+/** 사정율 절대값 → 100 기준 편차 문자열. 예: 103.5 → "+3.500%p" */
+export function formatSajungDeviation(sajung: number): string {
+  const dev = sajung - 100;
+  return `${dev >= 0 ? "+" : ""}${dev.toFixed(3)}%p`;
+}
