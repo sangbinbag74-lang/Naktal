@@ -379,6 +379,7 @@ export default function AnnouncementsPage() {
   const [catPanelOpen, setCatPanelOpen] = useState(false);
   const [regions, setRegions] = useState<string[]>(() => { const s = getSavedFilters().regions; return Array.isArray(s) ? s as string[] : []; });
   const [regionPanelOpen, setRegionPanelOpen] = useState(false);
+  const [openProvinces, setOpenProvinces] = useState<Set<string>>(new Set());
   const [sort, setSort] = useState<string>(() => String(getSavedFilters().sort ?? "latest"));
   const [contractMethod, setContractMethod] = useState<string>(() => String(getSavedFilters().contractMethod ?? ""));
   const [deadlineRange, setDeadlineRange] = useState<string>(() => String(getSavedFilters().deadlineRange ?? "active"));
@@ -627,7 +628,7 @@ export default function AnnouncementsPage() {
                   position: "absolute", top: 42, left: 0, zIndex: 100,
                   background: "#fff", border: "1px solid #E8ECF2", borderRadius: 12,
                   boxShadow: "0 8px 24px rgba(0,0,0,0.12)", padding: "12px 0",
-                  minWidth: 240, maxHeight: 460, overflowY: "auto",
+                  minWidth: 280, maxHeight: 480, overflowY: "auto",
                 }}>
                   <div style={{ padding: "4px 14px 8px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                     <span style={{ fontSize: 11, color: "#94A3B8", fontWeight: 600 }}>발주지역 선택</span>
@@ -637,41 +638,102 @@ export default function AnnouncementsPage() {
                       </button>
                     )}
                   </div>
-                  {REGION_GROUPS.map((g) => (
-                    <div key={g.label}>
-                      <div style={{ fontSize: 10, color: "#94A3B8", padding: "4px 14px", fontWeight: 600, letterSpacing: "0.02em" }}>
-                        {g.label}
+                  {REGION_GROUPS.map((g) => {
+                    // split items into sections: each province + its following cities
+                    const sections: { province: RegionItem; cities: RegionItem[] }[] = [];
+                    let current: { province: RegionItem; cities: RegionItem[] } | null = null;
+                    for (const item of g.items) {
+                      if (item.type === "province") {
+                        current = { province: item, cities: [] };
+                        sections.push(current);
+                      } else if (current) {
+                        current.cities.push(item);
+                      }
+                    }
+                    return (
+                      <div key={g.label}>
+                        <div style={{ fontSize: 10, color: "#94A3B8", padding: "6px 14px 2px", fontWeight: 600, letterSpacing: "0.05em", textTransform: "uppercase" }}>
+                          {g.label}
+                        </div>
+                        {sections.map(({ province, cities }) => {
+                          const provChecked = regions.includes(province.code);
+                          const isOpen = openProvinces.has(province.code);
+                          const toggleOpen = () => setOpenProvinces(prev => {
+                            const next = new Set(prev);
+                            if (next.has(province.code)) next.delete(province.code); else next.add(province.code);
+                            return next;
+                          });
+                          return (
+                            <div key={province.code}>
+                              {/* Province row */}
+                              <div style={{ display: "flex", alignItems: "center" }}>
+                                <label style={{
+                                  display: "flex", alignItems: "center", gap: 8,
+                                  padding: "7px 14px", cursor: "pointer", flex: 1,
+                                  background: provChecked ? "#EEF2FF" : "transparent", fontSize: 13,
+                                }}
+                                  onMouseEnter={e => { if (!provChecked) (e.currentTarget as HTMLElement).style.background = "#F8FAFC"; }}
+                                  onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = provChecked ? "#EEF2FF" : "transparent"; }}
+                                >
+                                  <input
+                                    type="checkbox"
+                                    checked={provChecked}
+                                    onChange={() => setRegions(prev =>
+                                      provChecked ? prev.filter(r => r !== province.code) : [...prev, province.code]
+                                    )}
+                                    style={{ accentColor: "#1B3A6B", width: 14, height: 14, cursor: "pointer" }}
+                                  />
+                                  <span style={{ color: provChecked ? "#1B3A6B" : "#374151", fontWeight: 600, flex: 1 }}>
+                                    {province.label}
+                                  </span>
+                                </label>
+                                {cities.length > 0 && (
+                                  <button
+                                    onClick={toggleOpen}
+                                    style={{
+                                      background: "none", border: "none", cursor: "pointer",
+                                      padding: "7px 12px", fontSize: 11, color: "#94A3B8",
+                                      flexShrink: 0, lineHeight: 1,
+                                    }}
+                                    title={isOpen ? "접기" : "시·군·구 보기"}
+                                  >
+                                    {isOpen ? "▲" : "▼"}
+                                  </button>
+                                )}
+                              </div>
+                              {/* City rows (collapsible) */}
+                              {isOpen && cities.map((city) => {
+                                const cityChecked = regions.includes(city.code);
+                                return (
+                                  <label key={city.code} style={{
+                                    display: "flex", alignItems: "center", gap: 8,
+                                    padding: "6px 14px 6px 32px", cursor: "pointer",
+                                    background: cityChecked ? "#EEF2FF" : "transparent", fontSize: 12,
+                                    borderLeft: "2px solid #E8ECF2", marginLeft: 14,
+                                  }}
+                                    onMouseEnter={e => { if (!cityChecked) (e.currentTarget as HTMLElement).style.background = "#F8FAFC"; }}
+                                    onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = cityChecked ? "#EEF2FF" : "transparent"; }}
+                                  >
+                                    <input
+                                      type="checkbox"
+                                      checked={cityChecked}
+                                      onChange={() => setRegions(prev =>
+                                        cityChecked ? prev.filter(r => r !== city.code) : [...prev, city.code]
+                                      )}
+                                      style={{ accentColor: "#1B3A6B", width: 13, height: 13, cursor: "pointer" }}
+                                    />
+                                    <span style={{ color: cityChecked ? "#1B3A6B" : "#4B5563", fontWeight: cityChecked ? 600 : 400 }}>
+                                      {city.label}
+                                    </span>
+                                  </label>
+                                );
+                              })}
+                            </div>
+                          );
+                        })}
                       </div>
-                      {g.items.map((item) => {
-                        const checked = regions.includes(item.code);
-                        return (
-                          <label key={item.code} style={{
-                            display: "flex", alignItems: "center", gap: 8,
-                            padding: `6px 14px 6px ${item.type === "city" ? "28px" : "14px"}`,
-                            cursor: "pointer",
-                            background: checked ? "#EEF2FF" : "transparent",
-                            fontSize: 13,
-                          }}
-                            onMouseEnter={e => { if (!checked) (e.currentTarget as HTMLElement).style.background = "#F8FAFC"; }}
-                            onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = checked ? "#EEF2FF" : "transparent"; }}
-                          >
-                            <input
-                              type="checkbox"
-                              checked={checked}
-                              onChange={() => setRegions(prev =>
-                                checked ? prev.filter(r => r !== item.code) : [...prev, item.code]
-                              )}
-                              style={{ accentColor: "#1B3A6B", width: 14, height: 14, cursor: "pointer" }}
-                            />
-                            <span style={{
-                              color: checked ? "#1B3A6B" : "#374151",
-                              fontWeight: item.type === "province" ? (checked ? 700 : 600) : (checked ? 600 : 400),
-                            }}>{item.label}</span>
-                          </label>
-                        );
-                      })}
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </>
             )}
