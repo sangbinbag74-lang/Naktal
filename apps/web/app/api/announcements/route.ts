@@ -81,7 +81,6 @@ async function upsertG2BItemsToDB(pairs: { item: G2BAnnouncement; operation: str
     const orgName   = (i.ntceInsttNm || i.demInsttNm)?.trim();
     if (!konepsId || !title || !orgName || !deadline) return null;
     return {
-      id: crypto.randomUUID(),
       konepsId, title, orgName,
       budget: budgetNum,
       deadline,
