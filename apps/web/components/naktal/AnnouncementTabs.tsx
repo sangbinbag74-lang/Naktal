@@ -4,7 +4,11 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { NumberAnalysisSection } from "./NumberAnalysisSection";
 import { WinProbCalculator } from "./WinProbCalculator";
 import { SajungHistogram } from "./SajungHistogram";
+import { SajungTrendOverlay } from "./SajungTrendOverlay";
+import { SajungTopTen } from "./SajungTopTen";
 import { createClient } from "@/lib/supabase/client";
+
+type SubTab = "analysis1" | "analysis2" | "analysis3";
 
 // ─── 타입 ─────────────────────────────────────────────────────────────────────
 
@@ -120,6 +124,7 @@ export function AnnouncementTabs({
 }: AnnouncementTabsProps) {
   const [analysis, setAnalysis] = useState<ComprehensiveResult | null>(null);
   const [analysisLoading, setAnalysisLoading] = useState(true);
+  const [subTab, setSubTab] = useState<SubTab>("analysis1");
   const userIdRef = useRef<string | null>(null);
 
   // ─── 분석 결과 로컬 캐시 (영구, 사용자별 분리) ───────────────────────────
@@ -275,19 +280,62 @@ export function AnnouncementTabs({
             </div>
           </div>
 
-          {/* 사정율 분포 히스토그램 */}
+          {/* 사정율 분석 (서브탭 3개) */}
           <div style={{ background: "#fff", border: "1px solid #E8ECF2", borderRadius: 10, padding: "16px 18px" }}>
             <div style={{ fontSize: 13, fontWeight: 700, color: "#0F172A", marginBottom: 12 }}>
-              사정율 분포 히스토그램
-              <span style={{ fontSize: 12, color: "#64748B", fontWeight: 400, marginLeft: 8 }}>
-                이 발주처의 역대 사정율 분포
-              </span>
+              사정율 분석
             </div>
-            <SajungHistogram
-              annId={annDbId}
-              predictedSajungRate={bs?.predictedSajungRate}
-              lowerLimitRate={lowerLimitRate}
-            />
+            {/* 서브탭 네비게이션 */}
+            <div style={{ display: "flex", gap: 4, marginBottom: 16, padding: 4, background: "#F8FAFC", borderRadius: 10 }}>
+              {([
+                { key: "analysis1", label: "적중분석1 · 분포" },
+                { key: "analysis2", label: "적중분석2 · 흐름" },
+                { key: "analysis3", label: "적중분석3 · 구간추천" },
+              ] as { key: SubTab; label: string }[]).map(({ key, label }) => (
+                <button
+                  key={key}
+                  onClick={() => setSubTab(key)}
+                  style={{
+                    flex: 1,
+                    padding: "8px 4px",
+                    fontSize: 12,
+                    fontWeight: subTab === key ? 600 : 400,
+                    color: subTab === key ? "#1B3A6B" : "#64748B",
+                    background: subTab === key ? "#fff" : "transparent",
+                    border: "none",
+                    borderRadius: 7,
+                    cursor: "pointer",
+                    boxShadow: subTab === key ? "0 1px 4px rgba(0,0,0,0.08)" : "none",
+                    transition: "all 0.15s",
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+            {/* 서브탭 콘텐츠 */}
+            {subTab === "analysis1" && (
+              <SajungHistogram
+                annId={annDbId}
+                predictedSajungRate={bs?.predictedSajungRate}
+                lowerLimitRate={lowerLimitRate}
+              />
+            )}
+            {subTab === "analysis2" && (
+              <SajungTrendOverlay
+                annId={annDbId}
+                userId={userIdRef.current}
+                predictedSajungRate={bs?.predictedSajungRate}
+              />
+            )}
+            {subTab === "analysis3" && (
+              <SajungTopTen
+                annId={annDbId}
+                predictedSajungRate={bs?.predictedSajungRate}
+                budget={budget}
+              />
+            )}
           </div>
 
           {/* WinProbCalculator */}

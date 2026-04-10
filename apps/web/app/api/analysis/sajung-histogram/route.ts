@@ -1,11 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/server";
+import {
+  calcSajung,
+  buildBudgetMap,
+  fetchOrgKonepsIds,
+  roundBucket,
+} from "@/lib/analysis/sajung-utils";
 
 export interface HistogramBucket {
-  rate: number;   // e.g. 101.5
+  rate: number;
   count: number;
-  pct: number;    // frequency %
-  cumPct: number; // cumulative %
+  pct: number;
+  cumPct: number;
 }
 
 export interface SajungHistogramResponse {
@@ -20,66 +26,6 @@ export interface SajungHistogramResponse {
     stddev: number;
   };
   lowerLimitRate: number;
-}
-
-export async function GET(req: NextRequest) {
-  const annId = req.nextUrl.searchParams.get("annId");
-  if (!annId) return NextResponse.json({ error: "annId required" }, { status: 400 });
-
-  const admin = createAdminClient();
-
-  // Fetch announcement
-  const { data: ann } = await admin
-    .from("Announcement")
-    .select("id, konepsId, orgName, category, budget, rawJson")
-    .eq("id", annId)
-    .single();
-
-  if (!ann) return NextResponse.json({ error: "Announcement not found" }, { status: 404 });
-
-  // Extract lowerLimitRate from rawJson
-  const rawJson = (ann.rawJson ?? {}) as Record<string, string>;
-  const lwltStr = rawJson.sucsfbidLwltRate ?? "";
-  const lowerLimitRate = parseFloat(lwltStr.replace(/[^0-9.]/g, "")) || 87.745;
-
-  // Fetch BidResult rows for this specific announcement via konepsId
-  const { data: directResults } = await admin
-    .from("BidResult")
-    .select("finalPrice, bidRate, annId")
-    .eq("annId", ann.konepsId as string)
-    .gt("bidRate", 0)
-    .gt("finalPrice", 0)
-    .limit(500);
-
-  const directRows = directResults ?? [];
-
-  // If no direct results, fall back to same orgName+category
-  if (directRows.length === 0) {
-    const { data: annList } = await admin
-      .from("Announcement")
-      .select("konepsId")
-      .eq("orgName", ann.orgName as string)
-      .eq("category", ann.category as string)
-      .limit(200);
-
-    const konepsIds = (annList ?? []).map((a: { konepsId: string }) => a.konepsId).filter(Boolean);
-
-    if (konepsIds.length === 0) {
-      return emptyResponse(lowerLimitRate);
-    }
-
-    const { data: fallbackBidResults } = await admin
-      .from("BidResult")
-      .select("finalPrice, bidRate, annId")
-      .in("annId", konepsIds)
-      .gt("bidRate", 0)
-      .gt("finalPrice", 0)
-      .limit(500);
-
-    return await buildHistogramResponse(fallbackBidResults ?? [], admin, lowerLimitRate);
-  }
-
-  return await buildHistogramResponse(directRows, admin, lowerLimitRate);
 }
 
 function emptyResponse(lowerLimitRate: number): NextResponse {
@@ -98,42 +44,20 @@ async function buildHistogramResponse(
 ): Promise<NextResponse> {
   if (results.length === 0) return emptyResponse(lowerLimitRate);
 
-  // Fetch each announcement's own budget (correct per-record denominator)
   const uniqueAnnIds = [...new Set(results.map((r) => r.annId).filter(Boolean))];
-  const { data: annBudgets } = await admin
-    .from("Announcement")
-    .select("konepsId, budget")
-    .in("konepsId", uniqueAnnIds);
-
-  const budgetMap = new Map<string, number>(
-    (annBudgets ?? []).map((a: { konepsId: string; budget: string | number }) => [
-      a.konepsId as string,
-      Number(a.budget),
-    ]),
-  );
+  const budgetMap = await buildBudgetMap(admin, uniqueAnnIds);
 
   const rates: number[] = [];
   for (const r of results) {
-    const fp = Number(r.finalPrice);
-    const br = Number(r.bidRate);
-    const budget = budgetMap.get(r.annId) ?? 0;
-    if (fp <= 0 || br <= 0 || budget <= 0) continue;
-    const estimatedPrice = fp / (br / 100);
-    const sajungRate = (estimatedPrice / budget) * 100;
-    if (sajungRate >= 85 && sajungRate <= 125) {
-      rates.push(Math.round(sajungRate * 10) / 10);
-    }
+    const sajung = calcSajung(Number(r.finalPrice), Number(r.bidRate), budgetMap.get(r.annId) ?? 0);
+    if (sajung >= 85 && sajung <= 125) rates.push(roundBucket(sajung));
   }
 
   if (rates.length === 0) return emptyResponse(lowerLimitRate);
   rates.sort((a, b) => a - b);
 
-  // Build 0.1%p buckets
   const bucketMap = new Map<number, number>();
-  for (const r of rates) {
-    const key = Math.round(r * 10) / 10;
-    bucketMap.set(key, (bucketMap.get(key) ?? 0) + 1);
-  }
+  for (const r of rates) bucketMap.set(r, (bucketMap.get(r) ?? 0) + 1);
 
   const keys = Array.from(bucketMap.keys()).sort((a, b) => a - b);
   const minKey = keys[0] ?? 85;
@@ -145,7 +69,7 @@ async function buildHistogramResponse(
 
   let rr = minKey;
   while (rr <= maxKey + 0.001) {
-    const key = Math.round(rr * 10) / 10;
+    const key = roundBucket(rr);
     const count = bucketMap.get(key) ?? 0;
     cumCount += count;
     histogram.push({
@@ -154,10 +78,9 @@ async function buildHistogramResponse(
       pct: Math.round((count / total) * 1000) / 10,
       cumPct: Math.round((cumCount / total) * 1000) / 10,
     });
-    rr = Math.round((rr + 0.1) * 10) / 10;
+    rr = roundBucket(rr + 0.1);
   }
 
-  // Stats
   const avg = rates.reduce((s, v) => s + v, 0) / total;
   const variance = rates.reduce((s, v) => s + (v - avg) ** 2, 0) / total;
   const stddev = Math.sqrt(variance);
@@ -184,4 +107,50 @@ async function buildHistogramResponse(
     },
     lowerLimitRate,
   });
+}
+
+export async function GET(req: NextRequest) {
+  const annId = req.nextUrl.searchParams.get("annId");
+  if (!annId) return NextResponse.json({ error: "annId required" }, { status: 400 });
+
+  const admin = createAdminClient();
+
+  const { data: ann } = await admin
+    .from("Announcement")
+    .select("id, konepsId, orgName, category, rawJson")
+    .eq("id", annId)
+    .single();
+
+  if (!ann) return NextResponse.json({ error: "Announcement not found" }, { status: 404 });
+
+  const rawJson = (ann.rawJson ?? {}) as Record<string, string>;
+  const lwltStr = rawJson.sucsfbidLwltRate ?? "";
+  const lowerLimitRate = parseFloat(lwltStr.replace(/[^0-9.]/g, "")) || 87.745;
+
+  const { data: directResults } = await admin
+    .from("BidResult")
+    .select("finalPrice, bidRate, annId")
+    .eq("annId", ann.konepsId as string)
+    .gt("bidRate", 0)
+    .gt("finalPrice", 0)
+    .limit(500);
+
+  const directRows = directResults ?? [];
+
+  if (directRows.length === 0) {
+    const konepsIds = await fetchOrgKonepsIds(admin, ann.orgName as string, ann.category as string);
+    if (konepsIds.length === 0) return emptyResponse(lowerLimitRate);
+
+    const { data: fallback } = await admin
+      .from("BidResult")
+      .select("finalPrice, bidRate, annId")
+      .in("annId", konepsIds)
+      .gt("bidRate", 0)
+      .gt("finalPrice", 0)
+      .limit(500);
+
+    return await buildHistogramResponse(fallback ?? [], admin, lowerLimitRate);
+  }
+
+  return await buildHistogramResponse(directRows, admin, lowerLimitRate);
 }
