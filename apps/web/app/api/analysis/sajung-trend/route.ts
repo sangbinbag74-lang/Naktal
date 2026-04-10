@@ -9,8 +9,15 @@ export interface TrendPoint {
   mineSajung: number | null;
 }
 
+export interface ScatterPoint {
+  x: number; // year * 12 + month (e.g. 2024-03 → 24291)
+  y: number; // sajung rate
+}
+
 export interface SajungTrendResponse {
   trend: TrendPoint[];
+  orgPoints: ScatterPoint[];
+  myPoints: ScatterPoint[];
   orgCount: number;
   mineCount: number;
   orgAvg: number | null;
@@ -45,6 +52,7 @@ export async function GET(req: NextRequest) {
   // ── 1. 발주처 사정율 시계열 ──────────────────────────────────────────────────
   const konepsIds = await fetchOrgKonepsIds(admin, ann.orgName as string, ann.category as string, 300);
   const orgByMonth = new Map<string, number[]>();
+  const orgPoints: ScatterPoint[] = [];
 
   if (konepsIds.length > 0) {
     let q = admin
@@ -68,13 +76,17 @@ export async function GET(req: NextRequest) {
       );
       if (sajung < 85 || sajung > 125) continue;
       const date = (r.createdAt as string).slice(0, 7);
+      const rounded = Math.round(sajung * 100) / 100;
       if (!orgByMonth.has(date)) orgByMonth.set(date, []);
-      orgByMonth.get(date)!.push(Math.round(sajung * 100) / 100);
+      orgByMonth.get(date)!.push(rounded);
+      const [yrStr, moStr] = date.split("-");
+      orgPoints.push({ x: Number(yrStr) * 12 + Number(moStr), y: rounded });
     }
   }
 
   // ── 2. 내 투찰 이력 시계열 ──────────────────────────────────────────────────
   const mineByMonth = new Map<string, number[]>();
+  const myPoints: ScatterPoint[] = [];
 
   if (userId && userId !== "anon") {
     let q = admin
@@ -91,8 +103,11 @@ export async function GET(req: NextRequest) {
       const sajung = Number(o.actualSajungRate);
       if (!sajung || sajung < 85 || sajung > 125) continue;
       const date = (o.bidAt as string).slice(0, 7);
+      const rounded = Math.round(sajung * 100) / 100;
       if (!mineByMonth.has(date)) mineByMonth.set(date, []);
-      mineByMonth.get(date)!.push(Math.round(sajung * 100) / 100);
+      mineByMonth.get(date)!.push(rounded);
+      const [yrStr2, moStr2] = date.split("-");
+      myPoints.push({ x: Number(yrStr2) * 12 + Number(moStr2), y: rounded });
     }
   }
 
@@ -124,6 +139,8 @@ export async function GET(req: NextRequest) {
 
   const result: SajungTrendResponse = {
     trend,
+    orgPoints,
+    myPoints,
     orgCount: allOrgVals.length,
     mineCount: allMineVals.length,
     orgAvg,

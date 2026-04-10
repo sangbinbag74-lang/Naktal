@@ -23,3 +23,18 @@ export function formatDeadline(iso: string): string {
     minute: "2-digit",
   });
 }
+
+/**
+ * 사정율 2중 표기: 절대값 + 평균 대비 편차
+ * 예: 103.50% (+1.20%p)
+ */
+export function fmtSajungWithDiff(rate: number, avg: number): string {
+  const diff = rate - avg;
+  const sign = diff >= 0 ? "+" : "";
+  return `${rate.toFixed(2)}% (${sign}${diff.toFixed(2)}%p)`;
+}
+
+export function fmtSajungDiff(diff: number): string {
+  const sign = diff >= 0 ? "+" : "";
+  return `${sign}${diff.toFixed(2)}%p`;
+}

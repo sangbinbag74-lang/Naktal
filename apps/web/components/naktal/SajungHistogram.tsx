@@ -14,6 +14,7 @@ import {
   Legend,
 } from "recharts";
 import type { SajungHistogramResponse, HistogramBucket } from "@/app/api/analysis/sajung-histogram/route";
+import { fmtSajungDiff } from "@/lib/format";
 
 interface SajungHistogramProps {
   annId: string;
@@ -29,11 +30,12 @@ function fmt(n: number): string {
 
 // ─── Stat Card ──────────────────────────────────────────────────────────────
 
-function StatCard({ label, value, color = "#0F172A" }: { label: string; value: string; color?: string }) {
+function StatCard({ label, value, sub, color = "#0F172A" }: { label: string; value: string; sub?: string; color?: string }) {
   return (
     <div style={{ background: "#F8FAFC", borderRadius: 8, padding: "10px 14px", textAlign: "center", flex: 1 }}>
       <div style={{ fontSize: 11, color: "#94A3B8", marginBottom: 3 }}>{label}</div>
       <div style={{ fontSize: 15, fontWeight: 700, color }}>{value}</div>
+      {sub && <div style={{ fontSize: 11, color: "#94A3B8", marginTop: 2 }}>{sub}</div>}
     </div>
   );
 }
@@ -117,7 +119,7 @@ export function SajungHistogram({ annId, predictedSajungRate, lowerLimitRate, pe
       {/* Stat Cards */}
       <div style={{ display: "flex", gap: 8 }}>
         <StatCard label="평균 사정율" value={`${stats.avg.toFixed(2)}%`} color="#1B3A6B" />
-        <StatCard label="최빈 사정율" value={`${stats.mode.toFixed(1)}%`} color="#7C3AED" />
+        <StatCard label="최빈 사정율" value={`${stats.mode.toFixed(1)}%`} sub={fmtSajungDiff(stats.mode - stats.avg)} color="#7C3AED" />
         <StatCard label="표준편차" value={`±${stats.stddev.toFixed(2)}%p`} />
         <StatCard label="IQR 구간" value={`${stats.p25.toFixed(1)}~${stats.p75.toFixed(1)}%`} />
       </div>
@@ -132,9 +134,15 @@ export function SajungHistogram({ annId, predictedSajungRate, lowerLimitRate, pe
             <CartesianGrid strokeDasharray="3 3" stroke="#E8ECF2" vertical={false} />
             <XAxis
               dataKey="rate"
+              type="number"
+              domain={[
+                Math.max(85, Math.floor((histogram[0]?.rate ?? 85) * 10 - 10) / 10),
+                Math.min(125, Math.ceil((histogram[histogram.length - 1]?.rate ?? 125) * 10 + 10) / 10),
+              ]}
               tick={{ fontSize: 10, fill: "#94A3B8" }}
-              tickFormatter={(v: number) => v % 1 === 0 ? `${v}` : ""}
-              interval="preserveStartEnd"
+              tickFormatter={(v: number) => `${v.toFixed(1)}%`}
+              tickCount={8}
+              allowDataOverflow={false}
             />
             <YAxis
               yAxisId="left"

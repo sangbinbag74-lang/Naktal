@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import type { SajungTopTenResponse } from "@/app/api/analysis/sajung-topten/route";
+import { fmtSajungDiff } from "@/lib/format";
 
 interface SajungTopTenProps {
   annId: string;
@@ -65,6 +66,12 @@ export function SajungTopTen({ annId, predictedSajungRate, budget, period = "3y"
     );
   }
 
+  // 가중평균 사정율 (낙찰 건수 기준)
+  const totalWins = data.topTen.reduce((s, i) => s + i.winCount, 0);
+  const weightedAvg = totalWins > 0
+    ? data.topTen.reduce((s, i) => s + i.bucket * i.winCount, 0) / totalWins
+    : null;
+
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
       {/* 헤더 정보 */}
@@ -112,9 +119,14 @@ export function SajungTopTen({ annId, predictedSajungRate, budget, period = "3y"
                   </td>
                   {/* 사정율 구간 */}
                   <td style={{ padding: "10px", textAlign: "center" }}>
-                    <span style={{ fontWeight: 700, color: "#0F172A" }}>{item.bucket.toFixed(1)}%</span>
+                    <div style={{ fontWeight: 700, color: "#0F172A" }}>{item.bucket.toFixed(1)}%</div>
+                    {weightedAvg != null && (
+                      <div style={{ fontSize: 10, color: "#94A3B8", marginTop: 1 }}>
+                        {fmtSajungDiff(item.bucket - weightedAvg)}
+                      </div>
+                    )}
                     {isAiMatch && (
-                      <span style={{ marginLeft: 6, fontSize: 10, background: "#7C3AED", color: "#fff", padding: "1px 5px", borderRadius: 4, fontWeight: 600 }}>
+                      <span style={{ marginLeft: 0, fontSize: 10, background: "#7C3AED", color: "#fff", padding: "1px 5px", borderRadius: 4, fontWeight: 600 }}>
                         AI 추천
                       </span>
                     )}

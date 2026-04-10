@@ -2,8 +2,8 @@
 
 import { useEffect, useState } from "react";
 import {
-  ComposedChart,
-  Line,
+  ScatterChart,
+  Scatter,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -13,6 +13,7 @@ import {
   Legend,
 } from "recharts";
 import type { SajungTrendResponse } from "@/app/api/analysis/sajung-trend/route";
+import { fmtSajungDiff } from "@/lib/format";
 
 interface SajungTrendOverlayProps {
   annId: string;
@@ -34,16 +35,21 @@ function StatCard({ label, value, sub, color = "#0F172A" }: {
   );
 }
 
-function CustomTooltip({ active, payload, label }: any) {
+function xToLabel(x: number): string {
+  const year = Math.floor(x / 12);
+  const month = x % 12;
+  return `${String(year).slice(2)}-${String(month).padStart(2, "0")}`;
+}
+
+function CustomTooltip({ active, payload }: any) {
   if (!active || !payload?.length) return null;
+  const pt = payload[0];
+  if (!pt) return null;
   return (
     <div style={{ background: "#fff", border: "1px solid #E8ECF2", borderRadius: 8, padding: "8px 12px", fontSize: 12 }}>
-      <div style={{ fontWeight: 700, marginBottom: 4 }}>{label}</div>
-      {payload.map((p: any) => (
-        <div key={p.dataKey} style={{ color: p.color }}>
-          {p.name}: {p.value != null ? `${p.value}%` : "-"}
-        </div>
-      ))}
+      <div style={{ fontWeight: 700, marginBottom: 4, color: pt.fill }}>{pt.name}</div>
+      <div>{xToLabel(pt.payload.x)}</div>
+      <div>사정율 {pt.payload.y.toFixed(2)}%</div>
     </div>
   );
 }
@@ -87,12 +93,37 @@ export function SajungTrendOverlay({ annId, userId, predictedSajungRate, period 
   const gapColor = data.gap === null ? "#64748B" : data.gap > 0 ? "#DC2626" : "#16A34A";
   const gapLabel = data.gap === null ? "-" : data.gap > 0 ? `+${data.gap}%p 높게 투찰` : `${data.gap}%p 낮게 투찰`;
 
+  // Y-axis domain: pad ±1%p around data range
+  const allY = [...(data.orgPoints ?? []), ...(data.myPoints ?? [])].map((p) => p.y);
+  const yMin = allY.length ? Math.floor((Math.min(...allY) - 1) * 10) / 10 : 95;
+  const yMax = allY.length ? Math.ceil((Math.max(...allY) + 1) * 10) / 10 : 115;
+
+  // X-axis domain
+  const allX = [...(data.orgPoints ?? []), ...(data.myPoints ?? [])].map((p) => p.x);
+  const xMin = allX.length ? Math.min(...allX) - 1 : 0;
+  const xMax = allX.length ? Math.max(...allX) + 1 : 1;
+
+  // 내 평균 vs 발주처 평균 편차
+  const mineDiffLabel = data.mineAvg != null && data.orgAvg != null
+    ? `발주처 대비 ${fmtSajungDiff(data.mineAvg - data.orgAvg)}`
+    : undefined;
+
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
       {/* Stat Cards */}
       <div style={{ display: "flex", gap: 8 }}>
-        <StatCard label="발주처 평균 사정율" value={data.orgAvg != null ? `${data.orgAvg}%` : "-"} sub={`${data.orgCount}건`} color="#1B3A6B" />
-        <StatCard label="내 평균 사정율" value={data.mineAvg != null ? `${data.mineAvg}%` : "-"} sub={data.mineCount > 0 ? `${data.mineCount}건` : "이력 없음"} color="#F59E0B" />
+        <StatCard
+          label="발주처 평균 사정율"
+          value={data.orgAvg != null ? `${data.orgAvg.toFixed(2)}%` : "-"}
+          sub={`${data.orgCount}건`}
+          color="#1B3A6B"
+        />
+        <StatCard
+          label="내 평균 사정율"
+          value={data.mineAvg != null ? `${data.mineAvg.toFixed(2)}%` : "-"}
+          sub={data.mineCount > 0 ? mineDiffLabel ?? `${data.mineCount}건` : "이력 없음"}
+          color="#F59E0B"
+        />
         <StatCard label="차이" value={data.gap != null ? gapLabel : "-"} color={gapColor} />
       </div>
 
@@ -103,30 +134,36 @@ export function SajungTrendOverlay({ annId, userId, predictedSajungRate, period 
         </div>
       )}
 
-      {/* Chart */}
+      {/* Scatter Chart */}
       <div style={{ background: "#F8FAFC", borderRadius: 10, padding: "16px 8px 8px 8px" }}>
         <div style={{ fontSize: 12, color: "#64748B", marginBottom: 8, paddingLeft: 8 }}>
-          월별 사정율 흐름 · {data.orgCount.toLocaleString()}건
+          건별 사정율 산점도 · {data.orgCount.toLocaleString()}건
         </div>
-        <ResponsiveContainer width="100%" height={200}>
-          <ComposedChart data={data.trend} margin={{ top: 4, right: 16, left: -16, bottom: 0 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#E8ECF2" vertical={false} />
+        <ResponsiveContainer width="100%" height={220}>
+          <ScatterChart margin={{ top: 4, right: 16, left: -16, bottom: 0 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke="#E8ECF2" />
             <XAxis
-              dataKey="date"
+              dataKey="x"
+              type="number"
+              domain={[xMin, xMax]}
               tick={{ fontSize: 10, fill: "#94A3B8" }}
-              tickFormatter={(v: string) => v.slice(2)} // "YYYY-MM" → "YY-MM"
-              interval="preserveStartEnd"
+              tickFormatter={xToLabel}
+              tickCount={6}
+              name="날짜"
             />
             <YAxis
+              dataKey="y"
+              type="number"
+              domain={[yMin, yMax]}
               tick={{ fontSize: 10, fill: "#94A3B8" }}
-              tickFormatter={(v: number) => `${v}%`}
-              domain={["auto", "auto"]}
+              tickFormatter={(v: number) => `${v.toFixed(1)}%`}
+              name="사정율"
             />
             <Tooltip content={<CustomTooltip />} />
             <Legend
               iconSize={10}
               wrapperStyle={{ fontSize: 11 }}
-              formatter={(val) => val === "orgSajung" ? "발주처" : "내 투찰"}
+              formatter={(val) => val === "발주처" ? "발주처" : "내 투찰"}
             />
             {predictedSajungRate && (
               <ReferenceLine
@@ -137,28 +174,32 @@ export function SajungTrendOverlay({ annId, userId, predictedSajungRate, period 
                 label={{ value: "AI추천", position: "right", fontSize: 10, fill: "#7C3AED" }}
               />
             )}
-            <Line
-              type="monotone"
-              dataKey="orgSajung"
-              stroke="#1B3A6B"
-              strokeWidth={2}
-              dot={{ r: 3 }}
-              connectNulls={false}
-              name="orgSajung"
-            />
-            {data.mineCount > 0 && (
-              <Line
-                type="monotone"
-                dataKey="mineSajung"
-                stroke="#F59E0B"
-                strokeWidth={2}
-                strokeDasharray="5 3"
-                dot={{ r: 3 }}
-                connectNulls={false}
-                name="mineSajung"
+            {data.orgAvg != null && (
+              <ReferenceLine
+                y={data.orgAvg}
+                stroke="#1B3A6B"
+                strokeWidth={1}
+                strokeDasharray="4 3"
+                label={{ value: `평균 ${data.orgAvg.toFixed(2)}%`, position: "insideTopLeft", fontSize: 9, fill: "#1B3A6B" }}
               />
             )}
-          </ComposedChart>
+            <Scatter
+              data={data.orgPoints ?? []}
+              fill="#60A5FA"
+              opacity={0.55}
+              name="발주처"
+              r={3}
+            />
+            {data.mineCount > 0 && (
+              <Scatter
+                data={data.myPoints ?? []}
+                fill="#F59E0B"
+                opacity={0.85}
+                name="내 투찰"
+                r={5}
+              />
+            )}
+          </ScatterChart>
         </ResponsiveContainer>
       </div>
     </div>
