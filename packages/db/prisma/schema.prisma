@@ -365,3 +365,17 @@ enum BetaStatus {
   APPROVED
   REJECTED
 }
+
+model SajungAnalysisCache {
+  id         String   @id @default(cuid())
+  annId      String
+  period     String   // "1y" | "2y" | "3y" | "all"
+  cacheType  String   // "histogram" | "trend" | "topten"
+  userId     String   @default("") // trend는 userId 포함, 나머지는 ""
+  result     Json
+  sampleSize Int
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([annId, period, cacheType, userId])
+}

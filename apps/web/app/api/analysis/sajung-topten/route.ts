@@ -6,25 +6,32 @@ import {
   fetchOrgKonepsIds,
   roundBucket,
 } from "@/lib/analysis/sajung-utils";
+import { getCachedAnalysis, setCachedAnalysis, periodToDate } from "@/lib/analysis/sajung-cache";
 
 export interface TopTenItem {
   rank: number;
-  bucket: number;       // e.g. 109.5
+  bucket: number;
   winCount: number;
-  winRate: number;      // winCount / total (%)
-  attractiveness: number; // 0~100 relative score
-  bidPrice: number;     // budget × (bucket/100) × (lowerLimitRate/100)
+  winRate: number;
+  attractiveness: number;
+  bidPrice: number;
 }
 
 export interface SajungTopTenResponse {
   topTen: TopTenItem[];
   sampleSize: number;
   lowerLimitRate: number;
+  fromCache?: boolean;
 }
 
 export async function GET(req: NextRequest) {
   const annId = req.nextUrl.searchParams.get("annId");
+  const period = req.nextUrl.searchParams.get("period") ?? "3y";
   if (!annId) return NextResponse.json({ error: "annId required" }, { status: 400 });
+
+  // ── 캐시 확인 ──────────────────────────────────────────────────────────────
+  const cached = await getCachedAnalysis(annId, period, "topten");
+  if (cached) return NextResponse.json({ ...cached, fromCache: true });
 
   const admin = createAdminClient();
 
@@ -41,77 +48,60 @@ export async function GET(req: NextRequest) {
   const lowerLimitRate = parseFloat(lwltStr.replace(/[^0-9.]/g, "")) || 87.745;
   const currentBudget = Number(ann.budget);
 
-  // ── 낙찰 결과 수집 (direct → fallback) ─────────────────────────────────
+  const sinceDate = periodToDate(period);
+
+  // ── 낙찰 결과 수집 (direct → fallback) ──────────────────────────────────────
   let bidRows: { finalPrice: string | number; bidRate: string | number; annId: string }[] = [];
 
-  const { data: direct } = await admin
+  let directQ = admin
     .from("BidResult")
     .select("finalPrice, bidRate, annId")
     .eq("annId", ann.konepsId as string)
     .gt("bidRate", 0)
     .gt("finalPrice", 0)
-    .limit(500);
+    .limit(2000);
+  if (sinceDate) directQ = directQ.gte("createdAt", sinceDate);
+  const { data: direct } = await directQ;
 
   if ((direct ?? []).length > 0) {
     bidRows = direct!;
   } else {
-    const konepsIds = await fetchOrgKonepsIds(
-      admin,
-      ann.orgName as string,
-      ann.category as string,
-    );
+    const konepsIds = await fetchOrgKonepsIds(admin, ann.orgName as string, ann.category as string);
     if (konepsIds.length > 0) {
-      const { data: fallback } = await admin
+      let fallbackQ = admin
         .from("BidResult")
         .select("finalPrice, bidRate, annId")
         .in("annId", konepsIds)
         .gt("bidRate", 0)
         .gt("finalPrice", 0)
-        .limit(500);
+        .limit(2000);
+      if (sinceDate) fallbackQ = fallbackQ.gte("createdAt", sinceDate);
+      const { data: fallback } = await fallbackQ;
       bidRows = fallback ?? [];
     }
   }
 
-  if (bidRows.length === 0) {
-    return NextResponse.json<SajungTopTenResponse>({
-      topTen: [],
-      sampleSize: 0,
-      lowerLimitRate,
-    });
-  }
+  const emptyResp: SajungTopTenResponse = { topTen: [], sampleSize: 0, lowerLimitRate };
+  if (bidRows.length === 0) return NextResponse.json<SajungTopTenResponse>(emptyResp);
 
-  // ── 각 공고 자체 budget으로 사정율 계산 ──────────────────────────────────
+  // ── 사정율 계산 ─────────────────────────────────────────────────────────────
   const uniqueIds = [...new Set(bidRows.map((r) => r.annId))];
   const budgetMap = await buildBudgetMap(admin, uniqueIds);
 
-  const bucketMap = new Map<number, number>(); // bucket → count
+  const bucketMap = new Map<number, number>();
   let total = 0;
 
   for (const r of bidRows) {
-    const sajung = calcSajung(
-      Number(r.finalPrice),
-      Number(r.bidRate),
-      budgetMap.get(r.annId) ?? 0,
-    );
+    const sajung = calcSajung(Number(r.finalPrice), Number(r.bidRate), budgetMap.get(r.annId) ?? 0);
     if (sajung < 85 || sajung > 125) continue;
     const bucket = roundBucket(sajung);
     bucketMap.set(bucket, (bucketMap.get(bucket) ?? 0) + 1);
     total++;
   }
 
-  if (total === 0) {
-    return NextResponse.json<SajungTopTenResponse>({
-      topTen: [],
-      sampleSize: 0,
-      lowerLimitRate,
-    });
-  }
+  if (total === 0) return NextResponse.json<SajungTopTenResponse>(emptyResp);
 
-  // ── 매력도 계산 후 TOP 10 ──────────────────────────────────────────────
-  const sorted = [...bucketMap.entries()]
-    .sort((a, b) => b[1] - a[1]) // 낙찰 빈도 내림차순
-    .slice(0, 10);
-
+  const sorted = [...bucketMap.entries()].sort((a, b) => b[1] - a[1]).slice(0, 10);
   const maxCount = sorted[0]?.[1] ?? 1;
 
   const topTen: TopTenItem[] = sorted.map(([bucket, count], i) => ({
@@ -123,5 +113,10 @@ export async function GET(req: NextRequest) {
     bidPrice: Math.round(currentBudget * (bucket / 100) * (lowerLimitRate / 100)),
   }));
 
-  return NextResponse.json<SajungTopTenResponse>({ topTen, sampleSize: total, lowerLimitRate });
+  const result: SajungTopTenResponse = { topTen, sampleSize: total, lowerLimitRate };
+
+  // ── 캐시 저장 ──────────────────────────────────────────────────────────────
+  await setCachedAnalysis(annId, period, "topten", result , total);
+
+  return NextResponse.json<SajungTopTenResponse>(result);
 }

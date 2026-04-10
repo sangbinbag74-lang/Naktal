@@ -16,9 +16,11 @@ import {
 import type { SajungHistogramResponse, HistogramBucket } from "@/app/api/analysis/sajung-histogram/route";
 
 interface SajungHistogramProps {
-  annId: string;               // DB UUID
-  predictedSajungRate?: number; // AI 추천 사정율 (%)
-  lowerLimitRate?: number;      // 낙찰하한율 (%)
+  annId: string;
+  predictedSajungRate?: number;
+  lowerLimitRate?: number;
+  period?: string;
+  onLoad?: (sampleSize: number, fromCache: boolean) => void;
 }
 
 function fmt(n: number): string {
@@ -53,19 +55,24 @@ function CustomTooltip({ active, payload, label }: any) {
 
 // ─── Main Component ──────────────────────────────────────────────────────────
 
-export function SajungHistogram({ annId, predictedSajungRate, lowerLimitRate }: SajungHistogramProps) {
+export function SajungHistogram({ annId, predictedSajungRate, lowerLimitRate, period = "3y", onLoad }: SajungHistogramProps) {
   const [data, setData] = useState<SajungHistogramResponse | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (!annId) return;
     setLoading(true);
-    fetch(`/api/analysis/sajung-histogram?annId=${encodeURIComponent(annId)}`)
+    const qs = new URLSearchParams({ annId, period });
+    fetch(`/api/analysis/sajung-histogram?${qs}`)
       .then((r) => r.json())
-      .then((d) => setData(d as SajungHistogramResponse))
+      .then((d) => {
+        const resp = d as SajungHistogramResponse;
+        setData(resp);
+        onLoad?.(resp.sampleSize, resp.fromCache ?? false);
+      })
       .catch(() => setData(null))
       .finally(() => setLoading(false));
-  }, [annId]);
+  }, [annId, period]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (loading) {
     return (

@@ -18,6 +18,8 @@ interface SajungTrendOverlayProps {
   annId: string;
   userId: string | null;
   predictedSajungRate?: number;
+  period?: string;
+  onLoad?: (sampleSize: number, fromCache: boolean) => void;
 }
 
 function StatCard({ label, value, sub, color = "#0F172A" }: {
@@ -46,21 +48,25 @@ function CustomTooltip({ active, payload, label }: any) {
   );
 }
 
-export function SajungTrendOverlay({ annId, userId, predictedSajungRate }: SajungTrendOverlayProps) {
+export function SajungTrendOverlay({ annId, userId, predictedSajungRate, period = "3y", onLoad }: SajungTrendOverlayProps) {
   const [data, setData] = useState<SajungTrendResponse | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (!annId) return;
-    const qs = new URLSearchParams({ annId });
+    const qs = new URLSearchParams({ annId, period });
     if (userId) qs.set("userId", userId);
     setLoading(true);
     fetch(`/api/analysis/sajung-trend?${qs}`)
       .then((r) => r.json())
-      .then((d) => setData(d as SajungTrendResponse))
+      .then((d) => {
+        const resp = d as SajungTrendResponse;
+        setData(resp);
+        onLoad?.(resp.orgCount, resp.fromCache ?? false);
+      })
       .catch(() => setData(null))
       .finally(() => setLoading(false));
-  }, [annId, userId]);
+  }, [annId, userId, period]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (loading) {
     return (

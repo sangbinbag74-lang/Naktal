@@ -7,6 +7,8 @@ interface SajungTopTenProps {
   annId: string;
   predictedSajungRate?: number;
   budget: number;
+  period?: string;
+  onLoad?: (sampleSize: number, fromCache: boolean) => void;
 }
 
 function fmt(n: number): string {
@@ -19,19 +21,24 @@ function fmt(n: number): string {
   return `${n.toLocaleString()}원`;
 }
 
-export function SajungTopTen({ annId, predictedSajungRate }: SajungTopTenProps) {
+export function SajungTopTen({ annId, predictedSajungRate, budget, period = "3y", onLoad }: SajungTopTenProps) {
   const [data, setData] = useState<SajungTopTenResponse | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (!annId) return;
     setLoading(true);
-    fetch(`/api/analysis/sajung-topten?annId=${encodeURIComponent(annId)}`)
+    const qs = new URLSearchParams({ annId, period });
+    fetch(`/api/analysis/sajung-topten?${qs}`)
       .then((r) => r.json())
-      .then((d) => setData(d as SajungTopTenResponse))
+      .then((d) => {
+        const resp = d as SajungTopTenResponse;
+        setData(resp);
+        onLoad?.(resp.sampleSize, resp.fromCache ?? false);
+      })
       .catch(() => setData(null))
       .finally(() => setLoading(false));
-  }, [annId]);
+  }, [annId, period]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (loading) {
     return (

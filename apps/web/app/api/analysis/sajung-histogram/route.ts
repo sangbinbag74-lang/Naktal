@@ -6,6 +6,7 @@ import {
   fetchOrgKonepsIds,
   roundBucket,
 } from "@/lib/analysis/sajung-utils";
+import { getCachedAnalysis, setCachedAnalysis, periodToDate } from "@/lib/analysis/sajung-cache";
 
 export interface HistogramBucket {
   rate: number;
@@ -26,6 +27,7 @@ export interface SajungHistogramResponse {
     stddev: number;
   };
   lowerLimitRate: number;
+  fromCache?: boolean;
 }
 
 function emptyResponse(lowerLimitRate: number): NextResponse {
@@ -41,8 +43,8 @@ async function buildHistogramResponse(
   results: { finalPrice: number | string; bidRate: number | string; annId: string }[],
   admin: ReturnType<typeof createAdminClient>,
   lowerLimitRate: number,
-): Promise<NextResponse> {
-  if (results.length === 0) return emptyResponse(lowerLimitRate);
+): Promise<SajungHistogramResponse | null> {
+  if (results.length === 0) return null;
 
   const uniqueAnnIds = [...new Set(results.map((r) => r.annId).filter(Boolean))];
   const budgetMap = await buildBudgetMap(admin, uniqueAnnIds);
@@ -53,7 +55,7 @@ async function buildHistogramResponse(
     if (sajung >= 85 && sajung <= 125) rates.push(roundBucket(sajung));
   }
 
-  if (rates.length === 0) return emptyResponse(lowerLimitRate);
+  if (rates.length === 0) return null;
   rates.sort((a, b) => a - b);
 
   const bucketMap = new Map<number, number>();
@@ -94,7 +96,7 @@ async function buildHistogramResponse(
     if (v > modeCount) { modeCount = v; modeKey = k; }
   }
 
-  return NextResponse.json<SajungHistogramResponse>({
+  return {
     histogram,
     sampleSize: total,
     stats: {
@@ -106,12 +108,17 @@ async function buildHistogramResponse(
       stddev: Math.round(stddev * 100) / 100,
     },
     lowerLimitRate,
-  });
+  };
 }
 
 export async function GET(req: NextRequest) {
   const annId = req.nextUrl.searchParams.get("annId");
+  const period = req.nextUrl.searchParams.get("period") ?? "3y";
   if (!annId) return NextResponse.json({ error: "annId required" }, { status: 400 });
+
+  // ── 캐시 확인 ──────────────────────────────────────────────────────────────
+  const cached = await getCachedAnalysis(annId, period, "histogram");
+  if (cached) return NextResponse.json({ ...cached, fromCache: true });
 
   const admin = createAdminClient();
 
@@ -127,30 +134,46 @@ export async function GET(req: NextRequest) {
   const lwltStr = rawJson.sucsfbidLwltRate ?? "";
   const lowerLimitRate = parseFloat(lwltStr.replace(/[^0-9.]/g, "")) || 87.745;
 
-  const { data: directResults } = await admin
+  const sinceDate = periodToDate(period);
+
+  // ── Direct 조회 ─────────────────────────────────────────────────────────────
+  let directQ = admin
     .from("BidResult")
     .select("finalPrice, bidRate, annId")
     .eq("annId", ann.konepsId as string)
     .gt("bidRate", 0)
     .gt("finalPrice", 0)
-    .limit(500);
+    .limit(2000);
+  if (sinceDate) directQ = directQ.gte("createdAt", sinceDate);
 
+  const { data: directResults } = await directQ;
   const directRows = directResults ?? [];
 
-  if (directRows.length === 0) {
+  let result: SajungHistogramResponse | null = null;
+
+  if (directRows.length > 0) {
+    result = await buildHistogramResponse(directRows, admin, lowerLimitRate);
+  } else {
     const konepsIds = await fetchOrgKonepsIds(admin, ann.orgName as string, ann.category as string);
-    if (konepsIds.length === 0) return emptyResponse(lowerLimitRate);
+    if (konepsIds.length > 0) {
+      let fallbackQ = admin
+        .from("BidResult")
+        .select("finalPrice, bidRate, annId")
+        .in("annId", konepsIds)
+        .gt("bidRate", 0)
+        .gt("finalPrice", 0)
+        .limit(2000);
+      if (sinceDate) fallbackQ = fallbackQ.gte("createdAt", sinceDate);
 
-    const { data: fallback } = await admin
-      .from("BidResult")
-      .select("finalPrice, bidRate, annId")
-      .in("annId", konepsIds)
-      .gt("bidRate", 0)
-      .gt("finalPrice", 0)
-      .limit(500);
-
-    return await buildHistogramResponse(fallback ?? [], admin, lowerLimitRate);
+      const { data: fallback } = await fallbackQ;
+      result = await buildHistogramResponse(fallback ?? [], admin, lowerLimitRate);
+    }
   }
 
-  return await buildHistogramResponse(directRows, admin, lowerLimitRate);
+  if (!result) return emptyResponse(lowerLimitRate);
+
+  // ── 캐시 저장 ──────────────────────────────────────────────────────────────
+  await setCachedAnalysis(annId, period, "histogram", result , result.sampleSize);
+
+  return NextResponse.json<SajungHistogramResponse>(result);
 }

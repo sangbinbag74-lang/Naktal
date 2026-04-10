@@ -6,6 +6,7 @@ import { WinProbCalculator } from "./WinProbCalculator";
 import { SajungHistogram } from "./SajungHistogram";
 import { SajungTrendOverlay } from "./SajungTrendOverlay";
 import { SajungTopTen } from "./SajungTopTen";
+import { SajungPeriodSelector } from "./SajungPeriodSelector";
 import { createClient } from "@/lib/supabase/client";
 
 type SubTab = "analysis1" | "analysis2" | "analysis3";
@@ -125,6 +126,8 @@ export function AnnouncementTabs({
   const [analysis, setAnalysis] = useState<ComprehensiveResult | null>(null);
   const [analysisLoading, setAnalysisLoading] = useState(true);
   const [subTab, setSubTab] = useState<SubTab>("analysis1");
+  const [period, setPeriod] = useState("3y");
+  const [statInfo, setStatInfo] = useState<{ sampleSize?: number; fromCache?: boolean }>({});
   const userIdRef = useRef<string | null>(null);
 
   // ─── 분석 결과 로컬 캐시 (영구, 사용자별 분리) ───────────────────────────
@@ -314,12 +317,21 @@ export function AnnouncementTabs({
                 </button>
               ))}
             </div>
+            {/* 기간 선택기 */}
+            <SajungPeriodSelector
+              value={period}
+              onChange={(p) => { setPeriod(p); setStatInfo({}); }}
+              sampleSize={statInfo.sampleSize}
+              fromCache={statInfo.fromCache}
+            />
             {/* 서브탭 콘텐츠 */}
             {subTab === "analysis1" && (
               <SajungHistogram
                 annId={annDbId}
                 predictedSajungRate={bs?.predictedSajungRate}
                 lowerLimitRate={lowerLimitRate}
+                period={period}
+                onLoad={(sz, fc) => setStatInfo({ sampleSize: sz, fromCache: fc })}
               />
             )}
             {subTab === "analysis2" && (
@@ -327,6 +339,8 @@ export function AnnouncementTabs({
                 annId={annDbId}
                 userId={userIdRef.current}
                 predictedSajungRate={bs?.predictedSajungRate}
+                period={period}
+                onLoad={(sz, fc) => setStatInfo({ sampleSize: sz, fromCache: fc })}
               />
             )}
             {subTab === "analysis3" && (
@@ -334,6 +348,8 @@ export function AnnouncementTabs({
                 annId={annDbId}
                 predictedSajungRate={bs?.predictedSajungRate}
                 budget={budget}
+                period={period}
+                onLoad={(sz, fc) => setStatInfo({ sampleSize: sz, fromCache: fc })}
               />
             )}
           </div>

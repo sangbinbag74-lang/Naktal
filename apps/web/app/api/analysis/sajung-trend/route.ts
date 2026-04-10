@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/server";
 import { calcSajung, buildBudgetMap, fetchOrgKonepsIds } from "@/lib/analysis/sajung-utils";
+import { getCachedAnalysis, setCachedAnalysis, periodToDate } from "@/lib/analysis/sajung-cache";
 
 export interface TrendPoint {
-  date: string;       // "YYYY-MM"
+  date: string;
   orgSajung: number | null;
   mineSajung: number | null;
 }
@@ -14,13 +15,20 @@ export interface SajungTrendResponse {
   mineCount: number;
   orgAvg: number | null;
   mineAvg: number | null;
-  gap: number | null; // mineAvg - orgAvg (양수 = 내가 더 높게 투찰)
+  gap: number | null;
+  fromCache?: boolean;
 }
 
 export async function GET(req: NextRequest) {
   const annId  = req.nextUrl.searchParams.get("annId");
   const userId = req.nextUrl.searchParams.get("userId");
+  const period = req.nextUrl.searchParams.get("period") ?? "3y";
   if (!annId) return NextResponse.json({ error: "annId required" }, { status: 400 });
+
+  // ── 캐시 확인 (trend는 userId도 캐시 키) ────────────────────────────────────
+  const cacheUserId = userId && userId !== "anon" ? userId : "";
+  const cached = await getCachedAnalysis(annId, period, "trend", cacheUserId);
+  if (cached) return NextResponse.json({ ...cached, fromCache: true });
 
   const admin = createAdminClient();
 
@@ -32,26 +40,24 @@ export async function GET(req: NextRequest) {
 
   if (!ann) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-  // ── 1. 발주처 사정율 시계열 ──────────────────────────────────────────────
-  const konepsIds = await fetchOrgKonepsIds(
-    admin,
-    ann.orgName as string,
-    ann.category as string,
-    300,
-  );
+  const sinceDate = periodToDate(period);
 
-  const orgByMonth = new Map<string, number[]>(); // "YYYY-MM" → sazung[]
+  // ── 1. 발주처 사정율 시계열 ──────────────────────────────────────────────────
+  const konepsIds = await fetchOrgKonepsIds(admin, ann.orgName as string, ann.category as string, 300);
+  const orgByMonth = new Map<string, number[]>();
 
   if (konepsIds.length > 0) {
-    const { data: bidResults } = await admin
+    let q = admin
       .from("BidResult")
       .select("finalPrice, bidRate, annId, createdAt")
       .in("annId", konepsIds)
       .gt("bidRate", 0)
       .gt("finalPrice", 0)
       .order("createdAt", { ascending: true })
-      .limit(500);
+      .limit(2000);
+    if (sinceDate) q = q.gte("createdAt", sinceDate);
 
+    const { data: bidResults } = await q;
     const budgetMap = await buildBudgetMap(admin, konepsIds);
 
     for (const r of bidResults ?? []) {
@@ -61,24 +67,26 @@ export async function GET(req: NextRequest) {
         budgetMap.get(r.annId as string) ?? 0,
       );
       if (sajung < 85 || sajung > 125) continue;
-      const date = (r.createdAt as string).slice(0, 7); // "YYYY-MM"
+      const date = (r.createdAt as string).slice(0, 7);
       if (!orgByMonth.has(date)) orgByMonth.set(date, []);
       orgByMonth.get(date)!.push(Math.round(sajung * 100) / 100);
     }
   }
 
-  // ── 2. 내 투찰 이력 사정율 시계열 (userId 있는 경우) ───────────────────
+  // ── 2. 내 투찰 이력 시계열 ──────────────────────────────────────────────────
   const mineByMonth = new Map<string, number[]>();
 
   if (userId && userId !== "anon") {
-    const { data: outcomes } = await admin
+    let q = admin
       .from("BidOutcome")
       .select("actualSajungRate, bidAt")
       .eq("userId", userId)
       .not("actualSajungRate", "is", null)
       .order("bidAt", { ascending: true })
       .limit(200);
+    if (sinceDate) q = q.gte("bidAt", sinceDate);
 
+    const { data: outcomes } = await q;
     for (const o of outcomes ?? []) {
       const sajung = Number(o.actualSajungRate);
       if (!sajung || sajung < 85 || sajung > 125) continue;
@@ -88,9 +96,8 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  // ── 3. 날짜 기준 머지 ───────────────────────────────────────────────────
+  // ── 3. 머지 + 통계 ──────────────────────────────────────────────────────────
   const allDates = [...new Set([...orgByMonth.keys(), ...mineByMonth.keys()])].sort();
-
   const trend: TrendPoint[] = allDates.map((date) => {
     const orgArr = orgByMonth.get(date) ?? [];
     const mineArr = mineByMonth.get(date) ?? [];
@@ -103,10 +110,8 @@ export async function GET(req: NextRequest) {
     return { date, orgSajung, mineSajung };
   });
 
-  // ── 4. 요약 통계 ─────────────────────────────────────────────────────────
   const allOrgVals = [...orgByMonth.values()].flat();
   const allMineVals = [...mineByMonth.values()].flat();
-
   const orgAvg = allOrgVals.length
     ? Math.round((allOrgVals.reduce((s, v) => s + v, 0) / allOrgVals.length) * 100) / 100
     : null;
@@ -117,12 +122,17 @@ export async function GET(req: NextRequest) {
     ? Math.round((mineAvg - orgAvg) * 100) / 100
     : null;
 
-  return NextResponse.json<SajungTrendResponse>({
+  const result: SajungTrendResponse = {
     trend,
     orgCount: allOrgVals.length,
     mineCount: allMineVals.length,
     orgAvg,
     mineAvg,
     gap,
-  });
+  };
+
+  // ── 캐시 저장 ──────────────────────────────────────────────────────────────
+  await setCachedAnalysis(annId, period, "trend", result , allOrgVals.length, cacheUserId);
+
+  return NextResponse.json<SajungTrendResponse>(result);
 }
