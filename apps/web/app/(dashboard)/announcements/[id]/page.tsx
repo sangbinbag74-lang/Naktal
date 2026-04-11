@@ -4,6 +4,7 @@ import { createAdminClient } from "@/lib/supabase/server";
 import { isMultiplePriceBid } from "@/lib/bid-utils";
 import { AnnouncementTabs } from "@/components/naktal/AnnouncementTabs";
 import { AiAnalysisPanel } from "@/components/naktal/AiAnalysisPanel";
+import { NumberAnalysisSection } from "@/components/naktal/NumberAnalysisSection";
 import {
   g2bFetchAnnouncementByNo,
   g2bParseDate,
@@ -258,13 +259,22 @@ export default async function AnnouncementDetailPage({
           </div>
         </div>
 
-        {/* 2열: AI 분석 패널 — sticky */}
-        <div className="order-1 md:order-1 2xl:order-2 col-scroll" style={{ position: "sticky", top: 16, maxHeight: "calc(100vh - 32px)", overflowY: "auto", minWidth: 0 }}>
+        {/* 2열: AI 분석 패널 + 번호 분석 — sticky */}
+        <div className="order-1 md:order-1 2xl:order-2 col-scroll" style={{ position: "sticky", top: 16, maxHeight: "calc(100vh - 32px)", overflowY: "auto", minWidth: 0, display: "flex", flexDirection: "column", gap: 16 }}>
           <AiAnalysisPanel
             annDbId={a.id}
             budget={budgetNum || 0}
             g2bUrl={g2bUrl}
           />
+          {multiplePrice && (
+            <div style={{ border: "2px solid #C7D2FE", borderRadius: 12, padding: "20px 24px", background: "#fff" }}>
+              <NumberAnalysisSection
+                annId={a.id}
+                isClosed={isClosed}
+                bidMethod={bidMethodDisplay}
+              />
+            </div>
+          )}
         </div>
 
         {/* 3열: 사정율 분석 탭 — sticky */}

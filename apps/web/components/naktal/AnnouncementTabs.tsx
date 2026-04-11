@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
-import { NumberAnalysisSection } from "./NumberAnalysisSection";
 import { WinProbCalculator } from "./WinProbCalculator";
 import { SajungHistogram } from "./SajungHistogram";
 import { SajungTrendOverlay } from "./SajungTrendOverlay";
@@ -384,17 +383,6 @@ export function AnnouncementTabs({
             lowerLimitPrice={bs.lowerLimitPrice}
           />
 
-          {/* 복수예가 번호 전략 */}
-          {multiplePrice && (
-            <div style={{ border: "2px solid #C7D2FE", borderRadius: 12, padding: "20px 24px" }}>
-              <NumberAnalysisSection
-                annId={annDbId}
-                isClosed={isClosed}
-                bidMethod={bidMethod}
-                defaultBidders={analysis?.competition?.expectedBidders ?? undefined}
-              />
-            </div>
-          )}
         </div>
       )}
     </div>
