@@ -3,6 +3,7 @@ import Link from "next/link";
 import { createAdminClient } from "@/lib/supabase/server";
 import { isMultiplePriceBid } from "@/lib/bid-utils";
 import { AnnouncementTabs } from "@/components/naktal/AnnouncementTabs";
+import { AiAnalysisPanel } from "@/components/naktal/AiAnalysisPanel";
 import {
   g2bFetchAnnouncementByNo,
   g2bParseDate,
@@ -114,12 +115,18 @@ export default async function AnnouncementDetailPage({
   const prtcptnLmtNm = rawJson.prtcptnLmtNm ?? "";
   const budgetNum = parseInt(a.budget, 10);
   const estimatedPrice = isNaN(budgetNum) ? null : Math.round(budgetNum * 1.03);
+  const g2bUrl = rawJson.ntcePbancUrl || `https://www.g2b.go.kr:8081/ep/peoplecvpl/narasVary.do?bidno=${a.konepsId}&bidseq=${rawJson.bidNtceSqNo ?? "00"}`;
 
   return (
-    <div style={{ maxWidth: 800, display: "flex", flexDirection: "column", gap: 16 }}>
-      <Link href="/announcements" style={{ fontSize: 13, color: "#64748B", display: "inline-flex", alignItems: "center", gap: 4, textDecoration: "none" }}>
+    <div className="max-w-7xl mx-auto px-0 pb-8">
+      <Link href="/announcements" style={{ fontSize: 13, color: "#64748B", display: "inline-flex", alignItems: "center", gap: 4, textDecoration: "none", marginBottom: 16 }}>
         ← 공고 목록으로
       </Link>
+
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_380px] gap-6 items-start">
+
+        {/* 왼쪽 — 공고 정보 + 사정율 분석 */}
+        <div className="order-2 lg:order-1" style={{ display: "flex", flexDirection: "column", gap: 16 }}>
 
       {/* 헤더 카드 */}
       <div style={{ background: "#fff", borderRadius: 14, border: "1px solid #E8ECF2", padding: "20px 24px" }}>
@@ -153,7 +160,7 @@ export default async function AnnouncementDetailPage({
           <div style={{ fontSize: 13, fontWeight: 600, color: "#FCA5A5", marginTop: 2 }}>{getDDay(a.deadline)}</div>
         </div>
         <a
-          href={rawJson.ntcePbancUrl || `https://www.g2b.go.kr:8081/ep/peoplecvpl/narasVary.do?bidno=${a.konepsId}&bidseq=${rawJson.bidNtceSqNo ?? "00"}`}
+          href={g2bUrl}
           target="_blank" rel="noopener noreferrer"
           style={{ background: "rgba(255,255,255,0.12)", border: "1px solid rgba(255,255,255,0.2)", color: "#fff", borderRadius: 9, padding: "8px 16px", fontSize: 13, fontWeight: 600, cursor: "pointer", textDecoration: "none" }}
         >
@@ -225,6 +232,19 @@ export default async function AnnouncementDetailPage({
       <div style={{ background: "#FFF7ED", border: "1px solid #FDE68A", borderRadius: 8, padding: "10px 12px", fontSize: 12, color: "#92400E", fontWeight: 500 }}>
         ⚠ AI 분석 결과는 통계적 참고 자료입니다. 낙찰을 보장하지 않습니다.
       </div>
+
+        </div>{/* 왼쪽 컬럼 끝 */}
+
+        {/* 오른쪽 — sticky AI 패널 */}
+        <div className="order-1 lg:order-2 lg:sticky lg:top-20">
+          <AiAnalysisPanel
+            annDbId={a.id}
+            budget={budgetNum || 0}
+            g2bUrl={g2bUrl}
+          />
+        </div>
+
+      </div>{/* grid 끝 */}
     </div>
   );
 }

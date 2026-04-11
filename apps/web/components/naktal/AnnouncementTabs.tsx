@@ -31,7 +31,7 @@ export interface VisitedAnn {
   sampleSize?: number | null;
 }
 
-interface ComprehensiveResult {
+export interface ComprehensiveResult {
   bidStrategy: {
     predictedSajungRate: number;
     sajungRateRange: { min: number; max: number; p25: number; p75: number };
@@ -71,51 +71,6 @@ export interface AnnouncementTabsProps {
   multiplePrice: boolean;
   isClosed: boolean;
   bidMethod: string;
-}
-
-// ─── 숫자 포맷 ───────────────────────────────────────────────────────────────
-
-function fmt(n: number): string {
-  return new Intl.NumberFormat("ko-KR").format(Math.round(n)) + "원";
-}
-
-// ─── 사정율 분포 바 ──────────────────────────────────────────────────────────
-
-function SajungDistBar({ range, predicted }: {
-  range: { min: number; max: number; p25: number; p75: number };
-  predicted: number;
-}) {
-  const span = range.max - range.min || 6;
-  const toX = (v: number) => Math.max(0, Math.min(100, ((v - range.min) / span) * 100));
-
-  return (
-    <div style={{ padding: "12px 0" }}>
-      <div style={{ position: "relative", height: 36, marginBottom: 8 }}>
-        {/* 전체 범위 */}
-        <div style={{
-          position: "absolute", left: 0, right: 0, top: 12, height: 12,
-          background: "#E8ECF2", borderRadius: 6,
-        }} />
-        {/* IQR 구간 (p25~p75) */}
-        <div style={{
-          position: "absolute",
-          left: `${toX(range.p25)}%`, width: `${toX(range.p75) - toX(range.p25)}%`,
-          top: 12, height: 12, background: "#BFDBFE", borderRadius: 4,
-        }} />
-        {/* 예측값 마커 */}
-        <div style={{
-          position: "absolute",
-          left: `${toX(predicted)}%`, transform: "translateX(-50%)",
-          top: 8, width: 4, height: 20, background: "#1B3A6B", borderRadius: 2,
-        }} />
-      </div>
-      <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, color: "#94A3B8" }}>
-        <span>{range.min.toFixed(1)}%</span>
-        <span style={{ color: "#1B3A6B", fontWeight: 700 }}>예측 {predicted.toFixed(2)}%</span>
-        <span>{range.max.toFixed(1)}%</span>
-      </div>
-    </div>
-  );
 }
 
 // ─── 메인 컴포넌트 ────────────────────────────────────────────────────────────
@@ -230,62 +185,11 @@ export function AnnouncementTabs({
             if (cl === "LOW") return (
               <div style={{ padding: "12px 16px", background: "#FEF2F2", border: "1px solid #FECACA", borderRadius: 10, fontSize: 13, color: "#7F1D1D" }}>
                 <div style={{ fontWeight: 700, marginBottom: 4 }}>⛔ 이 발주처의 분석 데이터가 부족합니다 ({bs.sampleSize}건)</div>
-                업종·지역 평균 기준으로 참고용 수치를 제공합니다. 낙찰하한가 <strong>{fmt(bs.lowerLimitPrice)}</strong> 이상 투찰 필수.
+                업종·지역 평균 기준으로 참고용 수치를 제공합니다. 낙찰하한가 <strong>{new Intl.NumberFormat("ko-KR").format(Math.round(bs.lowerLimitPrice))}원</strong> 이상 투찰 필수.
               </div>
             );
             return null;
           })()}
-
-          {/* 핵심 지표 3카드 */}
-          {(() => {
-            const cl = bs.confidenceLevel ?? (bs.isFallback ? "LOW" : bs.sampleSize >= 30 ? "HIGH" : bs.sampleSize >= 10 ? "MEDIUM" : "LOW");
-            return (
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12 }}>
-                {[
-                  {
-                    label: "AI 추천 투찰가",
-                    value: cl === "LOW" ? "데이터 부족" : fmt(bs.optimalBidPrice),
-                    sub: cl === "LOW" ? `${bs.sampleSize}건` : `범위: ${fmt(bs.bidPriceRangeLow)} ~ ${fmt(bs.bidPriceRangeHigh)}`,
-                    color: cl === "LOW" ? "#94A3B8" : "#1B3A6B",
-                  },
-                  {
-                    label: "구간 적중 확률",
-                    value: cl === "LOW" ? "-" : `${Math.round(bs.winProbability * 100)}%`,
-                    sub: bs.isFallback ? `데이터 부족 (${bs.sampleSize}건)` : `${bs.sampleSize}건 기반`,
-                    color: cl === "LOW" ? "#94A3B8" : bs.winProbability >= 0.6 ? "#16A34A" : bs.winProbability >= 0.35 ? "#D97706" : "#DC2626",
-                  },
-                  {
-                    label: "경쟁 강도",
-                    value: comp ? `${comp.competitionScore}점` : "-",
-                    sub: comp ? `예상 ${comp.expectedBidders ?? "?"}개사 참여` : "",
-                    color: comp && comp.competitionScore >= 75 ? "#DC2626" : comp && comp.competitionScore >= 50 ? "#D97706" : "#64748B",
-                  },
-                ].map(c => (
-                  <div key={c.label} style={{ background: "#F8FAFC", borderRadius: 10, padding: "14px 16px", textAlign: "center" }}>
-                    <div style={{ fontSize: 11, color: "#94A3B8", marginBottom: 4 }}>{c.label}</div>
-                    <div style={{ fontSize: 17, fontWeight: 800, color: c.color }}>{c.value}</div>
-                    <div style={{ fontSize: 11, color: "#94A3B8", marginTop: 4 }}>{c.sub}</div>
-                  </div>
-                ))}
-              </div>
-            );
-          })()}
-
-          {/* 사정율 예측 + 분포 */}
-          <div style={{ background: "#F8FAFC", borderRadius: 10, padding: "16px 18px" }}>
-            <div style={{ fontSize: 13, fontWeight: 700, color: "#0F172A", marginBottom: 8 }}>
-              사정율 예측
-              <span style={{ fontSize: 12, color: "#64748B", fontWeight: 400, marginLeft: 8 }}>
-                (예정가격 ÷ 기초금액 × 100)
-              </span>
-            </div>
-            <SajungDistBar range={bs.sajungRateRange} predicted={bs.predictedSajungRate} />
-            <div style={{ fontSize: 12, color: "#64748B", marginTop: 8 }}>
-              예측 사정율 <strong style={{ color: "#1B3A6B" }}>{bs.predictedSajungRate.toFixed(2)}%</strong>
-              {" · "}예상 예정가 <strong>{fmt(budget * (bs.predictedSajungRate / 100))}</strong>
-              {" · "}낙찰하한가 <strong style={{ color: "#DC2626" }}>{fmt(bs.lowerLimitPrice)}</strong>
-            </div>
-          </div>
 
           {/* 사정율 분석 (서브탭 3개) */}
           <div style={{ background: "#fff", border: "1px solid #E8ECF2", borderRadius: 10, padding: "16px 18px" }}>
