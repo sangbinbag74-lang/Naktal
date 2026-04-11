@@ -126,7 +126,7 @@ export function AnnouncementTabs({
   const [analysis, setAnalysis] = useState<ComprehensiveResult | null>(null);
   const [analysisLoading, setAnalysisLoading] = useState(true);
   const [subTab, setSubTab] = useState<SubTab>("analysis1");
-  const [period, setPeriod] = useState("1y");
+  const [period, setPeriod] = useState("3y");
   const [statInfo, setStatInfo] = useState<{ sampleSize?: number; fromCache?: boolean }>({});
   const [refreshKey, setRefreshKey] = useState(0);
   const userIdRef = useRef<string | null>(null);
