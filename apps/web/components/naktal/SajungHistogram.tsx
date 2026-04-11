@@ -14,7 +14,7 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import type { SajungHistogramResponse } from "@/app/api/analysis/sajung-histogram/route";
-import { formatSajungDeviation } from "@/lib/format";
+import { fmtDeviation } from "@/lib/format";
 
 interface SajungHistogramProps {
   annId: string;
@@ -44,28 +44,16 @@ function CustomTooltip({ active, payload, label }: any) {
   if (!active || !payload?.length) return null;
   const bar = payload.find((p: any) => p.dataKey === "pct");
   const line = payload.find((p: any) => p.dataKey === "cumPct");
-  const dev = typeof label === "number" ? formatSajungDeviation(label) : "";
+  const dev = typeof label === "number" ? fmtDeviation(label) : "";
   return (
     <div style={{ background: "#fff", border: "1px solid #E8ECF2", borderRadius: 8, padding: "8px 12px", fontSize: 12 }}>
-      <div style={{ fontWeight: 700, marginBottom: 4 }}>사정율 {label}% <span style={{ fontSize: 10, color: "#94A3B8" }}>({dev})</span></div>
+      <div style={{ fontWeight: 700, marginBottom: 4 }}>
+        {label}%{" "}
+        <span style={{ fontSize: 10, color: "#94A3B8" }}>({dev})</span>
+      </div>
       {bar && <div style={{ color: "#60A5FA" }}>빈도 {bar.value?.toFixed(1)}%</div>}
       {line && <div style={{ color: "#1B3A6B" }}>누적 {line.value?.toFixed(1)}%</div>}
     </div>
-  );
-}
-
-// ─── AI 참조선 레이블 ─────────────────────────────────────────────────────────
-
-function AiRefLabel({ viewBox, rate }: { viewBox?: any; rate: number }) {
-  if (!viewBox) return null;
-  const { x, y } = viewBox as { x: number; y: number };
-  const dev = formatSajungDeviation(rate);
-  return (
-    <g>
-      <rect x={x - 34} y={y - 26} width={68} height={24} fill="#1B3A6B" rx={4} />
-      <text x={x} y={y - 14} textAnchor="middle" fill="#fff" fontSize={10} fontWeight={700}>AI {rate.toFixed(2)}%</text>
-      <text x={x} y={y - 4} textAnchor="middle" fill="#93C5FD" fontSize={9}>{dev}</text>
-    </g>
   );
 }
 
@@ -112,8 +100,8 @@ export function SajungHistogram({ annId, predictedSajungRate, lowerLimitRate, pe
   const predicted = predictedSajungRate ?? stats.avg;
   const modeRate = stats.mode;
 
-  const avgDev = formatSajungDeviation(stats.avg);
-  const modeDev = formatSajungDeviation(stats.mode);
+  const avgDev = fmtDeviation(stats.avg);
+  const modeDev = fmtDeviation(stats.mode);
   const avgDevColor = stats.avg >= 100 ? "#2563EB" : "#DC2626";
   const modeDevColor = stats.mode >= 100 ? "#2563EB" : "#DC2626";
 
@@ -123,6 +111,24 @@ export function SajungHistogram({ annId, predictedSajungRate, lowerLimitRate, pe
       {sampleSize < 30 && (
         <div style={{ padding: "8px 12px", background: "#FFFBEB", border: "1px solid #FCD34D", borderRadius: 8, fontSize: 12, color: "#92400E" }}>
           ⚠️ 표본 수가 적어 분포 정확도가 낮을 수 있습니다. ({sampleSize}건 기반)
+        </div>
+      )}
+
+      {/* AI 추천 정보 박스 (차트 위, 겹침 없음) */}
+      {predictedSajungRate != null && (
+        <div style={{
+          display: "flex", gap: 12, alignItems: "center",
+          padding: "8px 12px", background: "#EFF6FF",
+          borderRadius: 8, border: "1px solid #BFDBFE", fontSize: 12,
+        }}>
+          <span style={{ color: "#1B3A6B", fontWeight: 600 }}>▌ AI 추천</span>
+          <span style={{ color: "#1B3A6B", fontWeight: 700 }}>{predictedSajungRate.toFixed(3)}%</span>
+          <span style={{ color: predictedSajungRate >= 100 ? "#2563EB" : "#DC2626" }}>
+            {fmtDeviation(predictedSajungRate)}
+          </span>
+          <span style={{ color: "#94A3B8", marginLeft: "auto", fontSize: 11 }}>
+            사정율 ±0.5% 구간 강조 표시
+          </span>
         </div>
       )}
 
@@ -140,7 +146,7 @@ export function SajungHistogram({ annId, predictedSajungRate, lowerLimitRate, pe
           사정율 분포 히스토그램 · {sampleSize.toLocaleString()}건
         </div>
         <ResponsiveContainer width="100%" height={200}>
-          <ComposedChart data={histogram} margin={{ top: 28, right: 16, left: -16, bottom: 0 }}>
+          <ComposedChart data={histogram} margin={{ top: 4, right: 16, left: -16, bottom: 0 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#E8ECF2" vertical={false} />
             <XAxis
               dataKey="rate"
@@ -169,13 +175,12 @@ export function SajungHistogram({ annId, predictedSajungRate, lowerLimitRate, pe
             />
             <Tooltip content={<CustomTooltip />} />
 
-            {/* AI 추천 참조선 (강조) */}
+            {/* AI 추천 참조선 */}
             <ReferenceLine
               yAxisId="left"
               x={Math.round(predicted * 10) / 10}
               stroke="#1B3A6B"
-              strokeWidth={3}
-              label={<AiRefLabel rate={predicted} />}
+              strokeWidth={2.5}
             />
             {/* 최빈값 */}
             {modeRate !== Math.round(predicted * 10) / 10 && (
@@ -184,8 +189,8 @@ export function SajungHistogram({ annId, predictedSajungRate, lowerLimitRate, pe
                 x={modeRate}
                 stroke="#7C3AED"
                 strokeWidth={1.5}
-                strokeDasharray="4 3"
-                label={{ value: "최빈", position: "top", fontSize: 10, fill: "#7C3AED" }}
+                strokeDasharray="4 2"
+                label={{ value: `최빈 ${modeRate.toFixed(1)}%`, position: "top", fontSize: 10, fill: "#7C3AED" }}
               />
             )}
             {/* 낙찰하한율 */}
@@ -195,8 +200,8 @@ export function SajungHistogram({ annId, predictedSajungRate, lowerLimitRate, pe
                 x={Math.round(lr * 10) / 10}
                 stroke="#DC2626"
                 strokeWidth={1.5}
-                strokeDasharray="4 3"
-                label={{ value: "하한", position: "top", fontSize: 10, fill: "#DC2626" }}
+                strokeDasharray="4 2"
+                label={{ value: `하한 ${lr.toFixed(1)}%`, position: "insideTopLeft", fontSize: 10, fill: "#DC2626" }}
               />
             )}
 
@@ -221,7 +226,7 @@ export function SajungHistogram({ annId, predictedSajungRate, lowerLimitRate, pe
       {/* 범례 */}
       <div style={{ display: "flex", gap: 16, fontSize: 11, color: "#64748B", paddingLeft: 4 }}>
         <span style={{ display: "flex", alignItems: "center", gap: 4 }}>
-          <span style={{ width: 12, height: 10, background: "#1B3A6B", display: "inline-block", borderRadius: 2 }} />AI 추천 구간
+          <span style={{ width: 12, height: 10, background: "#1B3A6B", display: "inline-block", borderRadius: 2 }} />AI 추천 구간(±0.5%)
         </span>
         <span style={{ display: "flex", alignItems: "center", gap: 4 }}>
           <span style={{ width: 12, height: 3, background: "#7C3AED", display: "inline-block" }} />최빈값

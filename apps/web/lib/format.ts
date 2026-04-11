@@ -44,3 +44,14 @@ export function formatSajungDeviation(sajung: number): string {
   const dev = sajung - 100;
   return `${dev >= 0 ? "+" : ""}${dev.toFixed(3)}%p`;
 }
+
+/** 통일 편차 포맷 (소수점 2자리). 예: 103.5 → "+3.50%p" */
+export function fmtDeviation(sajung: number): string {
+  const d = Math.round((sajung - 100) * 100) / 100;
+  return `${d >= 0 ? "+" : ""}${d.toFixed(2)}%p`;
+}
+
+/** 사정율 절대값 포맷. 예: 103.456 → "103.456%" */
+export function fmtSajung(sajung: number): string {
+  return `${sajung.toFixed(3)}%`;
+}

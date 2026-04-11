@@ -11,6 +11,7 @@ import {
   ReferenceLine,
   ResponsiveContainer,
   Legend,
+  Brush,
 } from "recharts";
 import type { OrgPoint, SajungTrendResponse } from "@/app/api/analysis/sajung-trend/route";
 import { formatSajungDeviation, fmtSajungDiff } from "@/lib/format";
@@ -127,10 +128,23 @@ export function SajungTrendOverlay({ annId, userId, predictedSajungRate, period 
     });
   }, [data]);
 
-  // X 틱 formatter: seq → "YY-MM"
+  // X 틱 계산: 최대 5개, "24년3월" 형식
+  const xTicks = useMemo(() => {
+    const total = mergedData.length;
+    if (total === 0) return [];
+    const step = Math.max(1, Math.floor(total / 5));
+    const ticks = mergedData
+      .filter((_, i) => i % step === 0 || i === total - 1)
+      .map((d) => d.seq);
+    return [...new Set(ticks)].slice(0, 6);
+  }, [mergedData]);
+
   const tickFormatter = (v: number) => {
-    const date = seqToDate[Math.round(v)] ?? seqToDate[Object.keys(seqToDate).map(Number).reduce((a, b) => Math.abs(b - v) < Math.abs(a - v) ? b : a, 1)];
-    return date ? date.slice(2) : "";
+    const nearest = mergedData.reduce<typeof mergedData[0] | null>((best, d) =>
+      best === null || Math.abs(d.seq - v) < Math.abs(best.seq - v) ? d : best, null);
+    if (!nearest) return "";
+    const parts = nearest.date.split("-");
+    return `${(parts[0] ?? "").slice(2)}년${parseInt(parts[1] ?? "0")}월`;
   };
 
   if (loading) {
@@ -196,16 +210,17 @@ export function SajungTrendOverlay({ annId, userId, predictedSajungRate, period 
         <div style={{ fontSize: 12, color: "#64748B", marginBottom: 8, paddingLeft: 8 }}>
           건별 사정율 흐름 · {N.toLocaleString()}건
         </div>
-        <ResponsiveContainer width="100%" height={220}>
-          <ComposedChart data={mergedData} margin={{ top: 20, right: 20, left: -8, bottom: 0 }}>
+        <ResponsiveContainer width="100%" height={300}>
+          <ComposedChart data={mergedData} margin={{ top: 20, right: 20, left: -8, bottom: 20 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#E8ECF2" vertical={false} />
             <XAxis
               dataKey="seq"
               type="number"
               domain={[1, N]}
+              ticks={xTicks}
               tick={{ fontSize: 10, fill: "#94A3B8" }}
               tickFormatter={tickFormatter}
-              tickCount={6}
+              tickLine={false}
               allowDataOverflow={false}
             />
             <YAxis
@@ -268,10 +283,22 @@ export function SajungTrendOverlay({ annId, userId, predictedSajungRate, period 
                 isAnimationActive={false}
               />
             )}
+
+            {/* 드래그 확대 Brush */}
+            <Brush
+              dataKey="seq"
+              height={24}
+              stroke="#E2E8F0"
+              fill="#F8FAFC"
+              travellerWidth={8}
+              tickFormatter={tickFormatter}
+            >
+              <Line dataKey="sajung" stroke="#1B3A6B" dot={false} strokeWidth={1} />
+            </Brush>
           </ComposedChart>
         </ResponsiveContainer>
         <div style={{ fontSize: 10, color: "#CBD5E1", textAlign: "center", marginTop: 4 }}>
-          Y축: 편차(%p) · 0%p = 기초금액과 동일
+          Y축: 편차(%p) · 0%p = 기초금액과 동일 · 하단 막대를 드래그해서 기간을 확대할 수 있습니다
         </div>
       </div>
     </div>
