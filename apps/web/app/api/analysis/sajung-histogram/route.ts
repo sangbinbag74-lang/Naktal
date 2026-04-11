@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/server";
 import {
   calcSajung,
-  buildBudgetMap,
+  buildBudgetAndDateMap,
   fetchOrgKonepsIds,
   roundBucket,
   getSajungRange,
@@ -48,15 +48,19 @@ async function buildHistogramResponse(
   admin: ReturnType<typeof createAdminClient>,
   lowerLimitRate: number,
   filter: { min: number; max: number },
+  sinceDateStr: string | null,
 ): Promise<SajungHistogramResponse | null> {
   if (results.length === 0) return null;
 
   const uniqueAnnIds = [...new Set(results.map((r) => r.annId).filter(Boolean))];
-  const budgetMap = await buildBudgetMap(admin, uniqueAnnIds);
+  const infoMap = await buildBudgetAndDateMap(admin, uniqueAnnIds);
 
   const rates: number[] = [];
   for (const r of results) {
-    const sajung = calcSajung(Number(r.finalPrice), Number(r.bidRate), budgetMap.get(r.annId) ?? 0);
+    const info = infoMap.get(r.annId);
+    if (!info || !info.deadline) continue;
+    if (sinceDateStr && info.deadline.slice(0, 10) < sinceDateStr) continue;
+    const sajung = calcSajung(Number(r.finalPrice), Number(r.bidRate), info.budget);
     if (sajung >= filter.min && sajung <= filter.max) rates.push(roundBucket(sajung));
   }
 
@@ -122,7 +126,7 @@ export async function GET(req: NextRequest) {
   if (!annId) return NextResponse.json({ error: "annId required" }, { status: 400 });
 
   // ── 캐시 확인 ──────────────────────────────────────────────────────────────
-  const cached = await getCachedAnalysis(annId, period, "histogram");
+  const cached = await getCachedAnalysis(annId, period, "histogram_v2");
   if (cached) return NextResponse.json({ ...cached, fromCache: true });
 
   const admin = createAdminClient();
@@ -143,27 +147,25 @@ export async function GET(req: NextRequest) {
 
   const orgRange = getSajungRange(ann.orgName as string);
   const sinceDate = periodToDate(period);
+  const sinceDateStr = sinceDate ? sinceDate.slice(0, 10) : null;
   const sajungFilter = { min: 85, max: 125 };
 
   const currentAnn = { bidMethod, budget: currentBudget };
 
   // ── Direct 조회 ─────────────────────────────────────────────────────────────
-  let directQ = admin
+  const { data: directResults } = await admin
     .from("BidResult")
     .select("finalPrice, bidRate, annId")
     .eq("annId", ann.konepsId as string)
     .gt("bidRate", 0)
     .gt("finalPrice", 0)
     .limit(2000);
-  if (sinceDate) directQ = directQ.gte("createdAt", sinceDate);
-
-  const { data: directResults } = await directQ;
   const directRows = directResults ?? [];
 
   let result: SajungHistogramResponse | null = null;
 
   if (directRows.length > 0) {
-    result = await buildHistogramResponse(directRows, admin, lowerLimitRate, sajungFilter);
+    result = await buildHistogramResponse(directRows, admin, lowerLimitRate, sajungFilter, sinceDateStr);
   } else {
     const konepsIds = await fetchOrgKonepsIds(
       admin,
@@ -173,17 +175,14 @@ export async function GET(req: NextRequest) {
       currentAnn,
     );
     if (konepsIds.length > 0) {
-      let fallbackQ = admin
+      const { data: fallback } = await admin
         .from("BidResult")
         .select("finalPrice, bidRate, annId")
         .in("annId", konepsIds)
         .gt("bidRate", 0)
         .gt("finalPrice", 0)
         .limit(2000);
-      if (sinceDate) fallbackQ = fallbackQ.gte("createdAt", sinceDate);
-
-      const { data: fallback } = await fallbackQ;
-      result = await buildHistogramResponse(fallback ?? [], admin, lowerLimitRate, sajungFilter);
+      result = await buildHistogramResponse(fallback ?? [], admin, lowerLimitRate, sajungFilter, sinceDateStr);
     }
   }
 
@@ -197,7 +196,7 @@ export async function GET(req: NextRequest) {
   };
 
   // ── 캐시 저장 ──────────────────────────────────────────────────────────────
-  await setCachedAnalysis(annId, period, "histogram", finalResult, finalResult.sampleSize);
+  await setCachedAnalysis(annId, period, "histogram_v2", finalResult, finalResult.sampleSize);
 
   return NextResponse.json<SajungHistogramResponse>(finalResult);
 }

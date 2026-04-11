@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/server";
 import {
   calcSajung,
-  buildBudgetMap,
+  buildBudgetAndDateMap,
   fetchOrgKonepsIds,
   roundBucket,
 } from "@/lib/analysis/sajung-utils";
@@ -30,7 +30,7 @@ export async function GET(req: NextRequest) {
   if (!annId) return NextResponse.json({ error: "annId required" }, { status: 400 });
 
   // ── 캐시 확인 ──────────────────────────────────────────────────────────────
-  const cached = await getCachedAnalysis(annId, period, "topten");
+  const cached = await getCachedAnalysis(annId, period, "topten_v2");
   if (cached) return NextResponse.json({ ...cached, fromCache: true });
 
   const admin = createAdminClient();
@@ -50,20 +50,19 @@ export async function GET(req: NextRequest) {
   const bidMethod = rawJson.bidMthdNm ?? rawJson.cntrctMthdNm ?? "";
 
   const sinceDate = periodToDate(period);
+  const sinceDateStr = sinceDate ? sinceDate.slice(0, 10) : null;
   const currentAnn = { bidMethod, budget: currentBudget };
 
   // ── 낙찰 결과 수집 (direct → fallback) ──────────────────────────────────────
   let bidRows: { finalPrice: string | number; bidRate: string | number; annId: string }[] = [];
 
-  let directQ = admin
+  const { data: direct } = await admin
     .from("BidResult")
     .select("finalPrice, bidRate, annId")
     .eq("annId", ann.konepsId as string)
     .gt("bidRate", 0)
     .gt("finalPrice", 0)
     .limit(2000);
-  if (sinceDate) directQ = directQ.gte("createdAt", sinceDate);
-  const { data: direct } = await directQ;
 
   if ((direct ?? []).length > 0) {
     bidRows = direct!;
@@ -76,15 +75,13 @@ export async function GET(req: NextRequest) {
       currentAnn,
     );
     if (konepsIds.length > 0) {
-      let fallbackQ = admin
+      const { data: fallback } = await admin
         .from("BidResult")
         .select("finalPrice, bidRate, annId")
         .in("annId", konepsIds)
         .gt("bidRate", 0)
         .gt("finalPrice", 0)
         .limit(2000);
-      if (sinceDate) fallbackQ = fallbackQ.gte("createdAt", sinceDate);
-      const { data: fallback } = await fallbackQ;
       bidRows = fallback ?? [];
     }
   }
@@ -94,13 +91,16 @@ export async function GET(req: NextRequest) {
 
   // ── 사정율 계산 ─────────────────────────────────────────────────────────────
   const uniqueIds = [...new Set(bidRows.map((r) => r.annId))];
-  const budgetMap = await buildBudgetMap(admin, uniqueIds);
+  const infoMap = await buildBudgetAndDateMap(admin, uniqueIds);
 
   const bucketMap = new Map<number, number>();
   let total = 0;
 
   for (const r of bidRows) {
-    const sajung = calcSajung(Number(r.finalPrice), Number(r.bidRate), budgetMap.get(r.annId) ?? 0);
+    const info = infoMap.get(r.annId);
+    if (!info || !info.deadline) continue;
+    if (sinceDateStr && info.deadline.slice(0, 10) < sinceDateStr) continue;
+    const sajung = calcSajung(Number(r.finalPrice), Number(r.bidRate), info.budget);
     if (sajung < 85 || sajung > 125) continue;
     const bucket = roundBucket(sajung);
     bucketMap.set(bucket, (bucketMap.get(bucket) ?? 0) + 1);
@@ -124,7 +124,7 @@ export async function GET(req: NextRequest) {
   const result: SajungTopTenResponse = { topTen, sampleSize: total, lowerLimitRate };
 
   // ── 캐시 저장 ──────────────────────────────────────────────────────────────
-  await setCachedAnalysis(annId, period, "topten", result, total);
+  await setCachedAnalysis(annId, period, "topten_v2", result, total);
 
   return NextResponse.json<SajungTopTenResponse>(result);
 }

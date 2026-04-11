@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/server";
 import {
   calcSajung,
-  buildBudgetMap,
+  buildBudgetAndDateMap,
   fetchOrgKonepsIds,
 } from "@/lib/analysis/sajung-utils";
 import { getCachedAnalysis, setCachedAnalysis, periodToDate } from "@/lib/analysis/sajung-cache";
@@ -44,9 +44,9 @@ export async function GET(req: NextRequest) {
   const period = req.nextUrl.searchParams.get("period") ?? "3y";
   if (!annId) return NextResponse.json({ error: "annId required" }, { status: 400 });
 
-  // ── 캐시 확인 (v2: 인터페이스 변경으로 기존 캐시 무효화) ──────────────────
+  // ── 캐시 확인 (v3: deadline 기준 전환으로 기존 캐시 무효화) ──────────────
   const cacheUserId = userId && userId !== "anon" ? userId : "";
-  const cached = await getCachedAnalysis(annId, period, "trend_v2", cacheUserId);
+  const cached = await getCachedAnalysis(annId, period, "trend_v3", cacheUserId);
   if (cached) return NextResponse.json({ ...cached, fromCache: true });
 
   const admin = createAdminClient();
@@ -76,27 +76,24 @@ export async function GET(req: NextRequest) {
   const orgRaw: { date: string; sajung: number }[] = [];
 
   if (konepsIds.length > 0) {
-    let q = admin
+    const { data: bidResults } = await admin
       .from("BidResult")
-      .select("finalPrice, bidRate, annId, createdAt")
+      .select("finalPrice, bidRate, annId")
       .in("annId", konepsIds)
       .gt("bidRate", 0)
       .gt("finalPrice", 0)
-      .order("createdAt", { ascending: true })
       .limit(2000);
-    if (sinceDate) q = q.gte("createdAt", sinceDate);
 
-    const { data: bidResults } = await q;
-    const budgetMap = await buildBudgetMap(admin, konepsIds);
+    const infoMap = await buildBudgetAndDateMap(admin, konepsIds);
+    const sinceDateStr = sinceDate ? sinceDate.slice(0, 10) : null;
 
     for (const r of bidResults ?? []) {
-      const sajung = calcSajung(
-        Number(r.finalPrice),
-        Number(r.bidRate),
-        budgetMap.get(r.annId as string) ?? 0,
-      );
+      const info = infoMap.get(r.annId as string);
+      if (!info || !info.deadline) continue;
+      if (sinceDateStr && info.deadline.slice(0, 10) < sinceDateStr) continue;
+      const sajung = calcSajung(Number(r.finalPrice), Number(r.bidRate), info.budget);
       if (sajung < 85 || sajung > 125) continue;
-      const date = (r.createdAt as string).slice(0, 7);
+      const date = info.deadline.slice(0, 7);
       const rounded = Math.round(sajung * 100) / 100;
       if (!orgByMonth.has(date)) orgByMonth.set(date, []);
       orgByMonth.get(date)!.push(rounded);
@@ -159,7 +156,7 @@ export async function GET(req: NextRequest) {
   };
 
   // ── 캐시 저장 ──────────────────────────────────────────────────────────────
-  await setCachedAnalysis(annId, period, "trend_v2", result, allOrgVals.length, cacheUserId);
+  await setCachedAnalysis(annId, period, "trend_v3", result, allOrgVals.length, cacheUserId);
 
   return NextResponse.json<SajungTrendResponse>(result);
 }

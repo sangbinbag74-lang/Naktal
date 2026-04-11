@@ -11,6 +11,25 @@ export function calcSajung(
   return (estimatedPrice / budget) * 100;
 }
 
+/** konepsId 목록으로 각 공고의 budget + deadline Map 조회 */
+export async function buildBudgetAndDateMap(
+  supabase: SupabaseClient,
+  konepsIds: string[],
+): Promise<Map<string, { budget: number; deadline: string | null }>> {
+  if (konepsIds.length === 0) return new Map();
+  const unique = [...new Set(konepsIds)];
+  const { data } = await supabase
+    .from("Announcement")
+    .select("konepsId, budget, deadline")
+    .in("konepsId", unique);
+  return new Map(
+    (data ?? []).map((a: { konepsId: string; budget: string | number; deadline: string | null }) => [
+      a.konepsId as string,
+      { budget: Number(a.budget), deadline: a.deadline as string | null },
+    ]),
+  );
+}
+
 /** konepsId 목록으로 각 공고의 budget Map 조회 */
 export async function buildBudgetMap(
   supabase: SupabaseClient,
