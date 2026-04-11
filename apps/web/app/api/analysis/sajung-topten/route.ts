@@ -75,7 +75,7 @@ export async function GET(req: NextRequest) {
   }
 
   if (bidRows.length < 10) {
-    const konepsIds = await fetchOrgKonepsIds(
+    let konepsIds = await fetchOrgKonepsIds(
       admin,
       ann.orgName as string,
       categoryForFilter,
@@ -83,6 +83,32 @@ export async function GET(req: NextRequest) {
       currentAnn,
       orgScope,
     );
+
+    // exact 모드에서 sample < 10이면 자동 expand (category 유지)
+    if (orgScope === "exact" && konepsIds.length > 0) {
+      const { data: sample } = await admin
+        .from("BidResult")
+        .select("id")
+        .in("annId", konepsIds.slice(0, 100))
+        .gt("bidRate", 0)
+        .gt("finalPrice", 0)
+        .limit(15);
+      if ((sample?.length ?? 0) < 10) {
+        const expandedIds = await fetchOrgKonepsIds(
+          admin,
+          ann.orgName as string,
+          ann.category as string,
+          ann.region as string,
+          currentAnn,
+          "expand",
+        );
+        if (expandedIds.length > konepsIds.length) {
+          konepsIds = expandedIds;
+          autoExpanded = true;
+        }
+      }
+    }
+
     if (konepsIds.length > 0) {
       const { data: fallback } = await admin
         .from("BidResult")
@@ -92,31 +118,6 @@ export async function GET(req: NextRequest) {
         .gt("finalPrice", 0)
         .limit(2000);
       if ((fallback ?? []).length > bidRows.length) bidRows = fallback ?? [];
-    }
-  }
-
-  // exact 모드에서 여전히 10건 미만이면 자동 expand
-  if (orgScope === "exact" && bidRows.length < 10) {
-    const expandIds = await fetchOrgKonepsIds(
-      admin,
-      ann.orgName as string,
-      categoryForFilter,
-      ann.region as string,
-      currentAnn,
-      "expand",
-    );
-    if (expandIds.length > 0) {
-      const { data: expandRows } = await admin
-        .from("BidResult")
-        .select("finalPrice, bidRate, annId")
-        .in("annId", expandIds)
-        .gt("bidRate", 0)
-        .gt("finalPrice", 0)
-        .limit(2000);
-      if ((expandRows ?? []).length > bidRows.length) {
-        bidRows = expandRows ?? [];
-        autoExpanded = true;
-      }
     }
   }
 

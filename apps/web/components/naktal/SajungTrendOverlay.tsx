@@ -89,6 +89,10 @@ function AiLabel({ viewBox, rate }: { viewBox?: { x: number; y: number; width: n
 export function SajungTrendOverlay({ annId, userId, predictedSajungRate, period = "3y", categoryFilter = "same", orgScope = "exact", onLoad }: SajungTrendOverlayProps) {
   const [data, setData] = useState<SajungTrendResponse | null>(null);
   const [loading, setLoading] = useState(true);
+  const [brushRange, setBrushRange] = useState<{ startIndex: number; endIndex: number } | null>(null);
+
+  // data 변경 시 brushRange 초기화
+  useEffect(() => { setBrushRange(null); }, [data]);
 
   useEffect(() => {
     if (!annId) return;
@@ -129,19 +133,26 @@ export function SajungTrendOverlay({ annId, userId, predictedSajungRate, period 
     });
   }, [data]);
 
-  // X 틱 계산: 최대 5개, "24년3월" 형식
+  // Brush 선택 범위의 가시 데이터 (xTicks·Y domain 재계산용)
+  const visibleData = useMemo(() => {
+    const start = brushRange?.startIndex ?? 0;
+    const end = brushRange?.endIndex ?? mergedData.length - 1;
+    return mergedData.slice(start, end + 1);
+  }, [mergedData, brushRange]);
+
+  // X 틱 계산: 최대 5개, "24년3월" 형식 (visibleData 기준)
   const xTicks = useMemo(() => {
-    const total = mergedData.length;
+    const total = visibleData.length;
     if (total === 0) return [];
     const step = Math.max(1, Math.floor(total / 5));
-    const ticks = mergedData
+    const ticks = visibleData
       .filter((_, i) => i % step === 0 || i === total - 1)
       .map((d) => d.seq);
     return [...new Set(ticks)].slice(0, 6);
-  }, [mergedData]);
+  }, [visibleData]);
 
   const tickFormatter = (v: number) => {
-    const nearest = mergedData.reduce<typeof mergedData[0] | null>((best, d) =>
+    const nearest = visibleData.reduce<typeof visibleData[0] | null>((best, d) =>
       best === null || Math.abs(d.seq - v) < Math.abs(best.seq - v) ? d : best, null);
     if (!nearest) return "";
     const parts = nearest.date.split("-");
@@ -181,8 +192,18 @@ export function SajungTrendOverlay({ annId, userId, predictedSajungRate, period 
     : "-";
   const gapColor = gap === null ? "#64748B" : gap > 0 ? "#DC2626" : "#16A34A";
 
-  // Y axis domain: ±1.5% 여유
-  const allY = mergedData.map((d) => d.sajung);
+  const handleBrushChange = (range: { startIndex?: number; endIndex?: number }) => {
+    if (
+      range.startIndex !== undefined &&
+      range.endIndex !== undefined &&
+      range.endIndex > range.startIndex
+    ) {
+      setBrushRange({ startIndex: range.startIndex, endIndex: range.endIndex });
+    }
+  };
+
+  // Y axis domain: ±1.5% 여유 (visibleData 기준으로 동적 조정)
+  const allY = visibleData.map((d: { sajung: number }) => d.sajung);
   const yMin = Math.max(85, Math.floor((Math.min(...allY) - 1.5) * 10) / 10);
   const yMax = Math.min(125, Math.ceil((Math.max(...allY) + 1.5) * 10) / 10);
 
@@ -235,7 +256,7 @@ export function SajungTrendOverlay({ annId, userId, predictedSajungRate, period 
             <XAxis
               dataKey="seq"
               type="number"
-              domain={[1, N]}
+              domain={[visibleData[0]?.seq ?? 1, visibleData[visibleData.length - 1]?.seq ?? N]}
               ticks={xTicks}
               tick={{ fontSize: 10, fill: "#94A3B8" }}
               tickFormatter={tickFormatter}
@@ -309,7 +330,7 @@ export function SajungTrendOverlay({ annId, userId, predictedSajungRate, period 
               />
             )}
 
-            {/* 드래그 확대 Brush */}
+            {/* 드래그 확대 Brush (onChange → visibleData 재계산) */}
             <Brush
               dataKey="seq"
               height={40}
@@ -318,8 +339,9 @@ export function SajungTrendOverlay({ annId, userId, predictedSajungRate, period 
               travellerWidth={10}
               gap={1}
               tickFormatter={() => ""}
-              startIndex={0}
-              endIndex={mergedData.length - 1}
+              startIndex={brushRange?.startIndex ?? 0}
+              endIndex={brushRange?.endIndex ?? mergedData.length - 1}
+              onChange={handleBrushChange}
             />
           </ComposedChart>
         </ResponsiveContainer>

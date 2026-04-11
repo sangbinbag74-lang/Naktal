@@ -72,54 +72,56 @@ export async function GET(req: NextRequest) {
   // ── 1. 발주처 사정율 개별 건 수집 ──────────────────────────────────────────
   const annOrgName = ann.orgName as string;
   const annRegion = ann.region as string;
-
-  async function collectOrgPoints(scope: "exact" | "expand") {
-    const ids = await fetchOrgKonepsIds(
-      admin,
-      annOrgName,
-      categoryForFilter,
-      annRegion,
-      currentAnn,
-      scope,
-    );
-    const raw: { date: string; sajung: number }[] = [];
-    const byMonth = new Map<string, number[]>();
-    if (ids.length > 0) {
-      const { data: bidResults } = await admin
-        .from("BidResult")
-        .select("finalPrice, bidRate, annId")
-        .in("annId", ids)
-        .gt("bidRate", 0)
-        .gt("finalPrice", 0)
-        .limit(2000);
-      const infoMap = await buildBudgetAndDateMap(admin, ids);
-      const sinceDateStr = sinceDate ? sinceDate.slice(0, 10) : null;
-      for (const r of bidResults ?? []) {
-        const info = infoMap.get(r.annId as string);
-        if (!info || !info.deadline) continue;
-        if (sinceDateStr && info.deadline.slice(0, 10) < sinceDateStr) continue;
-        const sajung = calcSajung(Number(r.finalPrice), Number(r.bidRate), info.budget);
-        if (sajung < 85 || sajung > 125) continue;
-        const date = info.deadline.slice(0, 7);
-        const rounded = Math.round(sajung * 100) / 100;
-        if (!byMonth.has(date)) byMonth.set(date, []);
-        byMonth.get(date)!.push(rounded);
-        raw.push({ date, sajung: rounded });
-      }
-    }
-    return { raw, byMonth };
-  }
-
-  let { raw: orgRaw, byMonth: orgByMonth } = await collectOrgPoints(orgScope);
+  const sinceDateStr = sinceDate ? sinceDate.slice(0, 10) : null;
   let autoExpanded = false;
 
-  // exact 모드에서 10건 미만이면 자동 expand
-  if (orgScope === "exact" && orgRaw.length < 10) {
-    const expanded = await collectOrgPoints("expand");
-    if (expanded.raw.length > orgRaw.length) {
-      orgRaw = expanded.raw;
-      orgByMonth = expanded.byMonth;
-      autoExpanded = true;
+  let konepsIds = await fetchOrgKonepsIds(
+    admin, annOrgName, categoryForFilter, annRegion, currentAnn, orgScope,
+  );
+
+  // exact 모드에서 sample < 10이면 자동 expand (category 유지)
+  if (orgScope === "exact" && konepsIds.length > 0) {
+    const { data: sample } = await admin
+      .from("BidResult")
+      .select("id")
+      .in("annId", konepsIds.slice(0, 100))
+      .gt("bidRate", 0)
+      .gt("finalPrice", 0)
+      .limit(15);
+    if ((sample?.length ?? 0) < 10) {
+      const expandedIds = await fetchOrgKonepsIds(
+        admin, annOrgName, ann.category as string, annRegion, currentAnn, "expand",
+      );
+      if (expandedIds.length > konepsIds.length) {
+        konepsIds = expandedIds;
+        autoExpanded = true;
+      }
+    }
+  }
+
+  const orgRaw: { date: string; sajung: number }[] = [];
+  const orgByMonth = new Map<string, number[]>();
+
+  if (konepsIds.length > 0) {
+    const { data: bidResults } = await admin
+      .from("BidResult")
+      .select("finalPrice, bidRate, annId")
+      .in("annId", konepsIds)
+      .gt("bidRate", 0)
+      .gt("finalPrice", 0)
+      .limit(2000);
+    const infoMap = await buildBudgetAndDateMap(admin, konepsIds);
+    for (const r of bidResults ?? []) {
+      const info = infoMap.get(r.annId as string);
+      if (!info || !info.deadline) continue;
+      if (sinceDateStr && info.deadline.slice(0, 10) < sinceDateStr) continue;
+      const sajung = calcSajung(Number(r.finalPrice), Number(r.bidRate), info.budget);
+      if (sajung < 85 || sajung > 125) continue;
+      const date = info.deadline.slice(0, 7);
+      const rounded = Math.round(sajung * 100) / 100;
+      if (!orgByMonth.has(date)) orgByMonth.set(date, []);
+      orgByMonth.get(date)!.push(rounded);
+      orgRaw.push({ date, sajung: rounded });
     }
   }
 

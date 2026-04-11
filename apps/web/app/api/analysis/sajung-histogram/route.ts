@@ -170,13 +170,14 @@ export async function GET(req: NextRequest) {
   let result: SajungHistogramResponse | null = null;
   let autoExpanded = false;
 
+  // direct path (동일 공고 직접 조회)
   if (directRows.length > 0 && categoryFilter === "same" && orgScope === "exact") {
     result = await buildHistogramResponse(directRows, admin, lowerLimitRate, sajungFilter, sinceDateStr);
   }
 
-  // exact 모드 결과가 없거나 10건 미만이면 fetchOrgKonepsIds 시도
+  // direct 결과가 없거나 10건 미만이면 발주처 전체 조회
   if (!result || result.sampleSize < 10) {
-    const konepsIds = await fetchOrgKonepsIds(
+    let konepsIds = await fetchOrgKonepsIds(
       admin,
       ann.orgName as string,
       categoryForFilter,
@@ -184,6 +185,32 @@ export async function GET(req: NextRequest) {
       currentAnn,
       orgScope,
     );
+
+    // exact 모드에서 sample < 10이면 자동 expand (category 유지)
+    if (orgScope === "exact" && konepsIds.length > 0) {
+      const { data: sample } = await admin
+        .from("BidResult")
+        .select("id")
+        .in("annId", konepsIds.slice(0, 100))
+        .gt("bidRate", 0)
+        .gt("finalPrice", 0)
+        .limit(15);
+      if ((sample?.length ?? 0) < 10) {
+        const expandedIds = await fetchOrgKonepsIds(
+          admin,
+          ann.orgName as string,
+          ann.category as string,
+          ann.region as string,
+          currentAnn,
+          "expand",
+        );
+        if (expandedIds.length > konepsIds.length) {
+          konepsIds = expandedIds;
+          autoExpanded = true;
+        }
+      }
+    }
+
     if (konepsIds.length > 0) {
       const { data: fallback } = await admin
         .from("BidResult")
@@ -193,32 +220,6 @@ export async function GET(req: NextRequest) {
         .gt("finalPrice", 0)
         .limit(2000);
       result = await buildHistogramResponse(fallback ?? [], admin, lowerLimitRate, sajungFilter, sinceDateStr);
-    }
-  }
-
-  // exact 모드 결과가 여전히 10건 미만이면 자동 expand
-  if (orgScope === "exact" && (!result || result.sampleSize < 10)) {
-    const expandIds = await fetchOrgKonepsIds(
-      admin,
-      ann.orgName as string,
-      categoryForFilter,
-      ann.region as string,
-      currentAnn,
-      "expand",
-    );
-    if (expandIds.length > 0) {
-      const { data: expandRows } = await admin
-        .from("BidResult")
-        .select("finalPrice, bidRate, annId")
-        .in("annId", expandIds)
-        .gt("bidRate", 0)
-        .gt("finalPrice", 0)
-        .limit(2000);
-      const expandResult = await buildHistogramResponse(expandRows ?? [], admin, lowerLimitRate, sajungFilter, sinceDateStr);
-      if (expandResult && expandResult.sampleSize > (result?.sampleSize ?? 0)) {
-        result = expandResult;
-        autoExpanded = true;
-      }
     }
   }
 
