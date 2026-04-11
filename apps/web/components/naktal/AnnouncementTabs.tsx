@@ -44,6 +44,16 @@ export interface ComprehensiveResult {
     numberStrategy: unknown;
     confidenceLevel?: "HIGH" | "MEDIUM" | "LOW";
     isFallback?: boolean;
+    weightedAvg?: number | null;
+    simpleAvg?: number | null;
+    trend?: {
+      direction: "up" | "down" | "stable";
+      strength: "strong" | "moderate" | "weak";
+      adjustment: number;
+      description: string;
+    } | null;
+    stabilityScore?: number | null;
+    recentSampleSize?: number | null;
   };
   competition: {
     competitionScore: number;
@@ -309,16 +319,34 @@ export function AnnouncementTabs({
             )}
             {/* 서브탭 콘텐츠 — refreshKey / categoryFilter / orgScope 변경 시 언마운트→리마운트 */}
             {subTab === "analysis1" && (
-              <SajungHistogram
-                key={`h-${refreshKey}-${categoryFilter}-${orgScope}`}
-                annId={annDbId}
-                predictedSajungRate={bs?.predictedSajungRate}
-                lowerLimitRate={lowerLimitRate}
-                period={period}
-                categoryFilter={categoryFilter}
-                orgScope={orgScope}
-                onLoad={(sz, fc) => setStatInfo({ sampleSize: sz, fromCache: fc })}
-              />
+              <>
+                {bs?.trend && bs.trend.direction !== "stable" && (
+                  <div style={{
+                    fontSize: 11,
+                    color: bs.trend.direction === "up" ? "#DC2626" : "#2563EB",
+                    background: bs.trend.direction === "up" ? "#FEF2F2" : "#EFF6FF",
+                    borderRadius: 4,
+                    padding: "2px 8px",
+                    marginBottom: 8,
+                    display: "inline-block",
+                    fontWeight: 600,
+                  }}>
+                    {bs.trend.direction === "up" ? "↑" : "↓"}{" "}
+                    {bs.trend.strength === "strong" ? "강한" : bs.trend.strength === "moderate" ? "완만한" : "소폭"}
+                    {bs.trend.direction === "up" ? " 상승" : " 하락"} 추세 반영됨
+                  </div>
+                )}
+                <SajungHistogram
+                  key={`h-${refreshKey}-${categoryFilter}-${orgScope}`}
+                  annId={annDbId}
+                  predictedSajungRate={bs?.predictedSajungRate}
+                  lowerLimitRate={lowerLimitRate}
+                  period={period}
+                  categoryFilter={categoryFilter}
+                  orgScope={orgScope}
+                  onLoad={(sz, fc) => setStatInfo({ sampleSize: sz, fromCache: fc })}
+                />
+              </>
             )}
             {subTab === "analysis2" && (
               <SajungTrendOverlay

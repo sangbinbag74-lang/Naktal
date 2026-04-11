@@ -207,6 +207,32 @@ export function AiAnalysisPanel({ annDbId, budget, g2bUrl, onRefresh }: AiAnalys
                 </span>
               </div>
               <SajungDistBar range={bs.sajungRateRange} predicted={bs.predictedSajungRate} />
+              {bs.trend && (
+                <div style={{ marginTop: 8, display: "flex", flexDirection: "column", gap: 4 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: "#374151" }}>
+                    <span style={{ fontSize: 15 }}>
+                      {bs.trend.direction === "up" ? "📈" : bs.trend.direction === "down" ? "📉" : "➡️"}
+                    </span>
+                    <span style={{ fontWeight: 600 }}>
+                      {bs.trend.direction === "stable" ? "안정 유지" :
+                        (bs.trend.direction === "up" ? "↑" : "↓") + " " +
+                        (bs.trend.strength === "strong" ? "강한" : bs.trend.strength === "moderate" ? "완만한" : "소폭") +
+                        (bs.trend.direction === "up" ? " 상승" : " 하락")}
+                    </span>
+                    {bs.simpleAvg != null && bs.weightedAvg != null &&
+                     Math.abs(bs.weightedAvg - bs.simpleAvg) >= 0.05 && (
+                      <span style={{ fontSize: 11, color: "#94A3B8", marginLeft: "auto" }}>
+                        단순평균{" "}
+                        <span style={{ textDecoration: "line-through" }}>{bs.simpleAvg.toFixed(2)}%</span>
+                        {" → "}{bs.weightedAvg.toFixed(2)}%
+                      </span>
+                    )}
+                  </div>
+                  <div style={{ fontSize: 11, color: "#64748B", lineHeight: 1.5 }}>
+                    {bs.trend.description}
+                  </div>
+                </div>
+              )}
               <div style={{ fontSize: 11, color: "#64748B", marginTop: 8 }}>
                 예상 예정가 <strong>{fmt(budget * (bs.predictedSajungRate / 100))}</strong>
               </div>

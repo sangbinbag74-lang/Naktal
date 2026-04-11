@@ -1,10 +1,27 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient, createAdminClient } from "@/lib/supabase/server";
-import { predictOptimalBid, analyzeCompetition, classifyBudget } from "@/lib/core1/sajung-engine";
+import {
+  predictOptimalBid,
+  analyzeCompetition,
+  classifyBudget,
+  queryRawDataPoints,
+  calcWeightedAvgSajung,
+  calcTrend,
+  calcStabilityScore,
+  type TrendResult,
+} from "@/lib/core1/sajung-engine";
 import { recommendNumbers } from "@/lib/core1/frequency-engine";
 import { isMultiplePriceBid } from "@/lib/bid-utils";
 
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24시간
+
+interface TrendMeta {
+  weightedAvg: number | null;
+  simpleAvg: number | null;
+  trend: TrendResult;
+  stabilityScore: number;
+  recentSampleSize: number;
+}
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
   // 인증
@@ -29,6 +46,8 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   if (!ann) return NextResponse.json({ error: "공고 없음" }, { status: 404 });
 
   const annId = ann.id as string;
+  const budgetNum = Number(ann.budget);
+  const budgetRange = classifyBudget(budgetNum);
 
   // ─── 24시간 캐시 확인 ──────────────────────────────────────────────────────
   const { data: cached } = await admin
@@ -40,7 +59,27 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
   // sampleSize=0 캐시는 스킵하여 재분석 (데이터 없는 상태로 캐싱된 경우)
   if (cached && (cached.sampleSize as number) > 0) {
-    return NextResponse.json(buildResponse(ann, cached, null));
+    // trend 는 DB에 저장되지 않으므로 캐시 히트 시에도 보완 계산
+    const rawPoints = await queryRawDataPoints(
+      ann.orgName as string,
+      ann.category as string,
+      budgetRange,
+      ann.region as string
+    );
+    const trendMeta: TrendMeta = {
+      weightedAvg: rawPoints.length >= 5
+        ? Math.round(calcWeightedAvgSajung(rawPoints) * 1000) / 1000
+        : null,
+      simpleAvg: rawPoints.length >= 5
+        ? Math.round(rawPoints.reduce((s, p) => s + p.sajung, 0) / rawPoints.length * 1000) / 1000
+        : null,
+      trend: calcTrend(rawPoints),
+      stabilityScore: Math.round(calcStabilityScore(rawPoints) * 1000) / 1000,
+      recentSampleSize: rawPoints.filter(
+        p => Date.now() - new Date(p.deadline).getTime() < 365 * 24 * 60 * 60 * 1000
+      ).length,
+    };
+    return NextResponse.json(buildResponse(ann, cached, null, trendMeta));
   }
 
   // ─── 공고 메타 파싱 ────────────────────────────────────────────────────────
@@ -48,7 +87,6 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   const lowerLimitRateRaw = rawJson.sucsfbidLwltRate ?? "87.745";
   const lowerLimitRate = parseFloat(lowerLimitRateRaw.replace(/[^0-9.]/g, "")) || 87.745;
 
-  const budget = Number(ann.budget);
   const deadline = new Date(ann.deadline as string);
   const deadlineMonth = deadline.getMonth() + 1;
 
@@ -59,7 +97,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     predictOptimalBid({
       orgName: ann.orgName as string,
       category: ann.category as string,
-      budget,
+      budget: budgetNum,
       region: ann.region as string,
       lowerLimitRate,
       deadlineMonth,
@@ -67,7 +105,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     analyzeCompetition({
       orgName: ann.orgName as string,
       category: ann.category as string,
-      budget,
+      budget: budgetNum,
       region: ann.region as string,
       deadlineMonth,
     }),
@@ -77,7 +115,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
           supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL!,
           supabaseKey: process.env.SUPABASE_SERVICE_ROLE_KEY!,
           category: ann.category as string,
-          budgetRange: classifyBudget(budget),
+          budgetRange,
           region: ann.region as string,
         }).catch(() => null)
       : Promise.resolve(null),
@@ -104,7 +142,15 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
   await admin.from("BidPricePrediction").upsert(predRecord, { onConflict: "annId" });
 
-  return NextResponse.json(buildResponse(ann, predRecord, numberStrategy));
+  const trendMeta: TrendMeta = {
+    weightedAvg: sajung.weightedAvg,
+    simpleAvg:   sajung.simpleAvg,
+    trend:       sajung.trend,
+    stabilityScore:   sajung.stabilityScore,
+    recentSampleSize: sajung.recentSampleSize,
+  };
+
+  return NextResponse.json(buildResponse(ann, predRecord, numberStrategy, trendMeta));
 }
 
 // ─── 응답 빌더 ───────────────────────────────────────────────────────────────
@@ -112,7 +158,8 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 function buildResponse(
   ann: Record<string, unknown>,
   pred: Record<string, unknown>,
-  numberStrategy: unknown
+  numberStrategy: unknown,
+  trendMeta?: TrendMeta | null
 ) {
   return {
     bidStrategy: {
@@ -125,6 +172,11 @@ function buildResponse(
       lowerLimitPrice: Number(pred.lowerLimitPrice),
       winProbability: pred.winProbability,
       numberStrategy,
+      weightedAvg:       trendMeta?.weightedAvg ?? null,
+      simpleAvg:         trendMeta?.simpleAvg ?? null,
+      trend:             trendMeta?.trend ?? null,
+      stabilityScore:    trendMeta?.stabilityScore ?? null,
+      recentSampleSize:  trendMeta?.recentSampleSize ?? null,
     },
     competition: {
       competitionScore: pred.competitionScore,

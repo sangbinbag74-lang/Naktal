@@ -12,6 +12,14 @@ import { createAdminClient } from "@/lib/supabase/server";
 
 export type ConfidenceLevel = "HIGH" | "MEDIUM" | "LOW";
 
+export interface TrendResult {
+  slope: number;
+  direction: "up" | "down" | "stable";
+  strength: "strong" | "moderate" | "weak";
+  adjustment: number;
+  description: string;
+}
+
 export interface SajungPrediction {
   predictedSajungRate: number;
   sajungRateRange: { min: number; max: number; p25: number; p75: number };
@@ -24,10 +32,23 @@ export interface SajungPrediction {
   isFallback: boolean;    // 'ALL' orgName 폴백 여부
   confidenceLevel: ConfidenceLevel;
   modelVersion: string;
+  weightedAvg: number;
+  simpleAvg: number;
+  trend: TrendResult;
+  stabilityScore: number;
+  recentSampleSize: number;
 }
 
-function getConfidenceLevel(sampleSize: number, stddev: number): ConfidenceLevel {
-  if (sampleSize >= 10 && stddev <= 0.6) return "HIGH";  // 5.8% 해당 (74,697건 기준)
+function getConfidenceLevel(
+  sampleSize: number,
+  stddev: number,
+  recentSampleSize: number,
+  stabilityScore: number
+): ConfidenceLevel {
+  if (sampleSize >= 10 && recentSampleSize >= 5 && stabilityScore >= 0.7) return "HIGH";
+  if (sampleSize >= 5  && recentSampleSize >= 3) return "MEDIUM";
+  // fallback: legacy stddev-based check
+  if (sampleSize >= 10 && stddev <= 0.6) return "HIGH";
   if (sampleSize >= 10 && stddev <= 1.0) return "MEDIUM";
   return "LOW";
 }
@@ -113,6 +134,145 @@ async function querySajungStat(
   return data as SajungStatRow | null;
 }
 
+// ─── 시계열 가중치 ─────────────────────────────────────────────────────────────
+
+export function getTimeWeight(deadlineDate: Date): number {
+  const diffMonths = (Date.now() - deadlineDate.getTime()) / (1000 * 60 * 60 * 24 * 30);
+  if (diffMonths <= 3)  return 3.0;
+  if (diffMonths <= 6)  return 2.0;
+  if (diffMonths <= 12) return 1.5;
+  if (diffMonths <= 24) return 1.0;
+  return 0.5;
+}
+
+// ─── 시계열 가중 평균 사정율 ──────────────────────────────────────────────────
+
+export function calcWeightedAvgSajung(
+  points: { sajung: number; deadline: string }[]
+): number {
+  if (points.length === 0) return 100;
+  let wSum = 0, wTotal = 0;
+  for (const p of points) {
+    const w = getTimeWeight(new Date(p.deadline));
+    wSum += p.sajung * w;
+    wTotal += w;
+  }
+  return wTotal > 0 ? wSum / wTotal : 100;
+}
+
+// ─── 추세 분석 ────────────────────────────────────────────────────────────────
+
+export function calcTrend(
+  points: { sajung: number; deadline: string }[],
+  recentN = 8
+): TrendResult {
+  const stableDefault: TrendResult = {
+    slope: 0, direction: "stable", strength: "weak", adjustment: 0,
+    description: "최근 사정율이 안정적으로 유지되고 있습니다.",
+  };
+  if (points.length < 4) return stableDefault;
+
+  const recent = [...points]
+    .sort((a, b) => a.deadline.localeCompare(b.deadline))
+    .slice(-recentN);
+  const n = recent.length;
+  let sx = 0, sy = 0, sxy = 0, sx2 = 0;
+  for (let i = 0; i < n; i++) {
+    const sajung = recent[i]?.sajung ?? 0;
+    sx  += i;
+    sy  += sajung;
+    sxy += i * sajung;
+    sx2 += i * i;
+  }
+  const denom = n * sx2 - sx * sx;
+  if (denom === 0) return stableDefault;
+
+  const slope = (n * sxy - sx * sy) / denom;
+  const abs = Math.abs(slope);
+  const direction: "up" | "down" | "stable" = abs < 0.05 ? "stable" : slope > 0 ? "up" : "down";
+  const strength: "strong" | "moderate" | "weak" =
+    abs >= 0.30 ? "strong" : abs >= 0.15 ? "moderate" : "weak";
+  const adjMap = { weak: 0.05, moderate: 0.15, strong: 0.30 } as const;
+  const adjustment =
+    direction === "stable" ? 0 : (direction === "up" ? 1 : -1) * adjMap[strength];
+
+  const descMap: Record<string, string> = {
+    "stable-weak":   "최근 사정율이 안정적으로 유지되고 있습니다.",
+    "up-weak":       "최근 사정율이 소폭 상승하는 추세입니다.",
+    "up-moderate":   "최근 사정율이 완만하게 상승하는 추세입니다.",
+    "up-strong":     "최근 사정율이 빠르게 상승하는 추세입니다.",
+    "down-weak":     "최근 사정율이 소폭 하락하는 추세입니다.",
+    "down-moderate": "최근 사정율이 완만하게 하락하는 추세입니다.",
+    "down-strong":   "최근 사정율이 빠르게 하락하는 추세입니다.",
+  };
+  const description =
+    descMap[`${direction}-${strength}`] ?? "최근 사정율이 안정적으로 유지되고 있습니다.";
+
+  return { slope, direction, strength, adjustment, description };
+}
+
+// ─── 안정성 점수 ──────────────────────────────────────────────────────────────
+
+export function calcStabilityScore(
+  points: { sajung: number; deadline: string }[]
+): number {
+  if (points.length < 3) return 0.5;
+  const vals = [...points]
+    .sort((a, b) => a.deadline.localeCompare(b.deadline))
+    .slice(-10)
+    .map(p => p.sajung);
+  const mean = vals.reduce((s, v) => s + v, 0) / vals.length;
+  const std  = Math.sqrt(vals.reduce((s, v) => s + (v - mean) ** 2, 0) / vals.length);
+  return Math.max(0, Math.min(1, 1 - std / 2.0));
+}
+
+// ─── raw 데이터 포인트 조회 (BidResult + Announcement 조인) ──────────────────
+
+export async function queryRawDataPoints(
+  orgName: string,
+  category: string,
+  budgetRange: string,
+  region: string
+): Promise<{ sajung: number; deadline: string }[]> {
+  const supabase = createAdminClient();
+
+  const { data: anns } = await supabase
+    .from("Announcement")
+    .select("konepsId,budget,deadline")
+    .eq("orgName", orgName)
+    .eq("category", category)
+    .eq("region", region)
+    .limit(200);
+
+  const filtered = (anns ?? []).filter(
+    a => classifyBudget(Number(a.budget)) === budgetRange
+  );
+  const konepsIds = filtered.map(a => a.konepsId as string).filter(Boolean);
+  if (konepsIds.length === 0) return [];
+
+  const { data: bids } = await supabase
+    .from("BidResult")
+    .select("annId,bidRate,finalPrice")
+    .in("annId", konepsIds)
+    .limit(200);
+
+  const annMap = new Map(filtered.map(a => [a.konepsId as string, a]));
+  const points: { sajung: number; deadline: string }[] = [];
+
+  for (const bid of (bids ?? [])) {
+    const ann = annMap.get(bid.annId as string);
+    if (!ann) continue;
+    const bidRate    = Number(bid.bidRate);
+    const finalPrice = Number(bid.finalPrice);
+    const budget     = Number(ann.budget);
+    if (!bidRate || !finalPrice || !budget) continue;
+    const sajung = (finalPrice / (bidRate / 100)) / budget * 100;
+    if (sajung < 85 || sajung > 125) continue;
+    points.push({ sajung, deadline: ann.deadline as string });
+  }
+  return points;
+}
+
 // ─── 최적 투찰가 예측 ─────────────────────────────────────────────────────────
 
 export async function predictOptimalBid(params: {
@@ -126,10 +286,14 @@ export async function predictOptimalBid(params: {
   const budgetRange = classifyBudget(params.budget);
   let isFallback = false;
 
+  // raw 데이터와 SajungRateStat 병렬 조회
+  const [rawPoints, statPrimary] = await Promise.all([
+    queryRawDataPoints(params.orgName, params.category, budgetRange, params.region),
+    querySajungStat(params.orgName, params.category, budgetRange, params.region),
+  ]);
+
   // 1. 발주처 특화 통계 조회 (region 일치 → region= 폴백)
-  let stat = await querySajungStat(
-    params.orgName, params.category, budgetRange, params.region
-  );
+  let stat = statPrimary;
   if (!stat && params.region) {
     stat = await querySajungStat(params.orgName, params.category, budgetRange, "");
   }
@@ -161,9 +325,21 @@ export async function predictOptimalBid(params: {
     isFallback = true;
   }
 
+  // 시계열 메타 계산 (raw 데이터 기반)
+  const hasRaw = rawPoints.length >= 5;
+  const simpleAvg = hasRaw
+    ? rawPoints.reduce((s, p) => s + p.sajung, 0) / rawPoints.length
+    : (stat?.avg ?? 103.8);
+  const weightedAvg  = hasRaw ? calcWeightedAvgSajung(rawPoints) : simpleAvg;
+  const trendResult  = calcTrend(rawPoints);
+  const stabilityScore = calcStabilityScore(rawPoints);
+  const recentPoints = rawPoints.filter(
+    p => Date.now() - new Date(p.deadline).getTime() < 365 * 24 * 60 * 60 * 1000
+  );
+
   // 4. 전체 폴백도 없으면 기본값 (DB 전체 가중평균 기준: 103.8%)
   if (!stat || stat.sampleSize < 5) {
-    const fallbackRate = 103.8; // SajungRateStat ALL orgName 가중평균 (측정값: 103.77)
+    const fallbackRate = 103.8;
     const estimated = params.budget * (fallbackRate / 100);
     const lowerLimit = estimated * (params.lowerLimitRate / 100);
     return {
@@ -178,22 +354,33 @@ export async function predictOptimalBid(params: {
       isFallback: true,
       confidenceLevel: "LOW" as ConfidenceLevel,
       modelVersion: "sajung-v1.0-default",
+      weightedAvg: hasRaw ? Math.round(weightedAvg * 1000) / 1000 : fallbackRate,
+      simpleAvg:   hasRaw ? Math.round(simpleAvg * 1000) / 1000 : fallbackRate,
+      trend: rawPoints.length < 4
+        ? { slope: 0, direction: "stable" as const, strength: "weak" as const, adjustment: 0, description: "데이터가 부족해 추세를 분석할 수 없습니다." }
+        : trendResult,
+      stabilityScore: Math.round(stabilityScore * 1000) / 1000,
+      recentSampleSize: recentPoints.length,
     };
   }
 
-  // 4. 시즌 가중 예측율
+  // 5. 예측 사정율 계산
   const monthKey = String(params.deadlineMonth);
   const monthAdj = (stat.monthlyAvg as Record<string, number>)[monthKey] ?? stat.avg;
-  const predictedRate = stat.avg * 0.7 + monthAdj * 0.3;
 
-  // 5. 투찰가 역산
+  // raw 충분 시: 가중평균 + 추세 조정 / 아니면 기존 시즌 가중 방식
+  const predictedRate = hasRaw
+    ? Math.max(85, Math.min(115, weightedAvg + trendResult.adjustment))
+    : stat.avg * 0.7 + monthAdj * 0.3;
+
+  // 6. 투찰가 역산
   const estimated  = params.budget * (predictedRate / 100);
   const lowerLimit = estimated * (params.lowerLimitRate / 100);
   const optimalBid = estimated * 0.9997;
   const rangeLow   = Math.max(lowerLimit, estimated * 0.998);
   const rangeHigh  = optimalBid;
 
-  // 6. 몬테카를로 낙찰 확률
+  // 7. 몬테카를로 낙찰 확률
   const winProb = monteCarloWinProb(
     optimalBid, params.budget, predictedRate, stat.stddev, params.lowerLimitRate
   );
@@ -208,8 +395,15 @@ export async function predictOptimalBid(params: {
     lowerLimitPrice: Math.round(lowerLimit),
     winProbability: Math.round(winProb * 1000) / 1000,
     isFallback,
-    confidenceLevel: getConfidenceLevel(stat.sampleSize, stat.stddev),
-    modelVersion: "sajung-v1.0",
+    confidenceLevel: getConfidenceLevel(
+      stat.sampleSize, stat.stddev, recentPoints.length, stabilityScore
+    ),
+    modelVersion: "sajung-v1.1",
+    weightedAvg: Math.round(weightedAvg * 1000) / 1000,
+    simpleAvg:   Math.round(simpleAvg * 1000) / 1000,
+    trend:       trendResult,
+    stabilityScore: Math.round(stabilityScore * 1000) / 1000,
+    recentSampleSize: recentPoints.length,
   };
 }
 
