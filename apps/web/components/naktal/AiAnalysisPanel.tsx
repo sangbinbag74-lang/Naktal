@@ -212,36 +212,48 @@ export function AiAnalysisPanel({ annDbId, budget, g2bUrl, onRefresh }: AiAnalys
                 </span>
               </div>
               <SajungDistBar range={bs.sajungRateRange} predicted={bs.predictedSajungRate} />
-              {bs.trend && (
-                <div style={{ marginTop: 8, display: "flex", flexDirection: "column", gap: 4 }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: "#374151" }}>
-                    <span style={{ fontSize: 15 }}>
-                      {bs.trend.direction === "up" ? "📈" : bs.trend.direction === "down" ? "📉" : "➡️"}
-                    </span>
-                    <span style={{ fontWeight: 600 }}>
-                      {bs.trend.direction === "stable" ? "안정 유지" :
-                        (bs.trend.direction === "up" ? "↑" : "↓") + " " +
-                        (bs.trend.strength === "strong" ? "강한" : bs.trend.strength === "moderate" ? "완만한" : "소폭") +
-                        (bs.trend.direction === "up" ? " 상승" : " 하락")}
-                    </span>
-                    {bs.simpleAvg != null && bs.weightedAvg != null &&
-                     Math.abs(bs.weightedAvg - bs.simpleAvg) >= 0.05 && (
-                      <span style={{ fontSize: 11, color: "#94A3B8", marginLeft: "auto" }}>
-                        단순평균{" "}
-                        <span style={{ textDecoration: "line-through" }}>{bs.simpleAvg.toFixed(2)}%</span>
-                        {" → "}{bs.weightedAvg.toFixed(2)}%
-                      </span>
-                    )}
-                  </div>
-                  <div style={{ fontSize: 11, color: "#64748B", lineHeight: 1.5 }}>
-                    {bs.trend.description}
-                  </div>
-                </div>
-              )}
               <div style={{ fontSize: 11, color: "#64748B", marginTop: 8 }}>
                 예상 예정가 <strong>{fmt(budget * (bs.predictedSajungRate / 100))}</strong>
               </div>
             </div>
+
+            {/* ③-b 추세 분석 */}
+            {bs.trend && (
+              <div style={{
+                background: "#F8FAFC", borderRadius: 10, padding: "10px 14px",
+                display: "flex", alignItems: "flex-start", gap: 10,
+              }}>
+                <span style={{ fontSize: 18 }}>
+                  {bs.trend.direction === "up" ? "📈" : bs.trend.direction === "down" ? "📉" : "➡️"}
+                </span>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 12, fontWeight: 600,
+                    color: bs.trend.direction === "up" ? "#059669" : bs.trend.direction === "down" ? "#DC2626" : "#64748B" }}>
+                    {bs.trend.direction === "up" ? "상승 추세" : bs.trend.direction === "down" ? "하락 추세" : "안정 추세"}
+                    {bs.trend.adjustment !== 0 && (
+                      <span style={{ marginLeft: 4, fontSize: 10, opacity: 0.7, fontWeight: 400 }}>
+                        ({bs.trend.adjustment >= 0 ? "+" : ""}{bs.trend.adjustment.toFixed(2)}% 반영)
+                      </span>
+                    )}
+                  </div>
+                  <div style={{ fontSize: 11, color: "#94A3B8" }}>
+                    {bs.trend.description}
+                  </div>
+                </div>
+                {bs.simpleAvg != null && bs.weightedAvg != null && Math.abs(bs.weightedAvg - bs.simpleAvg) >= 0.05 && (
+                  <div style={{ textAlign: "right", flexShrink: 0 }}>
+                    <div style={{ fontSize: 10, color: "#94A3B8" }}>단순평균</div>
+                    <div style={{ fontSize: 11, color: "#94A3B8", textDecoration: "line-through" }}>
+                      {bs.simpleAvg.toFixed(3)}%
+                    </div>
+                    <div style={{ fontSize: 10, color: "#94A3B8", marginTop: 2 }}>가중평균</div>
+                    <div style={{ fontSize: 11, color: "#1B3A6B", fontWeight: 600 }}>
+                      {bs.weightedAvg.toFixed(3)}%
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* ④ 신뢰도 배지 */}
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
