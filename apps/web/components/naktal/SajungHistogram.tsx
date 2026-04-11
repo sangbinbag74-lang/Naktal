@@ -238,12 +238,10 @@ export function SajungHistogram({ annId, predictedSajungRate, lowerLimitRate, pe
         </ResponsiveContainer>
       </div>
 
-      {/* 기관 예가범위 */}
-      {data.orgRange != null && (
-        <div style={{ fontSize: 11, color: "#64748B", paddingLeft: 4 }}>
-          기관 예가범위 ±{data.orgRange}% ({data.orgRangeMin?.toFixed(1)}~{data.orgRangeMax?.toFixed(1)}%)
-        </div>
-      )}
+      {/* 실제 사정율 범위 */}
+      <div style={{ fontSize: 11, color: "#64748B", paddingLeft: 4 }}>
+        실제 사정율 범위: {stats.min.toFixed(1)}% ~ {stats.max.toFixed(1)}%
+      </div>
 
       {/* 범례 */}
       <div style={{ display: "flex", gap: 16, fontSize: 11, color: "#64748B", paddingLeft: 4 }}>

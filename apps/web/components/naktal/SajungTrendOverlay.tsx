@@ -245,6 +245,10 @@ export function SajungTrendOverlay({ annId, userId, predictedSajungRate, period 
       )}
 
       {/* 차트 */}
+      <style>{`
+        .recharts-brush-traveller rect { fill: #1B3A6B !important; stroke: #1B3A6B !important; }
+        .recharts-brush-traveller line { stroke: white !important; }
+      `}</style>
       <div style={{ background: "#F8FAFC", borderRadius: 10, padding: "16px 8px 8px 8px" }}>
         <div style={{ fontSize: 12, color: "#64748B", marginBottom: 8, paddingLeft: 8 }}>
           건별 사정율 흐름 · {N.toLocaleString()}건
@@ -332,11 +336,11 @@ export function SajungTrendOverlay({ annId, userId, predictedSajungRate, period 
             {/* 드래그 확대 Brush (onChange → visibleData 재계산) */}
             <Brush
               dataKey="seq"
-              height={40}
-              stroke="#E2E8F0"
-              fill="#F8FAFC"
-              travellerWidth={10}
-              gap={1}
+              height={44}
+              stroke="#94A3B8"
+              fill="#F1F5F9"
+              travellerWidth={12}
+              gap={2}
               tickFormatter={() => ""}
               startIndex={brushRange?.startIndex ?? 0}
               endIndex={brushRange?.endIndex ?? mergedData.length - 1}

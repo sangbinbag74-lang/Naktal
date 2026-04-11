@@ -26,6 +26,8 @@ export interface SajungHistogramResponse {
     p50: number;
     p75: number;
     stddev: number;
+    min: number;
+    max: number;
   };
   lowerLimitRate: number;
   orgRange?: number;
@@ -116,6 +118,8 @@ async function buildHistogramResponse(
       p50: Math.round(p50 * 100) / 100,
       p75: Math.round(p75 * 100) / 100,
       stddev: Math.round(stddev * 100) / 100,
+      min: rates[0] ?? avg,
+      max: rates[total - 1] ?? avg,
     },
     lowerLimitRate,
   };
