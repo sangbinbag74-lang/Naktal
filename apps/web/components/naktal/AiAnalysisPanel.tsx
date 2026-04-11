@@ -114,16 +114,28 @@ export function AiAnalysisPanel({ annDbId, budget, g2bUrl, onRefresh }: AiAnalys
     <div style={{ background: "#fff", border: "1px solid #E8ECF2", borderRadius: 14, overflow: "hidden" }}>
       {/* 헤더 */}
       <div style={{
-        background: "linear-gradient(135deg, #1B3A6B 0%, #0F1E3C 100%)",
-        padding: "14px 18px",
         display: "flex", alignItems: "center", justifyContent: "space-between",
+        padding: "14px 20px",
+        borderBottom: "1px solid #F1F5F9",
       }}>
-        <div style={{ color: "#fff", fontWeight: 700, fontSize: 14 }}>AI 분석</div>
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <div style={{ width: 4, height: 18, background: "#1B3A6B", borderRadius: 2 }} />
+          <span style={{ fontSize: 14, fontWeight: 600, color: "#0F172A" }}>AI 분석</span>
+          {cl && (
+            <span style={{
+              fontSize: 10, fontWeight: 700, padding: "2px 8px", borderRadius: 99,
+              background: cl === "HIGH" ? "#DCFCE7" : cl === "MEDIUM" ? "#FEF3C7" : "#FEE2E2",
+              color: cl === "HIGH" ? "#16A34A" : cl === "MEDIUM" ? "#D97706" : "#DC2626",
+            }}>
+              {cl === "HIGH" ? "높음" : cl === "MEDIUM" ? "보통" : "낮음"}
+            </span>
+          )}
+        </div>
         <button
           onClick={() => void handleRefresh()}
           style={{
-            background: "rgba(255,255,255,0.12)", border: "1px solid rgba(255,255,255,0.2)",
-            color: "#fff", borderRadius: 7, padding: "5px 10px", fontSize: 11, cursor: "pointer",
+            background: "transparent", border: "1px solid #E2E8F0",
+            color: "#64748B", borderRadius: 7, padding: "5px 10px", fontSize: 11, cursor: "pointer",
           }}
         >
           ↻ 재분석

@@ -118,7 +118,8 @@ export default async function AnnouncementDetailPage({
   const g2bUrl = rawJson.ntcePbancUrl || `https://www.g2b.go.kr:8081/ep/peoplecvpl/narasVary.do?bidno=${a.konepsId}&bidseq=${rawJson.bidNtceSqNo ?? "00"}`;
 
   return (
-    <div className="w-full bg-gray-50 min-h-screen px-6 py-5">
+    <div className="w-full bg-gray-50 min-h-screen">
+      <div className="max-w-[1400px] mx-auto px-6 py-5">
 
       {/* 뒤로가기 */}
       <Link
@@ -281,6 +282,7 @@ export default async function AnnouncementDetailPage({
           />
         </div>
 
+      </div>
       </div>
     </div>
   );
