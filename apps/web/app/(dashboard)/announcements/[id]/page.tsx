@@ -205,11 +205,11 @@ export default async function AnnouncementDetailPage({
         </div>
       </div>
 
-      {/* 본문 45/55 그리드 */}
-      <div className="grid grid-cols-1 lg:grid-cols-[45fr_55fr] gap-5 items-start">
+      {/* 본문 3열 그리드 */}
+      <div className="grid grid-cols-1 lg:grid-cols-[25fr_30fr_45fr] gap-5 items-start">
 
-        {/* 왼쪽 45% */}
-        <div className="order-2 lg:order-1" style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+        {/* 1열: 공고 정보 */}
+        <div className="order-3 lg:order-1" style={{ display: "flex", flexDirection: "column", gap: 16 }}>
 
           {/* 기본정보 카드 */}
           <div style={{ background: "#fff", borderRadius: 16, border: "1px solid #E8ECF2", padding: "20px", boxShadow: "0 2px 8px rgba(0,0,0,0.06)" }}>
@@ -259,13 +259,17 @@ export default async function AnnouncementDetailPage({
           </div>
         </div>
 
-        {/* 오른쪽 55% — sticky */}
-        <div className="order-1 lg:order-2 lg:sticky lg:top-4" style={{ display: "flex", flexDirection: "column", gap: 16, minWidth: 0 }}>
+        {/* 2열: AI 분석 패널 — sticky */}
+        <div className="order-1 lg:order-2 lg:sticky lg:top-4" style={{ minWidth: 0 }}>
           <AiAnalysisPanel
             annDbId={a.id}
             budget={budgetNum || 0}
             g2bUrl={g2bUrl}
           />
+        </div>
+
+        {/* 3열: 사정율 분석 탭 — sticky */}
+        <div className="order-2 lg:order-3 lg:sticky lg:top-4" style={{ minWidth: 0 }}>
           <AnnouncementTabs
             annId={a.konepsId}
             annDbId={a.id}
