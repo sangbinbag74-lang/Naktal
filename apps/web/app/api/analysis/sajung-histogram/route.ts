@@ -41,7 +41,7 @@ function emptyResponse(lowerLimitRate: number): NextResponse {
   return NextResponse.json<SajungHistogramResponse>({
     histogram: [],
     sampleSize: 0,
-    stats: { avg: 103.8, mode: 103.8, p25: 101, p50: 103, p75: 106, stddev: 1.5 },
+    stats: { avg: 103.8, mode: 103.8, p25: 101, p50: 103, p75: 106, stddev: 1.5, min: 103.8, max: 103.8 },
     lowerLimitRate,
   });
 }
