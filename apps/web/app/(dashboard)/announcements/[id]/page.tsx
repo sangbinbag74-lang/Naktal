@@ -22,7 +22,7 @@ interface Announcement {
   category: string;
   region: string;
   createdAt: string;
-  rawJson: Record<string, string> | null;
+  rawJson: Record<string, unknown> | null;
 }
 
 function fmt(n: string) {
@@ -43,7 +43,7 @@ function getDDay(deadline: string) {
   return `D-${diff}`;
 }
 
-function extractParticipationConditions(rawJson: Record<string, string> | null): { label: string; value: string }[] {
+function extractParticipationConditions(rawJson: Record<string, unknown> | null): { label: string; value: string }[] {
   if (!rawJson) return [];
   const fields: { key: string; label: string }[] = [
     { key: "prtcptnLmtNm",    label: "참가제한" },
@@ -54,7 +54,7 @@ function extractParticipationConditions(rawJson: Record<string, string> | null):
     { key: "indutyCtgryNm",    label: "업종카테고리" },
   ];
   return fields
-    .map(({ key, label }) => ({ label, value: rawJson[key] ?? "" }))
+    .map(({ key, label }) => ({ label, value: String(rawJson[key] ?? "") }))
     .filter(({ value }) => value.trim() !== "");
 }
 
@@ -106,17 +106,17 @@ export default async function AnnouncementDetailPage({
   if (!ann) notFound();
 
   const a = ann as Announcement;
-  const multiplePrice = isMultiplePriceBid(a.rawJson);
+  const multiplePrice = isMultiplePriceBid(a.rawJson as Record<string, string> | null);
   const isClosed = new Date(a.deadline) < new Date();
-  const rawJson = (a.rawJson ?? {}) as Record<string, string>;
-  const bidMethodDisplay = rawJson.bidMthdNm || rawJson.cntrctMthdNm || rawJson.ntceKindNm || "";
-  const sucsfbidLwltRate = rawJson.sucsfbidLwltRate ?? "";
+  const rawJson = (a.rawJson ?? {}) as Record<string, unknown>;
+  const bidMethodDisplay = String(rawJson.bidMthdNm ?? rawJson.cntrctMthdNm ?? rawJson.ntceKindNm ?? "");
+  const sucsfbidLwltRate = String(rawJson.sucsfbidLwltRate ?? "");
   const lowerLimitRate = parseFloat(sucsfbidLwltRate.replace(/[^0-9.]/g, "")) || 87.745;
   const participationConditions = extractParticipationConditions(a.rawJson);
-  const prtcptnLmtNm = rawJson.prtcptnLmtNm ?? "";
+  const prtcptnLmtNm = String(rawJson.prtcptnLmtNm ?? "");
   const budgetNum = parseInt(a.budget, 10);
   const estimatedPrice = isNaN(budgetNum) ? null : Math.round(budgetNum * 1.03);
-  const g2bUrl = rawJson.ntcePbancUrl || `https://www.g2b.go.kr:8081/ep/peoplecvpl/narasVary.do?bidno=${a.konepsId}&bidseq=${rawJson.bidNtceSqNo ?? "00"}`;
+  const g2bUrl = String(rawJson.ntcePbancUrl || `https://www.g2b.go.kr:8081/ep/peoplecvpl/narasVary.do?bidno=${a.konepsId}&bidseq=${String(rawJson.bidNtceSqNo ?? "00")}`);
 
   return (
     <div className="w-full min-h-screen px-4 py-5" style={{ background: "#EEF2F7" }}>
@@ -223,7 +223,7 @@ export default async function AnnouncementDetailPage({
                 { label: "낙찰방법",      value: bidMethodDisplay || "-" },
                 { label: "낙찰하한율",    value: sucsfbidLwltRate ? `${sucsfbidLwltRate}%` : "-" },
                 { label: "예가방법",      value: multiplePrice ? "복수예가" : "단일예가" },
-                { label: "재입찰여부",    value: rawJson.rbidPermsnYn === "Y" ? "재공고" : "일반" },
+                { label: "재입찰여부",    value: String(rawJson.rbidPermsnYn ?? "") === "Y" ? "재공고" : "일반" },
               ].map((row) => (
                 <div key={row.label}>
                   <div style={{ fontSize: 11, color: "#94A3B8", marginBottom: 4 }}>{row.label}</div>
