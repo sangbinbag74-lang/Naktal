@@ -57,8 +57,9 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     .gt("expiresAt", new Date().toISOString())
     .maybeSingle();
 
-  // sampleSize=0 캐시는 스킵하여 재분석 (데이터 없는 상태로 캐싱된 경우)
-  if (cached && (cached.sampleSize as number) > 0) {
+  // sampleSize=0 또는 sajungRateRange 필드 null인 캐시는 재분석
+  const cachedRng = cached?.sajungRateRange as { min?: number | null } | null | undefined;
+  if (cached && (cached.sampleSize as number) > 0 && cachedRng?.min != null) {
     // trend 는 DB에 저장되지 않으므로 캐시 히트 시에도 보완 계산
     const rawPoints = await queryRawDataPoints(
       ann.orgName as string,
@@ -163,8 +164,11 @@ function buildResponse(
 ) {
   return {
     bidStrategy: {
-      predictedSajungRate: pred.predictedSajungRate,
-      sajungRateRange: pred.sajungRateRange,
+      predictedSajungRate: Number(pred.predictedSajungRate) || 103.8,
+      sajungRateRange: (() => {
+        const r = pred.sajungRateRange as { min?: number | null; max?: number | null; p25?: number | null; p75?: number | null } | null | undefined;
+        return { min: r?.min ?? 97, max: r?.max ?? 112, p25: r?.p25 ?? 101, p75: r?.p75 ?? 106 };
+      })(),
       sampleSize: pred.sampleSize,
       optimalBidPrice: Number(pred.optimalBidPrice),
       bidPriceRangeLow: Number(pred.bidPriceRangeLow),

@@ -377,7 +377,7 @@ export function AnnouncementTabs({
           <WinProbCalculator
             budget={budget}
             sajungMean={bs.predictedSajungRate}
-            sajungStd={Math.max(0.3, (bs.sajungRateRange.p75 - bs.sajungRateRange.p25) / 1.35)}
+            sajungStd={Math.max(0.3, ((bs.sajungRateRange?.p75 ?? 106) - (bs.sajungRateRange?.p25 ?? 101)) / 1.35)}
             lowerLimitRate={lowerLimitRate}
             optimalBidPrice={bs.optimalBidPrice}
             lowerLimitPrice={bs.lowerLimitPrice}
