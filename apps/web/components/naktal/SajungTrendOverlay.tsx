@@ -444,9 +444,9 @@ function PredictionCards({ predictions, orgAvg }: { predictions: SajungPredictio
           >
             <div style={{ fontSize: 13, marginBottom: 4 }}>{icon}</div>
             <div style={{ fontSize: 11, color: "#64748B", marginBottom: 2 }}>{item.label}</div>
-            <div style={{ fontSize: 16, fontWeight: 700, color }}>{formatSajung(item.sajung)}</div>
+            <div style={{ fontSize: 17, fontWeight: 700, color }}>{formatDeviation(item.sajung, orgAvg)}</div>
             <div style={{ fontSize: 11, color: "#94A3B8", marginTop: 2 }}>
-              {formatDeviation(item.sajung, orgAvg)}
+              {formatSajung(item.sajung)}
             </div>
           </div>
         ))}
