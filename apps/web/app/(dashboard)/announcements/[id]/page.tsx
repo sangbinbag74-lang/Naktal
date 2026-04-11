@@ -118,8 +118,7 @@ export default async function AnnouncementDetailPage({
   const g2bUrl = rawJson.ntcePbancUrl || `https://www.g2b.go.kr:8081/ep/peoplecvpl/narasVary.do?bidno=${a.konepsId}&bidseq=${rawJson.bidNtceSqNo ?? "00"}`;
 
   return (
-    <div className="w-full min-h-screen" style={{ background: "#EEF2F7" }}>
-      <div className="max-w-[1400px] mx-auto px-6 py-5">
+    <div className="w-full min-h-screen px-4 py-5" style={{ background: "#EEF2F7" }}>
 
       {/* 뒤로가기 */}
       <Link
@@ -209,7 +208,7 @@ export default async function AnnouncementDetailPage({
       <div className="grid gap-5 items-start grid-cols-1 md:grid-cols-2 2xl:grid-cols-[1fr_1.2fr_1.8fr]">
 
         {/* 1열: 공고 정보 */}
-        <div className="order-3 md:col-span-2 2xl:col-span-1 2xl:order-1" style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+        <div className="order-3 md:col-span-2 2xl:col-span-1 2xl:order-1 col-scroll" style={{ position: "sticky", top: 16, maxHeight: "calc(100vh - 32px)", overflowY: "auto", display: "flex", flexDirection: "column", gap: 16 }}>
 
           {/* 기본정보 카드 */}
           <div style={{ background: "#fff", borderRadius: 16, border: "1px solid #E8ECF2", padding: "20px", boxShadow: "0 2px 8px rgba(0,0,0,0.06)" }}>
@@ -260,7 +259,7 @@ export default async function AnnouncementDetailPage({
         </div>
 
         {/* 2열: AI 분석 패널 — sticky */}
-        <div className="order-1 md:order-1 2xl:order-2 lg:sticky lg:top-4" style={{ minWidth: 0 }}>
+        <div className="order-1 md:order-1 2xl:order-2 col-scroll" style={{ position: "sticky", top: 16, maxHeight: "calc(100vh - 32px)", overflowY: "auto", minWidth: 0 }}>
           <AiAnalysisPanel
             annDbId={a.id}
             budget={budgetNum || 0}
@@ -269,7 +268,7 @@ export default async function AnnouncementDetailPage({
         </div>
 
         {/* 3열: 사정율 분석 탭 — sticky */}
-        <div className="order-2 md:order-2 2xl:order-3 lg:sticky lg:top-4" style={{ minWidth: 0 }}>
+        <div className="order-2 md:order-2 2xl:order-3 col-scroll" style={{ position: "sticky", top: 16, maxHeight: "calc(100vh - 32px)", overflowY: "auto", minWidth: 0 }}>
           <AnnouncementTabs
             annId={a.konepsId}
             annDbId={a.id}
@@ -286,7 +285,6 @@ export default async function AnnouncementDetailPage({
           />
         </div>
 
-      </div>
       </div>
     </div>
   );

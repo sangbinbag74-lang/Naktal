@@ -142,6 +142,12 @@ a {
   border: 1px solid #E8ECF2;
 }
 
+/* 공고 상세 — 컬럼 독립 스크롤 */
+.col-scroll::-webkit-scrollbar { width: 4px; }
+.col-scroll::-webkit-scrollbar-track { background: transparent; }
+.col-scroll::-webkit-scrollbar-thumb { background: #E2E8F0; border-radius: 2px; }
+.col-scroll::-webkit-scrollbar-thumb:hover { background: #CBD5E1; }
+
 .naktal-input {
   height: 48px;
   border: 1.5px solid #E2E8F0;
