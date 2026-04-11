@@ -6,7 +6,6 @@ import {
   fetchOrgKonepsIds,
   roundBucket,
   getSajungRange,
-  getSajungFilter,
 } from "@/lib/analysis/sajung-utils";
 import { getCachedAnalysis, setCachedAnalysis, periodToDate } from "@/lib/analysis/sajung-cache";
 
@@ -143,8 +142,8 @@ export async function GET(req: NextRequest) {
   const currentBudget = Number(ann.budget);
 
   const orgRange = getSajungRange(ann.orgName as string);
-  const sajungFilter = getSajungFilter(ann.orgName as string);
   const sinceDate = periodToDate(period);
+  const sajungFilter = { min: 85, max: 125 };
 
   const currentAnn = { bidMethod, budget: currentBudget };
 

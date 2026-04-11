@@ -4,7 +4,6 @@ import {
   calcSajung,
   buildBudgetMap,
   fetchOrgKonepsIds,
-  getSajungFilter,
 } from "@/lib/analysis/sajung-utils";
 import { getCachedAnalysis, setCachedAnalysis, periodToDate } from "@/lib/analysis/sajung-cache";
 
@@ -63,7 +62,6 @@ export async function GET(req: NextRequest) {
   const rawJson = (ann.rawJson ?? {}) as Record<string, string>;
   const bidMethod = rawJson.bidMthdNm ?? rawJson.cntrctMthdNm ?? "";
   const currentAnn = { bidMethod, budget: Number(ann.budget) };
-  const sajungFilter = getSajungFilter(ann.orgName as string);
   const sinceDate = periodToDate(period);
 
   // ── 1. 발주처 사정율 개별 건 수집 ──────────────────────────────────────────
@@ -97,7 +95,7 @@ export async function GET(req: NextRequest) {
         Number(r.bidRate),
         budgetMap.get(r.annId as string) ?? 0,
       );
-      if (sajung < sajungFilter.min || sajung > sajungFilter.max) continue;
+      if (sajung < 85 || sajung > 125) continue;
       const date = (r.createdAt as string).slice(0, 7);
       const rounded = Math.round(sajung * 100) / 100;
       if (!orgByMonth.has(date)) orgByMonth.set(date, []);
@@ -128,7 +126,7 @@ export async function GET(req: NextRequest) {
     const { data: outcomes } = await q;
     for (const o of outcomes ?? []) {
       const sajung = Number(o.actualSajungRate);
-      if (!sajung || sajung < sajungFilter.min || sajung > sajungFilter.max) continue;
+      if (!sajung || sajung < 85 || sajung > 125) continue;
       const date = (o.bidAt as string).slice(0, 7);
       const rounded = Math.round(sajung * 100) / 100;
       if (!mineByMonth.has(date)) mineByMonth.set(date, []);

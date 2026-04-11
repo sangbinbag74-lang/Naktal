@@ -5,7 +5,6 @@ import {
   buildBudgetMap,
   fetchOrgKonepsIds,
   roundBucket,
-  getSajungFilter,
 } from "@/lib/analysis/sajung-utils";
 import { getCachedAnalysis, setCachedAnalysis, periodToDate } from "@/lib/analysis/sajung-cache";
 
@@ -50,7 +49,6 @@ export async function GET(req: NextRequest) {
   const currentBudget = Number(ann.budget);
   const bidMethod = rawJson.bidMthdNm ?? rawJson.cntrctMthdNm ?? "";
 
-  const sajungFilter = getSajungFilter(ann.orgName as string);
   const sinceDate = periodToDate(period);
   const currentAnn = { bidMethod, budget: currentBudget };
 
@@ -103,7 +101,7 @@ export async function GET(req: NextRequest) {
 
   for (const r of bidRows) {
     const sajung = calcSajung(Number(r.finalPrice), Number(r.bidRate), budgetMap.get(r.annId) ?? 0);
-    if (sajung < sajungFilter.min || sajung > sajungFilter.max) continue;
+    if (sajung < 85 || sajung > 125) continue;
     const bucket = roundBucket(sajung);
     bucketMap.set(bucket, (bucketMap.get(bucket) ?? 0) + 1);
     total++;
