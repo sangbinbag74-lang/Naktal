@@ -133,7 +133,7 @@ export async function GET(req: NextRequest) {
   if (!annId) return NextResponse.json({ error: "annId required" }, { status: 400 });
 
   // ── 캐시 확인 ──────────────────────────────────────────────────────────────
-  const cacheType = `histogram_v3${categoryFilter === "all" ? "_all" : ""}${orgScope === "expand" ? "_expand" : ""}`;
+  const cacheType = `histogram_v4${categoryFilter === "all" ? "_all" : ""}${orgScope === "expand" ? "_expand" : ""}`;
   const cached = await getCachedAnalysis(annId, period, cacheType);
   if (cached) return NextResponse.json({ ...cached, fromCache: true });
 
