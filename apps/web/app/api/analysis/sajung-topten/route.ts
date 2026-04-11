@@ -27,10 +27,13 @@ export interface SajungTopTenResponse {
 export async function GET(req: NextRequest) {
   const annId = req.nextUrl.searchParams.get("annId");
   const period = req.nextUrl.searchParams.get("period") ?? "3y";
+  const categoryFilter = req.nextUrl.searchParams.get("categoryFilter") ?? "same";
+  const orgScope = (req.nextUrl.searchParams.get("orgScope") ?? "exact") as "exact" | "expand";
   if (!annId) return NextResponse.json({ error: "annId required" }, { status: 400 });
 
   // ── 캐시 확인 ──────────────────────────────────────────────────────────────
-  const cached = await getCachedAnalysis(annId, period, "topten_v2");
+  const cacheType = `topten_v3${categoryFilter === "all" ? "_all" : ""}${orgScope === "expand" ? "_expand" : ""}`;
+  const cached = await getCachedAnalysis(annId, period, cacheType);
   if (cached) return NextResponse.json({ ...cached, fromCache: true });
 
   const admin = createAdminClient();
@@ -52,6 +55,7 @@ export async function GET(req: NextRequest) {
   const sinceDate = periodToDate(period);
   const sinceDateStr = sinceDate ? sinceDate.slice(0, 10) : null;
   const currentAnn = { bidMethod, budget: currentBudget };
+  const categoryForFilter = categoryFilter === "all" ? null : ann.category as string;
 
   // ── 낙찰 결과 수집 (direct → fallback) ──────────────────────────────────────
   let bidRows: { finalPrice: string | number; bidRate: string | number; annId: string }[] = [];
@@ -64,15 +68,16 @@ export async function GET(req: NextRequest) {
     .gt("finalPrice", 0)
     .limit(2000);
 
-  if ((direct ?? []).length > 0) {
+  if ((direct ?? []).length > 0 && categoryFilter === "same" && orgScope === "exact") {
     bidRows = direct!;
   } else {
     const konepsIds = await fetchOrgKonepsIds(
       admin,
       ann.orgName as string,
-      ann.category as string,
+      categoryForFilter,
       ann.region as string,
       currentAnn,
+      orgScope,
     );
     if (konepsIds.length > 0) {
       const { data: fallback } = await admin
@@ -124,7 +129,7 @@ export async function GET(req: NextRequest) {
   const result: SajungTopTenResponse = { topTen, sampleSize: total, lowerLimitRate };
 
   // ── 캐시 저장 ──────────────────────────────────────────────────────────────
-  await setCachedAnalysis(annId, period, "topten_v2", result, total);
+  await setCachedAnalysis(annId, period, cacheType, result, total);
 
   return NextResponse.json<SajungTopTenResponse>(result);
 }

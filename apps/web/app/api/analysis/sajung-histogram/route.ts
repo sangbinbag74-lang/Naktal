@@ -123,10 +123,13 @@ async function buildHistogramResponse(
 export async function GET(req: NextRequest) {
   const annId = req.nextUrl.searchParams.get("annId");
   const period = req.nextUrl.searchParams.get("period") ?? "3y";
+  const categoryFilter = req.nextUrl.searchParams.get("categoryFilter") ?? "same";
+  const orgScope = (req.nextUrl.searchParams.get("orgScope") ?? "exact") as "exact" | "expand";
   if (!annId) return NextResponse.json({ error: "annId required" }, { status: 400 });
 
   // ── 캐시 확인 ──────────────────────────────────────────────────────────────
-  const cached = await getCachedAnalysis(annId, period, "histogram_v2");
+  const cacheType = `histogram_v3${categoryFilter === "all" ? "_all" : ""}${orgScope === "expand" ? "_expand" : ""}`;
+  const cached = await getCachedAnalysis(annId, period, cacheType);
   if (cached) return NextResponse.json({ ...cached, fromCache: true });
 
   const admin = createAdminClient();
@@ -151,6 +154,7 @@ export async function GET(req: NextRequest) {
   const sajungFilter = { min: 85, max: 125 };
 
   const currentAnn = { bidMethod, budget: currentBudget };
+  const categoryForFilter = categoryFilter === "all" ? null : ann.category as string;
 
   // ── Direct 조회 ─────────────────────────────────────────────────────────────
   const { data: directResults } = await admin
@@ -164,15 +168,16 @@ export async function GET(req: NextRequest) {
 
   let result: SajungHistogramResponse | null = null;
 
-  if (directRows.length > 0) {
+  if (directRows.length > 0 && categoryFilter === "same" && orgScope === "exact") {
     result = await buildHistogramResponse(directRows, admin, lowerLimitRate, sajungFilter, sinceDateStr);
   } else {
     const konepsIds = await fetchOrgKonepsIds(
       admin,
       ann.orgName as string,
-      ann.category as string,
+      categoryForFilter,
       ann.region as string,
       currentAnn,
+      orgScope,
     );
     if (konepsIds.length > 0) {
       const { data: fallback } = await admin
@@ -196,7 +201,7 @@ export async function GET(req: NextRequest) {
   };
 
   // ── 캐시 저장 ──────────────────────────────────────────────────────────────
-  await setCachedAnalysis(annId, period, "histogram_v2", finalResult, finalResult.sampleSize);
+  await setCachedAnalysis(annId, period, cacheType, finalResult, finalResult.sampleSize);
 
   return NextResponse.json<SajungHistogramResponse>(finalResult);
 }

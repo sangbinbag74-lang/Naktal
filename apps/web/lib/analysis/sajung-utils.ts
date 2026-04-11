@@ -49,16 +49,44 @@ export async function buildBudgetMap(
   );
 }
 
+/**
+ * orgName에서 핵심 기관명 추출
+ * "전북특별자치도 부안군" → "부안군"
+ * "한국농어촌공사 전북지역본부 부안지사" → "한국농어촌공사"
+ * "전라북도교육청 부안여자고등학교" → "부안여자고등학교"
+ */
+export function extractCoreOrgName(orgName: string): string {
+  if (!orgName) return orgName;
+  const prefixes = [
+    "전북특별자치도 ", "전라북도 ", "경기도 ", "서울특별시 ",
+    "부산광역시 ", "인천광역시 ", "대구광역시 ", "광주광역시 ",
+    "대전광역시 ", "울산광역시 ", "세종특별자치시 ", "강원특별자치도 ",
+    "강원도 ", "충청북도 ", "충청남도 ", "전라남도 ", "경상북도 ", "경상남도 ",
+    "제주특별자치도 ",
+  ];
+  let core = orgName;
+  for (const prefix of prefixes) {
+    if (core.startsWith(prefix)) { core = core.slice(prefix.length); break; }
+  }
+  const eduPrefixes = ["교육청 ", "교육지원청 "];
+  for (const ep of eduPrefixes) {
+    if (core.includes(ep)) { core = core.split(ep).pop() ?? core; break; }
+  }
+  return core;
+}
+
 /** 동일 orgName + region 공고의 konepsId 목록 조회
  *  - 단가계약 제외, 예산 규모 유사 공고만 포함 (0.3x ~ 3x)
  *  - 발주처 공고(orgName) + 동일 지역·업종(region+category) 합산
+ *  - orgScope="expand": 핵심 기관명 ILIKE 확장 검색 (명칭 변경 기관 포함)
  */
 export async function fetchOrgKonepsIds(
   supabase: SupabaseClient,
   orgName: string,
-  category: string,
+  category: string | null,  // null = 발주처 전체 업종
   region: string,
   currentAnn: { bidMethod: string; budget: number },
+  orgScope: "exact" | "expand" = "exact",
 ): Promise<string[]> {
   const isUnitPrice = currentAnn.bidMethod?.includes("단가") ?? false;
   // budget=0이면 예산 범위 필터 비활성화 (100만원 미만 제외만 유지)
@@ -68,19 +96,20 @@ export async function fetchOrgKonepsIds(
 
   type AnnRow = { konepsId: string; budget: string | number; rawJson: Record<string, string> | null };
 
+  // orgScope에 따라 orgName 조건 분기
+  const coreOrg = orgScope === "expand" ? extractCoreOrgName(orgName) : null;
+
   const [{ data: orgAnns }, { data: regionAnns }] = await Promise.all([
-    supabase
-      .from("Announcement")
-      .select("konepsId, budget, rawJson")
-      .eq("orgName", orgName)
-      .eq("category", category)
-      .limit(500),
-    supabase
-      .from("Announcement")
-      .select("konepsId, budget, rawJson")
-      .eq("category", category)
-      .eq("region", region)
-      .limit(300),
+    category
+      ? (orgScope === "expand"
+          ? supabase.from("Announcement").select("konepsId, budget, rawJson").ilike("orgName", `%${coreOrg}%`).eq("category", category).limit(500)
+          : supabase.from("Announcement").select("konepsId, budget, rawJson").eq("orgName", orgName).eq("category", category).limit(500))
+      : (orgScope === "expand"
+          ? supabase.from("Announcement").select("konepsId, budget, rawJson").ilike("orgName", `%${coreOrg}%`).limit(500)
+          : supabase.from("Announcement").select("konepsId, budget, rawJson").eq("orgName", orgName).limit(500)),
+    category
+      ? supabase.from("Announcement").select("konepsId, budget, rawJson").eq("category", category).eq("region", region).limit(300)
+      : supabase.from("Announcement").select("konepsId, budget, rawJson").eq("region", region).limit(300),
   ]);
 
   const allAnns: AnnRow[] = [...(orgAnns ?? []), ...(regionAnns ?? [])];
@@ -134,9 +163,5 @@ export function getSajungRange(orgName: string): { min: number; max: number; ran
   return { min: 100 - r, max: 100 + r, range: r };
 }
 
-/** 기관명으로 사정율 이상값 필터 범위 반환 (예가범위 + buffer 5%) */
-export function getSajungFilter(orgName: string): { min: number; max: number } {
-  const r = getOrgRange(orgName);
-  const buffer = 5;
-  return { min: 100 - r - buffer, max: 100 + r + buffer };
-}
+/** 사정율 유효범위 상수 (이상값 제거용) */
+export const SAJUNG_FILTER = { min: 85, max: 125 } as const;

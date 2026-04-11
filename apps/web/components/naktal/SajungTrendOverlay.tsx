@@ -21,6 +21,8 @@ interface SajungTrendOverlayProps {
   userId: string | null;
   predictedSajungRate?: number;
   period?: string;
+  categoryFilter?: "same" | "all";
+  orgScope?: "exact" | "expand";
   onLoad?: (sampleSize: number, fromCache: boolean) => void;
 }
 
@@ -84,13 +86,13 @@ function AiLabel({ viewBox, rate }: { viewBox?: { x: number; y: number; width: n
 
 // ── 메인 컴포넌트 ─────────────────────────────────────────────────────────────
 
-export function SajungTrendOverlay({ annId, userId, predictedSajungRate, period = "3y", onLoad }: SajungTrendOverlayProps) {
+export function SajungTrendOverlay({ annId, userId, predictedSajungRate, period = "3y", categoryFilter = "same", orgScope = "exact", onLoad }: SajungTrendOverlayProps) {
   const [data, setData] = useState<SajungTrendResponse | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (!annId) return;
-    const qs = new URLSearchParams({ annId, period });
+    const qs = new URLSearchParams({ annId, period, categoryFilter, orgScope });
     if (userId) qs.set("userId", userId);
     setLoading(true);
     fetch(`/api/analysis/sajung-trend?${qs}`)
@@ -102,7 +104,7 @@ export function SajungTrendOverlay({ annId, userId, predictedSajungRate, period 
       })
       .catch(() => setData(null))
       .finally(() => setLoading(false));
-  }, [annId, userId, period]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [annId, userId, period, categoryFilter, orgScope]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // seq → date 매핑
   const seqToDate = useMemo(() => {
@@ -261,7 +263,11 @@ export function SajungTrendOverlay({ annId, userId, predictedSajungRate, period 
                 stroke="#94A3B8"
                 strokeWidth={1}
                 strokeDasharray="4 3"
-                label={{ value: `평균 ${formatDeviation(data.orgAvg)}`, position: "insideBottomRight", fontSize: 9, fill: "#94A3B8" }}
+                label={
+                  predictedSajungRate != null && Math.abs(predictedSajungRate - data.orgAvg) <= 0.5
+                    ? undefined
+                    : { value: `평균 ${formatDeviation(data.orgAvg)}`, position: "insideBottomLeft", fontSize: 9, fill: "#94A3B8" }
+                }
               />
             )}
 

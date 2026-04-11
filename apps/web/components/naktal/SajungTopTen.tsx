@@ -9,6 +9,8 @@ interface SajungTopTenProps {
   predictedSajungRate?: number;
   budget: number;
   period?: string;
+  categoryFilter?: "same" | "all";
+  orgScope?: "exact" | "expand";
   onLoad?: (sampleSize: number, fromCache: boolean) => void;
 }
 
@@ -22,14 +24,14 @@ function fmt(n: number): string {
   return `${n.toLocaleString()}원`;
 }
 
-export function SajungTopTen({ annId, predictedSajungRate, budget: _budget, period = "3y", onLoad }: SajungTopTenProps) {
+export function SajungTopTen({ annId, predictedSajungRate, budget: _budget, period = "3y", categoryFilter = "same", orgScope = "exact", onLoad }: SajungTopTenProps) {
   const [data, setData] = useState<SajungTopTenResponse | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (!annId) return;
     setLoading(true);
-    const qs = new URLSearchParams({ annId, period });
+    const qs = new URLSearchParams({ annId, period, categoryFilter, orgScope });
     fetch(`/api/analysis/sajung-topten?${qs}`)
       .then((r) => r.json())
       .then((d) => {
@@ -39,7 +41,7 @@ export function SajungTopTen({ annId, predictedSajungRate, budget: _budget, peri
       })
       .catch(() => setData(null))
       .finally(() => setLoading(false));
-  }, [annId, period]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [annId, period, categoryFilter, orgScope]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (loading) {
     return (

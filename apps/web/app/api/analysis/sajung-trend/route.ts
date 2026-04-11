@@ -42,11 +42,14 @@ export async function GET(req: NextRequest) {
   const annId  = req.nextUrl.searchParams.get("annId");
   const userId = req.nextUrl.searchParams.get("userId");
   const period = req.nextUrl.searchParams.get("period") ?? "3y";
+  const categoryFilter = req.nextUrl.searchParams.get("categoryFilter") ?? "same";
+  const orgScope = (req.nextUrl.searchParams.get("orgScope") ?? "exact") as "exact" | "expand";
   if (!annId) return NextResponse.json({ error: "annId required" }, { status: 400 });
 
-  // ── 캐시 확인 (v3: deadline 기준 전환으로 기존 캐시 무효화) ──────────────
+  // ── 캐시 확인 ──────────────────────────────────────────────────────────────
   const cacheUserId = userId && userId !== "anon" ? userId : "";
-  const cached = await getCachedAnalysis(annId, period, "trend_v3", cacheUserId);
+  const cacheType = `trend_v4${categoryFilter === "all" ? "_all" : ""}${orgScope === "expand" ? "_expand" : ""}`;
+  const cached = await getCachedAnalysis(annId, period, cacheType, cacheUserId);
   if (cached) return NextResponse.json({ ...cached, fromCache: true });
 
   const admin = createAdminClient();
@@ -63,14 +66,16 @@ export async function GET(req: NextRequest) {
   const bidMethod = rawJson.bidMthdNm ?? rawJson.cntrctMthdNm ?? "";
   const currentAnn = { bidMethod, budget: Number(ann.budget) };
   const sinceDate = periodToDate(period);
+  const categoryForFilter = categoryFilter === "all" ? null : ann.category as string;
 
   // ── 1. 발주처 사정율 개별 건 수집 ──────────────────────────────────────────
   const konepsIds = await fetchOrgKonepsIds(
     admin,
     ann.orgName as string,
-    ann.category as string,
+    categoryForFilter,
     ann.region as string,
     currentAnn,
+    orgScope,
   );
   const orgByMonth = new Map<string, number[]>();
   const orgRaw: { date: string; sajung: number }[] = [];
@@ -156,7 +161,7 @@ export async function GET(req: NextRequest) {
   };
 
   // ── 캐시 저장 ──────────────────────────────────────────────────────────────
-  await setCachedAnalysis(annId, period, "trend_v3", result, allOrgVals.length, cacheUserId);
+  await setCachedAnalysis(annId, period, cacheType, result, allOrgVals.length, cacheUserId);
 
   return NextResponse.json<SajungTrendResponse>(result);
 }

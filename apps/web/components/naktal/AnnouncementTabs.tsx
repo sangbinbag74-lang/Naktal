@@ -8,6 +8,7 @@ import { SajungTrendOverlay } from "./SajungTrendOverlay";
 import { SajungTopTen } from "./SajungTopTen";
 import { SajungPeriodSelector } from "./SajungPeriodSelector";
 import { createClient } from "@/lib/supabase/client";
+import { extractCoreOrgName } from "@/lib/analysis/sajung-utils";
 
 type SubTab = "analysis1" | "analysis2" | "analysis3";
 
@@ -127,6 +128,8 @@ export function AnnouncementTabs({
   const [analysisLoading, setAnalysisLoading] = useState(true);
   const [subTab, setSubTab] = useState<SubTab>("analysis1");
   const [period, setPeriod] = useState("3y");
+  const [categoryFilter, setCategoryFilter] = useState<"same" | "all">("same");
+  const [orgScope, setOrgScope] = useState<"exact" | "expand">("exact");
   const [statInfo, setStatInfo] = useState<{ sampleSize?: number; fromCache?: boolean }>({});
   const [refreshKey, setRefreshKey] = useState(0);
   const userIdRef = useRef<string | null>(null);
@@ -318,46 +321,122 @@ export function AnnouncementTabs({
                 </button>
               ))}
             </div>
-            {/* 기간 선택기 */}
-            <SajungPeriodSelector
-              value={period}
-              onChange={(p) => { setPeriod(p); setStatInfo({}); }}
-              sampleSize={statInfo.sampleSize}
-              fromCache={statInfo.fromCache}
-              onClearCache={async () => {
-                await fetch(`/api/analysis/sajung-cache?annId=${encodeURIComponent(annDbId)}`, { method: "DELETE" });
-                setStatInfo({});
-                setRefreshKey((k) => k + 1);
-              }}
-            />
-            {/* 서브탭 콘텐츠 — refreshKey 변경 시 언마운트→리마운트로 강제 재조회 */}
+            {/* 기간 선택기 + 업종 필터 토글 */}
+            <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+              <div style={{ flex: 1 }}>
+                <SajungPeriodSelector
+                  value={period}
+                  onChange={(p) => { setPeriod(p); setStatInfo({}); }}
+                  sampleSize={statInfo.sampleSize}
+                  fromCache={statInfo.fromCache}
+                  onClearCache={async () => {
+                    await fetch(`/api/analysis/sajung-cache?annId=${encodeURIComponent(annDbId)}`, { method: "DELETE" });
+                    setStatInfo({});
+                    setRefreshKey((k) => k + 1);
+                  }}
+                />
+              </div>
+              <div style={{ display: "flex", background: "#F1F5F9", borderRadius: 8, padding: 3, gap: 2, flexShrink: 0 }}>
+                {(["same", "all"] as const).map((cf) => (
+                  <button
+                    key={cf}
+                    onClick={() => { setCategoryFilter(cf); setStatInfo({}); }}
+                    style={{
+                      padding: "5px 10px",
+                      fontSize: 11,
+                      fontWeight: categoryFilter === cf ? 600 : 400,
+                      color: categoryFilter === cf ? "#1B3A6B" : "#64748B",
+                      background: categoryFilter === cf ? "#fff" : "transparent",
+                      border: "none",
+                      borderRadius: 6,
+                      cursor: "pointer",
+                      boxShadow: categoryFilter === cf ? "0 1px 3px rgba(0,0,0,0.08)" : "none",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    {cf === "same" ? "동일업종" : "전체업종"}
+                  </button>
+                ))}
+              </div>
+            </div>
+            {/* 발주처 범위 토글 */}
+            {(() => {
+              const coreOrg = extractCoreOrgName(orgName);
+              return (
+                <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                  <span style={{ fontSize: 11, color: "#94A3B8", flexShrink: 0 }}>발주처</span>
+                  <div style={{ display: "flex", background: "#F1F5F9", borderRadius: 8, padding: 3, gap: 2 }}>
+                    {(["exact", "expand"] as const).map((scope) => (
+                      <button
+                        key={scope}
+                        onClick={() => { setOrgScope(scope); setStatInfo({}); }}
+                        style={{
+                          padding: "5px 10px",
+                          fontSize: 11,
+                          fontWeight: orgScope === scope ? 600 : 400,
+                          color: orgScope === scope ? "#1B3A6B" : "#64748B",
+                          background: orgScope === scope ? "#fff" : "transparent",
+                          border: "none",
+                          borderRadius: 6,
+                          cursor: "pointer",
+                          boxShadow: orgScope === scope ? "0 1px 3px rgba(0,0,0,0.08)" : "none",
+                          whiteSpace: "nowrap",
+                          maxWidth: 160,
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                        }}
+                        title={scope === "exact" ? orgName : `${coreOrg} 포함 전체`}
+                      >
+                        {scope === "exact" ? orgName : `${coreOrg} 전체`}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              );
+            })()}
+            {/* expand 모드 amber 배너 */}
+            {orgScope === "expand" && (
+              <div style={{ padding: "8px 12px", background: "#FFFBEB", border: "1px solid #FCD34D", borderRadius: 8, fontSize: 11, color: "#92400E" }}>
+                {extractCoreOrgName(orgName)} 이름을 포함한 모든 발주처 데이터를 포함합니다
+                <span style={{ color: "#B45309", marginLeft: 4 }}>
+                  (명칭 변경 전 기관 포함)
+                </span>
+              </div>
+            )}
+            {/* 서브탭 콘텐츠 — refreshKey / categoryFilter / orgScope 변경 시 언마운트→리마운트 */}
             {subTab === "analysis1" && (
               <SajungHistogram
-                key={`h-${refreshKey}`}
+                key={`h-${refreshKey}-${categoryFilter}-${orgScope}`}
                 annId={annDbId}
                 predictedSajungRate={bs?.predictedSajungRate}
                 lowerLimitRate={lowerLimitRate}
                 period={period}
+                categoryFilter={categoryFilter}
+                orgScope={orgScope}
                 onLoad={(sz, fc) => setStatInfo({ sampleSize: sz, fromCache: fc })}
               />
             )}
             {subTab === "analysis2" && (
               <SajungTrendOverlay
-                key={`t-${refreshKey}`}
+                key={`t-${refreshKey}-${categoryFilter}-${orgScope}`}
                 annId={annDbId}
                 userId={userIdRef.current}
                 predictedSajungRate={bs?.predictedSajungRate}
                 period={period}
+                categoryFilter={categoryFilter}
+                orgScope={orgScope}
                 onLoad={(sz, fc) => setStatInfo({ sampleSize: sz, fromCache: fc })}
               />
             )}
             {subTab === "analysis3" && (
               <SajungTopTen
-                key={`top-${refreshKey}`}
+                key={`top-${refreshKey}-${categoryFilter}-${orgScope}`}
                 annId={annDbId}
                 predictedSajungRate={bs?.predictedSajungRate}
                 budget={budget}
                 period={period}
+                categoryFilter={categoryFilter}
+                orgScope={orgScope}
                 onLoad={(sz, fc) => setStatInfo({ sampleSize: sz, fromCache: fc })}
               />
             )}

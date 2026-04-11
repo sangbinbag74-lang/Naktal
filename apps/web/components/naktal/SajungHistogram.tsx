@@ -21,6 +21,8 @@ interface SajungHistogramProps {
   predictedSajungRate?: number;
   lowerLimitRate?: number;
   period?: string;
+  categoryFilter?: "same" | "all";
+  orgScope?: "exact" | "expand";
   onLoad?: (sampleSize: number, fromCache: boolean) => void;
 }
 
@@ -59,14 +61,14 @@ function CustomTooltip({ active, payload, label }: any) {
 
 // ─── Main Component ──────────────────────────────────────────────────────────
 
-export function SajungHistogram({ annId, predictedSajungRate, lowerLimitRate, period = "3y", onLoad }: SajungHistogramProps) {
+export function SajungHistogram({ annId, predictedSajungRate, lowerLimitRate, period = "3y", categoryFilter = "same", orgScope = "exact", onLoad }: SajungHistogramProps) {
   const [data, setData] = useState<SajungHistogramResponse | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (!annId) return;
     setLoading(true);
-    const qs = new URLSearchParams({ annId, period });
+    const qs = new URLSearchParams({ annId, period, categoryFilter, orgScope });
     fetch(`/api/analysis/sajung-histogram?${qs}`)
       .then((r) => r.json())
       .then((d) => {
@@ -76,7 +78,7 @@ export function SajungHistogram({ annId, predictedSajungRate, lowerLimitRate, pe
       })
       .catch(() => setData(null))
       .finally(() => setLoading(false));
-  }, [annId, period]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [annId, period, categoryFilter, orgScope]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (loading) {
     return (
