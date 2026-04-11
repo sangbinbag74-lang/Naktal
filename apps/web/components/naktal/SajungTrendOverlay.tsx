@@ -249,7 +249,9 @@ export function SajungTrendOverlay({ annId, userId, predictedSajungRate, period 
             <Legend
               iconSize={10}
               wrapperStyle={{ fontSize: 11 }}
-              formatter={(val) => val === "발주처" ? "발주처" : "내 투찰"}
+              formatter={(val) => (
+                <span style={{ color: "#0F172A" }}>{val === "발주처" ? "발주처" : "내 투찰"}</span>
+              )}
             />
 
             {/* 평균선 */}
@@ -307,7 +309,7 @@ export function SajungTrendOverlay({ annId, userId, predictedSajungRate, period 
               stroke="#E2E8F0"
               fill="#F8FAFC"
               travellerWidth={8}
-              tickFormatter={tickFormatter}
+              tickFormatter={() => ""}
               startIndex={brushStart}
               endIndex={mergedData.length - 1}
             >
