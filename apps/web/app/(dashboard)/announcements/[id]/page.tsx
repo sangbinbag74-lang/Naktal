@@ -118,133 +118,170 @@ export default async function AnnouncementDetailPage({
   const g2bUrl = rawJson.ntcePbancUrl || `https://www.g2b.go.kr:8081/ep/peoplecvpl/narasVary.do?bidno=${a.konepsId}&bidseq=${rawJson.bidNtceSqNo ?? "00"}`;
 
   return (
-    <div className="max-w-7xl mx-auto px-0 pb-8">
-      <Link href="/announcements" style={{ fontSize: 13, color: "#64748B", display: "inline-flex", alignItems: "center", gap: 4, textDecoration: "none", marginBottom: 16 }}>
+    <div className="w-full bg-gray-50 min-h-screen px-6 py-5">
+
+      {/* 뒤로가기 */}
+      <Link
+        href="/announcements"
+        style={{ fontSize: 13, color: "#64748B", display: "inline-flex", alignItems: "center", gap: 4, textDecoration: "none", marginBottom: 16 }}
+      >
         ← 공고 목록으로
       </Link>
 
-      <div className="grid grid-cols-1 lg:grid-cols-[1fr_380px] gap-6 items-start">
+      {/* 공고 헤더 — 전체 너비 흰 카드 */}
+      <div style={{
+        background: "#fff",
+        borderRadius: 16,
+        border: "1px solid #E8ECF2",
+        padding: "24px",
+        marginBottom: 20,
+        boxShadow: "0 1px 4px rgba(0,0,0,0.04)",
+      }}>
+        <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 16 }}>
 
-        {/* 왼쪽 — 공고 정보 + 사정율 분석 */}
-        <div className="order-2 lg:order-1" style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+          {/* 왼쪽: 뱃지 + 공고명 + 발주처 */}
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 10 }}>
+              {a.category && (
+                <span style={{ fontSize: 11, fontWeight: 600, background: "#EEF2FF", color: "#1B3A6B", padding: "3px 8px", borderRadius: 4 }}>
+                  {a.category}
+                </span>
+              )}
+              {a.region && (
+                <span style={{ fontSize: 11, fontWeight: 600, background: "#F8FAFC", color: "#64748B", padding: "3px 8px", borderRadius: 4 }}>
+                  {a.region}
+                </span>
+              )}
+              {multiplePrice && (
+                <span style={{ fontSize: 11, fontWeight: 600, background: "#ECFDF5", color: "#059669", padding: "3px 8px", borderRadius: 4 }}>
+                  복수예가
+                </span>
+              )}
+              {isClosed && (
+                <span style={{ fontSize: 11, fontWeight: 600, background: "#FEF2F2", color: "#DC2626", padding: "3px 8px", borderRadius: 4 }}>
+                  마감
+                </span>
+              )}
+            </div>
+            <h1 style={{ fontSize: 18, fontWeight: 700, color: "#0F172A", lineHeight: 1.5, marginBottom: 6 }}>
+              {a.title}
+            </h1>
+            <p style={{ fontSize: 12, color: "#64748B" }}>
+              {a.orgName} · 공고번호 {a.konepsId} · 등록 {fmtDate(a.createdAt)}
+            </p>
+          </div>
 
-      {/* 헤더 카드 */}
-      <div style={{ background: "#fff", borderRadius: 14, border: "1px solid #E8ECF2", padding: "20px 24px" }}>
-        <div style={{ display: "flex", gap: 6, marginBottom: 10, flexWrap: "wrap" }}>
-          {a.category && <span style={{ fontSize: 11, fontWeight: 600, background: "#EEF2FF", color: "#1B3A6B", padding: "3px 8px", borderRadius: 4 }}>{a.category}</span>}
-          {a.region && <span style={{ fontSize: 11, fontWeight: 600, background: "#F8FAFC", color: "#64748B", padding: "3px 8px", borderRadius: 4 }}>{a.region}</span>}
-          {multiplePrice && <span style={{ fontSize: 11, fontWeight: 600, background: "#ECFDF5", color: "#059669", padding: "3px 8px", borderRadius: 4 }}>복수예가</span>}
+          {/* 오른쪽: D-day 배지 */}
+          <div style={{ flexShrink: 0, display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 8 }}>
+            <div style={{ background: "#1B3A6B", color: "#fff", borderRadius: 12, padding: "12px 20px", textAlign: "center", minWidth: 120 }}>
+              <div style={{ fontSize: 10, opacity: 0.6, marginBottom: 4 }}>입찰 마감</div>
+              <div style={{ fontSize: 13, fontWeight: 600, whiteSpace: "nowrap" }}>
+                {new Date(a.deadline).toLocaleDateString("ko-KR", { month: "long", day: "numeric", hour: "2-digit", minute: "2-digit" })}
+              </div>
+              <div style={{ fontSize: 12, fontWeight: 700, marginTop: 4, background: "rgba(255,255,255,0.15)", borderRadius: 99, padding: "2px 10px" }}>
+                {getDDay(a.deadline)}
+              </div>
+            </div>
+            <a href={g2bUrl} target="_blank" rel="noopener noreferrer" style={{ fontSize: 12, color: "#3B82F6", textDecoration: "none" }}>
+              나라장터 원문 ↗
+            </a>
+          </div>
         </div>
-        <h1 style={{ fontSize: 17, fontWeight: 700, color: "#0F172A", lineHeight: 1.5, marginBottom: 6 }}>{a.title}</h1>
-        <p style={{ fontSize: 12, color: "#64748B" }}>{a.orgName} · 공고번호 {a.konepsId} · 등록 {fmtDate(a.createdAt)}</p>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12, marginTop: 16, background: "#F8FAFC", borderRadius: 10, padding: "16px" }}>
+
+        {/* 핵심 숫자 3개 */}
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 24, marginTop: 20, paddingTop: 20, borderTop: "1px solid #F1F5F9" }}>
           {[
-            { label: "기초금액", value: fmt(a.budget), sub: "VAT 별도" },
-            { label: "추정가격", value: estimatedPrice ? new Intl.NumberFormat("ko-KR").format(estimatedPrice) + "원" : "-", sub: "기초금액 기준 추정" },
-            { label: "예가범위", value: sucsfbidLwltRate ? `${sucsfbidLwltRate}% ~` : "기초금액 ±2%", sub: "낙찰하한율 기준" },
+            { label: "기초금액",   value: fmt(a.budget),                                                                    sub: "VAT 별도" },
+            { label: "추정가격",   value: estimatedPrice ? new Intl.NumberFormat("ko-KR").format(estimatedPrice) + "원" : "-", sub: "기초금액 기준 추정" },
+            { label: "낙찰하한율", value: sucsfbidLwltRate ? `${sucsfbidLwltRate}%` : "89.745%",                             sub: "낙찰하한율 기준" },
           ].map((item) => (
-            <div key={item.label} style={{ textAlign: "center" }}>
-              <div style={{ fontSize: 11, color: "#94A3B8", marginBottom: 4 }}>{item.label}</div>
-              <div style={{ fontSize: 15, fontWeight: 700, color: "#1B3A6B" }}>{item.value}</div>
+            <div key={item.label}>
+              <div style={{ fontSize: 11, color: "#94A3B8", marginBottom: 6 }}>{item.label}</div>
+              <div style={{ fontSize: 16, fontWeight: 700, color: "#0F172A" }}>{item.value}</div>
               <div style={{ fontSize: 10, color: "#94A3B8", marginTop: 2 }}>{item.sub}</div>
             </div>
           ))}
         </div>
       </div>
 
-      {/* 액션바 */}
-      <div style={{ background: "linear-gradient(135deg, #1B3A6B 0%, #0F1E3C 100%)", borderRadius: 14, padding: "18px 24px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16 }}>
-        <div>
-          <div style={{ fontSize: 12, color: "rgba(255,255,255,0.5)", marginBottom: 4 }}>입찰 마감</div>
-          <div style={{ fontSize: 18, fontWeight: 700, color: "#fff" }}>{fmtDate(a.deadline)}</div>
-          <div style={{ fontSize: 13, fontWeight: 600, color: "#FCA5A5", marginTop: 2 }}>{getDDay(a.deadline)}</div>
-        </div>
-        <a
-          href={g2bUrl}
-          target="_blank" rel="noopener noreferrer"
-          style={{ background: "rgba(255,255,255,0.12)", border: "1px solid rgba(255,255,255,0.2)", color: "#fff", borderRadius: 9, padding: "8px 16px", fontSize: 13, fontWeight: 600, cursor: "pointer", textDecoration: "none" }}
-        >
-          나라장터 원문 ↗
-        </a>
-      </div>
+      {/* 본문 45/55 그리드 */}
+      <div className="grid grid-cols-1 lg:grid-cols-[45fr_55fr] gap-5 items-start">
 
-      {/* 공고 기본정보 + 참가조건 */}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
-        <div style={{ background: "#fff", borderRadius: 12, border: "1px solid #E8ECF2", padding: "18px 20px" }}>
-          <div style={{ fontSize: 13, fontWeight: 600, color: "#374151", marginBottom: 14 }}>공고 기본정보</div>
-          <table style={{ width: "100%", borderCollapse: "collapse" }}>
-            <tbody>
+        {/* 왼쪽 45% */}
+        <div className="order-2 lg:order-1" style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+
+          {/* 기본정보 카드 */}
+          <div style={{ background: "#fff", borderRadius: 16, border: "1px solid #E8ECF2", padding: "20px", boxShadow: "0 1px 4px rgba(0,0,0,0.04)" }}>
+            <div style={{ fontSize: 13, fontWeight: 600, color: "#374151", marginBottom: 16 }}>공고 기본정보</div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px 24px" }}>
               {[
                 { label: "발주기관",      value: a.orgName },
                 { label: "공고번호",      value: a.konepsId },
-                { label: "업종/공사구분", value: a.category },
-                { label: "지역",          value: a.region },
+                { label: "업종/공사구분", value: a.category || "-" },
+                { label: "지역",          value: a.region || "-" },
                 { label: "낙찰방법",      value: bidMethodDisplay || "-" },
                 { label: "낙찰하한율",    value: sucsfbidLwltRate ? `${sucsfbidLwltRate}%` : "-" },
-                { label: "예가방법",      value: multiplePrice ? "복수예가" : "-" },
+                { label: "예가방법",      value: multiplePrice ? "복수예가" : "단일예가" },
+                { label: "재입찰여부",    value: rawJson.rbidPermsnYn === "Y" ? "재공고" : "일반" },
               ].map((row) => (
-                <tr key={row.label} style={{ borderBottom: "1px solid #F8FAFC" }}>
-                  <td style={{ fontSize: 12, color: "#94A3B8", padding: "8px 0", width: "40%" }}>{row.label}</td>
-                  <td style={{ fontSize: 13, fontWeight: 500, padding: "8px 0", color: row.label === "낙찰하한율" && sucsfbidLwltRate ? "#DC2626" : "#0F172A" }}>{row.value}</td>
-                </tr>
+                <div key={row.label}>
+                  <div style={{ fontSize: 11, color: "#94A3B8", marginBottom: 4 }}>{row.label}</div>
+                  <div style={{ fontSize: 13, fontWeight: 500, color: row.label === "낙찰하한율" ? "#DC2626" : "#0F172A" }}>
+                    {row.value}
+                  </div>
+                </div>
               ))}
-            </tbody>
-          </table>
-        </div>
-        <div style={{ background: "#fff", borderRadius: 12, border: "1px solid #E8ECF2", padding: "18px 20px" }}>
-          <div style={{ fontSize: 13, fontWeight: 600, color: "#374151", marginBottom: 14 }}>참가자격 / 조건</div>
-          {prtcptnLmtNm ? (
-            <div style={{ fontSize: 13, color: "#374151", lineHeight: 1.7, whiteSpace: "pre-line" }}>{prtcptnLmtNm}</div>
-          ) : participationConditions.length > 0 ? (
-            <table style={{ width: "100%", borderCollapse: "collapse" }}>
-              <tbody>
+            </div>
+          </div>
+
+          {/* 참가자격 카드 */}
+          <div style={{ background: "#fff", borderRadius: 16, border: "1px solid #E8ECF2", padding: "20px", boxShadow: "0 1px 4px rgba(0,0,0,0.04)" }}>
+            <div style={{ fontSize: 13, fontWeight: 600, color: "#374151", marginBottom: 16 }}>참가자격 / 조건</div>
+            {prtcptnLmtNm ? (
+              <div style={{ fontSize: 13, color: "#374151", lineHeight: 1.7, whiteSpace: "pre-line" }}>{prtcptnLmtNm}</div>
+            ) : participationConditions.length > 0 ? (
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px 24px" }}>
                 {participationConditions.map((row) => (
-                  <tr key={row.label} style={{ borderBottom: "1px solid #F8FAFC" }}>
-                    <td style={{ fontSize: 12, color: "#94A3B8", padding: "8px 0", width: "40%" }}>{row.label}</td>
-                    <td style={{ fontSize: 13, color: "#0F172A", fontWeight: 500, padding: "8px 0" }}>{row.value}</td>
-                  </tr>
+                  <div key={row.label}>
+                    <div style={{ fontSize: 11, color: "#94A3B8", marginBottom: 4 }}>{row.label}</div>
+                    <div style={{ fontSize: 13, fontWeight: 500, color: "#0F172A" }}>{row.value}</div>
+                  </div>
                 ))}
-              </tbody>
-            </table>
-          ) : (
-            <div style={{ fontSize: 13, color: "#94A3B8" }}>참가조건 정보가 없습니다.</div>
-          )}
+              </div>
+            ) : (
+              <div style={{ fontSize: 13, color: "#94A3B8" }}>참가조건 정보가 없습니다.</div>
+            )}
+          </div>
+
+          <div style={{ fontSize: 11, color: "#94A3B8", paddingLeft: 4 }}>
+            ⚠ AI 분석 결과는 통계적 참고 자료입니다. 낙찰을 보장하지 않습니다.
+          </div>
         </div>
-      </div>
 
-      {/* 투찰 전략 분석 */}
-      <AnnouncementTabs
-        annId={a.konepsId}
-        annDbId={a.id}
-        title={a.title}
-        orgName={a.orgName}
-        budget={budgetNum || 0}
-        deadline={a.deadline}
-        category={a.category}
-        region={a.region}
-        lowerLimitRate={lowerLimitRate}
-        multiplePrice={multiplePrice}
-        isClosed={isClosed}
-        bidMethod={bidMethodDisplay}
-      />
-
-      {/* 면책 고지 */}
-      <div style={{ background: "#FFF7ED", border: "1px solid #FDE68A", borderRadius: 8, padding: "10px 12px", fontSize: 12, color: "#92400E", fontWeight: 500 }}>
-        ⚠ AI 분석 결과는 통계적 참고 자료입니다. 낙찰을 보장하지 않습니다.
-      </div>
-
-        </div>{/* 왼쪽 컬럼 끝 */}
-
-        {/* 오른쪽 — sticky AI 패널 */}
-        <div className="order-1 lg:order-2 lg:sticky lg:top-20">
+        {/* 오른쪽 55% — sticky */}
+        <div className="order-1 lg:order-2 lg:sticky lg:top-4" style={{ display: "flex", flexDirection: "column", gap: 16, minWidth: 0 }}>
           <AiAnalysisPanel
             annDbId={a.id}
             budget={budgetNum || 0}
             g2bUrl={g2bUrl}
           />
+          <AnnouncementTabs
+            annId={a.konepsId}
+            annDbId={a.id}
+            title={a.title}
+            orgName={a.orgName}
+            budget={budgetNum || 0}
+            deadline={a.deadline}
+            category={a.category}
+            region={a.region}
+            lowerLimitRate={lowerLimitRate}
+            multiplePrice={multiplePrice}
+            isClosed={isClosed}
+            bidMethod={bidMethodDisplay}
+          />
         </div>
 
-      </div>{/* grid 끝 */}
+      </div>
     </div>
   );
 }
