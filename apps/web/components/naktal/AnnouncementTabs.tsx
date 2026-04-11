@@ -128,6 +128,7 @@ export function AnnouncementTabs({
   const [subTab, setSubTab] = useState<SubTab>("analysis1");
   const [period, setPeriod] = useState("3y");
   const [statInfo, setStatInfo] = useState<{ sampleSize?: number; fromCache?: boolean }>({});
+  const [refreshKey, setRefreshKey] = useState(0);
   const userIdRef = useRef<string | null>(null);
 
   // ─── 분석 결과 로컬 캐시 (영구, 사용자별 분리) ───────────────────────────
@@ -323,10 +324,16 @@ export function AnnouncementTabs({
               onChange={(p) => { setPeriod(p); setStatInfo({}); }}
               sampleSize={statInfo.sampleSize}
               fromCache={statInfo.fromCache}
+              onClearCache={async () => {
+                await fetch(`/api/analysis/sajung-cache?annId=${encodeURIComponent(annDbId)}`, { method: "DELETE" });
+                setStatInfo({});
+                setRefreshKey((k) => k + 1);
+              }}
             />
-            {/* 서브탭 콘텐츠 */}
+            {/* 서브탭 콘텐츠 — refreshKey 변경 시 언마운트→리마운트로 강제 재조회 */}
             {subTab === "analysis1" && (
               <SajungHistogram
+                key={`h-${refreshKey}`}
                 annId={annDbId}
                 predictedSajungRate={bs?.predictedSajungRate}
                 lowerLimitRate={lowerLimitRate}
@@ -336,6 +343,7 @@ export function AnnouncementTabs({
             )}
             {subTab === "analysis2" && (
               <SajungTrendOverlay
+                key={`t-${refreshKey}`}
                 annId={annDbId}
                 userId={userIdRef.current}
                 predictedSajungRate={bs?.predictedSajungRate}
@@ -345,6 +353,7 @@ export function AnnouncementTabs({
             )}
             {subTab === "analysis3" && (
               <SajungTopTen
+                key={`top-${refreshKey}`}
                 annId={annDbId}
                 predictedSajungRate={bs?.predictedSajungRate}
                 budget={budget}

@@ -1,5 +1,7 @@
 "use client";
 
+import { useState } from "react";
+
 const PERIODS = [
   { value: "1y", label: "1년" },
   { value: "2y", label: "2년" },
@@ -12,9 +14,22 @@ interface Props {
   onChange: (period: string) => void;
   sampleSize?: number;
   fromCache?: boolean;
+  onClearCache?: () => Promise<void>;
 }
 
-export function SajungPeriodSelector({ value, onChange, sampleSize, fromCache }: Props) {
+export function SajungPeriodSelector({ value, onChange, sampleSize, fromCache, onClearCache }: Props) {
+  const [clearing, setClearing] = useState(false);
+
+  const handleClear = async () => {
+    if (!onClearCache || clearing) return;
+    setClearing(true);
+    try {
+      await onClearCache();
+    } finally {
+      setClearing(false);
+    }
+  };
+
   return (
     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
@@ -54,6 +69,26 @@ export function SajungPeriodSelector({ value, onChange, sampleSize, fromCache }:
           }}>
             캐시
           </span>
+        )}
+        {fromCache && onClearCache && (
+          <button
+            onClick={handleClear}
+            disabled={clearing}
+            title="캐시를 삭제하고 새로 분석합니다"
+            style={{
+              fontSize: 10,
+              fontWeight: 600,
+              color: clearing ? "#94A3B8" : "#1B3A6B",
+              background: clearing ? "#F1F5F9" : "#EFF6FF",
+              border: "1px solid #BFDBFE",
+              padding: "2px 8px",
+              borderRadius: 4,
+              cursor: clearing ? "not-allowed" : "pointer",
+              transition: "all 0.12s",
+            }}
+          >
+            {clearing ? "초기화 중..." : "🔄 재분석"}
+          </button>
         )}
       </div>
     </div>
