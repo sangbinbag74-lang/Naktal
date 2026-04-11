@@ -205,11 +205,11 @@ export default async function AnnouncementDetailPage({
         </div>
       </div>
 
-      {/* 본문 3열 그리드 */}
-      <div className="grid grid-cols-1 lg:grid-cols-[25fr_30fr_45fr] gap-5 items-start">
+      {/* 본문 반응형 그리드 */}
+      <div className="grid gap-5 items-start grid-cols-1 md:grid-cols-2 2xl:grid-cols-[1fr_1.2fr_1.8fr]">
 
         {/* 1열: 공고 정보 */}
-        <div className="order-3 lg:order-1" style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+        <div className="order-3 md:col-span-2 2xl:col-span-1 2xl:order-1" style={{ display: "flex", flexDirection: "column", gap: 16 }}>
 
           {/* 기본정보 카드 */}
           <div style={{ background: "#fff", borderRadius: 16, border: "1px solid #E8ECF2", padding: "20px", boxShadow: "0 2px 8px rgba(0,0,0,0.06)" }}>
@@ -260,7 +260,7 @@ export default async function AnnouncementDetailPage({
         </div>
 
         {/* 2열: AI 분석 패널 — sticky */}
-        <div className="order-1 lg:order-2 lg:sticky lg:top-4" style={{ minWidth: 0 }}>
+        <div className="order-1 md:order-1 2xl:order-2 lg:sticky lg:top-4" style={{ minWidth: 0 }}>
           <AiAnalysisPanel
             annDbId={a.id}
             budget={budgetNum || 0}
@@ -269,7 +269,7 @@ export default async function AnnouncementDetailPage({
         </div>
 
         {/* 3열: 사정율 분석 탭 — sticky */}
-        <div className="order-2 lg:order-3 lg:sticky lg:top-4" style={{ minWidth: 0 }}>
+        <div className="order-2 md:order-2 2xl:order-3 lg:sticky lg:top-4" style={{ minWidth: 0 }}>
           <AnnouncementTabs
             annId={a.konepsId}
             annDbId={a.id}
