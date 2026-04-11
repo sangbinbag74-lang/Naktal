@@ -70,6 +70,13 @@ export function SajungTopTen({ annId, predictedSajungRate, budget: _budget, peri
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+      {/* 자동 expand 안내 배너 */}
+      {data.autoExpanded && (
+        <div style={{ padding: "8px 12px", background: "#FFF7ED", border: "1px solid #FED7AA", borderRadius: 8, fontSize: 12, color: "#9A3412" }}>
+          📡 동일 발주처 데이터가 부족해 유사 기관명까지 확장 검색했습니다.
+        </div>
+      )}
+
       {/* 헤더 정보 */}
       <div style={{ fontSize: 12, color: "#64748B" }}>
         {data.sampleSize.toLocaleString()}건 낙찰 결과 기반 · 낙찰하한율 {data.lowerLimitRate.toFixed(3)}%

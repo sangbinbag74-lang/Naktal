@@ -31,6 +31,7 @@ export interface SajungHistogramResponse {
   orgRange?: number;
   orgRangeMin?: number;
   orgRangeMax?: number;
+  autoExpanded?: boolean;
   fromCache?: boolean;
 }
 
@@ -167,10 +168,14 @@ export async function GET(req: NextRequest) {
   const directRows = directResults ?? [];
 
   let result: SajungHistogramResponse | null = null;
+  let autoExpanded = false;
 
   if (directRows.length > 0 && categoryFilter === "same" && orgScope === "exact") {
     result = await buildHistogramResponse(directRows, admin, lowerLimitRate, sajungFilter, sinceDateStr);
-  } else {
+  }
+
+  // exact 모드 결과가 없거나 10건 미만이면 fetchOrgKonepsIds 시도
+  if (!result || result.sampleSize < 10) {
     const konepsIds = await fetchOrgKonepsIds(
       admin,
       ann.orgName as string,
@@ -191,6 +196,32 @@ export async function GET(req: NextRequest) {
     }
   }
 
+  // exact 모드 결과가 여전히 10건 미만이면 자동 expand
+  if (orgScope === "exact" && (!result || result.sampleSize < 10)) {
+    const expandIds = await fetchOrgKonepsIds(
+      admin,
+      ann.orgName as string,
+      categoryForFilter,
+      ann.region as string,
+      currentAnn,
+      "expand",
+    );
+    if (expandIds.length > 0) {
+      const { data: expandRows } = await admin
+        .from("BidResult")
+        .select("finalPrice, bidRate, annId")
+        .in("annId", expandIds)
+        .gt("bidRate", 0)
+        .gt("finalPrice", 0)
+        .limit(2000);
+      const expandResult = await buildHistogramResponse(expandRows ?? [], admin, lowerLimitRate, sajungFilter, sinceDateStr);
+      if (expandResult && expandResult.sampleSize > (result?.sampleSize ?? 0)) {
+        result = expandResult;
+        autoExpanded = true;
+      }
+    }
+  }
+
   if (!result) return emptyResponse(lowerLimitRate);
 
   const finalResult: SajungHistogramResponse = {
@@ -198,6 +229,7 @@ export async function GET(req: NextRequest) {
     orgRange: orgRange.range,
     orgRangeMin: orgRange.min,
     orgRangeMax: orgRange.max,
+    autoExpanded: autoExpanded || undefined,
   };
 
   // ── 캐시 저장 ──────────────────────────────────────────────────────────────

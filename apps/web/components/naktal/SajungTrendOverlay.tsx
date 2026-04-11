@@ -148,12 +148,6 @@ export function SajungTrendOverlay({ annId, userId, predictedSajungRate, period 
     return `${(parts[0] ?? "").slice(2)}년${parseInt(parts[1] ?? "0")}월`;
   };
 
-  // Brush 초기 범위: "all" 기간이면 뒤쪽 50%만, 나머지는 전체
-  const brushStart = useMemo(() => {
-    if (period === "all") return Math.max(0, Math.floor(mergedData.length * 0.5));
-    return 0;
-  }, [period, mergedData.length]);
-
   if (loading) {
     return (
       <div style={{ padding: "24px 0", textAlign: "center", color: "#94A3B8", fontSize: 13 }}>
@@ -196,6 +190,13 @@ export function SajungTrendOverlay({ annId, userId, predictedSajungRate, period 
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+      {/* 자동 expand 안내 배너 */}
+      {data.autoExpanded && (
+        <div style={{ padding: "8px 12px", background: "#FFF7ED", border: "1px solid #FED7AA", borderRadius: 8, fontSize: 12, color: "#9A3412" }}>
+          📡 동일 발주처 데이터가 부족해 유사 기관명까지 확장 검색했습니다.
+        </div>
+      )}
+
       {/* 통계 카드 */}
       <div style={{ display: "flex", gap: 8 }}>
         <StatCard
@@ -228,7 +229,7 @@ export function SajungTrendOverlay({ annId, userId, predictedSajungRate, period 
         <div style={{ fontSize: 12, color: "#64748B", marginBottom: 8, paddingLeft: 8 }}>
           건별 사정율 흐름 · {N.toLocaleString()}건
         </div>
-        <ResponsiveContainer width="100%" height={300}>
+        <ResponsiveContainer width="100%" height={380}>
           <ComposedChart data={mergedData} margin={{ top: 20, right: 20, left: -8, bottom: 20 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#E8ECF2" vertical={false} />
             <XAxis
@@ -311,16 +312,15 @@ export function SajungTrendOverlay({ annId, userId, predictedSajungRate, period 
             {/* 드래그 확대 Brush */}
             <Brush
               dataKey="seq"
-              height={24}
+              height={40}
               stroke="#E2E8F0"
               fill="#F8FAFC"
-              travellerWidth={8}
+              travellerWidth={10}
+              gap={1}
               tickFormatter={() => ""}
-              startIndex={brushStart}
+              startIndex={0}
               endIndex={mergedData.length - 1}
-            >
-              <Line dataKey="sajung" stroke="#1B3A6B" dot={false} strokeWidth={1} />
-            </Brush>
+            />
           </ComposedChart>
         </ResponsiveContainer>
         <div style={{ fontSize: 10, color: "#CBD5E1", textAlign: "center", marginTop: 4 }}>

@@ -109,10 +109,24 @@ export function SajungHistogram({ annId, predictedSajungRate, lowerLimitRate, pe
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+      {/* 자동 expand 안내 배너 */}
+      {data.autoExpanded && (
+        <div style={{ padding: "8px 12px", background: "#FFF7ED", border: "1px solid #FED7AA", borderRadius: 8, fontSize: 12, color: "#9A3412" }}>
+          📡 동일 발주처 데이터가 부족해 유사 기관명까지 확장 검색했습니다.
+        </div>
+      )}
+
       {/* 샘플 경고 배너 */}
       {sampleSize < 30 && (
         <div style={{ padding: "8px 12px", background: "#FFFBEB", border: "1px solid #FCD34D", borderRadius: 8, fontSize: 12, color: "#92400E" }}>
           ⚠️ 표본 수가 적어 분포 정확도가 낮을 수 있습니다. ({sampleSize}건 기반)
+        </div>
+      )}
+
+      {/* 두 봉우리 경고 배너 (전체업종 모드에서 분포 오염 가능성) */}
+      {categoryFilter === "all" && stats.stddev > 3.0 && (
+        <div style={{ padding: "8px 12px", background: "#FEF2F2", border: "1px solid #FECACA", borderRadius: 8, fontSize: 12, color: "#991B1B" }}>
+          ⚠️ 분포 편차가 큽니다 (σ={stats.stddev.toFixed(1)}%). 업종이 혼재되어 두 봉우리가 나타날 수 있으니 <b>동일업종</b> 필터를 우선 참고하세요.
         </div>
       )}
 

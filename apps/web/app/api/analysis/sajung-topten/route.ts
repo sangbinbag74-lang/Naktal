@@ -21,6 +21,7 @@ export interface SajungTopTenResponse {
   topTen: TopTenItem[];
   sampleSize: number;
   lowerLimitRate: number;
+  autoExpanded?: boolean;
   fromCache?: boolean;
 }
 
@@ -57,8 +58,9 @@ export async function GET(req: NextRequest) {
   const currentAnn = { bidMethod, budget: currentBudget };
   const categoryForFilter = categoryFilter === "all" ? null : ann.category as string;
 
-  // ── 낙찰 결과 수집 (direct → fallback) ──────────────────────────────────────
+  // ── 낙찰 결과 수집 (direct → fallback → auto-expand) ────────────────────────
   let bidRows: { finalPrice: string | number; bidRate: string | number; annId: string }[] = [];
+  let autoExpanded = false;
 
   const { data: direct } = await admin
     .from("BidResult")
@@ -70,7 +72,9 @@ export async function GET(req: NextRequest) {
 
   if ((direct ?? []).length > 0 && categoryFilter === "same" && orgScope === "exact") {
     bidRows = direct!;
-  } else {
+  }
+
+  if (bidRows.length < 10) {
     const konepsIds = await fetchOrgKonepsIds(
       admin,
       ann.orgName as string,
@@ -87,7 +91,32 @@ export async function GET(req: NextRequest) {
         .gt("bidRate", 0)
         .gt("finalPrice", 0)
         .limit(2000);
-      bidRows = fallback ?? [];
+      if ((fallback ?? []).length > bidRows.length) bidRows = fallback ?? [];
+    }
+  }
+
+  // exact 모드에서 여전히 10건 미만이면 자동 expand
+  if (orgScope === "exact" && bidRows.length < 10) {
+    const expandIds = await fetchOrgKonepsIds(
+      admin,
+      ann.orgName as string,
+      categoryForFilter,
+      ann.region as string,
+      currentAnn,
+      "expand",
+    );
+    if (expandIds.length > 0) {
+      const { data: expandRows } = await admin
+        .from("BidResult")
+        .select("finalPrice, bidRate, annId")
+        .in("annId", expandIds)
+        .gt("bidRate", 0)
+        .gt("finalPrice", 0)
+        .limit(2000);
+      if ((expandRows ?? []).length > bidRows.length) {
+        bidRows = expandRows ?? [];
+        autoExpanded = true;
+      }
     }
   }
 
@@ -126,7 +155,7 @@ export async function GET(req: NextRequest) {
     bidPrice: Math.round(currentBudget * (bucket / 100) * (lowerLimitRate / 100)),
   }));
 
-  const result: SajungTopTenResponse = { topTen, sampleSize: total, lowerLimitRate };
+  const result: SajungTopTenResponse = { topTen, sampleSize: total, lowerLimitRate, autoExpanded: autoExpanded || undefined };
 
   // ── 캐시 저장 ──────────────────────────────────────────────────────────────
   await setCachedAnalysis(annId, period, cacheType, result, total);

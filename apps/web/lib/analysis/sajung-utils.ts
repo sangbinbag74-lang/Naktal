@@ -83,7 +83,7 @@ export function extractCoreOrgName(orgName: string): string {
 export async function fetchOrgKonepsIds(
   supabase: SupabaseClient,
   orgName: string,
-  category: string | null,  // null = 발주처 전체 업종
+  category: string | null,  // null = 발주처 전체 업종 (전체업종 모드)
   region: string,
   currentAnn: { bidMethod: string; budget: number },
   orgScope: "exact" | "expand" = "exact",
@@ -91,8 +91,10 @@ export async function fetchOrgKonepsIds(
   const isUnitPrice = currentAnn.bidMethod?.includes("단가") ?? false;
   // budget=0이면 예산 범위 필터 비활성화 (100만원 미만 제외만 유지)
   const hasBudget = currentAnn.budget > 0;
-  const budgetMin = hasBudget ? Math.max(1_000_000, currentAnn.budget * 0.3) : 1_000_000;
-  const budgetMax = hasBudget ? currentAnn.budget * 3.0 : Infinity;
+  // 전체업종(category=null) 모드는 업종 오염을 줄이기 위해 예산 범위를 좁게 (0.5x~2.0x)
+  const isAllCategory = category === null;
+  const budgetMin = hasBudget ? Math.max(1_000_000, currentAnn.budget * (isAllCategory ? 0.5 : 0.3)) : 1_000_000;
+  const budgetMax = hasBudget ? currentAnn.budget * (isAllCategory ? 2.0 : 3.0) : Infinity;
 
   type AnnRow = { konepsId: string; budget: string | number; rawJson: Record<string, string> | null };
 
