@@ -42,8 +42,10 @@ export async function fetchOrgKonepsIds(
   currentAnn: { bidMethod: string; budget: number },
 ): Promise<string[]> {
   const isUnitPrice = currentAnn.bidMethod?.includes("단가") ?? false;
-  const budgetMin = Math.max(1_000_000, currentAnn.budget * 0.3);
-  const budgetMax = currentAnn.budget * 3.0;
+  // budget=0이면 예산 범위 필터 비활성화 (100만원 미만 제외만 유지)
+  const hasBudget = currentAnn.budget > 0;
+  const budgetMin = hasBudget ? Math.max(1_000_000, currentAnn.budget * 0.3) : 1_000_000;
+  const budgetMax = hasBudget ? currentAnn.budget * 3.0 : Infinity;
 
   type AnnRow = { konepsId: string; budget: string | number; rawJson: Record<string, string> | null };
 
