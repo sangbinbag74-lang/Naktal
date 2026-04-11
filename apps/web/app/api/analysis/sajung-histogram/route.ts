@@ -6,6 +6,7 @@ import {
   fetchOrgKonepsIds,
   roundBucket,
   getSajungRange,
+  getSajungFilter,
 } from "@/lib/analysis/sajung-utils";
 import { getCachedAnalysis, setCachedAnalysis, periodToDate } from "@/lib/analysis/sajung-cache";
 
@@ -47,6 +48,7 @@ async function buildHistogramResponse(
   results: { finalPrice: number | string; bidRate: number | string; annId: string }[],
   admin: ReturnType<typeof createAdminClient>,
   lowerLimitRate: number,
+  filter: { min: number; max: number },
 ): Promise<SajungHistogramResponse | null> {
   if (results.length === 0) return null;
 
@@ -56,7 +58,7 @@ async function buildHistogramResponse(
   const rates: number[] = [];
   for (const r of results) {
     const sajung = calcSajung(Number(r.finalPrice), Number(r.bidRate), budgetMap.get(r.annId) ?? 0);
-    if (sajung >= 85 && sajung <= 125) rates.push(roundBucket(sajung));
+    if (sajung >= filter.min && sajung <= filter.max) rates.push(roundBucket(sajung));
   }
 
   if (rates.length === 0) return null;
@@ -66,8 +68,8 @@ async function buildHistogramResponse(
   for (const r of rates) bucketMap.set(r, (bucketMap.get(r) ?? 0) + 1);
 
   const keys = Array.from(bucketMap.keys()).sort((a, b) => a - b);
-  const minKey = keys[0] ?? 85;
-  const maxKey = keys[keys.length - 1] ?? 125;
+  const minKey = keys[0] ?? filter.min;
+  const maxKey = keys[keys.length - 1] ?? filter.max;
 
   const histogram: HistogramBucket[] = [];
   let cumCount = 0;
@@ -128,18 +130,23 @@ export async function GET(req: NextRequest) {
 
   const { data: ann } = await admin
     .from("Announcement")
-    .select("id, konepsId, orgName, category, rawJson")
+    .select("id, konepsId, orgName, category, region, budget, rawJson")
     .eq("id", annId)
     .single();
 
   if (!ann) return NextResponse.json({ error: "Announcement not found" }, { status: 404 });
 
-  const orgRange = getSajungRange(ann.orgName as string);
   const rawJson = (ann.rawJson ?? {}) as Record<string, string>;
   const lwltStr = rawJson.sucsfbidLwltRate ?? "";
   const lowerLimitRate = parseFloat(lwltStr.replace(/[^0-9.]/g, "")) || 87.745;
+  const bidMethod = rawJson.bidMthdNm ?? rawJson.cntrctMthdNm ?? "";
+  const currentBudget = Number(ann.budget);
 
+  const orgRange = getSajungRange(ann.orgName as string);
+  const sajungFilter = getSajungFilter(ann.orgName as string);
   const sinceDate = periodToDate(period);
+
+  const currentAnn = { bidMethod, budget: currentBudget };
 
   // ── Direct 조회 ─────────────────────────────────────────────────────────────
   let directQ = admin
@@ -157,9 +164,15 @@ export async function GET(req: NextRequest) {
   let result: SajungHistogramResponse | null = null;
 
   if (directRows.length > 0) {
-    result = await buildHistogramResponse(directRows, admin, lowerLimitRate);
+    result = await buildHistogramResponse(directRows, admin, lowerLimitRate, sajungFilter);
   } else {
-    const konepsIds = await fetchOrgKonepsIds(admin, ann.orgName as string, ann.category as string);
+    const konepsIds = await fetchOrgKonepsIds(
+      admin,
+      ann.orgName as string,
+      ann.category as string,
+      ann.region as string,
+      currentAnn,
+    );
     if (konepsIds.length > 0) {
       let fallbackQ = admin
         .from("BidResult")
@@ -171,7 +184,7 @@ export async function GET(req: NextRequest) {
       if (sinceDate) fallbackQ = fallbackQ.gte("createdAt", sinceDate);
 
       const { data: fallback } = await fallbackQ;
-      result = await buildHistogramResponse(fallback ?? [], admin, lowerLimitRate);
+      result = await buildHistogramResponse(fallback ?? [], admin, lowerLimitRate, sajungFilter);
     }
   }
 

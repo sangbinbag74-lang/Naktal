@@ -30,40 +30,50 @@ export async function buildBudgetMap(
   );
 }
 
-/** 동일 orgName + category 공고의 konepsId 목록 조회
- *  - category 일치 건수 < minForCategory 이면 category 조건 제거(발주처 전체)로 폴백
+/** 동일 orgName + region 공고의 konepsId 목록 조회
+ *  - 단가계약 제외, 예산 규모 유사 공고만 포함 (0.3x ~ 3x)
+ *  - 발주처 공고(orgName) + 동일 지역·업종(region+category) 합산
  */
 export async function fetchOrgKonepsIds(
   supabase: SupabaseClient,
   orgName: string,
   category: string,
-  limit = 200,
-  minForCategory = 20,
+  region: string,
+  currentAnn: { bidMethod: string; budget: number },
 ): Promise<string[]> {
-  const { data: exact } = await supabase
-    .from("Announcement")
-    .select("konepsId")
-    .eq("orgName", orgName)
-    .eq("category", category)
-    .limit(limit);
+  const isUnitPrice = currentAnn.bidMethod?.includes("단가") ?? false;
+  const budgetMin = Math.max(1_000_000, currentAnn.budget * 0.3);
+  const budgetMax = currentAnn.budget * 3.0;
 
-  const exactIds = (exact ?? [])
-    .map((a: { konepsId: string }) => a.konepsId)
-    .filter(Boolean) as string[];
+  type AnnRow = { konepsId: string; budget: string | number; rawJson: Record<string, string> | null };
 
-  // category 일치 건수가 충분하면 그대로 반환
-  if (exactIds.length >= minForCategory) return exactIds;
+  const [{ data: orgAnns }, { data: regionAnns }] = await Promise.all([
+    supabase
+      .from("Announcement")
+      .select("konepsId, budget, rawJson")
+      .eq("orgName", orgName)
+      .eq("category", category)
+      .limit(500),
+    supabase
+      .from("Announcement")
+      .select("konepsId, budget, rawJson")
+      .eq("category", category)
+      .eq("region", region)
+      .limit(300),
+  ]);
 
-  // 부족하면 category 조건 없이 발주처 전체로 폴백
-  const { data: all } = await supabase
-    .from("Announcement")
-    .select("konepsId")
-    .eq("orgName", orgName)
-    .limit(limit);
+  const allAnns: AnnRow[] = [...(orgAnns ?? []), ...(regionAnns ?? [])];
 
-  return (all ?? [])
-    .map((a: { konepsId: string }) => a.konepsId)
-    .filter(Boolean) as string[];
+  const filtered = allAnns.filter((a) => {
+    const b = Number(a.budget);
+    if (b < 1_000_000) return false;
+    if (b < budgetMin || b > budgetMax) return false;
+    const mthd = (a.rawJson as Record<string, string> | null)?.bidMthdNm ?? "";
+    if (!isUnitPrice && mthd.includes("단가")) return false;
+    return true;
+  });
+
+  return Array.from(new Set(filtered.map((a) => a.konepsId as string))).filter(Boolean);
 }
 
 /** 0.1%p 단위 반올림 */
@@ -101,4 +111,11 @@ export function getOrgRange(orgName: string): number {
 export function getSajungRange(orgName: string): { min: number; max: number; range: number } {
   const r = getOrgRange(orgName);
   return { min: 100 - r, max: 100 + r, range: r };
+}
+
+/** 기관명으로 사정율 이상값 필터 범위 반환 (예가범위 + buffer 5%) */
+export function getSajungFilter(orgName: string): { min: number; max: number } {
+  const r = getOrgRange(orgName);
+  const buffer = 5;
+  return { min: 100 - r - buffer, max: 100 + r + buffer };
 }

@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/server";
-import { calcSajung, buildBudgetMap, fetchOrgKonepsIds } from "@/lib/analysis/sajung-utils";
+import {
+  calcSajung,
+  buildBudgetMap,
+  fetchOrgKonepsIds,
+  getSajungFilter,
+} from "@/lib/analysis/sajung-utils";
 import { getCachedAnalysis, setCachedAnalysis, periodToDate } from "@/lib/analysis/sajung-cache";
 
 export interface TrendPoint {
@@ -49,16 +54,26 @@ export async function GET(req: NextRequest) {
 
   const { data: ann } = await admin
     .from("Announcement")
-    .select("id, konepsId, orgName, category")
+    .select("id, konepsId, orgName, category, region, budget, rawJson")
     .eq("id", annId)
     .single();
 
   if (!ann) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
+  const rawJson = (ann.rawJson ?? {}) as Record<string, string>;
+  const bidMethod = rawJson.bidMthdNm ?? rawJson.cntrctMthdNm ?? "";
+  const currentAnn = { bidMethod, budget: Number(ann.budget) };
+  const sajungFilter = getSajungFilter(ann.orgName as string);
   const sinceDate = periodToDate(period);
 
   // ── 1. 발주처 사정율 개별 건 수집 ──────────────────────────────────────────
-  const konepsIds = await fetchOrgKonepsIds(admin, ann.orgName as string, ann.category as string, 300);
+  const konepsIds = await fetchOrgKonepsIds(
+    admin,
+    ann.orgName as string,
+    ann.category as string,
+    ann.region as string,
+    currentAnn,
+  );
   const orgByMonth = new Map<string, number[]>();
   const orgRaw: { date: string; sajung: number }[] = [];
 
@@ -82,7 +97,7 @@ export async function GET(req: NextRequest) {
         Number(r.bidRate),
         budgetMap.get(r.annId as string) ?? 0,
       );
-      if (sajung < 85 || sajung > 125) continue;
+      if (sajung < sajungFilter.min || sajung > sajungFilter.max) continue;
       const date = (r.createdAt as string).slice(0, 7);
       const rounded = Math.round(sajung * 100) / 100;
       if (!orgByMonth.has(date)) orgByMonth.set(date, []);
@@ -113,7 +128,7 @@ export async function GET(req: NextRequest) {
     const { data: outcomes } = await q;
     for (const o of outcomes ?? []) {
       const sajung = Number(o.actualSajungRate);
-      if (!sajung || sajung < 85 || sajung > 125) continue;
+      if (!sajung || sajung < sajungFilter.min || sajung > sajungFilter.max) continue;
       const date = (o.bidAt as string).slice(0, 7);
       const rounded = Math.round(sajung * 100) / 100;
       if (!mineByMonth.has(date)) mineByMonth.set(date, []);

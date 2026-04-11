@@ -5,6 +5,7 @@ import {
   buildBudgetMap,
   fetchOrgKonepsIds,
   roundBucket,
+  getSajungFilter,
 } from "@/lib/analysis/sajung-utils";
 import { getCachedAnalysis, setCachedAnalysis, periodToDate } from "@/lib/analysis/sajung-cache";
 
@@ -37,7 +38,7 @@ export async function GET(req: NextRequest) {
 
   const { data: ann } = await admin
     .from("Announcement")
-    .select("id, konepsId, orgName, category, budget, rawJson")
+    .select("id, konepsId, orgName, category, region, budget, rawJson")
     .eq("id", annId)
     .single();
 
@@ -47,8 +48,11 @@ export async function GET(req: NextRequest) {
   const lwltStr = rawJson.sucsfbidLwltRate ?? "";
   const lowerLimitRate = parseFloat(lwltStr.replace(/[^0-9.]/g, "")) || 87.745;
   const currentBudget = Number(ann.budget);
+  const bidMethod = rawJson.bidMthdNm ?? rawJson.cntrctMthdNm ?? "";
 
+  const sajungFilter = getSajungFilter(ann.orgName as string);
   const sinceDate = periodToDate(period);
+  const currentAnn = { bidMethod, budget: currentBudget };
 
   // ── 낙찰 결과 수집 (direct → fallback) ──────────────────────────────────────
   let bidRows: { finalPrice: string | number; bidRate: string | number; annId: string }[] = [];
@@ -66,7 +70,13 @@ export async function GET(req: NextRequest) {
   if ((direct ?? []).length > 0) {
     bidRows = direct!;
   } else {
-    const konepsIds = await fetchOrgKonepsIds(admin, ann.orgName as string, ann.category as string);
+    const konepsIds = await fetchOrgKonepsIds(
+      admin,
+      ann.orgName as string,
+      ann.category as string,
+      ann.region as string,
+      currentAnn,
+    );
     if (konepsIds.length > 0) {
       let fallbackQ = admin
         .from("BidResult")
@@ -93,7 +103,7 @@ export async function GET(req: NextRequest) {
 
   for (const r of bidRows) {
     const sajung = calcSajung(Number(r.finalPrice), Number(r.bidRate), budgetMap.get(r.annId) ?? 0);
-    if (sajung < 85 || sajung > 125) continue;
+    if (sajung < sajungFilter.min || sajung > sajungFilter.max) continue;
     const bucket = roundBucket(sajung);
     bucketMap.set(bucket, (bucketMap.get(bucket) ?? 0) + 1);
     total++;
@@ -116,7 +126,7 @@ export async function GET(req: NextRequest) {
   const result: SajungTopTenResponse = { topTen, sampleSize: total, lowerLimitRate };
 
   // ── 캐시 저장 ──────────────────────────────────────────────────────────────
-  await setCachedAnalysis(annId, period, "topten", result , total);
+  await setCachedAnalysis(annId, period, "topten", result, total);
 
   return NextResponse.json<SajungTopTenResponse>(result);
 }
