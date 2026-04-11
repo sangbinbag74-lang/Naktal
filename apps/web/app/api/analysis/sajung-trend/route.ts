@@ -26,6 +26,19 @@ export interface MyPoint {
   sajung: number;
 }
 
+export interface PredictionItem {
+  deviation: number;
+  sajung: number;
+  label: string;
+}
+
+export interface SajungPredictions {
+  center: PredictionItem;
+  upper: PredictionItem;
+  lower: PredictionItem;
+  basis: string;
+}
+
 export interface SajungTrendResponse {
   trend?: TrendPoint[];
   orgPoints: OrgPoint[];
@@ -37,6 +50,61 @@ export interface SajungTrendResponse {
   gap: number | null;
   autoExpanded?: boolean;
   fromCache?: boolean;
+  predictions?: SajungPredictions;
+}
+
+// ── 예측 헬퍼 ──────────────────────────────────────────────────────────────
+
+function calcTrendSlope(points: { sajung: number; date: string }[]): { slope: number; direction: string } {
+  if (points.length < 3) return { slope: 0, direction: "stable" };
+  const sorted = [...points].sort((a, b) => a.date.localeCompare(b.date));
+  const n = sorted.length;
+  const xs = sorted.map((_, i) => i);
+  const ys = sorted.map(p => p.sajung);
+  const xMean = xs.reduce((s, x) => s + x, 0) / n;
+  const yMean = ys.reduce((s, y) => s + y, 0) / n;
+  const num = xs.reduce((s, x, i) => s + (x - xMean) * ((ys[i] ?? yMean) - yMean), 0);
+  const den = xs.reduce((s, x) => s + (x - xMean) ** 2, 0);
+  const slope = den === 0 ? 0 : Math.round((num / den) * 10000) / 10000;
+  const direction = slope > 0.01 ? "up" : slope < -0.01 ? "down" : "stable";
+  return { slope, direction };
+}
+
+function calcStability(points: { sajung: number }[], avg: number): number {
+  if (points.length < 2) return 0.5;
+  const variance = points.reduce((s, p) => s + (p.sajung - avg) ** 2, 0) / points.length;
+  const stddev = Math.sqrt(variance);
+  return Math.max(0, Math.min(1, 1 - stddev / 5));
+}
+
+function calcNext3Predictions(
+  orgPoints: { sajung: number; date: string }[],
+  orgAvg: number,
+  trendResult: { slope: number; direction: string },
+  stabilityScore: number,
+): SajungPredictions {
+  if (orgPoints.length < 3) {
+    return {
+      center: { deviation: 0,    sajung: orgAvg,       label: "가장 유력" },
+      upper:  { deviation: 0.5,  sajung: orgAvg + 0.5, label: "상단 예상" },
+      lower:  { deviation: -0.5, sajung: orgAvg - 0.5, label: "하단 예상" },
+      basis: "데이터 부족 — 발주처 평균 기준",
+    };
+  }
+  const recent = [...orgPoints].sort((a, b) => a.date.localeCompare(b.date)).slice(-10);
+  const deviations = recent.map(p => p.sajung - orgAvg);
+  const meanDev = deviations.reduce((s, d) => s + d, 0) / deviations.length;
+  const stddev = Math.sqrt(deviations.reduce((s, d) => s + (d - meanDev) ** 2, 0) / deviations.length);
+  const centerDev = Math.round((meanDev + trendResult.slope) * 1000) / 1000;
+  const spread = stddev * (1 + (1 - stabilityScore) * 0.5);
+  const upperDev = Math.round((centerDev + spread * 0.67) * 1000) / 1000;
+  const lowerDev = Math.round((centerDev - spread * 0.67) * 1000) / 1000;
+  return {
+    center: { deviation: centerDev, sajung: Math.round((orgAvg + centerDev) * 1000) / 1000, label: "가장 유력" },
+    upper:  { deviation: upperDev,  sajung: Math.round((orgAvg + upperDev) * 1000) / 1000,  label: "상단 예상" },
+    lower:  { deviation: lowerDev,  sajung: Math.round((orgAvg + lowerDev) * 1000) / 1000,  label: "하단 예상" },
+    basis: `최근 ${recent.length}건 · ${trendResult.direction !== "stable" ? (trendResult.direction === "up" ? "상승" : "하락") + "추세" : "추세 안정"} · ±${stddev.toFixed(3)}%`,
+  };
 }
 
 export async function GET(req: NextRequest) {
@@ -49,7 +117,7 @@ export async function GET(req: NextRequest) {
 
   // ── 캐시 확인 ──────────────────────────────────────────────────────────────
   const cacheUserId = userId && userId !== "anon" ? userId : "";
-  const cacheType = `trend_v4${categoryFilter === "all" ? "_all" : ""}${orgScope === "expand" ? "_expand" : ""}`;
+  const cacheType = `trend_v5${categoryFilter === "all" ? "_all" : ""}${orgScope === "expand" ? "_expand" : ""}`;
   const cached = await getCachedAnalysis(annId, period, cacheType, cacheUserId);
   if (cached) return NextResponse.json({ ...cached, fromCache: true });
 
@@ -169,6 +237,14 @@ export async function GET(req: NextRequest) {
     ? Math.round((mineAvg - orgAvg) * 100) / 100
     : null;
 
+  // ── 4. 예측 사정율 3개 ──────────────────────────────────────────────────
+  let predictions: SajungPredictions | undefined;
+  if (orgAvg !== null && orgPoints.length >= 3) {
+    const trendResult = calcTrendSlope(orgPoints);
+    const stabilityScore = calcStability(orgPoints, orgAvg);
+    predictions = calcNext3Predictions(orgPoints, orgAvg, trendResult, stabilityScore);
+  }
+
   const result: SajungTrendResponse = {
     orgPoints,
     myPoints,
@@ -178,6 +254,7 @@ export async function GET(req: NextRequest) {
     mineAvg,
     gap,
     autoExpanded: autoExpanded || undefined,
+    predictions,
   };
 
   // ── 캐시 저장 ──────────────────────────────────────────────────────────────

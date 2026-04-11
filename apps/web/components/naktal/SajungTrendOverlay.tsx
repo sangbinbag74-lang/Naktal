@@ -13,7 +13,7 @@ import {
   Legend,
   Brush,
 } from "recharts";
-import type { OrgPoint, SajungTrendResponse } from "@/app/api/analysis/sajung-trend/route";
+import type { OrgPoint, SajungPredictions, SajungTrendResponse } from "@/app/api/analysis/sajung-trend/route";
 import { formatDeviation, formatSajung, deviationColor } from "@/lib/format";
 
 interface SajungTrendOverlayProps {
@@ -130,16 +130,30 @@ export function SajungTrendOverlay({ annId, userId, predictedSajungRate, period 
         sajung: p.sajung,
         date: p.date,
         mineSajung: mine?.sajung ?? null,
+        predCenter: null as number | null,
+        predUpper: null as number | null,
+        predLower: null as number | null,
       };
     });
   }, [data]);
 
+  // 예측 점 포함 차트 데이터 (예측 있을 때 끝에 플레이스홀더 추가)
+  const chartData = useMemo(() => {
+    const pred = data?.predictions;
+    if (!pred || mergedData.length === 0) return mergedData;
+    const lastSeq = mergedData[mergedData.length - 1]?.seq ?? 0;
+    return [
+      ...mergedData,
+      { seq: lastSeq + 3, sajung: null, date: "", mineSajung: null, predCenter: pred.center.sajung, predUpper: pred.upper.sajung, predLower: pred.lower.sajung },
+    ];
+  }, [mergedData, data?.predictions]);
+
   // Brush 선택 범위의 가시 데이터 (xTicks·Y domain 재계산용)
   const visibleData = useMemo(() => {
     const start = brushRange?.startIndex ?? 0;
-    const end = brushRange?.endIndex ?? mergedData.length - 1;
-    return mergedData.slice(start, end + 1);
-  }, [mergedData, brushRange]);
+    const end = brushRange?.endIndex ?? chartData.length - 1;
+    return chartData.slice(start, end + 1);
+  }, [chartData, brushRange]);
 
   // X 틱 계산: 최대 5개, "24년3월" 형식 (visibleData 기준)
   const xTicks = useMemo(() => {
@@ -202,8 +216,13 @@ export function SajungTrendOverlay({ annId, userId, predictedSajungRate, period 
     }
   };
 
-  // Y axis domain: ±1.5% 여유 (visibleData 기준으로 동적 조정)
-  const allY = visibleData.map((d: { sajung: number }) => d.sajung);
+  // Y axis domain: ±1.5% 여유 (visibleData + 예측값 기준으로 동적 조정)
+  const allY: number[] = visibleData.flatMap((d) => [
+    d.sajung,
+    d.predCenter,
+    d.predUpper,
+    d.predLower,
+  ]).filter((v): v is number => v != null);
   const yMin = Math.max(85, Math.floor((Math.min(...allY) - 1.5) * 10) / 10);
   const yMax = Math.min(125, Math.ceil((Math.max(...allY) + 1.5) * 10) / 10);
 
@@ -254,7 +273,7 @@ export function SajungTrendOverlay({ annId, userId, predictedSajungRate, period 
           건별 사정율 흐름 · {N.toLocaleString()}건
         </div>
         <ResponsiveContainer width="100%" height={380}>
-          <ComposedChart data={mergedData} margin={{ top: 20, right: 20, left: -8, bottom: 20 }}>
+          <ComposedChart data={chartData} margin={{ top: 20, right: 20, left: -8, bottom: 20 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#E8ECF2" vertical={false} />
             <XAxis
               dataKey="seq"
@@ -333,6 +352,48 @@ export function SajungTrendOverlay({ annId, userId, predictedSajungRate, period 
               />
             )}
 
+            {/* 예측 중심 (◆ 진남색) */}
+            {data.predictions && (
+              <Line
+                dataKey="predCenter"
+                stroke="none"
+                dot={(props: any) => {
+                  if (props.value == null) return <g key={props.key} />;
+                  return <polygon key={props.key} points={`${props.cx},${props.cy - 8} ${props.cx + 7},${props.cy} ${props.cx},${props.cy + 8} ${props.cx - 7},${props.cy}`} fill="#1B3A6B" />;
+                }}
+                isAnimationActive={false}
+                legendType="none"
+              />
+            )}
+
+            {/* 예측 상단 (▲ 빨강) */}
+            {data.predictions && (
+              <Line
+                dataKey="predUpper"
+                stroke="none"
+                dot={(props: any) => {
+                  if (props.value == null) return <g key={props.key} />;
+                  return <polygon key={props.key} points={`${props.cx},${props.cy - 8} ${props.cx + 7},${props.cy + 6} ${props.cx - 7},${props.cy + 6}`} fill="#DC2626" />;
+                }}
+                isAnimationActive={false}
+                legendType="none"
+              />
+            )}
+
+            {/* 예측 하단 (▼ 초록) */}
+            {data.predictions && (
+              <Line
+                dataKey="predLower"
+                stroke="none"
+                dot={(props: any) => {
+                  if (props.value == null) return <g key={props.key} />;
+                  return <polygon key={props.key} points={`${props.cx},${props.cy + 8} ${props.cx + 7},${props.cy - 6} ${props.cx - 7},${props.cy - 6}`} fill="#16A34A" />;
+                }}
+                isAnimationActive={false}
+                legendType="none"
+              />
+            )}
+
             {/* 드래그 확대 Brush (onChange → visibleData 재계산) */}
             <Brush
               dataKey="seq"
@@ -343,7 +404,7 @@ export function SajungTrendOverlay({ annId, userId, predictedSajungRate, period 
               gap={2}
               tickFormatter={() => ""}
               startIndex={brushRange?.startIndex ?? 0}
-              endIndex={brushRange?.endIndex ?? mergedData.length - 1}
+              endIndex={brushRange?.endIndex ?? chartData.length - 1}
               onChange={handleBrushChange}
             />
           </ComposedChart>
@@ -351,6 +412,44 @@ export function SajungTrendOverlay({ annId, userId, predictedSajungRate, period 
         <div style={{ fontSize: 10, color: "#CBD5E1", textAlign: "center", marginTop: 4 }}>
           하단 막대를 드래그해서 기간을 확대할 수 있습니다
         </div>
+      </div>
+
+      {/* 예측 카드 */}
+      {data.predictions && (
+        <PredictionCards predictions={data.predictions} orgAvg={baseAvg} />
+      )}
+    </div>
+  );
+}
+
+// ── 예측 카드 ─────────────────────────────────────────────────────────────────
+
+function PredictionCards({ predictions, orgAvg }: { predictions: SajungPredictions; orgAvg: number }) {
+  const items = [
+    { item: predictions.upper,  color: "#DC2626", bg: "#FEF2F2", border: "#FECACA", icon: "▲" },
+    { item: predictions.center, color: "#1B3A6B", bg: "#EFF6FF", border: "#BFDBFE", icon: "◆" },
+    { item: predictions.lower,  color: "#16A34A", bg: "#F0FDF4", border: "#BBF7D0", icon: "▼" },
+  ];
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+      <div style={{ fontSize: 11, color: "#94A3B8", fontWeight: 600 }}>
+        차트 패턴 분석 · 다음 예측 사정율
+        <span style={{ fontWeight: 400, marginLeft: 6 }}>{predictions.basis}</span>
+      </div>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8 }}>
+        {items.map(({ item, color, bg, border, icon }) => (
+          <div
+            key={item.label}
+            style={{ background: bg, border: `1px solid ${border}`, borderRadius: 10, padding: "10px 12px", textAlign: "center" }}
+          >
+            <div style={{ fontSize: 13, marginBottom: 4 }}>{icon}</div>
+            <div style={{ fontSize: 11, color: "#64748B", marginBottom: 2 }}>{item.label}</div>
+            <div style={{ fontSize: 16, fontWeight: 700, color }}>{formatSajung(item.sajung)}</div>
+            <div style={{ fontSize: 11, color: "#94A3B8", marginTop: 2 }}>
+              {formatDeviation(item.sajung, orgAvg)}
+            </div>
+          </div>
+        ))}
       </div>
     </div>
   );
