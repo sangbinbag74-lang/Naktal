@@ -118,7 +118,7 @@ export default async function AnnouncementDetailPage({
   const g2bUrl = rawJson.ntcePbancUrl || `https://www.g2b.go.kr:8081/ep/peoplecvpl/narasVary.do?bidno=${a.konepsId}&bidseq=${rawJson.bidNtceSqNo ?? "00"}`;
 
   return (
-    <div className="w-full bg-gray-50 min-h-screen">
+    <div className="w-full min-h-screen" style={{ background: "#EEF2F7" }}>
       <div className="max-w-[1400px] mx-auto px-6 py-5">
 
       {/* 뒤로가기 */}
@@ -136,7 +136,7 @@ export default async function AnnouncementDetailPage({
         border: "1px solid #E8ECF2",
         padding: "24px",
         marginBottom: 20,
-        boxShadow: "0 1px 4px rgba(0,0,0,0.04)",
+        boxShadow: "0 2px 12px rgba(0,0,0,0.08)",
       }}>
         <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 16 }}>
 
@@ -190,7 +190,7 @@ export default async function AnnouncementDetailPage({
         </div>
 
         {/* 핵심 숫자 3개 */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 24, marginTop: 20, paddingTop: 20, borderTop: "1px solid #F1F5F9" }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 24, background: "#F8FAFC", borderRadius: 10, padding: "16px 20px", marginTop: 16 }}>
           {[
             { label: "기초금액",   value: fmt(a.budget),                                                                    sub: "VAT 별도" },
             { label: "추정가격",   value: estimatedPrice ? new Intl.NumberFormat("ko-KR").format(estimatedPrice) + "원" : "-", sub: "기초금액 기준 추정" },
@@ -212,7 +212,7 @@ export default async function AnnouncementDetailPage({
         <div className="order-2 lg:order-1" style={{ display: "flex", flexDirection: "column", gap: 16 }}>
 
           {/* 기본정보 카드 */}
-          <div style={{ background: "#fff", borderRadius: 16, border: "1px solid #E8ECF2", padding: "20px", boxShadow: "0 1px 4px rgba(0,0,0,0.04)" }}>
+          <div style={{ background: "#fff", borderRadius: 16, border: "1px solid #E8ECF2", padding: "20px", boxShadow: "0 2px 8px rgba(0,0,0,0.06)" }}>
             <div style={{ fontSize: 13, fontWeight: 600, color: "#374151", marginBottom: 16 }}>공고 기본정보</div>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px 24px" }}>
               {[
@@ -236,7 +236,7 @@ export default async function AnnouncementDetailPage({
           </div>
 
           {/* 참가자격 카드 */}
-          <div style={{ background: "#fff", borderRadius: 16, border: "1px solid #E8ECF2", padding: "20px", boxShadow: "0 1px 4px rgba(0,0,0,0.04)" }}>
+          <div style={{ background: "#fff", borderRadius: 16, border: "1px solid #E8ECF2", padding: "20px", boxShadow: "0 2px 8px rgba(0,0,0,0.06)" }}>
             <div style={{ fontSize: 13, fontWeight: 600, color: "#374151", marginBottom: 16 }}>참가자격 / 조건</div>
             {prtcptnLmtNm ? (
               <div style={{ fontSize: 13, color: "#374151", lineHeight: 1.7, whiteSpace: "pre-line" }}>{prtcptnLmtNm}</div>
