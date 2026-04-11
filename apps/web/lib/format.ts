@@ -24,19 +24,34 @@ export function formatDeadline(iso: string): string {
   });
 }
 
-/** 사정율 편차: (sajung - 100), 소수점 3자리, % 단위. 예: 99.123 → "-0.877%" */
-export function formatDeviation(sajung: number): string {
-  const dev = sajung - 100;
-  const sign = dev >= 0 ? "+" : "";
-  return `${sign}${dev.toFixed(3)}%`;
-}
-
 /** 사정율 절대값: 소수점 3자리. 예: 103.456 → "103.456%" */
 export function formatSajung(sajung: number): string {
   return `${sajung.toFixed(3)}%`;
 }
 
+/**
+ * 사정율 편차: (sajung - orgAvg), 소수점 3자리, % 단위.
+ * 예: formatDeviation(109.850, 109.840) → "+0.010%"
+ */
+export function formatDeviation(sajung: number, orgAvg: number): string {
+  const dev = sajung - orgAvg;
+  const sign = dev >= 0 ? "+" : "";
+  return `${sign}${dev.toFixed(3)}%`;
+}
+
 /** 편차 색상: 양수(파랑) / 음수(빨강) */
-export function deviationColor(sajung: number): string {
-  return (sajung - 100) >= 0 ? "#2563EB" : "#DC2626";
+export function deviationColor(sajung: number, orgAvg: number): string {
+  return (sajung - orgAvg) >= 0 ? "#2563EB" : "#DC2626";
+}
+
+/** 절대값 + 편차 묶음 반환 */
+export function formatSajungWithDev(sajung: number, orgAvg: number): {
+  absolute: string; deviation: string; isPositive: boolean;
+} {
+  const dev = sajung - orgAvg;
+  return {
+    absolute: `${sajung.toFixed(3)}%`,
+    deviation: `${dev >= 0 ? "+" : ""}${dev.toFixed(3)}%`,
+    isPositive: dev >= 0,
+  };
 }

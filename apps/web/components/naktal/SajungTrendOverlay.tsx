@@ -43,24 +43,25 @@ function StatCard({ label, value, dev, devColor, sub, color = "#0F172A" }: {
 
 // ── 커스텀 툴팁 ───────────────────────────────────────────────────────────────
 
-function CustomTooltip({ active, payload, seqToDate }: any) {
+function CustomTooltip({ active, payload, seqToDate, orgAvg }: any) {
   if (!active || !payload?.length) return null;
   const d = payload[0]?.payload;
   if (!d) return null;
   const date = seqToDate[d.seq] ?? "";
+  const avg = orgAvg ?? 100;
   return (
     <div style={{ background: "#fff", border: "1px solid #E8ECF2", borderRadius: 8, padding: "8px 12px", fontSize: 12 }}>
       <div style={{ fontWeight: 700, marginBottom: 4, color: "#64748B" }}>{date}</div>
       <div style={{ color: "#1B3A6B" }}>
         발주처 {formatSajung(d.sajung ?? 100)}
         {" "}
-        <span style={{ color: "#94A3B8", fontSize: 11 }}>({formatDeviation(d.sajung ?? 100)})</span>
+        <span style={{ color: "#94A3B8", fontSize: 11 }}>({formatDeviation(d.sajung ?? 100, avg)})</span>
       </div>
       {d.mineSajung != null && (
         <div style={{ color: "#F59E0B", marginTop: 2 }}>
           내 투찰 {formatSajung(d.mineSajung)}
           {" "}
-          <span style={{ color: "#94A3B8", fontSize: 11 }}>({formatDeviation(d.mineSajung)})</span>
+          <span style={{ color: "#94A3B8", fontSize: 11 }}>({formatDeviation(d.mineSajung, avg)})</span>
         </div>
       )}
     </div>
@@ -69,12 +70,12 @@ function CustomTooltip({ active, payload, seqToDate }: any) {
 
 // ── AI 참조선 레이블 ──────────────────────────────────────────────────────────
 
-function AiLabel({ viewBox, rate }: { viewBox?: { x: number; y: number; width: number }; rate: number }) {
+function AiLabel({ viewBox, rate, orgAvg }: { viewBox?: { x: number; y: number; width: number }; rate: number; orgAvg: number }) {
   if (!viewBox) return null;
   const { x, y, width } = viewBox;
   const lx = x + width - 4;
   const label = `AI ${formatSajung(rate)}`;
-  const devStr = formatDeviation(rate);
+  const devStr = formatDeviation(rate, orgAvg);
   return (
     <g>
       <rect x={lx - 72} y={y - 26} width={74} height={24} fill="#1B3A6B" rx={4} />
@@ -176,15 +177,14 @@ export function SajungTrendOverlay({ annId, userId, predictedSajungRate, period 
   }
 
   // 통계 카드 값
+  const baseAvg = data.orgAvg ?? 100; // 편차 기준값
   const orgAvgStr = data.orgAvg != null ? formatSajung(data.orgAvg) : "-";
-  const orgDev = data.orgAvg != null ? formatDeviation(data.orgAvg) : undefined;
-  const orgDevColor = data.orgAvg != null ? deviationColor(data.orgAvg) : undefined;
 
   const mineAvgStr = data.mineAvg != null
     ? formatSajung(data.mineAvg)
     : data.mineCount === 0 ? "이력 없음" : "-";
-  const mineDev = data.mineAvg != null ? formatDeviation(data.mineAvg) : undefined;
-  const mineDevColor = data.mineAvg != null ? deviationColor(data.mineAvg) : undefined;
+  const mineDev = data.mineAvg != null ? formatDeviation(data.mineAvg, baseAvg) : undefined;
+  const mineDevColor = data.mineAvg != null ? deviationColor(data.mineAvg, baseAvg) : undefined;
 
   const gap = data.mineAvg != null && data.orgAvg != null ? data.mineAvg - data.orgAvg : null;
   const gapStr = gap != null
@@ -223,8 +223,7 @@ export function SajungTrendOverlay({ annId, userId, predictedSajungRate, period 
         <StatCard
           label="발주처 평균 사정율"
           value={orgAvgStr}
-          dev={orgDev}
-          devColor={orgDevColor}
+          dev="기준값 (±0.000%)"
           sub={`${data.orgCount}건`}
           color="#1B3A6B"
         />
@@ -265,11 +264,11 @@ export function SajungTrendOverlay({ annId, userId, predictedSajungRate, period 
             />
             <YAxis
               tick={{ fontSize: 10, fill: "#94A3B8" }}
-              tickFormatter={(v: number) => formatDeviation(v)}
+              tickFormatter={(v: number) => formatDeviation(v, baseAvg)}
               domain={[yMin, yMax]}
               width={62}
             />
-            <Tooltip content={<CustomTooltip seqToDate={seqToDate} />} />
+            <Tooltip content={<CustomTooltip seqToDate={seqToDate} orgAvg={baseAvg} />} />
             <Legend
               iconSize={10}
               wrapperStyle={{ fontSize: 11 }}
@@ -288,7 +287,7 @@ export function SajungTrendOverlay({ annId, userId, predictedSajungRate, period 
                 label={
                   predictedSajungRate != null && Math.abs(predictedSajungRate - data.orgAvg) <= 0.5
                     ? undefined
-                    : { value: `평균 ${formatDeviation(data.orgAvg)}`, position: "insideBottomLeft", fontSize: 9, fill: "#94A3B8" }
+                    : { value: `평균 ${formatSajung(data.orgAvg)}`, position: "insideBottomLeft", fontSize: 9, fill: "#94A3B8" }
                 }
               />
             )}
@@ -300,7 +299,7 @@ export function SajungTrendOverlay({ annId, userId, predictedSajungRate, period 
                 stroke="#1B3A6B"
                 strokeWidth={2.5}
                 strokeDasharray="6 3"
-                label={<AiLabel rate={predictedSajungRate} />}
+                label={<AiLabel rate={predictedSajungRate} orgAvg={baseAvg} />}
               />
             )}
 

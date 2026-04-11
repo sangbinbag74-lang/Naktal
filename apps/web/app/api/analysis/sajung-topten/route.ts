@@ -21,6 +21,7 @@ export interface SajungTopTenResponse {
   topTen: TopTenItem[];
   sampleSize: number;
   lowerLimitRate: number;
+  orgAvg: number | null;
   autoExpanded?: boolean;
   fromCache?: boolean;
 }
@@ -121,7 +122,7 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  const emptyResp: SajungTopTenResponse = { topTen: [], sampleSize: 0, lowerLimitRate };
+  const emptyResp: SajungTopTenResponse = { topTen: [], sampleSize: 0, lowerLimitRate, orgAvg: null };
   if (bidRows.length === 0) return NextResponse.json<SajungTopTenResponse>(emptyResp);
 
   // ── 사정율 계산 ─────────────────────────────────────────────────────────────
@@ -147,6 +148,12 @@ export async function GET(req: NextRequest) {
   const sorted = [...bucketMap.entries()].sort((a, b) => b[1] - a[1]).slice(0, 10);
   const maxCount = sorted[0]?.[1] ?? 1;
 
+  // 발주처 평균 사정율 (편차 기준값)
+  const allBuckets = [...bucketMap.entries()].flatMap(([bucket, count]) => Array(count).fill(bucket));
+  const orgAvg = allBuckets.length > 0
+    ? Math.round((allBuckets.reduce((s: number, v: number) => s + v, 0) / allBuckets.length) * 1000) / 1000
+    : null;
+
   const topTen: TopTenItem[] = sorted.map(([bucket, count], i) => ({
     rank: i + 1,
     bucket,
@@ -156,7 +163,7 @@ export async function GET(req: NextRequest) {
     bidPrice: Math.round(currentBudget * (bucket / 100) * (lowerLimitRate / 100)),
   }));
 
-  const result: SajungTopTenResponse = { topTen, sampleSize: total, lowerLimitRate, autoExpanded: autoExpanded || undefined };
+  const result: SajungTopTenResponse = { topTen, sampleSize: total, lowerLimitRate, orgAvg, autoExpanded: autoExpanded || undefined };
 
   // ── 캐시 저장 ──────────────────────────────────────────────────────────────
   await setCachedAnalysis(annId, period, cacheType, result, total);
