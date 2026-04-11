@@ -21,17 +21,10 @@ export default function AnnouncementError({
         <div style={{ fontSize: 13, color: "#64748B", marginBottom: 20, lineHeight: 1.6 }}>
           공고 상세 페이지를 불러오는 중 오류가 발생했습니다.
         </div>
-        {process.env.NODE_ENV !== "production" && (
-          <pre style={{ background: "#FEF2F2", borderRadius: 8, padding: "12px", fontSize: 11, color: "#7F1D1D", overflowX: "auto", marginBottom: 20, whiteSpace: "pre-wrap", wordBreak: "break-all" }}>
-            {error.message}
-            {error.digest ? `\nDigest: ${error.digest}` : ""}
-          </pre>
-        )}
-        {process.env.NODE_ENV === "production" && error.digest && (
-          <div style={{ background: "#FEF2F2", borderRadius: 8, padding: "10px 12px", fontSize: 11, color: "#7F1D1D", marginBottom: 20 }}>
-            Error digest: <strong>{error.digest}</strong>
-          </div>
-        )}
+        <pre style={{ background: "#FEF2F2", borderRadius: 8, padding: "12px", fontSize: 11, color: "#7F1D1D", overflowX: "auto", marginBottom: 20, whiteSpace: "pre-wrap", wordBreak: "break-all" }}>
+          {error.message || "(no message)"}
+          {error.digest ? `\nDigest: ${error.digest}` : ""}
+        </pre>
         <div style={{ display: "flex", gap: 10 }}>
           <button
             onClick={reset}

@@ -387,7 +387,7 @@ export async function predictOptimalBid(params: {
 
   return {
     predictedSajungRate: Math.round(predictedRate * 100) / 100,
-    sajungRateRange: { min: stat.min, max: stat.max, p25: stat.p25, p75: stat.p75 },
+    sajungRateRange: { min: stat.min ?? 97, max: stat.max ?? 112, p25: stat.p25 ?? 101, p75: stat.p75 ?? 106 },
     sampleSize: stat.sampleSize,
     optimalBidPrice: Math.round(optimalBid),
     bidPriceRangeLow: Math.round(rangeLow),

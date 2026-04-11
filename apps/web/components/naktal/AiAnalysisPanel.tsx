@@ -20,30 +20,35 @@ function fmt(n: number): string {
 // ── 사정율 분포 바 ────────────────────────────────────────────────────────────
 
 function SajungDistBar({ range, predicted }: {
-  range: { min: number; max: number; p25: number; p75: number };
-  predicted: number;
+  range: { min: number; max: number; p25: number; p75: number } | null | undefined;
+  predicted: number | null | undefined;
 }) {
-  const span = range.max - range.min || 6;
-  const toX = (v: number) => Math.max(0, Math.min(100, ((v - range.min) / span) * 100));
+  const min = range?.min ?? 97;
+  const max = range?.max ?? 112;
+  const p25 = range?.p25 ?? 101;
+  const p75 = range?.p75 ?? 106;
+  const pred = predicted ?? 103.8;
+  const span = max - min || 6;
+  const toX = (v: number) => Math.max(0, Math.min(100, ((v - min) / span) * 100));
   return (
     <div>
       <div style={{ position: "relative", height: 36, marginBottom: 6 }}>
         <div style={{ position: "absolute", left: 0, right: 0, top: 12, height: 12, background: "#E8ECF2", borderRadius: 6 }} />
         <div style={{
           position: "absolute",
-          left: `${toX(range.p25)}%`, width: `${Math.max(0, toX(range.p75) - toX(range.p25))}%`,
+          left: `${toX(p25)}%`, width: `${Math.max(0, toX(p75) - toX(p25))}%`,
           top: 12, height: 12, background: "#BFDBFE", borderRadius: 4,
         }} />
         <div style={{
           position: "absolute",
-          left: `${toX(predicted)}%`, transform: "translateX(-50%)",
+          left: `${toX(pred)}%`, transform: "translateX(-50%)",
           top: 8, width: 4, height: 20, background: "#1B3A6B", borderRadius: 2,
         }} />
       </div>
       <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, color: "#94A3B8" }}>
-        <span>{range.min.toFixed(1)}%</span>
-        <span style={{ color: "#1B3A6B", fontWeight: 700 }}>예측 {predicted.toFixed(2)}%</span>
-        <span>{range.max.toFixed(1)}%</span>
+        <span>{min.toFixed(1)}%</span>
+        <span style={{ color: "#1B3A6B", fontWeight: 700 }}>예측 {pred.toFixed(2)}%</span>
+        <span>{max.toFixed(1)}%</span>
       </div>
     </div>
   );
