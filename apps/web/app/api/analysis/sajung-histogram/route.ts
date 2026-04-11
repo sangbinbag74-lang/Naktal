@@ -5,6 +5,7 @@ import {
   buildBudgetMap,
   fetchOrgKonepsIds,
   roundBucket,
+  getSajungRange,
 } from "@/lib/analysis/sajung-utils";
 import { getCachedAnalysis, setCachedAnalysis, periodToDate } from "@/lib/analysis/sajung-cache";
 
@@ -27,6 +28,9 @@ export interface SajungHistogramResponse {
     stddev: number;
   };
   lowerLimitRate: number;
+  orgRange?: number;
+  orgRangeMin?: number;
+  orgRangeMax?: number;
   fromCache?: boolean;
 }
 
@@ -130,6 +134,7 @@ export async function GET(req: NextRequest) {
 
   if (!ann) return NextResponse.json({ error: "Announcement not found" }, { status: 404 });
 
+  const orgRange = getSajungRange(ann.orgName as string);
   const rawJson = (ann.rawJson ?? {}) as Record<string, string>;
   const lwltStr = rawJson.sucsfbidLwltRate ?? "";
   const lowerLimitRate = parseFloat(lwltStr.replace(/[^0-9.]/g, "")) || 87.745;
@@ -172,8 +177,15 @@ export async function GET(req: NextRequest) {
 
   if (!result) return emptyResponse(lowerLimitRate);
 
-  // ── 캐시 저장 ──────────────────────────────────────────────────────────────
-  await setCachedAnalysis(annId, period, "histogram", result , result.sampleSize);
+  const finalResult: SajungHistogramResponse = {
+    ...result,
+    orgRange: orgRange.range,
+    orgRangeMin: orgRange.min,
+    orgRangeMax: orgRange.max,
+  };
 
-  return NextResponse.json<SajungHistogramResponse>(result);
+  // ── 캐시 저장 ──────────────────────────────────────────────────────────────
+  await setCachedAnalysis(annId, period, "histogram", finalResult, finalResult.sampleSize);
+
+  return NextResponse.json<SajungHistogramResponse>(finalResult);
 }

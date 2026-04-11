@@ -24,34 +24,19 @@ export function formatDeadline(iso: string): string {
   });
 }
 
-/**
- * 사정율 2중 표기: 절대값 + 평균 대비 편차
- * 예: 103.50% (+1.20%p)
- */
-export function fmtSajungWithDiff(rate: number, avg: number): string {
-  const diff = rate - avg;
-  const sign = diff >= 0 ? "+" : "";
-  return `${rate.toFixed(2)}% (${sign}${diff.toFixed(2)}%p)`;
-}
-
-export function fmtSajungDiff(diff: number): string {
-  const sign = diff >= 0 ? "+" : "";
-  return `${sign}${diff.toFixed(2)}%p`;
-}
-
-/** 사정율 절대값 → 100 기준 편차 문자열. 예: 103.5 → "+3.500%p" */
-export function formatSajungDeviation(sajung: number): string {
+/** 사정율 편차: (sajung - 100), 소수점 3자리, % 단위. 예: 99.123 → "-0.877%" */
+export function formatDeviation(sajung: number): string {
   const dev = sajung - 100;
-  return `${dev >= 0 ? "+" : ""}${dev.toFixed(3)}%p`;
+  const sign = dev >= 0 ? "+" : "";
+  return `${sign}${dev.toFixed(3)}%`;
 }
 
-/** 통일 편차 포맷 (소수점 2자리). 예: 103.5 → "+3.50%p" */
-export function fmtDeviation(sajung: number): string {
-  const d = Math.round((sajung - 100) * 100) / 100;
-  return `${d >= 0 ? "+" : ""}${d.toFixed(2)}%p`;
-}
-
-/** 사정율 절대값 포맷. 예: 103.456 → "103.456%" */
-export function fmtSajung(sajung: number): string {
+/** 사정율 절대값: 소수점 3자리. 예: 103.456 → "103.456%" */
+export function formatSajung(sajung: number): string {
   return `${sajung.toFixed(3)}%`;
+}
+
+/** 편차 색상: 양수(파랑) / 음수(빨강) */
+export function deviationColor(sajung: number): string {
+  return (sajung - 100) >= 0 ? "#2563EB" : "#DC2626";
 }

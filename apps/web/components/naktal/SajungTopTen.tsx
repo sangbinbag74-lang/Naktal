@@ -2,11 +2,7 @@
 
 import { useEffect, useState } from "react";
 import type { SajungTopTenResponse } from "@/app/api/analysis/sajung-topten/route";
-import { fmtDeviation } from "@/lib/format";
-
-function devColor(bucket: number): string {
-  return (bucket - 100) >= 0 ? "#2563EB" : "#DC2626";
-}
+import { formatDeviation, deviationColor } from "@/lib/format";
 
 interface SajungTopTenProps {
   annId: string;
@@ -118,8 +114,8 @@ export function SajungTopTen({ annId, predictedSajungRate, budget: _budget, peri
                   {/* 사정율 구간 */}
                   <td style={{ padding: "10px", textAlign: "center" }}>
                     <div style={{ fontWeight: 700, fontSize: 14, color: "#0F172A" }}>{item.bucket.toFixed(1)}%</div>
-                    <div style={{ fontSize: 11, color: devColor(item.bucket), marginTop: 2 }}>
-                      {fmtDeviation(item.bucket)}
+                    <div style={{ fontSize: 11, color: deviationColor(item.bucket), marginTop: 2 }}>
+                      {formatDeviation(item.bucket)}
                     </div>
                     {isAiMatch && (
                       <div style={{ fontSize: 10, fontWeight: 600, color: "#5B21B6", background: "#EDE9FE", borderRadius: 4, padding: "1px 6px", marginTop: 3, display: "inline-block" }}>

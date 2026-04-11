@@ -70,3 +70,35 @@ export async function fetchOrgKonepsIds(
 export function roundBucket(v: number): number {
   return Math.round(v * 10) / 10;
 }
+
+// ── 기관별 예가범위 ────────────────────────────────────────────────────────────
+
+const ORG_RANGE_MAP: Record<string, number> = {
+  "조달청": 2,
+  "한국토지주택공사": 2,
+  "한국전력공사": 2,
+  "한국농어촌공사": 2,
+  "한국마사회": 2,
+  "한국수자원공사": 2.5,
+  "한국가스공사": 2.5,
+  "한국철도공사": 2.5,
+  "한국도로공사": 3,
+};
+
+const LOCAL_GOV_KEYWORDS = ["특별자치도", "특별시", "광역시", "도청", "시청", "군청", "구청"];
+
+/** 기관명으로 예가범위(%) 반환. 기본 ±2%, 지방자치단체 ±3% */
+export function getOrgRange(orgName: string): number {
+  if (ORG_RANGE_MAP[orgName]) return ORG_RANGE_MAP[orgName];
+  for (const [key, val] of Object.entries(ORG_RANGE_MAP)) {
+    if (orgName.includes(key)) return val;
+  }
+  if (LOCAL_GOV_KEYWORDS.some((k) => orgName.includes(k))) return 3;
+  return 2;
+}
+
+/** 기관명으로 사정율 유효범위 반환 */
+export function getSajungRange(orgName: string): { min: number; max: number; range: number } {
+  const r = getOrgRange(orgName);
+  return { min: 100 - r, max: 100 + r, range: r };
+}

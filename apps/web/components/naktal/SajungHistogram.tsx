@@ -14,7 +14,7 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import type { SajungHistogramResponse } from "@/app/api/analysis/sajung-histogram/route";
-import { fmtDeviation } from "@/lib/format";
+import { formatDeviation, formatSajung, deviationColor } from "@/lib/format";
 
 interface SajungHistogramProps {
   annId: string;
@@ -44,7 +44,7 @@ function CustomTooltip({ active, payload, label }: any) {
   if (!active || !payload?.length) return null;
   const bar = payload.find((p: any) => p.dataKey === "pct");
   const line = payload.find((p: any) => p.dataKey === "cumPct");
-  const dev = typeof label === "number" ? fmtDeviation(label) : "";
+  const dev = typeof label === "number" ? formatDeviation(label) : "";
   return (
     <div style={{ background: "#fff", border: "1px solid #E8ECF2", borderRadius: 8, padding: "8px 12px", fontSize: 12 }}>
       <div style={{ fontWeight: 700, marginBottom: 4 }}>
@@ -100,10 +100,10 @@ export function SajungHistogram({ annId, predictedSajungRate, lowerLimitRate, pe
   const predicted = predictedSajungRate ?? stats.avg;
   const modeRate = stats.mode;
 
-  const avgDev = fmtDeviation(stats.avg);
-  const modeDev = fmtDeviation(stats.mode);
-  const avgDevColor = stats.avg >= 100 ? "#2563EB" : "#DC2626";
-  const modeDevColor = stats.mode >= 100 ? "#2563EB" : "#DC2626";
+  const avgDev = formatDeviation(stats.avg);
+  const modeDev = formatDeviation(stats.mode);
+  const avgDevColor = deviationColor(stats.avg);
+  const modeDevColor = deviationColor(stats.mode);
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
@@ -122,9 +122,9 @@ export function SajungHistogram({ annId, predictedSajungRate, lowerLimitRate, pe
           borderRadius: 8, border: "1px solid #BFDBFE", fontSize: 12,
         }}>
           <span style={{ color: "#1B3A6B", fontWeight: 600 }}>▌ AI 추천</span>
-          <span style={{ color: "#1B3A6B", fontWeight: 700 }}>{predictedSajungRate.toFixed(3)}%</span>
-          <span style={{ color: predictedSajungRate >= 100 ? "#2563EB" : "#DC2626" }}>
-            {fmtDeviation(predictedSajungRate)}
+          <span style={{ color: "#1B3A6B", fontWeight: 700 }}>{formatSajung(predictedSajungRate)}</span>
+          <span style={{ color: deviationColor(predictedSajungRate) }}>
+            {formatDeviation(predictedSajungRate)}
           </span>
           <span style={{ color: "#94A3B8", marginLeft: "auto", fontSize: 11 }}>
             사정율 ±0.5% 구간 강조 표시
@@ -134,10 +134,10 @@ export function SajungHistogram({ annId, predictedSajungRate, lowerLimitRate, pe
 
       {/* Stat Cards */}
       <div style={{ display: "flex", gap: 8 }}>
-        <StatCard label="평균 사정율" value={`${stats.avg.toFixed(2)}%`} sub={avgDev} subColor={avgDevColor} color="#1B3A6B" />
-        <StatCard label="최빈 사정율" value={`${stats.mode.toFixed(1)}%`} sub={modeDev} subColor={modeDevColor} color="#7C3AED" />
-        <StatCard label="표준편차" value={`±${stats.stddev.toFixed(2)}%p`} />
-        <StatCard label="IQR 구간" value={`${stats.p25.toFixed(1)}~${stats.p75.toFixed(1)}%`} />
+        <StatCard label="평균 사정율" value={formatSajung(stats.avg)} sub={avgDev} subColor={avgDevColor} color="#1B3A6B" />
+        <StatCard label="최빈 사정율" value={formatSajung(stats.mode)} sub={modeDev} subColor={modeDevColor} color="#7C3AED" />
+        <StatCard label="표준편차" value={`±${stats.stddev.toFixed(3)}%`} />
+        <StatCard label="IQR 구간" value={`${formatSajung(stats.p25)}~${formatSajung(stats.p75)}`} />
       </div>
 
       {/* Chart */}
@@ -222,6 +222,13 @@ export function SajungHistogram({ annId, predictedSajungRate, lowerLimitRate, pe
           </ComposedChart>
         </ResponsiveContainer>
       </div>
+
+      {/* 기관 예가범위 */}
+      {data.orgRange != null && (
+        <div style={{ fontSize: 11, color: "#64748B", paddingLeft: 4 }}>
+          기관 예가범위 ±{data.orgRange}% ({data.orgRangeMin?.toFixed(1)}~{data.orgRangeMax?.toFixed(1)}%)
+        </div>
+      )}
 
       {/* 범례 */}
       <div style={{ display: "flex", gap: 16, fontSize: 11, color: "#64748B", paddingLeft: 4 }}>
