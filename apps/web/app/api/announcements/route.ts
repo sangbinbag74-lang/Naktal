@@ -215,10 +215,10 @@ async function fetchFromDB(opts: Record<string, string | number>): Promise<NextR
         ...(mainRes.data ?? []).map((d: { id: string }) => d.id),
         ...(subRes.data ?? []).map((d: { id: string }) => d.id),
       ]));
-      if (allIds.length === 0) {
-        return NextResponse.json({ data: [], total: 0, hasMore: false, page, limit });
+      // allIds가 비어있으면 필터 자체를 건너뜀 (.in("id", []) → 0건 오작동 방지)
+      if (allIds.length > 0) {
+        q = q.in("id", allIds);
       }
-      q = q.in("id", allIds);
     }
   } else if (category) {
     q = q.or(`category.ilike.%${category}%,rawJson->>pubPrcrmntMidClsfcNm.ilike.%${category}%,rawJson->>pubPrcrmntLrgClsfcNm.ilike.%${category}%`);
