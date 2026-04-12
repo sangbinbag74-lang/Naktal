@@ -8,6 +8,7 @@ import {
   toYMD,
   type G2BAnnouncement,
 } from "@/lib/g2b";
+import { CATEGORY_GROUPS } from "@/lib/category-map";
 
 export const maxDuration = 60;
 
@@ -42,7 +43,17 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   const { searchParams } = new URL(request.url);
 
   const category       = searchParams.get("category") ?? "";
-  const categories     = searchParams.get("categories") ?? "";   // 쉼표 구분 다중 선택
+  const categoryGroup  = searchParams.get("categoryGroup") ?? "";
+  const rawCategories  = (searchParams.get("categories") ?? "")
+    .split(",").map((s) => s.trim()).filter(Boolean);
+  // categoryGroup 확장: 해당 그룹의 모든 category 포함
+  if (categoryGroup && categoryGroup in CATEGORY_GROUPS) {
+    const groupCats = CATEGORY_GROUPS[categoryGroup as keyof typeof CATEGORY_GROUPS] ?? [];
+    for (const cat of groupCats) {
+      if (!rawCategories.includes(cat)) rawCategories.push(cat);
+    }
+  }
+  const categories     = rawCategories.join(",");    // fetchFromDB에 전달
   const region         = searchParams.get("region") ?? "";       // 하위호환 단일 지역
   const regions        = searchParams.get("regions") ?? "";      // 쉼표 구분 다중 지역
   const minBudget      = searchParams.get("minBudget") ?? "";

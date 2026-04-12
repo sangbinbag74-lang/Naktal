@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { isMultiplePriceBid } from "@/lib/bid-utils";
+import { CATEGORY_GROUPS } from "@/lib/category-map";
 
 const FOLDER_KEY = "naktal_folder";
 function getFolderIds(): string[] {
@@ -90,18 +91,6 @@ const BUDGET_PRESETS = [
   { label: "10억 이상", min: "1000000000", max: "" },
 ];
 
-const CATEGORY_GROUPS: { label: string; items: string[] }[] = [
-  { label: "── 시설공사", items: [
-    "토목공사","건축공사","토목건축공사","조경공사","전기공사","통신공사",
-    "소방시설공사","기계설비공사","지반조성포장공사","실내건축공사",
-    "철근콘크리트공사","구조물해체비계공사","상하수도설비공사","철강재설치공사",
-    "삭도승강기기계설비공사","도장습식방수석공사","문화재수리공사",
-  ]},
-  { label: "── 용역", items: [
-    "엔지니어링","측량","청소","경비","시설관리","연구용역","학술연구","기타용역",
-  ]},
-  { label: "── 물품/기타", items: ["물품","기타"] },
-];
 
 type RegionItem = { code: string; label: string; type: "province" | "city" };
 
@@ -592,37 +581,57 @@ export default function AnnouncementsPage() {
                       </button>
                     )}
                   </div>
-                  {CATEGORY_GROUPS.map((g) => (
-                    <div key={g.label}>
-                      <div style={{ fontSize: 10, color: "#94A3B8", padding: "4px 14px", fontWeight: 600, letterSpacing: "0.02em" }}>
-                        {g.label}
+                  {Object.entries(CATEGORY_GROUPS).map(([groupName, groupCats]) => {
+                    const selectedInGroup = groupCats.filter(c => categories.includes(c)).length;
+                    const allSelected = selectedInGroup === groupCats.length;
+                    return (
+                      <div key={groupName}>
+                        <div style={{ fontSize: 10, color: "#94A3B8", padding: "6px 14px 3px",
+                          fontWeight: 700, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                          <span>── {groupName}</span>
+                          <button onClick={() => {
+                            if (allSelected) {
+                              setCategories(prev => prev.filter(c => !groupCats.includes(c)));
+                            } else {
+                              setCategories(prev => [
+                                ...prev.filter(c => !groupCats.includes(c)),
+                                ...groupCats,
+                              ]);
+                            }
+                          }} style={{ fontSize: 10, color: selectedInGroup > 0 ? "#1B3A6B" : "#94A3B8",
+                            background: "none", border: "none", cursor: "pointer", padding: 0 }}>
+                            {allSelected ? "전체해제" : "전체선택"}
+                          </button>
+                        </div>
+                        {groupCats.map((cat) => {
+                          const checked = categories.includes(cat);
+                          return (
+                            <label key={cat} style={{
+                              display: "flex", alignItems: "center", gap: 8,
+                              padding: "5px 14px", cursor: "pointer",
+                              background: checked ? "#EEF2FF" : "transparent",
+                              fontSize: 13,
+                            }}
+                              onMouseEnter={e => { if (!checked) (e.currentTarget as HTMLElement).style.background = "#F8FAFC"; }}
+                              onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = checked ? "#EEF2FF" : "transparent"; }}
+                            >
+                              <input
+                                type="checkbox"
+                                checked={checked}
+                                onChange={() => setCategories(prev =>
+                                  checked ? prev.filter(c => c !== cat) : [...prev, cat]
+                                )}
+                                style={{ accentColor: "#1B3A6B", width: 14, height: 14, cursor: "pointer" }}
+                              />
+                              <span style={{ color: checked ? "#1B3A6B" : "#374151", fontWeight: checked ? 600 : 400 }}>
+                                {cat}
+                              </span>
+                            </label>
+                          );
+                        })}
                       </div>
-                      {g.items.map((cat) => {
-                        const checked = categories.includes(cat);
-                        return (
-                          <label key={cat} style={{
-                            display: "flex", alignItems: "center", gap: 8,
-                            padding: "6px 14px", cursor: "pointer",
-                            background: checked ? "#EEF2FF" : "transparent",
-                            fontSize: 13,
-                          }}
-                            onMouseEnter={e => { if (!checked) (e.currentTarget as HTMLElement).style.background = "#F8FAFC"; }}
-                            onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = checked ? "#EEF2FF" : "transparent"; }}
-                          >
-                            <input
-                              type="checkbox"
-                              checked={checked}
-                              onChange={() => setCategories(prev =>
-                                checked ? prev.filter(c => c !== cat) : [...prev, cat]
-                              )}
-                              style={{ accentColor: "#1B3A6B", width: 14, height: 14, cursor: "pointer" }}
-                            />
-                            <span style={{ color: checked ? "#1B3A6B" : "#374151", fontWeight: checked ? 600 : 400 }}>{cat}</span>
-                          </label>
-                        );
-                      })}
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </>
             )}
