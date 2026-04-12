@@ -230,10 +230,10 @@ export function SajungTrendOverlay({ annId, userId, predictedSajungRate, period 
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-      {/* 자동 expand 안내 배너 */}
-      {data.autoExpanded && (
-        <div style={{ padding: "8px 12px", background: "#FFF7ED", border: "1px solid #FED7AA", borderRadius: 8, fontSize: 12, color: "#9A3412" }}>
-          📡 동일 발주처 데이터가 부족해 유사 기관명까지 확장 검색했습니다.
+      {/* 유사 업종 확장 안내 배너 */}
+      {data.expandedCategory && (
+        <div style={{ background: "#FFF7ED", border: "1px solid #FED7AA", borderRadius: 8, padding: "8px 12px", fontSize: 12, color: "#92400E" }}>
+          💡 동일 업종 데이터 부족으로 유사 업종({data.usedCategories?.join(", ")})을 포함하여 분석했습니다.
         </div>
       )}
 

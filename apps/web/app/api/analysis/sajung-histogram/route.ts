@@ -3,7 +3,7 @@ import { createAdminClient } from "@/lib/supabase/server";
 import {
   calcSajung,
   buildBudgetAndDateMap,
-  fetchOrgKonepsIds,
+  fetchOrgKonepsIdsWithCategoryFallback,
   roundBucket,
   getSajungRange,
 } from "@/lib/analysis/sajung-utils";
@@ -34,6 +34,8 @@ export interface SajungHistogramResponse {
   orgRangeMin?: number;
   orgRangeMax?: number;
   autoExpanded?: boolean;
+  expandedCategory?: boolean;
+  usedCategories?: string[];
   fromCache?: boolean;
 }
 
@@ -172,48 +174,27 @@ export async function GET(req: NextRequest) {
   const directRows = directResults ?? [];
 
   let result: SajungHistogramResponse | null = null;
-  let autoExpanded = false;
+  let expandedCategory = false;
+  let usedCategories: string[] = [];
 
   // direct path (동일 공고 직접 조회)
   if (directRows.length > 0 && categoryFilter === "same" && orgScope === "exact") {
     result = await buildHistogramResponse(directRows, admin, lowerLimitRate, sajungFilter, sinceDateStr);
   }
 
-  // direct 결과가 없거나 10건 미만이면 발주처 전체 조회
+  // direct 결과가 없거나 10건 미만이면 발주처 전체 조회 (유사 업종 자동 확장 포함)
   if (!result || result.sampleSize < 10) {
-    let konepsIds = await fetchOrgKonepsIds(
-      admin,
-      ann.orgName as string,
-      categoryForFilter,
-      ann.region as string,
-      currentAnn,
-      orgScope,
-    );
-
-    // exact 모드에서 sample < 10이면 자동 expand (category 유지)
-    if (orgScope === "exact" && konepsIds.length > 0) {
-      const { data: sample } = await admin
-        .from("BidResult")
-        .select("id")
-        .in("annId", konepsIds.slice(0, 100))
-        .gt("bidRate", 0)
-        .gt("finalPrice", 0)
-        .limit(15);
-      if ((sample?.length ?? 0) < 10) {
-        const expandedIds = await fetchOrgKonepsIds(
-          admin,
-          ann.orgName as string,
-          ann.category as string,
-          ann.region as string,
-          currentAnn,
-          "expand",
-        );
-        if (expandedIds.length > konepsIds.length) {
-          konepsIds = expandedIds;
-          autoExpanded = true;
-        }
-      }
-    }
+    const { konepsIds, expandedCategory: ec, usedCategories: uc } =
+      await fetchOrgKonepsIdsWithCategoryFallback(
+        admin,
+        ann.orgName as string,
+        categoryForFilter,
+        ann.region as string,
+        currentAnn,
+        orgScope,
+      );
+    expandedCategory = ec;
+    usedCategories = uc;
 
     if (konepsIds.length > 0) {
       const { data: fallback } = await admin
@@ -234,7 +215,8 @@ export async function GET(req: NextRequest) {
     orgRange: orgRange.range,
     orgRangeMin: orgRange.min,
     orgRangeMax: orgRange.max,
-    autoExpanded: autoExpanded || undefined,
+    expandedCategory: expandedCategory || undefined,
+    usedCategories: usedCategories.length > 0 ? usedCategories : undefined,
   };
 
   // ── 캐시 저장 ──────────────────────────────────────────────────────────────

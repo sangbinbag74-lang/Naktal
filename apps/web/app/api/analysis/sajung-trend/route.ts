@@ -3,7 +3,7 @@ import { createAdminClient } from "@/lib/supabase/server";
 import {
   calcSajung,
   buildBudgetAndDateMap,
-  fetchOrgKonepsIds,
+  fetchOrgKonepsIdsWithCategoryFallback,
 } from "@/lib/analysis/sajung-utils";
 import { getCachedAnalysis, setCachedAnalysis, periodToDate } from "@/lib/analysis/sajung-cache";
 
@@ -49,6 +49,8 @@ export interface SajungTrendResponse {
   mineAvg: number | null;
   gap: number | null;
   autoExpanded?: boolean;
+  expandedCategory?: boolean;
+  usedCategories?: string[];
   fromCache?: boolean;
   predictions?: SajungPredictions;
 }
@@ -141,31 +143,11 @@ export async function GET(req: NextRequest) {
   const annOrgName = ann.orgName as string;
   const annRegion = ann.region as string;
   const sinceDateStr = sinceDate ? sinceDate.slice(0, 10) : null;
-  let autoExpanded = false;
 
-  let konepsIds = await fetchOrgKonepsIds(
-    admin, annOrgName, categoryForFilter, annRegion, currentAnn, orgScope,
-  );
-
-  // exact 모드에서 sample < 10이면 자동 expand (category 유지)
-  if (orgScope === "exact" && konepsIds.length > 0) {
-    const { data: sample } = await admin
-      .from("BidResult")
-      .select("id")
-      .in("annId", konepsIds.slice(0, 100))
-      .gt("bidRate", 0)
-      .gt("finalPrice", 0)
-      .limit(15);
-    if ((sample?.length ?? 0) < 10) {
-      const expandedIds = await fetchOrgKonepsIds(
-        admin, annOrgName, ann.category as string, annRegion, currentAnn, "expand",
-      );
-      if (expandedIds.length > konepsIds.length) {
-        konepsIds = expandedIds;
-        autoExpanded = true;
-      }
-    }
-  }
+  const { konepsIds, expandedCategory, usedCategories } =
+    await fetchOrgKonepsIdsWithCategoryFallback(
+      admin, annOrgName, categoryForFilter, annRegion, currentAnn, orgScope,
+    );
 
   const orgRaw: { date: string; sajung: number }[] = [];
   const orgByMonth = new Map<string, number[]>();
@@ -253,7 +235,8 @@ export async function GET(req: NextRequest) {
     orgAvg,
     mineAvg,
     gap,
-    autoExpanded: autoExpanded || undefined,
+    expandedCategory: expandedCategory || undefined,
+    usedCategories: usedCategories.length > 0 ? usedCategories : undefined,
     predictions,
   };
 

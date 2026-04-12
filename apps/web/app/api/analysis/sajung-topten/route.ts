@@ -3,7 +3,7 @@ import { createAdminClient } from "@/lib/supabase/server";
 import {
   calcSajung,
   buildBudgetAndDateMap,
-  fetchOrgKonepsIds,
+  fetchOrgKonepsIdsWithCategoryFallback,
   roundBucket,
 } from "@/lib/analysis/sajung-utils";
 import { getCachedAnalysis, setCachedAnalysis, periodToDate } from "@/lib/analysis/sajung-cache";
@@ -23,6 +23,8 @@ export interface SajungTopTenResponse {
   lowerLimitRate: number;
   orgAvg: number | null;
   autoExpanded?: boolean;
+  expandedCategory?: boolean;
+  usedCategories?: string[];
   fromCache?: boolean;
 }
 
@@ -59,9 +61,10 @@ export async function GET(req: NextRequest) {
   const currentAnn = { bidMethod, budget: currentBudget };
   const categoryForFilter = categoryFilter === "all" ? null : ann.category as string;
 
-  // ── 낙찰 결과 수집 (direct → fallback → auto-expand) ────────────────────────
+  // ── 낙찰 결과 수집 (direct → fallback → 유사 업종 자동 확장) ─────────────────
   let bidRows: { finalPrice: string | number; bidRate: string | number; annId: string }[] = [];
-  let autoExpanded = false;
+  let expandedCategory = false;
+  let usedCategories: string[] = [];
 
   const { data: direct } = await admin
     .from("BidResult")
@@ -76,39 +79,17 @@ export async function GET(req: NextRequest) {
   }
 
   if (bidRows.length < 10) {
-    let konepsIds = await fetchOrgKonepsIds(
-      admin,
-      ann.orgName as string,
-      categoryForFilter,
-      ann.region as string,
-      currentAnn,
-      orgScope,
-    );
-
-    // exact 모드에서 sample < 10이면 자동 expand (category 유지)
-    if (orgScope === "exact" && konepsIds.length > 0) {
-      const { data: sample } = await admin
-        .from("BidResult")
-        .select("id")
-        .in("annId", konepsIds.slice(0, 100))
-        .gt("bidRate", 0)
-        .gt("finalPrice", 0)
-        .limit(15);
-      if ((sample?.length ?? 0) < 10) {
-        const expandedIds = await fetchOrgKonepsIds(
-          admin,
-          ann.orgName as string,
-          ann.category as string,
-          ann.region as string,
-          currentAnn,
-          "expand",
-        );
-        if (expandedIds.length > konepsIds.length) {
-          konepsIds = expandedIds;
-          autoExpanded = true;
-        }
-      }
-    }
+    const { konepsIds, expandedCategory: ec, usedCategories: uc } =
+      await fetchOrgKonepsIdsWithCategoryFallback(
+        admin,
+        ann.orgName as string,
+        categoryForFilter,
+        ann.region as string,
+        currentAnn,
+        orgScope,
+      );
+    expandedCategory = ec;
+    usedCategories = uc;
 
     if (konepsIds.length > 0) {
       const { data: fallback } = await admin
@@ -163,7 +144,11 @@ export async function GET(req: NextRequest) {
     bidPrice: Math.round(currentBudget * (bucket / 100) * (lowerLimitRate / 100)),
   }));
 
-  const result: SajungTopTenResponse = { topTen, sampleSize: total, lowerLimitRate, orgAvg, autoExpanded: autoExpanded || undefined };
+  const result: SajungTopTenResponse = {
+    topTen, sampleSize: total, lowerLimitRate, orgAvg,
+    expandedCategory: expandedCategory || undefined,
+    usedCategories: usedCategories.length > 0 ? usedCategories : undefined,
+  };
 
   // ── 캐시 저장 ──────────────────────────────────────────────────────────────
   await setCachedAnalysis(annId, period, cacheType, result, total);

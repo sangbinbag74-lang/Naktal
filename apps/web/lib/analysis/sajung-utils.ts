@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { SIMILAR_CATEGORIES } from "@/lib/category-map";
 
 /** 사정율 계산: 낙찰금액 + 낙찰률 + 기초금액 → 사정율(%) */
 export function calcSajung(
@@ -167,3 +168,83 @@ export function getSajungRange(orgName: string): { min: number; max: number; ran
 
 /** 사정율 유효범위 상수 (이상값 제거용) */
 export const SAJUNG_FILTER = { min: 85, max: 125 } as const;
+
+/**
+ * 업종 유사군 자동 확장 버전의 konepsId 조회
+ * 1차: 동일 업종 fetchOrgKonepsIds → BidResult 10건 미만이면
+ * 2차: SIMILAR_CATEGORIES 유사 업종으로 확장
+ */
+export async function fetchOrgKonepsIdsWithCategoryFallback(
+  supabase: SupabaseClient,
+  orgName: string,
+  category: string | null,
+  region: string,
+  currentAnn: { bidMethod: string; budget: number },
+  orgScope: "exact" | "expand" = "exact",
+): Promise<{
+  konepsIds: string[];
+  expandedCategory: boolean;
+  usedCategories: string[];
+}> {
+  // 1차: 동일 업종 (기존 로직)
+  const primary = await fetchOrgKonepsIds(
+    supabase, orgName, category, region, currentAnn, orgScope,
+  );
+
+  // BidResult 샘플 건수 확인
+  const { data: sample } = await supabase
+    .from("BidResult")
+    .select("id")
+    .in("annId", primary.slice(0, 200))
+    .not("finalPrice", "is", null)
+    .limit(15);
+
+  const count = sample?.length ?? 0;
+
+  // 10건 이상 또는 전체업종 모드면 그대로 반환
+  if (count >= 10 || !category) {
+    return {
+      konepsIds: primary,
+      expandedCategory: false,
+      usedCategories: category ? [category] : [],
+    };
+  }
+
+  // 2차: 유사 업종 확장
+  const similarCats = SIMILAR_CATEGORIES[category] ?? [];
+  if (similarCats.length === 0) {
+    return { konepsIds: primary, expandedCategory: false, usedCategories: [category] };
+  }
+
+  const allCategories = [category, ...similarCats];
+
+  const { data: annRows } = await supabase
+    .from("Announcement")
+    .select("konepsId")
+    .in("category", allCategories)
+    .eq("orgName", orgName)
+    .limit(300);
+
+  const expandedIds = (annRows ?? []).map((r: { konepsId: string }) => r.konepsId).filter(Boolean);
+
+  if (expandedIds.length === 0) {
+    return { konepsIds: primary, expandedCategory: false, usedCategories: [category] };
+  }
+
+  // 지역 보완: 유사 업종 + 동일 지역
+  const { data: regionRows } = await supabase
+    .from("Announcement")
+    .select("konepsId")
+    .in("category", allCategories)
+    .eq("region", region)
+    .limit(200);
+
+  const regionIds = (regionRows ?? []).map((r: { konepsId: string }) => r.konepsId).filter(Boolean);
+  const merged = Array.from(new Set([...expandedIds, ...regionIds]));
+
+  return {
+    konepsIds: merged,
+    expandedCategory: true,
+    usedCategories: allCategories,
+  };
+}
