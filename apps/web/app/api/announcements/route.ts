@@ -204,13 +204,21 @@ async function fetchFromDB(opts: Record<string, string | number>): Promise<NextR
 
   if (categories) {
     const cats = categories.split(",").map(c => c.trim()).filter(Boolean);
-    if (cats.length === 1) {
-      // subCategories 배열에 해당 업종 포함 여부 (GIN 인덱스 사용)
-      // .or() 내부 배열 연산자는 PostgREST에서 미지원 → .contains() 직접 사용
-      q = q.contains("subCategories", [cats[0]]);
-    } else if (cats.length > 1) {
-      // 부종 중 하나라도 매칭되면 포함 (overlap)
-      q = q.overlaps("subCategories", cats);
+    if (cats.length > 0) {
+      // 주종(category.in) + 부종(subCategories.overlaps) 각각 ID 조회 후 합집합
+      // PostgREST .or() 내부에서 배열 연산자 미지원 → 병렬 쿼리로 우회
+      const [mainRes, subRes] = await Promise.all([
+        admin.from("Announcement").select("id").in("category", cats).limit(5000),
+        admin.from("Announcement").select("id").overlaps("subCategories", cats).limit(5000),
+      ]);
+      const allIds = Array.from(new Set([
+        ...(mainRes.data ?? []).map((d: { id: string }) => d.id),
+        ...(subRes.data ?? []).map((d: { id: string }) => d.id),
+      ]));
+      if (allIds.length === 0) {
+        return NextResponse.json({ data: [], total: 0, hasMore: false, page, limit });
+      }
+      q = q.in("id", allIds);
     }
   } else if (category) {
     q = q.or(`category.ilike.%${category}%,rawJson->>pubPrcrmntMidClsfcNm.ilike.%${category}%,rawJson->>pubPrcrmntLrgClsfcNm.ilike.%${category}%`);
