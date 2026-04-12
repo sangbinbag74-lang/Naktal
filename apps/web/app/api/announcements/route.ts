@@ -206,11 +206,12 @@ async function fetchFromDB(opts: Record<string, string | number>): Promise<NextR
     const cats = categories.split(",").map(c => c.trim()).filter(Boolean);
     if (cats.length === 1) {
       // 주종 OR 부종에 포함되는 공고 모두 반환
-      q = q.or(`category.ilike.%${cats[0]}%,subCategories.cs.{${cats[0]}}`);
+      // 한글 배열 원소는 PostgREST 파싱을 위해 쌍따옴표 필요: {"값"}
+      q = q.or(`category.ilike.%${cats[0]}%,subCategories.cs.{"${cats[0]}"}`);
     } else if (cats.length > 1) {
       // 주종 .in() OR 부종 overlap (.ov)
       const inPart = `category.in.(${cats.map(c => `"${c}"`).join(",")})`;
-      const ovPart = `subCategories.ov.{${cats.join(",")}}`;
+      const ovPart = `subCategories.ov.{${cats.map(c => `"${c}"`).join(",")}}`;
       q = q.or(`${inPart},${ovPart}`);
     }
   } else if (category) {
