@@ -199,7 +199,7 @@ async function fetchFromDB(opts: Record<string, string | number>): Promise<NextR
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let q: any = admin.from("Announcement").select(
-    "id,konepsId,title,orgName,budget,deadline,category,region,createdAt,rawJson"
+    "id,konepsId,title,orgName,budget,deadline,category,subCategories,region,createdAt,rawJson"
   );
 
   if (categories) {
