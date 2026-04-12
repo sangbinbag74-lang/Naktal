@@ -205,14 +205,12 @@ async function fetchFromDB(opts: Record<string, string | number>): Promise<NextR
   if (categories) {
     const cats = categories.split(",").map(c => c.trim()).filter(Boolean);
     if (cats.length === 1) {
-      // 주종 OR 부종에 포함되는 공고 모두 반환
-      // 한글 배열 원소는 PostgREST 파싱을 위해 쌍따옴표 필요: {"값"}
-      q = q.or(`category.ilike.%${cats[0]}%,subCategories.cs.{"${cats[0]}"}`);
+      // subCategories 배열에 해당 업종 포함 여부 (GIN 인덱스 사용)
+      // .or() 내부 배열 연산자는 PostgREST에서 미지원 → .contains() 직접 사용
+      q = q.contains("subCategories", [cats[0]]);
     } else if (cats.length > 1) {
-      // 주종 .in() OR 부종 overlap (.ov)
-      const inPart = `category.in.(${cats.map(c => `"${c}"`).join(",")})`;
-      const ovPart = `subCategories.ov.{${cats.map(c => `"${c}"`).join(",")}}`;
-      q = q.or(`${inPart},${ovPart}`);
+      // 부종 중 하나라도 매칭되면 포함 (overlap)
+      q = q.overlaps("subCategories", cats);
     }
   } else if (category) {
     q = q.or(`category.ilike.%${category}%,rawJson->>pubPrcrmntMidClsfcNm.ilike.%${category}%,rawJson->>pubPrcrmntLrgClsfcNm.ilike.%${category}%`);
