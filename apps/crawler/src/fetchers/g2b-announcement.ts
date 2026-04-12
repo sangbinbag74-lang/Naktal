@@ -2,7 +2,7 @@ import Decimal from "decimal.js";
 import { fetchAnnouncementPage, NTCE_OPS, type G2BAnnouncement } from "./g2b-client";
 import type { AnnouncementRow } from "../parsers/announcement";
 import { logger } from "../utils/logger";
-import { MAIN_CNSTWK_MAP } from "../category-map";
+import { MAIN_CNSTWK_MAP, parseSubCategories } from "../category-map";
 
 // ─── 지역 추출 ────────────────────────────────────────────────────────────────
 const REGION_PREFIXES: [string, string][] = [
@@ -74,6 +74,10 @@ function mapToRow(item: G2BAnnouncement, operation: string): AnnouncementRow | n
     const rawJson: Record<string, string> = {};
     for (const [k, v] of Object.entries(item)) rawJson[k] = String(v ?? "");
 
+    const subCategories = operation === "getBidPblancListInfoCnstwk"
+      ? parseSubCategories(rawJson)
+      : [];
+
     return {
       konepsId,
       title,
@@ -83,6 +87,7 @@ function mapToRow(item: G2BAnnouncement, operation: string): AnnouncementRow | n
       category,
       region,
       rawJson,
+      subCategories,
     };
   } catch {
     return null;

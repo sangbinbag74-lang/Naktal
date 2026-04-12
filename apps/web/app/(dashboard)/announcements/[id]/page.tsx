@@ -11,6 +11,7 @@ import {
   g2bExtractRegion,
   type G2BAnnouncement,
 } from "@/lib/g2b";
+import { parseSubCategories, getAllCategories } from "@/lib/category-map";
 
 interface Announcement {
   id: string;
@@ -23,6 +24,7 @@ interface Announcement {
   region: string;
   createdAt: string;
   rawJson: Record<string, unknown> | null;
+  subCategories?: string[];
 }
 
 function fmt(n: string) {
@@ -114,6 +116,10 @@ export default async function AnnouncementDetailPage({
   const lowerLimitRate = parseFloat(sucsfbidLwltRate.replace(/[^0-9.]/g, "")) || 87.745;
   const participationConditions = extractParticipationConditions(a.rawJson);
   const prtcptnLmtNm = String(rawJson.prtcptnLmtNm ?? "");
+  const subCats = (a.subCategories && a.subCategories.length > 0)
+    ? a.subCategories
+    : parseSubCategories(a.rawJson as Record<string, string> | null);
+  const allLicenses = getAllCategories(a.category, subCats);
   const budgetNum = parseInt(a.budget, 10);
   const estimatedPrice = isNaN(budgetNum) ? null : Math.round(budgetNum * 1.03);
   const g2bUrl = String(rawJson.ntcePbancUrl || `https://www.g2b.go.kr:8081/ep/peoplecvpl/narasVary.do?bidno=${a.konepsId}&bidseq=${String(rawJson.bidNtceSqNo ?? "00")}`);
@@ -238,6 +244,26 @@ export default async function AnnouncementDetailPage({
           {/* 참가자격 카드 */}
           <div style={{ background: "#fff", borderRadius: 16, border: "1px solid #E8ECF2", padding: "20px", boxShadow: "0 2px 8px rgba(0,0,0,0.06)" }}>
             <div style={{ fontSize: 13, fontWeight: 600, color: "#374151", marginBottom: 16 }}>참가자격 / 조건</div>
+
+            {/* 입찰가능업종 뱃지 */}
+            {allLicenses.length > 0 && (
+              <div style={{ marginBottom: 16 }}>
+                <div style={{ fontSize: 11, color: "#94A3B8", marginBottom: 6 }}>입찰가능업종</div>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                  {allLicenses.map((lic, i) => (
+                    <span key={lic} style={{
+                      fontSize: 11, fontWeight: 600, padding: "3px 8px", borderRadius: 4,
+                      background: i === 0 ? "#EEF2FF" : "#F8FAFC",
+                      color: i === 0 ? "#1B3A6B" : "#64748B",
+                      border: `1px solid ${i === 0 ? "#C7D2FE" : "#E2E8F0"}`,
+                    }}>
+                      {i === 0 ? "주종 " : "부종 "}{lic}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {prtcptnLmtNm ? (
               <div style={{ fontSize: 13, color: "#374151", lineHeight: 1.7, whiteSpace: "pre-line" }}>{prtcptnLmtNm}</div>
             ) : participationConditions.length > 0 ? (

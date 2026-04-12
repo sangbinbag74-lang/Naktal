@@ -7,6 +7,7 @@ export interface AnnouncementRow {
   category: string;
   region: string;
   rawJson: Record<string, string>;
+  subCategories: string[];
 }
 
 /**
@@ -63,7 +64,7 @@ export function parseAnnouncementRow(
     const budget   = parseBudget(budgetRaw);
     const deadline = parseDeadline(deadlineRaw);
 
-    return { konepsId, title, orgName, budget, deadline, category, region, rawJson };
+    return { konepsId, title, orgName, budget, deadline, category, region, rawJson, subCategories: [] };
   } catch {
     return null;
   }

@@ -8,7 +8,7 @@ import {
   toYMD,
   type G2BAnnouncement,
 } from "@/lib/g2b";
-import { CATEGORY_GROUPS } from "@/lib/category-map";
+import { CATEGORY_GROUPS, parseSubCategories } from "@/lib/category-map";
 
 export const maxDuration = 60;
 
@@ -98,6 +98,7 @@ async function upsertG2BItemsToDB(pairs: { item: G2BAnnouncement; operation: str
       category: g2bGetCategory(i, operation),
       region: g2bExtractRegion(i.ntceInsttAddr || i.ntceInsttNm || i.demInsttNm || ""),
       rawJson,
+      subCategories: operation === "getBidPblancListInfoCnstwk" ? parseSubCategories(rawJson) : [],
     };
   }).filter(Boolean);
 
@@ -204,9 +205,13 @@ async function fetchFromDB(opts: Record<string, string | number>): Promise<NextR
   if (categories) {
     const cats = categories.split(",").map(c => c.trim()).filter(Boolean);
     if (cats.length === 1) {
-      q = q.ilike("category", `%${cats[0]}%`);
+      // 주종 OR 부종에 포함되는 공고 모두 반환
+      q = q.or(`category.ilike.%${cats[0]}%,subCategories.cs.{${cats[0]}}`);
     } else if (cats.length > 1) {
-      q = q.in("category", cats);
+      // 주종 .in() OR 부종 overlap (.ov)
+      const inPart = `category.in.(${cats.map(c => `"${c}"`).join(",")})`;
+      const ovPart = `subCategories.ov.{${cats.join(",")}}`;
+      q = q.or(`${inPart},${ovPart}`);
     }
   } else if (category) {
     q = q.or(`category.ilike.%${category}%,rawJson->>pubPrcrmntMidClsfcNm.ilike.%${category}%,rawJson->>pubPrcrmntLrgClsfcNm.ilike.%${category}%`);

@@ -127,7 +127,7 @@ export async function GET(req: NextRequest) {
 
   const { data: ann } = await admin
     .from("Announcement")
-    .select("id, konepsId, orgName, category, region, budget, rawJson")
+    .select("id, konepsId, orgName, category, region, budget, rawJson, subCategories")
     .eq("id", annId)
     .single();
 
@@ -144,9 +144,10 @@ export async function GET(req: NextRequest) {
   const annRegion = ann.region as string;
   const sinceDateStr = sinceDate ? sinceDate.slice(0, 10) : null;
 
+  const annSubCats = (ann.subCategories as string[] | null) ?? [];
   const { konepsIds, expandedCategory, usedCategories } =
     await fetchOrgKonepsIdsWithCategoryFallback(
-      admin, annOrgName, categoryForFilter, annRegion, currentAnn, orgScope,
+      admin, annOrgName, categoryForFilter, annRegion, currentAnn, orgScope, annSubCats,
     );
 
   const orgRaw: { date: string; sajung: number }[] = [];

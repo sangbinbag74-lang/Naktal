@@ -181,11 +181,30 @@ export async function fetchOrgKonepsIdsWithCategoryFallback(
   region: string,
   currentAnn: { bidMethod: string; budget: number },
   orgScope: "exact" | "expand" = "exact",
+  annSubCategories: string[] = [],
 ): Promise<{
   konepsIds: string[];
   expandedCategory: boolean;
   usedCategories: string[];
 }> {
+  // 부종공종이 있으면 주종+부종 전체로 1차 검색
+  if (annSubCategories.length > 0 && category) {
+    const allCats = Array.from(new Set([category, ...annSubCategories]));
+    const { data: subAnnRows } = await supabase
+      .from("Announcement")
+      .select("konepsId")
+      .or(
+        allCats.map((c) => `category.eq.${c}`).join(",") +
+        `,subCategories.ov.{${allCats.join(",")}}`,
+      )
+      .eq("orgName", orgName)
+      .limit(500);
+    const subIds = (subAnnRows ?? []).map((r: { konepsId: string }) => r.konepsId).filter(Boolean);
+    if (subIds.length >= 10) {
+      return { konepsIds: subIds, expandedCategory: false, usedCategories: allCats };
+    }
+  }
+
   // 1차: 동일 업종 (기존 로직)
   const primary = await fetchOrgKonepsIds(
     supabase, orgName, category, region, currentAnn, orgScope,

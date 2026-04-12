@@ -61,3 +61,21 @@ export const MAIN_CNSTWK_MAP: Record<string, string> = {
   "전문국가유산수리업(보존과학업)":           "문화재수리공사",
   "전문국가유산수리업(식물보호업)":           "문화재수리공사",
 };
+
+/**
+ * rawJson의 subsiCnsttyNm1~9 필드를 파싱해서 category 배열로 변환
+ * 빈 문자열 제거, MAIN_CNSTWK_MAP으로 변환 (매핑 없으면 스킵)
+ */
+export function parseSubCategories(
+  rawJson: Record<string, string> | null | undefined,
+): string[] {
+  if (!rawJson) return [];
+  const result: string[] = [];
+  for (let i = 1; i <= 9; i++) {
+    const raw = rawJson[`subsiCnsttyNm${i}`];
+    if (!raw || raw.trim() === "") break;
+    const mapped = MAIN_CNSTWK_MAP[raw.trim()];
+    if (mapped) result.push(mapped);
+  }
+  return [...new Set(result)];
+}

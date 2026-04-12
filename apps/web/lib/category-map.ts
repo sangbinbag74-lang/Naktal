@@ -95,6 +95,34 @@ export const SIMILAR_CATEGORIES: Record<string, string[]> = {
   "문화재수리공사":    ["건축공사"],
 };
 
+/**
+ * rawJson의 subsiCnsttyNm1~9 필드를 파싱해서 category 배열로 변환
+ * 빈 문자열 제거, MAIN_CNSTWK_MAP으로 변환 (매핑 없으면 스킵)
+ */
+export function parseSubCategories(
+  rawJson: Record<string, string> | null | undefined,
+): string[] {
+  if (!rawJson) return [];
+  const result: string[] = [];
+  for (let i = 1; i <= 9; i++) {
+    const raw = rawJson[`subsiCnsttyNm${i}`];
+    if (!raw || raw.trim() === "") break;
+    const mapped = MAIN_CNSTWK_MAP[raw.trim()];
+    if (mapped) result.push(mapped);
+  }
+  return [...new Set(result)];
+}
+
+/**
+ * 주종 + 부종 전체 업종 목록 반환 (중복 제거)
+ */
+export function getAllCategories(
+  mainCategory: string,
+  subCategories: string[],
+): string[] {
+  return Array.from(new Set([mainCategory, ...subCategories].filter(Boolean)));
+}
+
 /** 업종 그룹 — 공고 목록 필터 UI용 */
 export const CATEGORY_GROUPS: Record<string, string[]> = {
   "일반건설": [

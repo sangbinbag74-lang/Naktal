@@ -51,15 +51,16 @@ const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {
 export async function upsertAnnouncement(data: AnnouncementRow): Promise<void> {
   const { error } = await supabase.from("Announcement").upsert(
     {
-      id:       konepsIdToUuid(data.konepsId), // 결정론적 UUID — PK 안정성 보장
-      konepsId: data.konepsId,
-      title:    data.title,
-      orgName:  data.orgName,
-      budget:   data.budget.toString(), // BigInt → string (Supabase JSON 호환)
-      deadline: data.deadline.toISOString(),
-      category: data.category,
-      region:   data.region,
-      rawJson:  data.rawJson,
+      id:            konepsIdToUuid(data.konepsId), // 결정론적 UUID — PK 안정성 보장
+      konepsId:      data.konepsId,
+      title:         data.title,
+      orgName:       data.orgName,
+      budget:        data.budget.toString(), // BigInt → string (Supabase JSON 호환)
+      deadline:      data.deadline.toISOString(),
+      category:      data.category,
+      region:        data.region,
+      rawJson:       data.rawJson,
+      subCategories: data.subCategories,
     },
     { onConflict: "konepsId" }
   );
@@ -81,15 +82,16 @@ export async function upsertAnnouncementBatch(rows: AnnouncementRow[]): Promise<
     const chunk = unique.slice(i, i + BATCH);
     const { error } = await supabase.from("Announcement").upsert(
       chunk.map((data) => ({
-        id:       konepsIdToUuid(data.konepsId),
-        konepsId: data.konepsId,
-        title:    data.title,
-        orgName:  data.orgName,
-        budget:   data.budget.toString(),
-        deadline: data.deadline.toISOString(),
-        category: data.category,
-        region:   data.region,
-        rawJson:  data.rawJson,
+        id:            konepsIdToUuid(data.konepsId),
+        konepsId:      data.konepsId,
+        title:         data.title,
+        orgName:       data.orgName,
+        budget:        data.budget.toString(),
+        deadline:      data.deadline.toISOString(),
+        category:      data.category,
+        region:        data.region,
+        rawJson:       data.rawJson,
+        subCategories: data.subCategories,
       })),
       { onConflict: "konepsId" }
     );
