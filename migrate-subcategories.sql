@@ -1,7 +1,8 @@
 -- ============================================================
 -- 부종공종(subCategories) 마이그레이션 SQL
--- Supabase SQL Editor에서 실행 (timeout 없음)
 -- ============================================================
+SET statement_timeout = 0;
+SET lock_timeout = 0;
 
 UPDATE "Announcement" a
 SET "subCategories" = (
