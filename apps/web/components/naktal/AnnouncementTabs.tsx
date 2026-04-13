@@ -64,6 +64,8 @@ export interface ComprehensiveResult {
     isFallback: boolean;
     disclaimer: string;
     sampleSize?: number;
+    aValueYn?: string;
+    estimatedPriceByA?: number | null;
   };
 }
 
