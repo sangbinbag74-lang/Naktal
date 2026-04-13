@@ -2,14 +2,21 @@ import { createClient } from "@supabase/supabase-js";
 import * as fs from "fs";
 import * as path from "path";
 
-// .env 로드
+// .env 로드 (파일 없으면 process.env 폴백)
 function loadEnv(): { url: string; key: string; apiKey: string } {
-  const envPath = path.resolve(__dirname, "../../../.env");
-  const text = fs.readFileSync(envPath, "utf8");
+  let text = "";
+  try {
+    const envPath = path.resolve(__dirname, "../../../.env");
+    text = fs.readFileSync(envPath, "utf8");
+  } catch {
+    // GitHub Actions 등 파일 없는 환경 → process.env에서 직접 읽음
+  }
+
   const get = (k: string) => {
-    const lines = text.split("\n");
-    for (const line of lines) {
-      if (line.startsWith(k + "=")) return line.slice(k.length + 1).replace(/^["']|["']\s*$/g, "").trim();
+    if (text) {
+      for (const line of text.split("\n")) {
+        if (line.startsWith(k + "=")) return line.slice(k.length + 1).replace(/^["']|["']\s*$/g, "").trim();
+      }
     }
     return process.env[k] ?? "";
   };
@@ -99,4 +106,7 @@ export async function fillSubCategories() {
   console.log(`\n완료: ${updated}건 업데이트 / ${skipped}건 스킵(부종없음) / ${failed}건 실패`);
 }
 
-fillSubCategories().catch(console.error);
+// 직접 실행 시에만 진입 (index.ts에서 import할 때 이중 실행 방지)
+if (require.main === module) {
+  fillSubCategories().catch(console.error);
+}
