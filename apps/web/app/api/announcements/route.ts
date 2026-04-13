@@ -126,8 +126,14 @@ async function fetchFromDB(opts: Record<string, string | number>): Promise<NextR
   // categories 파싱
   const cats = categories ? categories.split(",").map(c => c.trim()).filter(Boolean) : [];
 
-  // ── categories가 있으면 RPC로 처리 (주종 OR 부종 + 정확한 total_count) ──────
-  if (cats.length > 0) {
+  // 시(city) 레벨 지역 필터 감지: province 코드에 없으면 city로 간주
+  const regionList = regions ? regions.split(",").map(r => r.trim()).filter(Boolean) : [];
+  const citiesInFilter = regionList.filter(r => !PROVINCE_CODES.includes(r));
+  const hasCityFilter = citiesInFilter.length > 0;
+
+  // ── categories가 있고 city 필터 없을 때만 RPC 사용 ──────────────────────────
+  // city 필터가 있으면 RPC가 province 컬럼으로만 매칭해 0건 반환되므로 Path B로 처리
+  if (cats.length > 0 && !hasCityFilter) {
     // deadline 범위 계산
     let deadlineFrom: string | null = null;
     let deadlineTo: string | null = null;
@@ -149,7 +155,6 @@ async function fetchFromDB(opts: Record<string, string | number>): Promise<NextR
     // deadlineRange === "": 전체(마감포함) — 날짜 필터 없음
 
     // region 계산: 다중 지역은 첫 번째 사용 (RPC p_region은 단일값)
-    const regionList = regions ? regions.split(",").map(r => r.trim()).filter(Boolean) : [];
     const regionParam = regionList[0] || region || null;
 
     const { data: rpcData, error: rpcError } = await admin.rpc(
@@ -175,13 +180,16 @@ async function fetchFromDB(opts: Record<string, string | number>): Promise<NextR
     return NextResponse.json({ data, total: Number(totalCount), hasMore, page, limit });
   }
 
-  // ── categories 없으면 기존 체인 쿼리 (모든 필터 지원) ─────────────────────
+  // ── categories 없거나 city 필터 있으면 체인 쿼리 (모든 필터 지원) ──────────
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let q: any = admin.from("Announcement").select(
     "id,konepsId,title,orgName,budget,deadline,category,subCategories,region,createdAt,rawJson"
   );
 
-  if (category) {
+  // 다중 카테고리 (city 필터 등으로 RPC를 건너뛴 경우)
+  if (cats.length > 0) {
+    q = q.in("category", cats);
+  } else if (category) {
     q = q.or(`category.ilike.%${category}%,rawJson->>pubPrcrmntMidClsfcNm.ilike.%${category}%,rawJson->>pubPrcrmntLrgClsfcNm.ilike.%${category}%`);
   }
   if (regions) {
