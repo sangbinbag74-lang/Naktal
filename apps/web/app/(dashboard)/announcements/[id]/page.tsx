@@ -25,6 +25,8 @@ interface Announcement {
   createdAt: string;
   rawJson: Record<string, unknown> | null;
   subCategories?: string[];
+  aValueYn?: string;
+  aValueAmt?: string;
 }
 
 function fmt(n: string) {
@@ -116,6 +118,7 @@ export default async function AnnouncementDetailPage({
   const lowerLimitRate = parseFloat(sucsfbidLwltRate.replace(/[^0-9.]/g, "")) || 87.745;
   const participationConditions = extractParticipationConditions(a.rawJson);
   const prtcptnLmtNm = String(rawJson.prtcptnLmtNm ?? "");
+  const aValueYn = a.aValueYn ?? "";
   const subCats = (a.subCategories && a.subCategories.length > 0)
     ? a.subCategories
     : parseSubCategories(a.rawJson as Record<string, string> | null);
@@ -173,6 +176,11 @@ export default async function AnnouncementDetailPage({
               {multiplePrice && (
                 <span style={{ fontSize: 11, fontWeight: 600, background: "#ECFDF5", color: "#059669", padding: "3px 8px", borderRadius: 4 }}>
                   복수예가
+                </span>
+              )}
+              {aValueYn === "Y" && (
+                <span style={{ fontSize: 11, fontWeight: 600, background: "#FEF3C7", color: "#92400E", padding: "3px 8px", borderRadius: 4, border: "1px solid #FDE68A" }}>
+                  A값 적용
                 </span>
               )}
               {isClosed && (
