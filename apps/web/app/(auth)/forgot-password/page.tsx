@@ -29,7 +29,8 @@ export default function ForgotPasswordPage() {
     const json = await res.json();
 
     if (!res.ok) {
-      setError(json.error ?? "메일 발송에 실패했습니다.");
+      const msg = json.detail ? `${json.error}: ${json.detail}` : (json.error ?? "메일 발송에 실패했습니다.");
+      setError(msg);
       setLoading(false);
       return;
     }
