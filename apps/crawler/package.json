@@ -5,7 +5,8 @@
   "scripts": {
     "crawl:ann": "ts-node src/index.ts --type announcement --pages 10",
     "crawl:result": "ts-node src/index.ts --type bid-result --pages 10",
-    "crawl:all": "ts-node src/index.ts --type all --pages 10",
+    "crawl:fill-sub": "ts-node src/index.ts --type fill-sub",
+    "crawl:all": "ts-node src/index.ts --type all --pages 10 && ts-node src/index.ts --type fill-sub",
     "bulk:import": "ts-node src/bulk-import.ts",
     "build": "tsc"
   },
