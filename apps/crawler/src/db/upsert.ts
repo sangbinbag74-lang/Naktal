@@ -116,6 +116,10 @@ export async function upsertBidResult(data: BidResultRow): Promise<void> {
     { onConflict: "annId" }
   );
   if (error) throw new Error(`upsertBidResult 실패 (${data.annId}): ${error.message}`);
+  // AIPrediction 실제 결과 자동 채우기 (실패해도 크롤 전체는 계속)
+  await fillAIPredictionResult(data).catch((e) =>
+    console.error("[fillAIPredictionResult] 에러:", e)
+  );
 }
 
 export async function upsertBidResultBatch(rows: BidResultRow[]): Promise<number> {
@@ -197,6 +201,55 @@ async function upsertBidResultBatchPg(rows: BidResultRow[]): Promise<number> {
     client.release();
   }
   return saved;
+}
+
+// ─── AIPrediction 실제 결과 채우기 ──────────────────────────────────────────────
+
+/**
+ * 낙찰 결과(BidResultRow)를 받아 AIPrediction 테이블에 실제 결과를 업데이트합니다.
+ * BidResultRow.annId = konepsId 원본 문자열
+ */
+export async function fillAIPredictionResult(data: BidResultRow): Promise<void> {
+  // konepsId로 AIPrediction 조회 (아직 결과가 채워지지 않은 것만)
+  const { data: pred, error: fetchErr } = await supabase
+    .from("AIPrediction")
+    .select("id, predictedSajungRate, budget")
+    .eq("konepsId", data.annId)
+    .is("actualSajungRate", null)
+    .maybeSingle();
+
+  if (fetchErr || !pred) return; // 없거나 이미 채워진 경우 스킵
+
+  const budget = Number(pred.budget ?? 0);
+  const bidRateNum = Number(data.bidRate);
+  if (budget <= 0 || bidRateNum <= 0) return;
+
+  // 실제 사정율 = (낙찰금액 ÷ 낙찰률%) ÷ 기초금액 × 100
+  const estimatedFinalPrice = Number(data.finalPrice) / (bidRateNum / 100);
+  const actualSajungRate = (estimatedFinalPrice / budget) * 100;
+
+  const predicted = Number(pred.predictedSajungRate);
+  const deviationPct = Math.abs(predicted - actualSajungRate);
+  const isHit = deviationPct <= 0.5;
+  const isNearHit = deviationPct <= 1.0;
+
+  const { error: updateErr } = await supabase
+    .from("AIPrediction")
+    .update({
+      actualSajungRate: actualSajungRate.toFixed(4),
+      actualFinalPrice: data.finalPrice.toString(),
+      actualBidRate: Number(data.bidRate).toFixed(4),
+      resultFilledAt: new Date().toISOString(),
+      deviationPct: deviationPct.toFixed(4),
+      isHit,
+      isNearHit,
+      updatedAt: new Date().toISOString(),
+    })
+    .eq("id", pred.id as string);
+
+  if (updateErr) {
+    console.error(`[AIPrediction] 결과 업데이트 실패 (${data.annId}): ${updateErr.message}`);
+  }
 }
 
 // ─── CrawlLog ─────────────────────────────────────────────────────────────────

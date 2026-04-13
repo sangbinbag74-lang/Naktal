@@ -294,6 +294,44 @@ model BidPricePrediction {
   @@index([annId, expiresAt])
 }
 
+model AIPrediction {
+  id                   String    @id @default(cuid())
+  annId                String    @unique
+  konepsId             String
+  title                String
+  orgName              String
+  deadline             DateTime
+  budget               BigInt    @default(0)
+
+  // AI 예측값
+  predictedSajungRate  Decimal   @db.Decimal(10, 4)
+  optimalBidPrice      BigInt
+  lowerLimitRate       Decimal   @db.Decimal(10, 4) @default(0)
+  winProbability       Int       @default(0)
+  competitionScore     Int       @default(0)
+  predictedAt          DateTime  @default(now())
+
+  // 실제 결과 (개찰 후 채워짐)
+  actualSajungRate     Decimal?  @db.Decimal(10, 4)
+  actualFinalPrice     BigInt?
+  actualBidRate        Decimal?  @db.Decimal(10, 4)
+  resultFilledAt       DateTime?
+
+  // 적중 여부
+  deviationPct         Decimal?  @db.Decimal(10, 4)
+  isHit                Boolean?
+  isNearHit            Boolean?
+
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+
+  @@index([annId])
+  @@index([konepsId])
+  @@index([deadline])
+  @@index([isHit])
+  @@index([predictedAt])
+}
+
 model CompetitorProfile {
   id            String   @id @default(cuid())
   companyName   String

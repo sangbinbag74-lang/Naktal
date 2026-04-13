@@ -43,7 +43,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   // ─── 공고 조회 ─────────────────────────────────────────────────────────────
   const { data: ann } = await admin
     .from("Announcement")
-    .select("id,konepsId,orgName,budget,deadline,category,region,rawJson,aValueYn,aValueAmt,aValueTotal")
+    .select("id,konepsId,title,orgName,budget,deadline,category,region,rawJson,aValueYn,aValueAmt,aValueTotal")
     .or(`id.eq.${body.annId},konepsId.eq.${body.annId}`)
     .maybeSingle();
 
@@ -158,6 +158,27 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   };
 
   await admin.from("BidPricePrediction").upsert(predRecord, { onConflict: "annId" });
+
+  // ─── AIPrediction 영구 저장 (캐시 만료 후에도 예측 이력 보존) ─────────────
+  try {
+    await admin.from("AIPrediction").upsert({
+      annId,
+      konepsId: ann.konepsId as string,
+      title: (ann.title as string) ?? "",
+      orgName: ann.orgName as string,
+      deadline: ann.deadline as string,
+      budget: String(ann.budget ?? 0),
+      predictedSajungRate: sajung.predictedSajungRate,
+      optimalBidPrice: String(sajung.optimalBidPrice),
+      lowerLimitRate: lowerLimitRate,
+      winProbability: Math.round(((sajung.winProbability as number) ?? 0) * 100),
+      competitionScore: competition.competitionScore ?? 0,
+      predictedAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    }, { onConflict: "annId" });
+  } catch (e) {
+    console.error("[AIPrediction] 저장 실패:", e);
+  }
 
   const trendMeta: TrendMeta = {
     weightedAvg: sajung.weightedAvg,
