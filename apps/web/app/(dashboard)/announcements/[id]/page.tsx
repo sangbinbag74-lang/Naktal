@@ -127,11 +127,11 @@ export default async function AnnouncementDetailPage({
   return (
     <div style={{
       width: "100%",
-      height: "100vh",
+      minHeight: "100vh",
       display: "flex",
       flexDirection: "column",
       background: "#EEF2F7",
-      overflow: "hidden",
+      overflowX: "auto",
       padding: 16,
       boxSizing: "border-box",
     }}>
@@ -223,18 +223,17 @@ export default async function AnnouncementDetailPage({
       </div>
       </div>
 
-      {/* 3열 그리드 — 남은 공간 전부 */}
+      {/* 3열 그리드 — 고정 px, 작은 화면 가로 스크롤 */}
       <div style={{
         flex: 1,
         display: "grid",
-        gridTemplateColumns: "1fr 1.2fr 1.8fr",
+        gridTemplateColumns: "300px 1fr 1.6fr",
         gap: 16,
-        overflow: "hidden",
-        minHeight: 0,
+        minWidth: 900,
       }}>
 
         {/* 1열: 공고 정보 */}
-        <div className="col-scroll" style={{ height: "100%", overflowY: "auto", display: "flex", flexDirection: "column", gap: 16 }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
 
           {/* 기본정보 카드 */}
           <div style={{ background: "#fff", borderRadius: 16, border: "1px solid #E8ECF2", padding: "20px", boxShadow: "0 2px 8px rgba(0,0,0,0.06)" }}>
@@ -305,7 +304,7 @@ export default async function AnnouncementDetailPage({
         </div>
 
         {/* 2열: AI 분석 패널 + 번호 분석 */}
-        <div className="col-scroll" style={{ height: "100%", overflowY: "auto", minWidth: 0, display: "flex", flexDirection: "column", gap: 16 }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
           <AiAnalysisPanel
             annDbId={a.id}
             budget={budgetNum || 0}
@@ -323,7 +322,7 @@ export default async function AnnouncementDetailPage({
         </div>
 
         {/* 3열: 사정율 분석 탭 */}
-        <div className="col-scroll" style={{ height: "100%", overflowY: "auto", minWidth: 0 }}>
+        <div>
           <AnnouncementTabs
             annId={a.konepsId}
             annDbId={a.id}
