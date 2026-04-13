@@ -42,10 +42,7 @@ export async function POST(request: NextRequest) {
 
   if (linkErr || !linkData?.properties?.action_link) {
     console.error("[forgot-password] generateLink 실패:", linkErr);
-    return NextResponse.json({
-      error: "재설정 링크 생성 실패",
-      detail: linkErr?.message ?? "action_link 없음",
-    }, { status: 500 });
+    return NextResponse.json({ error: "재설정 링크 생성에 실패했습니다. 잠시 후 다시 시도해주세요." }, { status: 500 });
   }
 
   const resetLink = linkData.properties.action_link as string;
@@ -78,10 +75,7 @@ export async function POST(request: NextRequest) {
 
   if (emailErr) {
     console.error("[forgot-password] Resend 발송 실패:", emailErr);
-    return NextResponse.json({
-      error: "Resend 발송 실패",
-      detail: (emailErr as any)?.message ?? JSON.stringify(emailErr),
-    }, { status: 500 });
+    return NextResponse.json({ error: "이메일 발송에 실패했습니다. 잠시 후 다시 시도해주세요." }, { status: 500 });
   }
 
   return NextResponse.json({ ok: true });
