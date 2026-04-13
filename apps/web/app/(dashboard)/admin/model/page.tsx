@@ -86,15 +86,17 @@ export default async function AdminModelPage() {
   // ─── AIPrediction 적중률 ─────────────────────────────────────────────────────
   const { data: aiPreds } = await admin
     .from("AIPrediction")
-    .select("isHit,isNearHit,deviationPct,resultFilledAt")
+    .select("isExact,isHit,isNearHit,deviationPct,resultFilledAt")
     .limit(2000);
 
   const aiTotal = aiPreds?.length ?? 0;
-  const aiWithResult = aiPreds?.filter((p: any) => p.resultFilledAt != null) ?? [];
-  const aiHitCount = aiWithResult.filter((p: any) => p.isHit).length;
+  const aiWithResult   = aiPreds?.filter((p: any) => p.resultFilledAt != null) ?? [];
+  const aiExactCount   = aiWithResult.filter((p: any) => p.isExact).length;
+  const aiHitCount     = aiWithResult.filter((p: any) => p.isHit).length;
   const aiNearHitCount = aiWithResult.filter((p: any) => p.isNearHit).length;
-  const aiHitRate = aiWithResult.length > 0 ? (aiHitCount / aiWithResult.length) * 100 : 0;
-  const aiNearHitRate = aiWithResult.length > 0 ? (aiNearHitCount / aiWithResult.length) * 100 : 0;
+  const aiExactRate    = aiWithResult.length > 0 ? (aiExactCount   / aiWithResult.length) * 100 : 0;
+  const aiHitRate      = aiWithResult.length > 0 ? (aiHitCount     / aiWithResult.length) * 100 : 0;
+  const aiNearHitRate  = aiWithResult.length > 0 ? (aiNearHitCount / aiWithResult.length) * 100 : 0;
   const aiAvgDev = aiWithResult.length > 0
     ? aiWithResult.reduce((s: number, p: any) => s + Number(p.deviationPct ?? 0), 0) / aiWithResult.length
     : null;
@@ -167,13 +169,14 @@ export default async function AdminModelPage() {
       {/* ── AI 예측 적중률 ── */}
       <div>
         <div style={{ fontSize: 15, fontWeight: 700, color: "#374151", marginBottom: 10 }}>AI 사정율 예측 적중률 (AIPrediction)</div>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 12 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(6, 1fr)", gap: 12 }}>
           {[
             { label: "전체 예측 건수", value: aiTotal + "건", color: "#374151" },
             { label: "결과 수집 완료", value: aiWithResult.length + "건", color: "#374151" },
-            { label: "정확 적중 (±0.5%)", value: aiWithResult.length > 0 ? `${aiHitRate.toFixed(1)}%` : "-", color: aiHitRate >= 30 ? "#059669" : aiHitRate >= 15 ? "#F59E0B" : "#DC2626" },
+            { label: "완전 적중 (±0.2%)", value: aiWithResult.length > 0 ? `${aiExactRate.toFixed(1)}%` : "-", color: aiExactRate >= 20 ? "#059669" : aiExactRate >= 10 ? "#F59E0B" : "#DC2626" },
+            { label: "적중 (±0.5%)", value: aiWithResult.length > 0 ? `${aiHitRate.toFixed(1)}%` : "-", color: aiHitRate >= 30 ? "#059669" : aiHitRate >= 15 ? "#F59E0B" : "#DC2626" },
             { label: "근접 적중 (±1.0%)", value: aiWithResult.length > 0 ? `${aiNearHitRate.toFixed(1)}%` : "-", color: aiNearHitRate >= 50 ? "#059669" : aiNearHitRate >= 30 ? "#F59E0B" : "#DC2626" },
-            { label: "평균 편차 (사정율 %p)", value: aiAvgDev != null ? `${aiAvgDev.toFixed(3)}%p` : "-", color: aiAvgDev == null ? "#9CA3AF" : aiAvgDev < 0.5 ? "#059669" : aiAvgDev < 1.0 ? "#F59E0B" : "#DC2626" },
+            { label: "평균 편차 (%p)", value: aiAvgDev != null ? `${aiAvgDev.toFixed(3)}%p` : "-", color: aiAvgDev == null ? "#9CA3AF" : aiAvgDev < 0.5 ? "#059669" : aiAvgDev < 1.0 ? "#F59E0B" : "#DC2626" },
           ].map(({ label, value, color }) => (
             <div key={label} style={{ background: "#fff", borderRadius: 12, border: "1px solid #E8ECF2", padding: "16px" }}>
               <div style={{ fontSize: 11, color: "#9CA3AF", marginBottom: 4 }}>{label}</div>

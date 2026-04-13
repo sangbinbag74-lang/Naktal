@@ -319,8 +319,9 @@ model AIPrediction {
 
   // 적중 여부
   deviationPct         Decimal?  @db.Decimal(10, 4)
-  isHit                Boolean?
-  isNearHit            Boolean?
+  isExact              Boolean?                        // ±0.2% 이내 완전 적중
+  isHit                Boolean?                        // ±0.5% 이내 적중
+  isNearHit            Boolean?                        // ±1.0% 이내 근접
 
   createdAt            DateTime  @default(now())
   updatedAt            DateTime  @updatedAt

@@ -230,7 +230,8 @@ export async function fillAIPredictionResult(data: BidResultRow): Promise<void> 
 
   const predicted = Number(pred.predictedSajungRate);
   const deviationPct = Math.abs(predicted - actualSajungRate);
-  const isHit = deviationPct <= 0.5;
+  const isExact   = deviationPct <= 0.2;
+  const isHit     = deviationPct <= 0.5;
   const isNearHit = deviationPct <= 1.0;
 
   const { error: updateErr } = await supabase
@@ -241,6 +242,7 @@ export async function fillAIPredictionResult(data: BidResultRow): Promise<void> 
       actualBidRate: Number(data.bidRate).toFixed(4),
       resultFilledAt: new Date().toISOString(),
       deviationPct: deviationPct.toFixed(4),
+      isExact,
       isHit,
       isNearHit,
       updatedAt: new Date().toISOString(),
