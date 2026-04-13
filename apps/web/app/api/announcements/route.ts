@@ -107,80 +107,6 @@ async function upsertG2BItemsToDB(pairs: { item: G2BAnnouncement; operation: str
   await (admin.from("Announcement") as any).upsert(rows, { onConflict: "konepsId" });
 }
 
-// ─── G2B 결과 처리 ────────────────────────────────────────────────────────────
-function buildG2BResponse(allItems: G2BAnnouncement[], opts: Record<string, string | number>) {
-  const { category, region, minBudget, maxBudget, keyword, contractMethod,
-    deadlineRange, konepsId, prtcptnLmt, rgnType, ntceKind, sort } = opts as Record<string, string>;
-  const page  = Number(opts.page);
-  const limit = Number(opts.limit);
-  const now = Date.now();
-
-  let filtered = allItems;
-  if (konepsId)       filtered = filtered.filter(i => i.bidNtceNo?.includes(konepsId));
-  if (category)       { const kw = category.toLowerCase(); filtered = filtered.filter(i =>
-    i.bidNtceNm?.toLowerCase().includes(kw) || i.indutyCtgryNm?.toLowerCase().includes(kw) ||
-    i.ntceKindNm?.toLowerCase().includes(kw)); }
-  if (keyword)        { const kw = keyword.toLowerCase(); filtered = filtered.filter(i =>
-    i.bidNtceNm?.toLowerCase().includes(kw) || (i.ntceInsttNm||"").toLowerCase().includes(kw)); }
-  if (region)         filtered = filtered.filter(i => (i.ntceInsttAddr||"").toLowerCase().includes(region.toLowerCase()));
-  if (contractMethod) filtered = filtered.filter(i =>
-    (i.bidMthdNm||i.cntrctMthdNm||"").toLowerCase().includes(contractMethod.toLowerCase()));
-  if (prtcptnLmt)     filtered = filtered.filter(i => (i.prtcptnLmtNm||"").includes(prtcptnLmt));
-  if (rgnType === "전국")  filtered = filtered.filter(i => !(i.prtcptnLmtNm||"").trim() || (i.prtcptnLmtNm||"").includes("전국"));
-  if (rgnType === "관내")  filtered = filtered.filter(i => (i.prtcptnLmtNm||"").includes("관내"));
-  if (rgnType === "도")    filtered = filtered.filter(i => /도/.test(i.prtcptnLmtNm||"") && !/시/.test(i.prtcptnLmtNm||""));
-  if (rgnType === "시")    filtered = filtered.filter(i => /시/.test(i.prtcptnLmtNm||""));
-  if (ntceKind)       filtered = filtered.filter(i => (i.ntceKindNm||"").toLowerCase().includes(ntceKind.toLowerCase()));
-  if (minBudget) { const min = +minBudget; filtered = filtered.filter(i =>
-    +(i.asignBdgtAmt||i.presmptPrce||"0").replace(/[^0-9]/g,"") >= min); }
-  if (maxBudget) { const max = +maxBudget; filtered = filtered.filter(i =>
-    +(i.asignBdgtAmt||i.presmptPrce||"0").replace(/[^0-9]/g,"") <= max); }
-
-  // 취소 공고 항상 제외
-  filtered = filtered.filter(i => !(i.ntceKindNm ?? "").includes("취소"));
-
-  if (deadlineRange === "active") {
-    // 진행중: 마감일이 현재 이후인 공고만
-    filtered = filtered.filter(i => {
-      const t = new Date(g2bParseDate(i.bidClseDt) ?? 0).getTime();
-      return t >= now;
-    });
-  } else if (deadlineRange) {
-    const ends: Record<string, number> = {
-      today: new Date(new Date().setHours(23,59,59,0)).getTime(),
-      "3":   now + 3 * 86400000, "7": now + 7 * 86400000, "30": now + 30 * 86400000,
-    };
-    const end = ends[deadlineRange];
-    if (end) filtered = filtered.filter(i => {
-      const t = new Date(g2bParseDate(i.bidClseDt) ?? 0).getTime();
-      return t >= now && t <= end;
-    });
-  }
-
-  if (sort === "deadline") {
-    filtered.sort((a, b) => (g2bParseDate(a.bidClseDt)??"").localeCompare(g2bParseDate(b.bidClseDt)??""));
-  } else {
-    filtered.sort((a, b) => (b.bidNtceDt??"").localeCompare(a.bidNtceDt??""));
-  }
-
-  const total  = filtered.length;
-  const offset = (page - 1) * limit;
-  const data   = filtered.slice(offset, offset + limit).map(i => {
-    const rawJson: Record<string,string> = {};
-    for (const [k, v] of Object.entries(i)) rawJson[k] = String(v ?? "");
-    return {
-      id: i.bidNtceNo, konepsId: i.bidNtceNo, title: i.bidNtceNm ?? "",
-      orgName: i.ntceInsttNm || i.demInsttNm || "",
-      budget: +(i.asignBdgtAmt||i.presmptPrce||"0").replace(/[^0-9]/g,""),
-      deadline: g2bParseDate(i.bidClseDt) ?? "",
-      category: i.pubPrcrmntMidClsfcNm || i.pubPrcrmntLrgClsfcNm || i.ntceKindNm || "",
-      region: g2bExtractRegion(i.ntceInsttAddr || i.ntceInsttNm || i.demInsttNm || ""),
-      rawJson, createdAt: g2bParseDate(i.bidNtceDt) ?? "",
-    };
-  });
-
-  return NextResponse.json({ data, total, hasMore: offset + limit < total, page, limit });
-}
 
 // ─── DB 폴백 ──────────────────────────────────────────────────────────────────
 const PROVINCE_CODES = ["서울","부산","대구","인천","광주","대전","울산","세종",
@@ -197,35 +123,65 @@ async function fetchFromDB(opts: Record<string, string | number>): Promise<NextR
   const now = new Date();
   const nowIso = now.toISOString();
 
+  // categories 파싱
+  const cats = categories ? categories.split(",").map(c => c.trim()).filter(Boolean) : [];
+
+  // ── categories가 있으면 RPC로 처리 (주종 OR 부종 + 정확한 total_count) ──────
+  if (cats.length > 0) {
+    // deadline 범위 계산
+    let deadlineFrom: string | null = null;
+    let deadlineTo: string | null = null;
+    if (deadlineRange === "active") {
+      deadlineFrom = nowIso;
+    } else if (deadlineRange === "today") {
+      deadlineFrom = nowIso;
+      deadlineTo = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59).toISOString();
+    } else if (deadlineRange === "3") {
+      deadlineFrom = nowIso;
+      deadlineTo = new Date(Date.now() + 3 * 86400000).toISOString();
+    } else if (deadlineRange === "7") {
+      deadlineFrom = nowIso;
+      deadlineTo = new Date(Date.now() + 7 * 86400000).toISOString();
+    } else if (deadlineRange === "30") {
+      deadlineFrom = nowIso;
+      deadlineTo = new Date(Date.now() + 30 * 86400000).toISOString();
+    }
+    // deadlineRange === "": 전체(마감포함) — 날짜 필터 없음
+
+    // region 계산: 다중 지역은 첫 번째 사용 (RPC p_region은 단일값)
+    const regionList = regions ? regions.split(",").map(r => r.trim()).filter(Boolean) : [];
+    const regionParam = regionList[0] || region || null;
+
+    const { data: rpcData, error: rpcError } = await admin.rpc(
+      "search_announcements",
+      {
+        p_categories:    cats,
+        p_region:        regionParam || null,
+        p_keyword:       keyword || null,
+        p_deadline_from: deadlineFrom,
+        p_deadline_to:   deadlineTo,
+        p_limit:         limit + 1,
+        p_offset:        offset,
+      }
+    );
+    if (rpcError) {
+      console.error("[announcements RPC]", rpcError.message, rpcError.hint);
+      return NextResponse.json({ data: [], total: 0, hasMore: false, page, limit, error: rpcError.message });
+    }
+    const rows = rpcData ?? [];
+    const totalCount = rows.length > 0 ? rows[0].total_count : 0;
+    const hasMore = rows.length > limit;
+    const data = hasMore ? rows.slice(0, limit) : rows;
+    return NextResponse.json({ data, total: Number(totalCount), hasMore, page, limit });
+  }
+
+  // ── categories 없으면 기존 체인 쿼리 (모든 필터 지원) ─────────────────────
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let q: any = admin.from("Announcement").select(
     "id,konepsId,title,orgName,budget,deadline,category,subCategories,region,createdAt,rawJson"
   );
 
-  if (categories) {
-    const cats = categories.split(",").map(c => c.trim()).filter(Boolean);
-    if (cats.length > 0) {
-      // 주종(category.in) + 부종(subCategories.overlaps) 각각 ID 조회 후 합집합
-      // PostgREST .or() 내부에서 배열 연산자 미지원 → 병렬 쿼리로 우회
-      const [mainRes, subRes] = await Promise.all([
-        admin.from("Announcement").select("id")
-          .in("category", cats).limit(5000),
-        admin.from("Announcement").select("id")
-          .overlaps("subCategories", cats).limit(5000),
-      ]);
-      const allIds = Array.from(new Set([
-        ...(mainRes.data ?? []).map((d: { id: string }) => d.id),
-        ...(subRes.data ?? []).map((d: { id: string }) => d.id),
-      ]));
-
-      if (allIds.length === 0) {
-        return NextResponse.json({ data: [], total: 0, hasMore: false, page, limit });
-      }
-
-      // allIds가 800개 초과면 800개로 제한 (PostgREST URL 길이 초과 방지)
-      q = q.in("id", allIds.length > 800 ? allIds.slice(0, 800) : allIds);
-    }
-  } else if (category) {
+  if (category) {
     q = q.or(`category.ilike.%${category}%,rawJson->>pubPrcrmntMidClsfcNm.ilike.%${category}%,rawJson->>pubPrcrmntLrgClsfcNm.ilike.%${category}%`);
   }
   if (regions) {
@@ -233,13 +189,10 @@ async function fetchFromDB(opts: Record<string, string | number>): Promise<NextR
     const provinces = all.filter((r: string) => PROVINCE_CODES.includes(r));
     const cities    = all.filter((r: string) => !PROVINCE_CODES.includes(r));
     if (provinces.length && cities.length === 0) {
-      // province만: 인덱스 컬럼 .in() 직접 사용 (가장 안정적)
       q = q.in("region", provinces);
     } else if (cities.length && provinces.length === 0) {
-      // city만: JSONB ilike OR
       q = q.or(cities.map((c: string) => `rawJson->>ntceInsttAddr.ilike.%${c}%`).join(","));
     } else if (provinces.length && cities.length) {
-      // 혼합: province in + city ilike OR 결합
       const orParts: string[] = [`region.in.(${provinces.join(",")})`];
       cities.forEach((c: string) => orParts.push(`rawJson->>ntceInsttAddr.ilike.%${c}%`));
       q = q.or(orParts.join(","));
@@ -258,7 +211,6 @@ async function fetchFromDB(opts: Record<string, string | number>): Promise<NextR
   } else if (rgnType === "관내") {
     q = q.filter("rawJson->>prtcptnLmtNm", "ilike", "%관내%");
   } else if (rgnType === "도") {
-    // 도 단위: 도 포함, 시는 미포함 (예: "경기도" 제한, "경기도 수원시" 제외)
     q = q.filter("rawJson->>prtcptnLmtNm", "ilike", "%도%")
          .not("rawJson->>prtcptnLmtNm", "ilike", "%시%");
   } else if (rgnType === "시") {
@@ -266,10 +218,7 @@ async function fetchFromDB(opts: Record<string, string | number>): Promise<NextR
   }
   if (ntceKind)       q = q.filter("rawJson->>ntceKindNm", "ilike", `%${ntceKind}%`);
 
-  // 취소 공고 제외: deadline 미래 필터로 대부분 처리됨 (JSONB full scan 방지)
-
   if (deadlineRange === "active") {
-    // 진행중(기본값): 마감일 미래인 공고만
     q = q.gte("deadline", nowIso);
   } else if (deadlineRange === "today") {
     const endOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59).toISOString();
@@ -277,12 +226,10 @@ async function fetchFromDB(opts: Record<string, string | number>): Promise<NextR
   } else if (deadlineRange === "3")  { q = q.gte("deadline", nowIso).lte("deadline", new Date(Date.now() + 3*86400000).toISOString()); }
   else if (deadlineRange === "7")  { q = q.gte("deadline", nowIso).lte("deadline", new Date(Date.now() + 7*86400000).toISOString()); }
   else if (deadlineRange === "30") { q = q.gte("deadline", nowIso).lte("deadline", new Date(Date.now() + 30*86400000).toISOString()); }
-  // deadlineRange === "": 전체(마감포함) — 날짜 필터 없음
 
   q = sort === "deadline"
     ? q.order("deadline", { ascending: true })
     : q.order("createdAt", { ascending: false });
-  // limit+1개 가져와서 hasMore 판단 (count 쿼리 제거로 타임아웃 방지)
   q = q.range(offset, offset + limit);
 
   const { data, error } = await q;
