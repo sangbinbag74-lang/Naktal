@@ -401,16 +401,6 @@ export default function AnnouncementsPage() {
   const sentinelRef = useRef<HTMLDivElement | null>(null);
   const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const triggerDebouncedSearch = useCallback(() => {
-    if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
-    searchTimerRef.current = setTimeout(() => {
-      setPage(1);
-      setItems([]);
-      setHasMore(true);
-      fetchData(1, true);
-    }, 500);
-  }, [fetchData]);
-
   const fetchData = useCallback(
     async (currentPage: number, reset = false) => {
       setLoading(true);
@@ -440,6 +430,16 @@ export default function AnnouncementsPage() {
     },
     [keyword, konepsId, categories, regions, sort, contractMethod, deadlineRange, minBudget, maxBudget, rgnType, ntceKind]
   );
+
+  const triggerDebouncedSearch = useCallback(() => {
+    if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+    searchTimerRef.current = setTimeout(() => {
+      setPage(1);
+      setItems([]);
+      setHasMore(true);
+      fetchData(1, true);
+    }, 500);
+  }, [fetchData]);
 
   // 최초 마운트 1회만 자동 조회
   // eslint-disable-next-line react-hooks/exhaustive-deps
