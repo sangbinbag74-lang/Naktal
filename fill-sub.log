@@ -1,0 +1,37 @@
+진행중 시설공사: 1611건 | 부종 미채워진 것: 1607건
+150/1607 | 업데이트: 60건 | 스킵: 90건 | 실패: 0건
+300/1607 | 업데이트: 119건 | 스킵: 181건 | 실패: 0건
+500/1607 | 업데이트: 204건 | 스킵: 296건 | 실패: 0건
+550/1607 | 업데이트: 231건 | 스킵: 319건 | 실패: 0건
+650/1607 | 업데이트: 280건 | 스킵: 370건 | 실패: 0건
+800/1607 | 업데이트: 350건 | 스킵: 450건 | 실패: 0건
+900/1607 | 업데이트: 397건 | 스킵: 503건 | 실패: 0건
+950/1607 | 업데이트: 416건 | 스킵: 534건 | 실패: 0건
+1100/1607 | 업데이트: 483건 | 스킵: 617건 | 실패: 0건
+1150/1607 | 업데이트: 512건 | 스킵: 638건 | 실패: 0건
+1200/1607 | 업데이트: 538건 | 스킵: 662건 | 실패: 0건
+1450/1607 | 업데이트: 641건 | 스킵: 809건 | 실패: 0건
+1500/1607 | 업데이트: 668건 | 스킵: 832건 | 실패: 0건
+1550/1607 | 업데이트: 686건 | 스킵: 864건 | 실패: 0건
+1600/1607 | 업데이트: 717건 | 스킵: 883건 | 실패: 0건
+
+완료: 722건 업데이트 / 885건 스킵(부종없음) / 0건 실패
+\index.ts:1077:36)
+    at Object.compile (C:\01 Ai\23 Naktal\naktal\node_modules\.pnpm\ts-node@10.9.2_@types+node@22.15.3_typescript@5.9.2\node_modules\ts-node\src\index.ts:1433:41)
+    at Module.m._compile (C:\01 Ai\23 Naktal\naktal\node_modules\.pnpm\ts-node@10.9.2_@types+node@22.15.3_typescript@5.9.2\node_modules\ts-node\src\index.ts:1617:30)
+    at Module._extensions..js (node:internal/modules/cjs/loader:1548:10)
+    at Object.require.extensions.<computed> [as .ts] (C:\01 Ai\23 Naktal\naktal\node_modules\.pnpm\ts-node@10.9.2_@types+node@22.15.3_typescript@5.9.2\node_modules\ts-node\src\index.ts:1621:12)
+    at Module.load (node:internal/modules/cjs/loader:1288:32)
+    at Function.Module._load (node:internal/modules/cjs/loader:1104:12)
+    at Function.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:174:12) {
+  diagnosticCodes: [ 2339 ]
+}
+진행중 시설공사: 1611건 | 부종 미채워진 것: 1291건
+50/1291 | 업데이트: 26건 | 스킵: 24건 | 실패: 0건
+300/1291 | 업데이트: 140건 | 스킵: 160건 | 실패: 0건
+500/1291 | 업데이트: 229건 | 스킵: 271건 | 실패: 0건
+750/1291 | 업데이트: 244건 | 스킵: 506건 | 실패: 0건
+850/1291 | 업데이트: 272건 | 스킵: 578건 | 실패: 0건
+1100/1291 | 업데이트: 311건 | 스킵: 789건 | 실패: 0건
+
+완료: 374건 업데이트 / 917건 스킵(부종없음) / 0건 실패
