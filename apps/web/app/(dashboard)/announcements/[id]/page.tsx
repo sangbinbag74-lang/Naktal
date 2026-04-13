@@ -5,6 +5,7 @@ import { isMultiplePriceBid } from "@/lib/bid-utils";
 import { AnnouncementTabs } from "@/components/naktal/AnnouncementTabs";
 import { AiAnalysisPanel } from "@/components/naktal/AiAnalysisPanel";
 import { NumberAnalysisSection } from "@/components/naktal/NumberAnalysisSection";
+import { SaveButton } from "@/components/naktal/SaveButton";
 import {
   g2bFetchAnnouncementByNo,
   g2bParseDate,
@@ -211,6 +212,7 @@ export default async function AnnouncementDetailPage({
             <a href={g2bUrl} target="_blank" rel="noopener noreferrer" style={{ fontSize: 12, color: "#3B82F6", textDecoration: "none" }}>
               나라장터 원문 ↗
             </a>
+            <SaveButton annId={a.id} />
           </div>
         </div>
 

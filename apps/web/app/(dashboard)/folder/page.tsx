@@ -201,12 +201,6 @@ export default function FolderPage() {
                         번호분석 미지원
                       </span>
                     )}
-                    <a
-                      href={`/qualification?annId=${ann.id}`}
-                      style={{ fontSize: 11, fontWeight: 600, color: "#166534", background: "#F0FDF4", padding: "4px 8px", borderRadius: 6, textDecoration: "none" }}
-                    >
-                      ✅ 적격심사
-                    </a>
                   </div>
                   <button
                     onClick={() => handleRemove(ann.id)}

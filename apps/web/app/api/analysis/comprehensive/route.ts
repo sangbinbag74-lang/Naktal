@@ -29,12 +29,16 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
+  const admin = createAdminClient();
+  const { data: dbUser } = await admin.from("User").select("plan").eq("supabaseId", user.id).single();
+  if (!dbUser || dbUser.plan === "FREE") {
+    return NextResponse.json({ error: "PRO_REQUIRED", message: "AI 분석은 프로 플랜부터 이용할 수 있습니다.", upgradeUrl: "/pricing" }, { status: 403 });
+  }
+
   const body = (await request.json()) as { annId?: string };
   if (!body.annId) {
     return NextResponse.json({ error: "annId 필수" }, { status: 400 });
   }
-
-  const admin = createAdminClient();
 
   // ─── 공고 조회 ─────────────────────────────────────────────────────────────
   const { data: ann } = await admin

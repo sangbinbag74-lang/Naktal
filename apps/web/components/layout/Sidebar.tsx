@@ -13,9 +13,7 @@ const MENU_SECTIONS = [
   {
     label: "핵심 기능",
     items: [
-      { href: "/announcements", label: "공고 목록",       icon: "≡" },
-      { href: "/qualification", label: "적격심사 계산기",  icon: "✅" },
-      { href: "/realtime",      label: "실시간 모니터",    icon: "📡", proOnly: true },
+      { href: "/announcements", label: "공고 목록", icon: "≡" },
     ],
   },
   {
@@ -45,7 +43,7 @@ const MENU_SECTIONS = [
 
 const planLabels: Record<Plan, string> = {
   FREE: "무료",
-  STANDARD: "스탠다드",
+  STANDARD: "프로",
   PRO: "프로",
 };
 
@@ -93,11 +91,10 @@ export function Sidebar({ plan = "FREE", isAdmin = false }: SidebarProps) {
             </div>
             {section.items.map((item) => {
               const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
-              const isProLocked = "proOnly" in item && item.proOnly && plan !== "PRO";
               return (
                 <Link
                   key={item.href}
-                  href={isProLocked ? "/pricing" : item.href}
+                  href={item.href}
                   style={{
                     display: "flex",
                     alignItems: "center",
@@ -106,7 +103,7 @@ export function Sidebar({ plan = "FREE", isAdmin = false }: SidebarProps) {
                     borderRadius: 8,
                     fontSize: 13.5,
                     fontWeight: isActive ? 600 : 400,
-                    color: isActive ? "#fff" : isProLocked ? "#475569" : "#94A3B8",
+                    color: isActive ? "#fff" : "#94A3B8",
                     background: isActive ? "#1B3A6B" : "transparent",
                     transition: "all 0.15s ease",
                     marginBottom: 2,
@@ -115,21 +112,18 @@ export function Sidebar({ plan = "FREE", isAdmin = false }: SidebarProps) {
                   onMouseEnter={(e) => {
                     if (!isActive) {
                       (e.currentTarget as HTMLAnchorElement).style.background = "rgba(255,255,255,0.06)";
-                      (e.currentTarget as HTMLAnchorElement).style.color = isProLocked ? "#64748B" : "#fff";
+                      (e.currentTarget as HTMLAnchorElement).style.color = "#fff";
                     }
                   }}
                   onMouseLeave={(e) => {
                     if (!isActive) {
                       (e.currentTarget as HTMLAnchorElement).style.background = "transparent";
-                      (e.currentTarget as HTMLAnchorElement).style.color = isProLocked ? "#475569" : "#94A3B8";
+                      (e.currentTarget as HTMLAnchorElement).style.color = "#94A3B8";
                     }
                   }}
                 >
-                  <span style={{ fontSize: 14, width: 18, textAlign: "center" }}>{item.icon}</span>
+                  <span style={{ fontSize: 14, width: 18, textAlign: "center" }}>{item.icon as string}</span>
                   <span style={{ flex: 1 }}>{item.label}</span>
-                  {isProLocked && (
-                    <span style={{ fontSize: 10, color: "#475569" }}>🔒</span>
-                  )}
                 </Link>
               );
             })}

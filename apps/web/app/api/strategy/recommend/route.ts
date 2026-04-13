@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { randomUUID } from "crypto";
 import { createClient, createAdminClient } from "@/lib/supabase/server";
-import { Feature, checkUsageLimit } from "@/lib/plan-guard";
+import { Feature, canAccess } from "@/lib/plan-guard";
 import { recommendNumbers } from "@/lib/core1/frequency-engine";
 import { rateLimit } from "@/lib/rate-limit";
 import { isMultiplePriceBid, getBudgetRange } from "@/lib/bid-utils";
@@ -81,20 +81,10 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   }
 
   const plan = dbUser.plan as Plan;
-  const { allowed, used, limit } = await checkUsageLimit(
-    dbUser.id,
-    Feature.CORE1_NUMBER_RECOMMEND,
-    plan,
-  );
-
-  if (!allowed) {
-    const msg =
-      limit === Infinity
-        ? "오류"
-        : String(limit) + "회 한도를 초과했습니다. 업그레이드하면 더 많이 사용할 수 있습니다.";
+  if (!canAccess(plan, Feature.CORE1_NUMBER_RECOMMEND)) {
     return NextResponse.json(
-      { message: msg, upgradeUrl: "/pricing", used, limit },
-      { status: 429 },
+      { error: "PRO_REQUIRED", message: "AI 분석은 프로 플랜부터 이용할 수 있습니다.", upgradeUrl: "/pricing" },
+      { status: 403 },
     );
   }
 
@@ -143,8 +133,6 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     sampleSize: result.sampleSize,
     modelVersion: result.modelVersion,
     isEstimated: result.isEstimated,
-    used: used + 1,
-    limit,
     announcementTitle: ann.title,
     announcementBudget: ann.budget,
     announcementOrg: ann.orgName,

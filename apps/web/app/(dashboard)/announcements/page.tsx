@@ -370,11 +370,6 @@ const NTCE_KINDS = [
   { value: "협상에의한계약", label: "협상계약" },
 ];
 
-interface PredictionCache {
-  optimalBidPrice: string;
-  winProbability: number;
-}
-
 export default function AnnouncementsPage() {
   const [navigatingId, setNavigatingId] = useState<string | null>(null);
   const [items, setItems] = useState<Announcement[]>([]);
@@ -383,7 +378,6 @@ export default function AnnouncementsPage() {
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
   const [folderIds, setFolderIds] = useState<string[]>([]);
-  const [predictions, setPredictions] = useState<Map<string, PredictionCache>>(new Map());
 
   useEffect(() => { setFolderIds(getFolderIds()); }, []);
 
@@ -427,21 +421,6 @@ export default function AnnouncementsPage() {
         setItems((prev) => (reset ? newItems : [...prev, ...newItems]));
         setHasMore(json.hasMore);
         setTotal(json.total);
-
-        // 예측 캐시 배치 조회 (없으면 "-" 표시)
-        if (newItems.length > 0) {
-          const ids = newItems.map((a) => a.id).join(",");
-          fetch(`/api/analysis/predictions?annIds=${ids}`)
-            .then((r) => r.json())
-            .then((map: Record<string, PredictionCache>) => {
-              setPredictions((prev) => {
-                const next = new Map(prev);
-                for (const [id, pred] of Object.entries(map)) next.set(id, pred);
-                return next;
-              });
-            })
-            .catch(() => {/* 예측 없으면 "-" 표시 유지 */});
-        }
       } catch {
         console.error("공고 목록 불러오기 실패");
       } finally {
@@ -1039,48 +1018,6 @@ export default function AnnouncementsPage() {
                   </div>
                 </div>
 
-                {/* card-mid */}
-                {(() => {
-                  const rj = (ann.rawJson ?? {}) as Record<string, string>;
-                  const lwltRate = rj.sucsfbidLwltRate;
-                  const pred = predictions.get(ann.id);
-                  const optimalBid = pred
-                    ? formatBudget(pred.optimalBidPrice)
-                    : "-";
-                  const winProb = pred
-                    ? `${Math.round(pred.winProbability * 100)}%`
-                    : "-";
-                  const probColor = pred
-                    ? pred.winProbability >= 0.5
-                      ? "#059669"
-                      : pred.winProbability >= 0.3
-                        ? "#C2410C"
-                        : "#94A3B8"
-                    : "#94A3B8";
-                  return (
-                    <div style={{
-                      padding: "8px 16px",
-                      background: "#F8FAFC",
-                      borderTop: "1px solid #F1F5F9",
-                      borderBottom: "1px solid #F1F5F9",
-                      display: "grid",
-                      gridTemplateColumns: "repeat(3, 1fr)",
-                      gap: 8,
-                    }}>
-                      {[
-                        { label: "낙찰하한율",    value: lwltRate ? `${lwltRate}%` : "-", color: lwltRate ? "#DC2626" : "#94A3B8" },
-                        { label: "AI추천투찰가",  value: optimalBid,                       color: pred ? "#1B3A6B" : "#94A3B8" },
-                        { label: "구간확률(AI)",  value: winProb,                          color: probColor },
-                      ].map((item) => (
-                        <div key={item.label} style={{ textAlign: "center" }}>
-                          <div style={{ fontSize: 10, color: "#94A3B8", marginBottom: 2 }}>{item.label}</div>
-                          <div style={{ fontSize: 12, fontWeight: 600, color: item.color }}>{item.value}</div>
-                        </div>
-                      ))}
-                    </div>
-                  );
-                })()}
-
                 { /* card-bot */ }
                 <div style={{ padding: '9px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                   <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
@@ -1100,9 +1037,6 @@ export default function AnnouncementsPage() {
                         🎯 번호분석 미지원
                       </span>
                     )}
-                    <a href={`/qualification?annId=${ann.id}`} onClick={e => e.stopPropagation()} style={{ fontSize: 11, fontWeight: 600, color: '#166534', background: '#F0FDF4', padding: '4px 8px', borderRadius: 6, textDecoration: 'none' }}>
-                      ✅ 적격심사
-                    </a>
                     <button
                       onClick={(e) => {
                         e.stopPropagation();

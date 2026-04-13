@@ -9,8 +9,6 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { createClient, createAdminClient } from "@/lib/supabase/server";
-import { Feature, checkUsageLimit } from "@/lib/plan-guard";
-import type { Plan } from "@naktal/types";
 
 interface ConstructionRecord {
   name: string;
@@ -49,7 +47,6 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     .single();
   if (!dbUser) return NextResponse.json({ error: "User not found" }, { status: 404 });
 
-  const plan = dbUser.plan as Plan;
   const body = (await req.json()) as { annId?: string };
 
   const { data: profile } = await admin
@@ -98,19 +95,6 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       score: 100,
       reason: "이 공고는 적격심사 대상이 아닙니다 (" + formatAmount(budget) + ", " + (ntceKindNm || "물품/용역") + ").",
       details: { budgetOk: true },
-    });
-  }
-
-  const { allowed: fullAllowed } = await checkUsageLimit(
-    dbUser.id,
-    Feature.CORE3_QUALIFICATION_FULL,
-    plan,
-  );
-  if (!fullAllowed) {
-    return NextResponse.json({
-      result: "UNCERTAIN",
-      reason: "전체 적격심사 판정은 스탠다드 이상 요금제에서 이용 가능합니다.",
-      upgradeUrl: "/pricing",
     });
   }
 
