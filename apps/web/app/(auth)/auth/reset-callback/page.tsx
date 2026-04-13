@@ -4,7 +4,7 @@ import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
-export default function AuthCallbackPage() {
+export default function ResetCallbackPage() {
   const router = useRouter();
 
   useEffect(() => {
@@ -14,7 +14,6 @@ export default function AuthCallbackPage() {
       return;
     }
 
-    // #access_token=xxx&refresh_token=yyy&type=recovery 파싱
     const params = new URLSearchParams(hash.slice(1));
     const accessToken = params.get("access_token");
     const refreshToken = params.get("refresh_token");
