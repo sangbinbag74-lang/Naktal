@@ -1,6 +1,8 @@
 "use client";
 import { useState, useEffect, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { createClient } from "@/lib/supabase/client";
 
 // ── 경쟁사 비교 데이터 ──────────────────────────────────────────────────────
 const COMPARE = [
@@ -175,6 +177,23 @@ function HeroDemo() {
 
 // ── 메인 랜딩 페이지 ──────────────────────────────────────────────────────────
 export default function LandingPage() {
+  const router = useRouter();
+
+  useEffect(() => {
+    const hash = window.location.hash;
+    if (!hash) return;
+    const params = new URLSearchParams(hash.slice(1));
+    const type = params.get("type");
+    const accessToken = params.get("access_token");
+    const refreshToken = params.get("refresh_token");
+    if (type === "recovery" && accessToken && refreshToken) {
+      const supabase = createClient();
+      supabase.auth.setSession({ access_token: accessToken, refresh_token: refreshToken }).then(() => {
+        router.replace("/auth/reset-password");
+      });
+    }
+  }, [router]);
+
   return (
     <div style={{ minHeight: "100vh", background: "#F0F2F5", fontFamily: "Pretendard, sans-serif" }}>
 
