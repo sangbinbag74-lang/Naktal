@@ -353,6 +353,8 @@ export function AnnouncementTabs({
                 annId={annDbId}
                 userId={userIdRef.current}
                 predictedSajungRate={bs?.predictedSajungRate}
+                budget={budget}
+                lowerLimitRate={lowerLimitRate}
                 period={period}
                 categoryFilter={categoryFilter}
                 orgScope={orgScope}
