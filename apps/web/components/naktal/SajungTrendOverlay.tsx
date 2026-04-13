@@ -20,6 +20,8 @@ interface SajungTrendOverlayProps {
   annId: string;
   userId: string | null;
   predictedSajungRate?: number;
+  budget?: number;
+  lowerLimitRate?: number;
   period?: string;
   categoryFilter?: "same" | "all";
   orgScope?: "exact" | "expand";
@@ -87,7 +89,7 @@ function AiLabel({ viewBox, rate, orgAvg }: { viewBox?: { x: number; y: number; 
 
 // ── 메인 컴포넌트 ─────────────────────────────────────────────────────────────
 
-export function SajungTrendOverlay({ annId, userId, predictedSajungRate, period = "3y", categoryFilter = "same", orgScope = "expand", onLoad }: SajungTrendOverlayProps) {
+export function SajungTrendOverlay({ annId, userId, predictedSajungRate, budget, lowerLimitRate, period = "3y", categoryFilter = "same", orgScope = "expand", onLoad }: SajungTrendOverlayProps) {
   const [data, setData] = useState<SajungTrendResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [brushRange, setBrushRange] = useState<{ startIndex: number; endIndex: number } | null>(null);
@@ -416,41 +418,83 @@ export function SajungTrendOverlay({ annId, userId, predictedSajungRate, period 
 
       {/* 예측 카드 */}
       {data.predictions && (
-        <PredictionCards predictions={data.predictions} orgAvg={baseAvg} />
+        <div style={{
+          marginTop: 16,
+          background: "#F8FAFC",
+          borderRadius: 12,
+          border: "1px solid #E2E8F0",
+          overflow: "hidden",
+        }}>
+          {/* 헤더 */}
+          <div style={{
+            padding: "10px 16px",
+            borderBottom: "1px solid #E2E8F0",
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+          }}>
+            <span style={{ fontSize: 12, fontWeight: 600, color: "#374151" }}>
+              다음 공고 예상 사정율
+            </span>
+            <span style={{ fontSize: 11, color: "#94A3B8" }}>
+              {data.predictions.basis}
+            </span>
+          </div>
+
+          {/* 카드 3개 */}
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr" }}>
+            {[
+              { pred: data.predictions.center, icon: "🎯", highlight: true  },
+              { pred: data.predictions.upper,  icon: "📍", highlight: false },
+              { pred: data.predictions.lower,  icon: "📍", highlight: false },
+            ].map(({ pred, icon, highlight }, i) => {
+              const bidPrice = budget && lowerLimitRate
+                ? Math.round(budget * (pred.sajung / 100) * (lowerLimitRate / 100))
+                : null;
+              return (
+                <div key={pred.label} style={{
+                  padding: "14px 16px",
+                  borderRight: i < 2 ? "1px solid #E2E8F0" : "none",
+                  background: highlight ? "#EFF6FF" : "transparent",
+                }}>
+                  <div style={{ fontSize: 11, color: "#64748B", marginBottom: 6 }}>
+                    {icon} {pred.label}
+                  </div>
+                  <div style={{
+                    fontSize: 22,
+                    fontWeight: 800,
+                    color: pred.deviation >= 0 ? "#1B3A6B" : "#DC2626",
+                    fontFamily: "monospace",
+                    letterSpacing: "-0.5px",
+                  }}>
+                    {pred.deviation >= 0 ? "+" : ""}{pred.deviation.toFixed(3)}%
+                  </div>
+                  <div style={{ fontSize: 12, color: "#64748B", marginTop: 3 }}>
+                    사정율 {pred.sajung.toFixed(3)}%
+                  </div>
+                  {bidPrice && (
+                    <div style={{ fontSize: 11, color: "#94A3B8", marginTop: 4 }}>
+                      참고 {Math.round(bidPrice / 10000).toLocaleString()}만원
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+
+          {/* 하단 기준 안내 */}
+          <div style={{
+            padding: "8px 16px",
+            borderTop: "1px solid #E2E8F0",
+            fontSize: 11,
+            color: "#94A3B8",
+          }}>
+            ※ 발주처 평균 {data.orgAvg?.toFixed(3)}% 기준 편차
+            · 통계적 참고자료, 낙찰 보장 없음
+          </div>
+        </div>
       )}
     </div>
   );
 }
 
-// ── 예측 카드 ─────────────────────────────────────────────────────────────────
-
-function PredictionCards({ predictions, orgAvg }: { predictions: SajungPredictions; orgAvg: number }) {
-  const items = [
-    { item: predictions.upper,  color: "#DC2626", bg: "#FEF2F2", border: "#FECACA", icon: "▲" },
-    { item: predictions.center, color: "#1B3A6B", bg: "#EFF6FF", border: "#BFDBFE", icon: "◆" },
-    { item: predictions.lower,  color: "#16A34A", bg: "#F0FDF4", border: "#BBF7D0", icon: "▼" },
-  ];
-  return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-      <div style={{ fontSize: 11, color: "#94A3B8", fontWeight: 600 }}>
-        차트 패턴 분석 · 다음 예측 사정율
-        <span style={{ fontWeight: 400, marginLeft: 6 }}>{predictions.basis}</span>
-      </div>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8 }}>
-        {items.map(({ item, color, bg, border, icon }) => (
-          <div
-            key={item.label}
-            style={{ background: bg, border: `1px solid ${border}`, borderRadius: 10, padding: "10px 12px", textAlign: "center" }}
-          >
-            <div style={{ fontSize: 13, marginBottom: 4 }}>{icon}</div>
-            <div style={{ fontSize: 11, color: "#64748B", marginBottom: 2 }}>{item.label}</div>
-            <div style={{ fontSize: 17, fontWeight: 700, color }}>{formatDeviation(item.sajung, orgAvg)}</div>
-            <div style={{ fontSize: 11, color: "#94A3B8", marginTop: 2 }}>
-              {formatSajung(item.sajung)}
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
