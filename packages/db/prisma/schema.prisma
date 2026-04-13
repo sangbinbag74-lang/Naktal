@@ -64,6 +64,8 @@ model Announcement {
   region               String
   rawJson              Json
   subCategories        String[]              @default([])
+  aValueYn             String                @default("")
+  aValueAmt            BigInt                @default(0)
   isPinned             Boolean               @default(false)
   deletedAt            DateTime?
   createdAt            DateTime              @default(now())

@@ -1,0 +1,113 @@
+import { createClient } from "@supabase/supabase-js";
+import * as fs from "fs";
+import * as path from "path";
+
+// .env 로드 (파일 없으면 process.env 폴백)
+function loadEnv(): { url: string; key: string; apiKey: string } {
+  let text = "";
+  try {
+    const envPath = path.resolve(__dirname, "../../../.env");
+    text = fs.readFileSync(envPath, "utf8");
+  } catch {
+    // GitHub Actions 등 파일 없는 환경 → process.env에서 직접 읽음
+  }
+
+  const get = (k: string) => {
+    if (text) {
+      for (const line of text.split("\n")) {
+        if (line.startsWith(k + "=")) return line.slice(k.length + 1).replace(/^["']|["']\s*$/g, "").trim();
+      }
+    }
+    return process.env[k] ?? "";
+  };
+  return {
+    url: get("NEXT_PUBLIC_SUPABASE_URL"),
+    key: get("SUPABASE_SERVICE_ROLE_KEY"),
+    apiKey: get("KONEPS_API_KEY") || get("G2B_API_KEY"),
+  };
+}
+
+const BASE = "https://apis.data.go.kr/1230000/ad/BidPublicInfoService";
+
+interface BsisAmountItem {
+  bssamt?: string;            // 기초금액
+  bidPrceCalclAYn?: string;  // A값 계산 여부 (Y/N)
+}
+
+/**
+ * 기초금액 API → bssamt(기초금액), bidPrceCalclAYn(A값여부) 조회
+ */
+async function fetchBsisAmount(bidNtceNo: string, apiKey: string): Promise<{ aValueYn: string; aValueAmt: bigint } | null> {
+  const url = `${BASE}/getBidPblancListInfoCnstwkBsisAmount?serviceKey=${apiKey}&inqryDiv=2&bidNtceNo=${bidNtceNo}&bidNtceOrd=000&numOfRows=1&pageNo=1&type=json`;
+  const res = await fetch(url, { signal: AbortSignal.timeout(10000) });
+  const json = await res.json() as { response?: { body?: { items?: BsisAmountItem[] } } };
+  const items = json?.response?.body?.items ?? [];
+  if (!Array.isArray(items) || items.length === 0) return null;
+
+  const item = items[0];
+  const aValueYn = item.bidPrceCalclAYn ?? "";
+  const aValueAmt = BigInt(item.bssamt ? Math.round(Number(item.bssamt)) : 0);
+  return { aValueYn, aValueAmt };
+}
+
+export async function fillAValue() {
+  const { url, key, apiKey } = loadEnv();
+  const sb = createClient(url, key);
+  const now = new Date().toISOString();
+
+  // 진행중 시설공사 공고 전체 페이징 조회
+  const all: { id: string; konepsId: string; aValueYn: string }[] = [];
+  let page = 0;
+  const PAGE = 1000;
+  while (true) {
+    const { data, error } = await sb
+      .from("Announcement")
+      .select("id,konepsId,aValueYn")
+      .eq("category", "시설공사")
+      .gte("deadline", now)
+      .range(page * PAGE, (page + 1) * PAGE - 1);
+    if (error) { console.error("조회 실패:", error.message); process.exit(1); }
+    if (!data || data.length === 0) break;
+    all.push(...data);
+    if (data.length < PAGE) break;
+    page++;
+  }
+
+  // aValueYn이 비어있는 것만 처리
+  const list = all.filter(a => !a.aValueYn);
+  console.log(`진행중 시설공사: ${all.length}건 | A값 미채워진 것: ${list.length}건`);
+
+  let updated = 0;
+  let failed = 0;
+  let skipped = 0;
+
+  for (let i = 0; i < list.length; i++) {
+    const ann = list[i];
+    try {
+      const result = await fetchBsisAmount(ann.konepsId, apiKey);
+      if (!result) { skipped++; continue; }
+
+      await sb.from("Announcement").update({
+        aValueYn: result.aValueYn,
+        aValueAmt: result.aValueAmt.toString(),
+      }).eq("id", ann.id);
+      updated++;
+
+      if ((i + 1) % 50 === 0) {
+        console.log(`${i + 1}/${list.length} | 업데이트: ${updated}건 | 스킵: ${skipped}건 | 실패: ${failed}건`);
+      }
+
+      await new Promise(r => setTimeout(r, 120));
+    } catch (e) {
+      if (failed < 3) console.error(`[${ann.konepsId}] 오류:`, (e as Error).message);
+      failed++;
+    }
+  }
+
+  console.log(`\n완료: ${updated}건 업데이트 / ${skipped}건 스킵(데이터없음) / ${failed}건 실패`);
+}
+
+// 직접 실행 시에만 진입
+if (require.main === module) {
+  fillAValue().catch(console.error);
+}
