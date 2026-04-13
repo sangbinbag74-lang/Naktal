@@ -208,17 +208,22 @@ async function fetchFromDB(opts: Record<string, string | number>): Promise<NextR
       // 주종(category.in) + 부종(subCategories.overlaps) 각각 ID 조회 후 합집합
       // PostgREST .or() 내부에서 배열 연산자 미지원 → 병렬 쿼리로 우회
       const [mainRes, subRes] = await Promise.all([
-        admin.from("Announcement").select("id").in("category", cats).limit(5000),
-        admin.from("Announcement").select("id").overlaps("subCategories", cats).limit(5000),
+        admin.from("Announcement").select("id")
+          .in("category", cats).limit(5000),
+        admin.from("Announcement").select("id")
+          .overlaps("subCategories", cats).limit(5000),
       ]);
       const allIds = Array.from(new Set([
         ...(mainRes.data ?? []).map((d: { id: string }) => d.id),
         ...(subRes.data ?? []).map((d: { id: string }) => d.id),
       ]));
-      // allIds가 비어있으면 필터 자체를 건너뜀 (.in("id", []) → 0건 오작동 방지)
-      if (allIds.length > 0) {
-        q = q.in("id", allIds);
+
+      if (allIds.length === 0) {
+        return NextResponse.json({ data: [], total: 0, hasMore: false, page, limit });
       }
+
+      // allIds가 800개 초과면 800개로 제한 (PostgREST URL 길이 초과 방지)
+      q = q.in("id", allIds.length > 800 ? allIds.slice(0, 800) : allIds);
     }
   } else if (category) {
     q = q.or(`category.ilike.%${category}%,rawJson->>pubPrcrmntMidClsfcNm.ilike.%${category}%,rawJson->>pubPrcrmntLrgClsfcNm.ilike.%${category}%`);
