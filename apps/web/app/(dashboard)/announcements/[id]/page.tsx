@@ -215,7 +215,7 @@ export default async function AnnouncementDetailPage({
           ].map((item) => (
             <div key={item.label}>
               <div style={{ fontSize: 11, color: "#94A3B8", marginBottom: 6 }}>{item.label}</div>
-              <div style={{ fontSize: 16, fontWeight: 700, color: "#0F172A" }}>{item.value}</div>
+              <div style={{ fontSize: 16, fontWeight: 700, color: "#0F172A", whiteSpace: "nowrap" }}>{item.value}</div>
               <div style={{ fontSize: 10, color: "#94A3B8", marginTop: 2 }}>{item.sub}</div>
             </div>
           ))}
