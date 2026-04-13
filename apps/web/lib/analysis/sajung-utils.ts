@@ -65,7 +65,7 @@ export function extractCoreOrgName(orgName: string): string {
     "강원도 ", "충청북도 ", "충청남도 ", "전라남도 ", "경상북도 ", "경상남도 ",
     "제주특별자치도 ",
   ];
-  let core = orgName;
+  let core = orgName.trim();
   for (const prefix of prefixes) {
     if (core.startsWith(prefix)) { core = core.slice(prefix.length); break; }
   }
@@ -73,6 +73,8 @@ export function extractCoreOrgName(orgName: string): string {
   for (const ep of eduPrefixes) {
     if (core.includes(ep)) { core = core.split(ep).pop() ?? core; break; }
   }
+  // " 전체", " 본청", " 직할" 등 불필요한 suffix 제거
+  core = core.replace(/\s*(전체|본청|직할|본부)$/, "").trim();
   return core;
 }
 

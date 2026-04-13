@@ -15,6 +15,24 @@ import * as path from "path";
 import { createClient, SupabaseClient } from "@supabase/supabase-js";
 import { createHash } from "crypto";
 
+/** 발주처명 정규화: 광역 prefix·" 전체"·" 본청" 등 제거 */
+function normalizeOrgName(orgName: string): string {
+  if (!orgName) return orgName;
+  const prefixes = [
+    "전북특별자치도 ", "전라북도 ", "경기도 ", "서울특별시 ",
+    "부산광역시 ", "인천광역시 ", "대구광역시 ", "광주광역시 ",
+    "대전광역시 ", "울산광역시 ", "세종특별자치시 ", "강원특별자치도 ",
+    "강원도 ", "충청북도 ", "충청남도 ", "전라남도 ", "경상북도 ", "경상남도 ",
+    "제주특별자치도 ",
+  ];
+  let core = orgName.trim();
+  for (const p of prefixes) {
+    if (core.startsWith(p)) { core = core.slice(p.length); break; }
+  }
+  core = core.replace(/\s*(전체|본청|직할|본부)$/, "").trim();
+  return core;
+}
+
 /** orgName|category|budgetRange|region → 결정론적 UUID (MD5 기반) */
 function statKey(orgName: string, category: string, budgetRange: string, region: string): string {
   const h = createHash("md5").update(`${orgName}|${category}|${budgetRange}|${region}`).digest("hex");
@@ -224,7 +242,7 @@ async function buildStats(): Promise<void> {
     const month = deadline.getMonth() + 1;
     const budgetRange = classifyBudget(budget);
 
-    const key = `${ann.orgName}|${ann.category}|${budgetRange}|${ann.region}`;
+    const key = `${normalizeOrgName(ann.orgName)}|${ann.category}|${budgetRange}|${ann.region}`;
     if (!groups.has(key)) groups.set(key, { rates: [], months: [] });
     groups.get(key)!.rates.push(sajungRate);
     groups.get(key)!.months.push(month);

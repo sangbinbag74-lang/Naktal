@@ -7,6 +7,7 @@
  */
 
 import { createAdminClient } from "@/lib/supabase/server";
+import { extractCoreOrgName } from "@/lib/analysis/sajung-utils";
 
 // ─── 타입 ─────────────────────────────────────────────────────────────────────
 
@@ -284,18 +285,19 @@ export async function predictOptimalBid(params: {
   deadlineMonth: number;  // 1~12
 }): Promise<SajungPrediction> {
   const budgetRange = classifyBudget(params.budget);
+  const orgName = extractCoreOrgName(params.orgName); // "전북특별자치도 익산시" → "익산시"
   let isFallback = false;
 
   // raw 데이터와 SajungRateStat 병렬 조회
   const [rawPoints, statPrimary] = await Promise.all([
-    queryRawDataPoints(params.orgName, params.category, budgetRange, params.region),
-    querySajungStat(params.orgName, params.category, budgetRange, params.region),
+    queryRawDataPoints(orgName, params.category, budgetRange, params.region),
+    querySajungStat(orgName, params.category, budgetRange, params.region),
   ]);
 
   // 1. 발주처 특화 통계 조회 (region 일치 → region= 폴백)
   let stat = statPrimary;
   if (!stat && params.region) {
-    stat = await querySajungStat(params.orgName, params.category, budgetRange, "");
+    stat = await querySajungStat(orgName, params.category, budgetRange, "");
   }
 
   // 2. sampleSize < 10 → ALL 카테고리 폴백 (region 일치 → region= 폴백)
