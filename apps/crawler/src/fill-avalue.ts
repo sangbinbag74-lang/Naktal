@@ -32,6 +32,8 @@ const BASE = "https://apis.data.go.kr/1230000/ad/BidPublicInfoService";
 interface BsisAmountItem {
   bssamt?: string;
   bidPrceCalclAYn?: string;
+  rsrvtnPrceRngBgnRate?: string;  // 예비가격 범위 시작 (예: "-2")
+  rsrvtnPrceRngEndRate?: string;  // 예비가격 범위 끝 (예: "+2")
 }
 
 interface AInfoItem {
@@ -47,7 +49,7 @@ interface AInfoItem {
 /**
  * 기초금액 API → bssamt(기초금액), bidPrceCalclAYn(A값여부) 조회
  */
-async function fetchBsisAmount(bidNtceNo: string, apiKey: string): Promise<{ aValueYn: string; aValueAmt: bigint } | null> {
+async function fetchBsisAmount(bidNtceNo: string, apiKey: string): Promise<{ aValueYn: string; aValueAmt: bigint; priceRangeRate: string } | null> {
   const url = `${BASE}/getBidPblancListInfoCnstwkBsisAmount?serviceKey=${apiKey}&inqryDiv=2&bidNtceNo=${bidNtceNo}&bidNtceOrd=000&numOfRows=1&pageNo=1&type=json`;
   const res = await fetch(url, { signal: AbortSignal.timeout(10000) });
   const json = await res.json() as { response?: { body?: { items?: BsisAmountItem[] } } };
@@ -57,7 +59,10 @@ async function fetchBsisAmount(bidNtceNo: string, apiKey: string): Promise<{ aVa
   const item = items[0];
   const aValueYn = item.bidPrceCalclAYn ?? "";
   const aValueAmt = BigInt(item.bssamt ? Math.round(Number(item.bssamt)) : 0);
-  return { aValueYn, aValueAmt };
+  const bgn = item.rsrvtnPrceRngBgnRate ?? "";
+  const end = item.rsrvtnPrceRngEndRate ?? "";
+  const priceRangeRate = bgn && end ? `${bgn}~${end}` : "";
+  return { aValueYn, aValueAmt, priceRangeRate };
 }
 
 /**
@@ -87,14 +92,14 @@ export async function fillAValue() {
   const now = new Date().toISOString();
 
   // 진행중 시설공사 공고 전체 페이징 조회
-  const all: { id: string; konepsId: string; aValueYn: string; aValueTotal: string }[] = [];
+  const all: { id: string; konepsId: string; aValueYn: string; aValueTotal: string; priceRangeRate: string }[] = [];
   let page = 0;
   const PAGE = 1000;
   while (true) {
     const { data, error } = await sb
       .from("Announcement")
-      .select("id,konepsId,aValueYn,aValueTotal")
-      .eq("category", "시설공사")
+      .select("id,konepsId,aValueYn,aValueTotal,priceRangeRate")
+      .not("category", "in", '("물품","용역","기타")')
       .gte("deadline", now)
       .range(page * PAGE, (page + 1) * PAGE - 1);
     if (error) { console.error("조회 실패:", error.message); process.exit(1); }
@@ -104,12 +109,13 @@ export async function fillAValue() {
     page++;
   }
 
-  // 처리 대상: aValueYn 미채워진 것 + aValueYn=Y이지만 aValueTotal=0인 것
+  // 처리 대상: aValueYn 미채워진 것 + aValueYn=Y이지만 aValueTotal=0인 것 + priceRangeRate 미채워진 것
   const list = all.filter(a =>
     !a.aValueYn ||
+    !a.priceRangeRate ||
     (a.aValueYn === "Y" && (!a.aValueTotal || a.aValueTotal === "0"))
   );
-  console.log(`진행중 시설공사: ${all.length}건 | 처리 대상: ${list.length}건`);
+  console.log(`진행중 공사 공고: ${all.length}건 | 처리 대상: ${list.length}건`);
 
   let updated = 0;
   let failed = 0;
@@ -123,11 +129,13 @@ export async function fillAValue() {
       let aValueTotal = 0n;
 
       // aValueYn 미채워진 경우 → 기초금액 API 호출
-      if (!aValueYn) {
+      let priceRangeRate = ann.priceRangeRate ?? "";
+      if (!aValueYn || !priceRangeRate) {
         const bsisResult = await fetchBsisAmount(ann.konepsId, apiKey);
         if (!bsisResult) { skipped++; continue; }
         aValueYn = bsisResult.aValueYn;
         aValueAmt = bsisResult.aValueAmt;
+        priceRangeRate = bsisResult.priceRangeRate;
       }
 
       // A값 대상 공고 → A합산 API 추가 호출
@@ -139,6 +147,7 @@ export async function fillAValue() {
       const updatePayload: Record<string, string> = { aValueYn };
       if (aValueAmt > 0n) updatePayload.aValueAmt = aValueAmt.toString();
       if (aValueTotal > 0n) updatePayload.aValueTotal = aValueTotal.toString();
+      if (priceRangeRate) updatePayload.priceRangeRate = priceRangeRate;
 
       await sb.from("Announcement").update(updatePayload).eq("id", ann.id);
       updated++;

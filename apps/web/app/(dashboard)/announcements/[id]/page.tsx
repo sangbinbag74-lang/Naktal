@@ -28,6 +28,7 @@ interface Announcement {
   subCategories?: string[];
   aValueYn?: string;
   aValueAmt?: string;
+  priceRangeRate?: string;
 }
 
 function fmt(n: string) {
@@ -120,6 +121,7 @@ export default async function AnnouncementDetailPage({
   const participationConditions = extractParticipationConditions(a.rawJson);
   const prtcptnLmtNm = String(rawJson.prtcptnLmtNm ?? "");
   const aValueYn = a.aValueYn ?? "";
+  const priceRangeRate = a.priceRangeRate ?? "";
   const subCats = (a.subCategories && a.subCategories.length > 0)
     ? a.subCategories
     : parseSubCategories(a.rawJson as Record<string, string> | null);
@@ -257,7 +259,7 @@ export default async function AnnouncementDetailPage({
                 { label: "지역",          value: a.region || "-" },
                 { label: "낙찰방법",      value: bidMethodDisplay || "-" },
                 { label: "낙찰하한율",    value: sucsfbidLwltRate ? `${sucsfbidLwltRate}%` : "-" },
-                { label: "예가방법",      value: multiplePrice ? "복수예가" : "단일예가" },
+                { label: "예가방법",      value: multiplePrice ? (priceRangeRate ? `복수예가 (${priceRangeRate}%)` : "복수예가") : "단일예가" },
                 { label: "재입찰여부",    value: String(rawJson.rbidPermsnYn ?? "") === "Y" ? "재공고" : "일반" },
               ].map((row) => (
                 <div key={row.label}>
