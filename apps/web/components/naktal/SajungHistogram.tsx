@@ -99,6 +99,8 @@ export function SajungHistogram({ annId, predictedSajungRate, lowerLimitRate, pe
 
   const { histogram, sampleSize, stats } = data;
   const lr = lowerLimitRate ?? data.lowerLimitRate;
+  const xMin = Math.floor((histogram[0]?.rate ?? 100) * 10 - 5) / 10;
+  const xMax = Math.ceil((histogram[histogram.length - 1]?.rate ?? 115) * 10 + 5) / 10;
   const predicted = predictedSajungRate ?? stats.avg;
   const modeRate = stats.mode;
   const orgAvg = stats.avg; // 편차 기준값
@@ -166,10 +168,7 @@ export function SajungHistogram({ annId, predictedSajungRate, lowerLimitRate, pe
             <XAxis
               dataKey="rate"
               type="number"
-              domain={[
-                Math.max(85, Math.floor((histogram[0]?.rate ?? 85) * 10 - 10) / 10),
-                Math.min(125, Math.ceil((histogram[histogram.length - 1]?.rate ?? 125) * 10 + 10) / 10),
-              ]}
+              domain={[xMin, xMax]}
               tick={{ fontSize: 10, fill: "#94A3B8" }}
               tickFormatter={(v: number) => `${v.toFixed(1)}%`}
               tickCount={8}
@@ -209,7 +208,7 @@ export function SajungHistogram({ annId, predictedSajungRate, lowerLimitRate, pe
               />
             )}
             {/* 낙찰하한율 */}
-            {lr > 0 && (
+            {lr > 0 && lr >= xMin && lr <= xMax && (
               <ReferenceLine
                 yAxisId="left"
                 x={Math.round(lr * 10) / 10}
