@@ -133,7 +133,7 @@ async function fetchFromDB(opts: Record<string, string | number>): Promise<NextR
 
   // ── categories가 있고 city 필터 없을 때만 RPC 사용 ──────────────────────────
   // city 필터가 있으면 RPC가 province 컬럼으로만 매칭해 0건 반환되므로 Path B로 처리
-  if (cats.length > 0 && !hasCityFilter) {
+  if (cats.length > 0 && !hasCityFilter && !keyword) {
     // deadline 범위 계산
     let deadlineFrom: string | null = null;
     let deadlineTo: string | null = null;

@@ -399,6 +399,17 @@ export default function AnnouncementsPage() {
 
   const observerRef = useRef<IntersectionObserver | null>(null);
   const sentinelRef = useRef<HTMLDivElement | null>(null);
+  const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const triggerDebouncedSearch = useCallback(() => {
+    if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+    searchTimerRef.current = setTimeout(() => {
+      setPage(1);
+      setItems([]);
+      setHasMore(true);
+      fetchData(1, true);
+    }, 500);
+  }, [fetchData]);
 
   const fetchData = useCallback(
     async (currentPage: number, reset = false) => {
@@ -511,7 +522,7 @@ export default function AnnouncementsPage() {
           <input
             type="text"
             value={keyword}
-            onChange={(e) => setKeyword(e.target.value)}
+            onChange={(e) => { setKeyword(e.target.value); if (e.target.value) triggerDebouncedSearch(); }}
             onKeyDown={(e) => { if (e.key === "Enter") handleSearch(); }}
             placeholder="공고명, 발주기관 검색..."
             style={{
@@ -774,7 +785,8 @@ export default function AnnouncementsPage() {
           <input
             type="text"
             value={konepsId}
-            onChange={(e) => setKonepsId(e.target.value)}
+            onChange={(e) => { setKonepsId(e.target.value); if (e.target.value.length >= 6) triggerDebouncedSearch(); }}
+            onKeyDown={(e) => { if (e.key === "Enter") handleSearch(); }}
             placeholder="공고번호 직접 입력 (예: R26BK01367226)"
             style={{
               flex: 1,
