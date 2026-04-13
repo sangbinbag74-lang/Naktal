@@ -5,12 +5,12 @@ import { createClient, createAdminClient } from "@/lib/supabase/server";
 import { AdminLogoutButton } from "./AdminLogoutButton";
 
 const adminNav = [
-  { href: "/admin", label: "대시보드", icon: "📊" },
-  { href: "/admin/users", label: "사용자 관리", icon: "👥" },
-  { href: "/admin/payments", label: "결제 내역", icon: "💳" },
-  { href: "/admin/crawl", label: "크롤링 관리", icon: "🕷️" },
-  { href: "/admin/announcements", label: "공고 관리", icon: "📋" },
-  { href: "/admin/beta", label: "베타 신청", icon: "🎟️" },
+  { href: "/admin/model",         label: "운영 현황",  icon: "📊" },
+  { href: "/admin/outcomes",      label: "투찰 현황",  icon: "🗂️" },
+  { href: "/admin/users",         label: "회원 관리",  icon: "👥" },
+  { href: "/admin/payments",      label: "결제 내역",  icon: "💳" },
+  { href: "/admin/announcements", label: "공고 관리",  icon: "📋" },
+  { href: "/admin/beta",          label: "베타 신청",  icon: "🎟️" },
 ];
 
 export default async function AdminLayout({
