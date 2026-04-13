@@ -87,7 +87,7 @@ function AiLabel({ viewBox, rate, orgAvg }: { viewBox?: { x: number; y: number; 
 
 // ── 메인 컴포넌트 ─────────────────────────────────────────────────────────────
 
-export function SajungTrendOverlay({ annId, userId, predictedSajungRate, period = "3y", categoryFilter = "same", orgScope = "exact", onLoad }: SajungTrendOverlayProps) {
+export function SajungTrendOverlay({ annId, userId, predictedSajungRate, period = "3y", categoryFilter = "same", orgScope = "expand", onLoad }: SajungTrendOverlayProps) {
   const [data, setData] = useState<SajungTrendResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [brushRange, setBrushRange] = useState<{ startIndex: number; endIndex: number } | null>(null);

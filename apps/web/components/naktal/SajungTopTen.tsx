@@ -24,7 +24,7 @@ function fmt(n: number): string {
   return `${n.toLocaleString()}원`;
 }
 
-export function SajungTopTen({ annId, predictedSajungRate, budget: _budget, period = "3y", categoryFilter = "same", orgScope = "exact", onLoad }: SajungTopTenProps) {
+export function SajungTopTen({ annId, predictedSajungRate, budget: _budget, period = "3y", categoryFilter = "same", orgScope = "expand", onLoad }: SajungTopTenProps) {
   const [data, setData] = useState<SajungTopTenResponse | null>(null);
   const [loading, setLoading] = useState(true);
 

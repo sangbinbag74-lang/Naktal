@@ -61,7 +61,7 @@ function CustomTooltip({ active, payload, label, orgAvg }: any) {
 
 // ─── Main Component ──────────────────────────────────────────────────────────
 
-export function SajungHistogram({ annId, predictedSajungRate, lowerLimitRate, period = "3y", categoryFilter = "same", orgScope = "exact", onLoad }: SajungHistogramProps) {
+export function SajungHistogram({ annId, predictedSajungRate, lowerLimitRate, period = "3y", categoryFilter = "same", orgScope = "expand", onLoad }: SajungHistogramProps) {
   const [data, setData] = useState<SajungHistogramResponse | null>(null);
   const [loading, setLoading] = useState(true);
 
