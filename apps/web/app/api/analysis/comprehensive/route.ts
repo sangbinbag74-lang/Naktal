@@ -39,7 +39,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   // ─── 공고 조회 ─────────────────────────────────────────────────────────────
   const { data: ann } = await admin
     .from("Announcement")
-    .select("id,konepsId,orgName,budget,deadline,category,region,rawJson")
+    .select("id,konepsId,orgName,budget,deadline,category,region,rawJson,aValueYn,aValueAmt,aValueTotal")
     .or(`id.eq.${body.annId},konepsId.eq.${body.annId}`)
     .maybeSingle();
 
@@ -48,6 +48,14 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   const annId = ann.id as string;
   const budgetNum = Number(ann.budget);
   const budgetRange = classifyBudget(budgetNum);
+
+  // A값 적용 공고: 예정가격 = 기초금액(aValueAmt) + A합산(aValueTotal)
+  const aValueYn = String(ann.aValueYn ?? "");
+  const aValueAmt = Number(ann.aValueAmt ?? 0);
+  const aValueTotal = Number(ann.aValueTotal ?? 0);
+  const estimatedPriceByA = (aValueYn === "Y" && aValueAmt > 0)
+    ? aValueAmt + aValueTotal
+    : null;
 
   // ─── 24시간 캐시 확인 ──────────────────────────────────────────────────────
   const { data: cached } = await admin
@@ -80,7 +88,11 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         p => Date.now() - new Date(p.deadline).getTime() < 365 * 24 * 60 * 60 * 1000
       ).length,
     };
-    return NextResponse.json(buildResponse(ann, cached, null, trendMeta));
+    const aValueYnCached = String(ann.aValueYn ?? "");
+    const estimatedPriceByACached = (aValueYnCached === "Y" && Number(ann.aValueAmt ?? 0) > 0)
+      ? Number(ann.aValueAmt ?? 0) + Number(ann.aValueTotal ?? 0)
+      : null;
+    return NextResponse.json(buildResponse(ann, cached, null, trendMeta, estimatedPriceByACached));
   }
 
   // ─── 공고 메타 파싱 ────────────────────────────────────────────────────────
@@ -151,7 +163,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     recentSampleSize: sajung.recentSampleSize,
   };
 
-  return NextResponse.json(buildResponse(ann, predRecord, numberStrategy, trendMeta));
+  return NextResponse.json(buildResponse(ann, predRecord, numberStrategy, trendMeta, estimatedPriceByA));
 }
 
 // ─── 응답 빌더 ───────────────────────────────────────────────────────────────
@@ -160,7 +172,8 @@ function buildResponse(
   ann: Record<string, unknown>,
   pred: Record<string, unknown>,
   numberStrategy: unknown,
-  trendMeta?: TrendMeta | null
+  trendMeta?: TrendMeta | null,
+  estimatedPriceByA?: number | null
 ) {
   return {
     bidStrategy: {
@@ -170,7 +183,9 @@ function buildResponse(
         return { min: r?.min ?? 97, max: r?.max ?? 112, p25: r?.p25 ?? 101, p75: r?.p75 ?? 106 };
       })(),
       sampleSize: pred.sampleSize,
-      optimalBidPrice: Number(pred.optimalBidPrice),
+      optimalBidPrice: estimatedPriceByA != null
+        ? Math.round(estimatedPriceByA * 0.9997)
+        : Number(pred.optimalBidPrice),
       bidPriceRangeLow: Number(pred.bidPriceRangeLow),
       bidPriceRangeHigh: Number(pred.bidPriceRangeHigh),
       lowerLimitPrice: Number(pred.lowerLimitPrice),
@@ -196,6 +211,8 @@ function buildResponse(
       disclaimer: "예측 결과는 통계적 참고 자료입니다. 실제 낙찰을 보장하지 않습니다.",
       modelVersion: pred.modelVersion,
       analyzedAt: new Date().toISOString(),
+      aValueYn: String(ann.aValueYn ?? ""),
+      estimatedPriceByA: estimatedPriceByA ?? null,
     },
   };
 }

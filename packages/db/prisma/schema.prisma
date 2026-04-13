@@ -66,6 +66,7 @@ model Announcement {
   subCategories        String[]              @default([])
   aValueYn             String                @default("")
   aValueAmt            BigInt                @default(0)
+  aValueTotal          BigInt                @default(0)
   isPinned             Boolean               @default(false)
   deletedAt            DateTime?
   createdAt            DateTime              @default(now())

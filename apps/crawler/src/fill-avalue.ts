@@ -30,8 +30,18 @@ function loadEnv(): { url: string; key: string; apiKey: string } {
 const BASE = "https://apis.data.go.kr/1230000/ad/BidPublicInfoService";
 
 interface BsisAmountItem {
-  bssamt?: string;            // 기초금액
-  bidPrceCalclAYn?: string;  // A값 계산 여부 (Y/N)
+  bssamt?: string;
+  bidPrceCalclAYn?: string;
+}
+
+interface AInfoItem {
+  npnInsrprm?: string;
+  mrfnHealthInsrprm?: string;
+  rtrfundNon?: string;
+  odsnLngtrmrcprInsrprm?: string;
+  sftyMngcst?: string;
+  qltyMngcst?: string;
+  qltyMngcstAObjYn?: string;
 }
 
 /**
@@ -50,19 +60,40 @@ async function fetchBsisAmount(bidNtceNo: string, apiKey: string): Promise<{ aVa
   return { aValueYn, aValueAmt };
 }
 
+/**
+ * A값 정보 API → A합산(국민연금 + 건강보험 + 퇴직공제부금 + 산재보험 + 안전관리비 + 품질관리비) 조회
+ */
+async function fetchATotal(bidNtceNo: string, apiKey: string): Promise<bigint> {
+  const url = `${BASE}/getBidPblancListBidPrceCalclAInfo?serviceKey=${apiKey}&inqryDiv=2&bidNtceNo=${bidNtceNo}&bidNtceOrd=000&numOfRows=1&pageNo=1&type=json`;
+  const res = await fetch(url, { signal: AbortSignal.timeout(10000) });
+  const json = await res.json() as { response?: { body?: { items?: AInfoItem[] } } };
+  const items = json?.response?.body?.items ?? [];
+  if (!Array.isArray(items) || items.length === 0) return 0n;
+
+  const item = items[0];
+  const sum =
+    Number(item.npnInsrprm ?? 0) +
+    Number(item.mrfnHealthInsrprm ?? 0) +
+    Number(item.rtrfundNon ?? 0) +
+    Number(item.odsnLngtrmrcprInsrprm ?? 0) +
+    Number(item.sftyMngcst ?? 0) +
+    (item.qltyMngcstAObjYn === "Y" ? Number(item.qltyMngcst ?? 0) : 0);
+  return BigInt(Math.round(sum));
+}
+
 export async function fillAValue() {
   const { url, key, apiKey } = loadEnv();
   const sb = createClient(url, key);
   const now = new Date().toISOString();
 
   // 진행중 시설공사 공고 전체 페이징 조회
-  const all: { id: string; konepsId: string; aValueYn: string }[] = [];
+  const all: { id: string; konepsId: string; aValueYn: string; aValueTotal: string }[] = [];
   let page = 0;
   const PAGE = 1000;
   while (true) {
     const { data, error } = await sb
       .from("Announcement")
-      .select("id,konepsId,aValueYn")
+      .select("id,konepsId,aValueYn,aValueTotal")
       .eq("category", "시설공사")
       .gte("deadline", now)
       .range(page * PAGE, (page + 1) * PAGE - 1);
@@ -73,9 +104,12 @@ export async function fillAValue() {
     page++;
   }
 
-  // aValueYn이 비어있는 것만 처리
-  const list = all.filter(a => !a.aValueYn);
-  console.log(`진행중 시설공사: ${all.length}건 | A값 미채워진 것: ${list.length}건`);
+  // 처리 대상: aValueYn 미채워진 것 + aValueYn=Y이지만 aValueTotal=0인 것
+  const list = all.filter(a =>
+    !a.aValueYn ||
+    (a.aValueYn === "Y" && (!a.aValueTotal || a.aValueTotal === "0"))
+  );
+  console.log(`진행중 시설공사: ${all.length}건 | 처리 대상: ${list.length}건`);
 
   let updated = 0;
   let failed = 0;
@@ -84,13 +118,29 @@ export async function fillAValue() {
   for (let i = 0; i < list.length; i++) {
     const ann = list[i];
     try {
-      const result = await fetchBsisAmount(ann.konepsId, apiKey);
-      if (!result) { skipped++; continue; }
+      let aValueYn = ann.aValueYn;
+      let aValueAmt = 0n;
+      let aValueTotal = 0n;
 
-      await sb.from("Announcement").update({
-        aValueYn: result.aValueYn,
-        aValueAmt: result.aValueAmt.toString(),
-      }).eq("id", ann.id);
+      // aValueYn 미채워진 경우 → 기초금액 API 호출
+      if (!aValueYn) {
+        const bsisResult = await fetchBsisAmount(ann.konepsId, apiKey);
+        if (!bsisResult) { skipped++; continue; }
+        aValueYn = bsisResult.aValueYn;
+        aValueAmt = bsisResult.aValueAmt;
+      }
+
+      // A값 대상 공고 → A합산 API 추가 호출
+      if (aValueYn === "Y") {
+        aValueTotal = await fetchATotal(ann.konepsId, apiKey);
+        await new Promise(r => setTimeout(r, 120)); // 추가 딜레이
+      }
+
+      const updatePayload: Record<string, string> = { aValueYn };
+      if (aValueAmt > 0n) updatePayload.aValueAmt = aValueAmt.toString();
+      if (aValueTotal > 0n) updatePayload.aValueTotal = aValueTotal.toString();
+
+      await sb.from("Announcement").update(updatePayload).eq("id", ann.id);
       updated++;
 
       if ((i + 1) % 50 === 0) {
