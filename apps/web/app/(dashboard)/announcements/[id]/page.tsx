@@ -124,8 +124,8 @@ export default async function AnnouncementDetailPage({
     ? a.subCategories
     : parseSubCategories(a.rawJson as Record<string, string> | null);
   const allLicenses = getAllCategories(a.category, subCats);
-  const budgetNum = parseInt(a.budget, 10);
-  const estimatedPrice = isNaN(budgetNum) ? null : Math.round(budgetNum * 1.03);
+  const budgetNum = parseInt(a.budget, 10); // presmptPrce (추정가격)
+  const bdgtAmt = Number(rawJson.bdgtAmt ?? 0) || budgetNum; // 기초금액 (없으면 추정가격으로 폴백)
   const g2bUrl = String(rawJson.ntcePbancUrl || `https://www.g2b.go.kr:8081/ep/peoplecvpl/narasVary.do?bidno=${a.konepsId}&bidseq=${String(rawJson.bidNtceSqNo ?? "00")}`);
 
   return (
@@ -219,8 +219,8 @@ export default async function AnnouncementDetailPage({
         {/* 핵심 숫자 3개 */}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 24, background: "#F8FAFC", borderRadius: 10, padding: "16px 20px", marginTop: 16 }}>
           {[
-            { label: "기초금액",   value: fmt(a.budget),                                                                    sub: "VAT 별도" },
-            { label: "추정가격",   value: estimatedPrice ? new Intl.NumberFormat("ko-KR").format(estimatedPrice) + "원" : "-", sub: "기초금액 기준 추정" },
+            { label: "기초금액",   value: bdgtAmt ? new Intl.NumberFormat("ko-KR").format(bdgtAmt) + "원" : "-",  sub: "VAT 별도" },
+            { label: "추정가격",   value: fmt(a.budget),                                                                      sub: "G2B 추정가격" },
             { label: "낙찰하한율", value: sucsfbidLwltRate ? `${sucsfbidLwltRate}%` : "89.745%",                             sub: "낙찰하한율 기준" },
           ].map((item) => (
             <div key={item.label}>
@@ -318,7 +318,7 @@ export default async function AnnouncementDetailPage({
         <div style={{ display: "flex", flexDirection: "column", gap: 16, minWidth: 0 }}>
           <AiAnalysisPanel
             annDbId={a.id}
-            budget={budgetNum || 0}
+            budget={bdgtAmt || 0}
             g2bUrl={g2bUrl}
           />
           {multiplePrice && (
@@ -339,7 +339,7 @@ export default async function AnnouncementDetailPage({
             annDbId={a.id}
             title={a.title}
             orgName={a.orgName}
-            budget={budgetNum || 0}
+            budget={bdgtAmt || 0}
             deadline={a.deadline}
             category={a.category}
             region={a.region}
