@@ -128,7 +128,6 @@ export default async function AnnouncementDetailPage({
     <div style={{
       width: "100%",
       height: "100vh",
-      minWidth: 1400,
       display: "flex",
       flexDirection: "column",
       background: "#EEF2F7",
