@@ -219,8 +219,8 @@ export default async function AnnouncementDetailPage({
         {/* 핵심 숫자 3개 */}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 24, background: "#F8FAFC", borderRadius: 10, padding: "16px 20px", marginTop: 16 }}>
           {[
-            { label: "기초금액",   value: bdgtAmt ? new Intl.NumberFormat("ko-KR").format(bdgtAmt) + "원" : "-",  sub: "VAT 별도" },
-            { label: "추정가격",   value: fmt(a.budget),                                                                      sub: "G2B 추정가격" },
+            { label: "기초금액",   value: bdgtAmt ? new Intl.NumberFormat("ko-KR").format(bdgtAmt) + "원" : "-",  sub: "부가가치세 포함" },
+            { label: "추정가격",   value: fmt(a.budget),                                                                      sub: "부가가치세 별도" },
             { label: "낙찰하한율", value: sucsfbidLwltRate ? `${sucsfbidLwltRate}%` : "89.745%",                             sub: "낙찰하한율 기준" },
           ].map((item) => (
             <div key={item.label}>
