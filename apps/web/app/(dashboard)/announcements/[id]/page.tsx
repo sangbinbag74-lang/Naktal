@@ -125,23 +125,35 @@ export default async function AnnouncementDetailPage({
   const g2bUrl = String(rawJson.ntcePbancUrl || `https://www.g2b.go.kr:8081/ep/peoplecvpl/narasVary.do?bidno=${a.konepsId}&bidseq=${String(rawJson.bidNtceSqNo ?? "00")}`);
 
   return (
-    <div className="w-full min-h-screen px-4 py-5" style={{ background: "#EEF2F7" }}>
+    <div style={{
+      width: "100%",
+      height: "100vh",
+      minWidth: 1400,
+      display: "flex",
+      flexDirection: "column",
+      background: "#EEF2F7",
+      overflow: "hidden",
+      padding: 16,
+      boxSizing: "border-box",
+    }}>
 
       {/* 뒤로가기 */}
-      <Link
-        href="/announcements"
-        style={{ fontSize: 13, color: "#64748B", display: "inline-flex", alignItems: "center", gap: 4, textDecoration: "none", marginBottom: 16 }}
-      >
-        ← 공고 목록으로
-      </Link>
+      <div style={{ flexShrink: 0, marginBottom: 8 }}>
+        <Link
+          href="/announcements"
+          style={{ fontSize: 13, color: "#64748B", display: "inline-flex", alignItems: "center", gap: 4, textDecoration: "none" }}
+        >
+          ← 공고 목록으로
+        </Link>
+      </div>
 
       {/* 공고 헤더 — 전체 너비 흰 카드 */}
+      <div style={{ flexShrink: 0, marginBottom: 12 }}>
       <div style={{
         background: "#fff",
         borderRadius: 16,
         border: "1px solid #E8ECF2",
         padding: "24px",
-        marginBottom: 20,
         boxShadow: "0 2px 12px rgba(0,0,0,0.08)",
       }}>
         <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 16 }}>
@@ -210,12 +222,20 @@ export default async function AnnouncementDetailPage({
           ))}
         </div>
       </div>
+      </div>
 
-      {/* 본문 반응형 그리드 */}
-      <div className="grid gap-5 items-start grid-cols-1 md:grid-cols-2 2xl:grid-cols-[1fr_1.2fr_1.8fr]">
+      {/* 3열 그리드 — 남은 공간 전부 */}
+      <div style={{
+        flex: 1,
+        display: "grid",
+        gridTemplateColumns: "1fr 1.2fr 1.8fr",
+        gap: 16,
+        overflow: "hidden",
+        minHeight: 0,
+      }}>
 
         {/* 1열: 공고 정보 */}
-        <div className="order-3 md:col-span-2 2xl:col-span-1 2xl:order-1 col-scroll" style={{ position: "sticky", top: 16, maxHeight: "calc(100vh - 32px)", overflowY: "auto", display: "flex", flexDirection: "column", gap: 16 }}>
+        <div className="col-scroll" style={{ height: "100%", overflowY: "auto", display: "flex", flexDirection: "column", gap: 16 }}>
 
           {/* 기본정보 카드 */}
           <div style={{ background: "#fff", borderRadius: 16, border: "1px solid #E8ECF2", padding: "20px", boxShadow: "0 2px 8px rgba(0,0,0,0.06)" }}>
@@ -285,8 +305,8 @@ export default async function AnnouncementDetailPage({
           </div>
         </div>
 
-        {/* 2열: AI 분석 패널 + 번호 분석 — sticky */}
-        <div className="order-1 md:order-1 2xl:order-2 col-scroll" style={{ position: "sticky", top: 16, maxHeight: "calc(100vh - 32px)", overflowY: "auto", minWidth: 0, display: "flex", flexDirection: "column", gap: 16 }}>
+        {/* 2열: AI 분석 패널 + 번호 분석 */}
+        <div className="col-scroll" style={{ height: "100%", overflowY: "auto", minWidth: 0, display: "flex", flexDirection: "column", gap: 16 }}>
           <AiAnalysisPanel
             annDbId={a.id}
             budget={budgetNum || 0}
@@ -303,8 +323,8 @@ export default async function AnnouncementDetailPage({
           )}
         </div>
 
-        {/* 3열: 사정율 분석 탭 — sticky */}
-        <div className="order-2 md:order-2 2xl:order-3 col-scroll" style={{ position: "sticky", top: 16, maxHeight: "calc(100vh - 32px)", overflowY: "auto", minWidth: 0 }}>
+        {/* 3열: 사정율 분석 탭 */}
+        <div className="col-scroll" style={{ height: "100%", overflowY: "auto", minWidth: 0 }}>
           <AnnouncementTabs
             annId={a.konepsId}
             annDbId={a.id}
