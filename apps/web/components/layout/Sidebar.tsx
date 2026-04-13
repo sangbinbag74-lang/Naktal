@@ -35,8 +35,13 @@ const MENU_SECTIONS = [
   {
     label: "어드민",
     items: [
-      { href: "/admin/model",    label: "모델 성능",    icon: "📊", adminOnly: true },
-      { href: "/admin/outcomes", label: "결과 관리",    icon: "🗂", adminOnly: true },
+      { href: "/admin/model",          label: "운영 현황",  icon: "📊", adminOnly: true },
+      { href: "/admin/outcomes",       label: "투찰 현황",  icon: "🗂", adminOnly: true },
+      { href: "/admin/users",          label: "회원 관리",  icon: "👥", adminOnly: true },
+      { href: "/admin/payments",       label: "결제 내역",  icon: "💳", adminOnly: true },
+      { href: "/admin/announcements",  label: "공고 관리",  icon: "📋", adminOnly: true },
+      { href: "/admin/crawl",          label: "크롤링",     icon: "🕷", adminOnly: true },
+      { href: "/admin/beta",           label: "베타 신청",  icon: "🎟", adminOnly: true },
     ],
   },
 ];

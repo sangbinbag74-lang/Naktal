@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { verifyAdminSession } from "@/lib/admin-auth";
+import { createClient, createAdminClient } from "@/lib/supabase/server";
 import { AdminLogoutButton } from "./AdminLogoutButton";
 
 const adminNav = [
@@ -9,6 +10,7 @@ const adminNav = [
   { href: "/admin/payments", label: "결제 내역", icon: "💳" },
   { href: "/admin/crawl", label: "크롤링 관리", icon: "🕷️" },
   { href: "/admin/announcements", label: "공고 관리", icon: "📋" },
+  { href: "/admin/beta", label: "베타 신청", icon: "🎟️" },
 ];
 
 export default async function AdminLayout({
@@ -16,8 +18,28 @@ export default async function AdminLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const isAdmin = await verifyAdminSession();
-  if (!isAdmin) redirect("/admin-login");
+  // 1. HMAC 쿠키 검증
+  const cookieOk = await verifyAdminSession();
+
+  // 2. Supabase isAdmin=true 검증
+  let supabaseAdminOk = false;
+  if (!cookieOk) {
+    try {
+      const supabase = await createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const admin = createAdminClient();
+        const { data: dbUser } = await admin
+          .from("User")
+          .select("isAdmin")
+          .eq("supabaseId", user.id)
+          .single();
+        supabaseAdminOk = !!dbUser?.isAdmin;
+      }
+    } catch { /* 세션 없음 */ }
+  }
+
+  if (!cookieOk && !supabaseAdminOk) redirect("/admin-login");
 
   return (
     <div style={{ display: "flex", minHeight: "100vh", background: "#F0F2F5" }}>
