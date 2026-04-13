@@ -2,14 +2,12 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { BizNoInput } from "@/components/ui/biz-no-input";
 
 export default function ForgotPasswordPage() {
   const [bizNo, setBizNo] = useState("");
-  const [notifyEmail, setNotifyEmail] = useState("");
   const [sent, setSent] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -23,15 +21,15 @@ export default function ForgotPasswordPage() {
     setLoading(true);
     setError(null);
 
-    // notifyEmail이 있으면 해당 주소로, 없으면 @naktal.biz 주소로 발송
-    const email = notifyEmail.trim() || `biz_${bizNo}@naktal.biz`;
-    const supabase = createClient();
-    const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${location.origin}/auth/reset-password`,
+    const res = await fetch("/api/auth/forgot-password", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ bizNo }),
     });
+    const json = await res.json();
 
-    if (resetError) {
-      setError("메일 발송에 실패했습니다. 등록된 이메일을 확인해주세요.");
+    if (!res.ok) {
+      setError(json.error ?? "메일 발송에 실패했습니다.");
       setLoading(false);
       return;
     }
@@ -68,27 +66,13 @@ export default function ForgotPasswordPage() {
         <CardHeader className="text-center">
           <div className="text-3xl font-bold text-[#1E3A5F] mb-2">NAKTAL</div>
           <CardTitle>비밀번호 찾기</CardTitle>
-          <CardDescription>가입 시 등록한 알림 이메일로 재설정 링크를 보내드립니다.</CardDescription>
+          <CardDescription>사업자번호를 입력하면 등록된 이메일로 재설정 링크를 보내드립니다.</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-1">
               <label className="text-sm font-medium">사업자번호</label>
               <BizNoInput value={bizNo} onChange={setBizNo} disabled={loading} />
-            </div>
-            <div className="space-y-1">
-              <label htmlFor="email" className="text-sm font-medium">
-                알림 이메일 <span className="text-gray-400 text-xs">(가입 시 등록한 이메일)</span>
-              </label>
-              <input
-                id="email"
-                type="email"
-                value={notifyEmail}
-                onChange={(e) => setNotifyEmail(e.target.value)}
-                disabled={loading}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-[#1E3A5F]"
-                placeholder="notify@company.com"
-              />
             </div>
             {error && <p className="text-sm text-red-600">{error}</p>}
             <Button
