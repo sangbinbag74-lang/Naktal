@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/server";
 import { Resend } from "resend";
 
-const resend = new Resend(process.env.RESEND_API_KEY);
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://naktal.me";
 
 export async function POST(request: NextRequest) {
@@ -49,6 +48,7 @@ export async function POST(request: NextRequest) {
   const resetLink = linkData.properties.action_link as string;
 
   // 3. Resend로 notifyEmail에 실제 발송
+  const resend = new Resend(process.env.RESEND_API_KEY);
   const { error: emailErr } = await resend.emails.send({
     from: "NAKTAL <noreply@naktal.me>",
     to: dbUser.notifyEmail,
