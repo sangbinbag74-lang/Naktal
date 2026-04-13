@@ -227,9 +227,10 @@ export default async function AnnouncementDetailPage({
       <div style={{
         flex: 1,
         display: "grid",
-        gridTemplateColumns: "300px 1fr 1.6fr",
+        gridTemplateColumns: "300px minmax(380px, 1fr) minmax(560px, 1.6fr)",
         gap: 16,
-        minWidth: 900,
+        minWidth: 1260,
+        alignItems: "start",
       }}>
 
         {/* 1열: 공고 정보 */}
@@ -304,7 +305,7 @@ export default async function AnnouncementDetailPage({
         </div>
 
         {/* 2열: AI 분석 패널 + 번호 분석 */}
-        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 16, minWidth: 0 }}>
           <AiAnalysisPanel
             annDbId={a.id}
             budget={budgetNum || 0}
@@ -322,7 +323,7 @@ export default async function AnnouncementDetailPage({
         </div>
 
         {/* 3열: 사정율 분석 탭 */}
-        <div>
+        <div style={{ minWidth: 0 }}>
           <AnnouncementTabs
             annId={a.konepsId}
             annDbId={a.id}
