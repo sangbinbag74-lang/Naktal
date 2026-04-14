@@ -423,3 +423,55 @@ model SajungAnalysisCache {
 
   @@unique([annId, period, cacheType, userId])
 }
+
+model BidRequest {
+  id                         String    @id @default(cuid())
+  userId                     String
+  annId                      String
+  konepsId                   String
+  title                      String
+  orgName                    String
+  deadline                   DateTime
+  budget                     BigInt    @default(0)
+  lowerLimitRate             Decimal   @db.Decimal(10, 4) @default(0)
+  aValueYn                   String    @default("")
+  aValueTotal                BigInt    @default(0)
+  recommendedBidPrice        BigInt
+  predictedSajungRate        Decimal   @db.Decimal(10, 4)
+  estimatedPrice             BigInt    @default(0)
+  lowerLimitPrice            BigInt    @default(0)
+  winProbability             Int       @default(0)
+  competitionScore           Int       @default(0)
+  recommendedAt              DateTime  @default(now())
+  agreedAt                   DateTime?
+  agreedFeeRate              Decimal?  @db.Decimal(5, 4)
+  agreedFeeAmount            BigInt?
+  userBidPrice               BigInt?
+  userBidAt                  DateTime?
+  userFollowedRecommendation Boolean?
+  openingDt                  DateTime?
+  isWon                      Boolean?
+  actualFinalPrice           BigInt?
+  actualSajungRate           Decimal?  @db.Decimal(10, 4)
+  winnerName                 String?
+  totalBidders               Int?
+  resultDetectedAt           DateTime?
+  deviationPct               Decimal?  @db.Decimal(10, 4)
+  isHit                      Boolean?
+  feeRate                    Decimal?  @db.Decimal(5, 4)
+  feeAmount                  BigInt?
+  feeStatus                  String    @default("pending")
+  invoicedAt                 DateTime?
+  paidAt                     DateTime?
+  cancelledAt                DateTime?
+  memo                       String?
+  createdAt                  DateTime  @default(now())
+  updatedAt                  DateTime  @updatedAt
+
+  @@index([userId])
+  @@index([annId])
+  @@index([konepsId])
+  @@index([feeStatus])
+  @@index([isWon])
+  @@index([deadline])
+}

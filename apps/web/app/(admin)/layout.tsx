@@ -12,6 +12,7 @@ const adminNav = [
   { href: "/admin/users",         label: "회원 관리",  icon: "👥" },
   { href: "/admin/payments",      label: "결제 내역",  icon: "💳" },
   { href: "/admin/announcements", label: "공고 관리",  icon: "📋" },
+  { href: "/admin/requests",      label: "투찰 요청",   icon: "📝" },
   { href: "/admin/accuracy",      label: "정확도 분석", icon: "🎯" },
 ];
 
