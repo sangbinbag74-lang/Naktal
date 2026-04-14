@@ -54,13 +54,15 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   const budgetNum = Number(rawJsonData?.bdgtAmt) || Number(ann.budget);
   const budgetRange = classifyBudget(budgetNum);
 
-  // A값 적용 공고: 예정가격 = 기초금액(aValueAmt) + A합산(aValueTotal)
+  // A값 파싱 (낙찰하한가 계산용 — estimatedPriceByA는 sajung 계산 후 설정)
   const aValueYn = String(ann.aValueYn ?? "");
   const aValueAmt = Number(ann.aValueAmt ?? 0);
   const aValueTotal = Number(ann.aValueTotal ?? 0);
-  const estimatedPriceByA = (aValueYn === "Y" && aValueAmt > 0)
-    ? aValueAmt + aValueTotal
-    : null;
+  const isAValue = aValueYn === "Y" && aValueAmt > 0;
+
+  // ─── 낙찰하한율 파싱 (캐시·분석 공통) ────────────────────────────────────
+  const rawJsonEarly = (ann.rawJson as Record<string, string>) ?? {};
+  const lowerLimitRateEarly = parseFloat((rawJsonEarly.sucsfbidLwltRate ?? "87.745").replace(/[^0-9.]/g, "")) || 87.745;
 
   // ─── 24시간 캐시 확인 ──────────────────────────────────────────────────────
   const { data: cached } = await admin
@@ -94,11 +96,10 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         p => Date.now() - new Date(p.deadline).getTime() < 365 * 24 * 60 * 60 * 1000
       ).length,
     };
-    const aValueYnCached = String(ann.aValueYn ?? "");
-    const estimatedPriceByACached = (aValueYnCached === "Y" && Number(ann.aValueAmt ?? 0) > 0)
-      ? Number(ann.aValueAmt ?? 0) + Number(ann.aValueTotal ?? 0)
+    const estimatedPriceByACached = isAValue
+      ? budgetNum * ((Number(cached.predictedSajungRate) || 103.8) / 100)
       : null;
-    return NextResponse.json(buildResponse(ann, cached, null, trendMeta, estimatedPriceByACached));
+    return NextResponse.json(buildResponse(ann, cached, null, trendMeta, estimatedPriceByACached, aValueTotal, lowerLimitRateEarly, budgetNum));
   }
 
   // ─── 공고 메타 파싱 ────────────────────────────────────────────────────────
@@ -139,6 +140,11 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         }).catch(() => null)
       : Promise.resolve(null),
   ]);
+
+  // ─── A값 예정가 (AI 예측 사정율 기반) ────────────────────────────────────
+  const estimatedPriceByA = isAValue
+    ? budgetNum * (sajung.predictedSajungRate / 100)
+    : null;
 
   // ─── BidPricePrediction 저장 ───────────────────────────────────────────────
   const predRecord = {
@@ -190,7 +196,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     recentSampleSize: sajung.recentSampleSize,
   };
 
-  return NextResponse.json(buildResponse(ann, predRecord, numberStrategy, trendMeta, estimatedPriceByA));
+  return NextResponse.json(buildResponse(ann, predRecord, numberStrategy, trendMeta, estimatedPriceByA, aValueTotal, lowerLimitRate, budgetNum));
 }
 
 // ─── 응답 빌더 ───────────────────────────────────────────────────────────────
@@ -200,8 +206,16 @@ function buildResponse(
   pred: Record<string, unknown>,
   numberStrategy: unknown,
   trendMeta?: TrendMeta | null,
-  estimatedPriceByA?: number | null
+  estimatedPriceByA?: number | null,
+  aValueTotal?: number,
+  lowerLimitRate?: number,
+  budgetNum?: number
 ) {
+  // A값 공고: 낙찰하한가 + 1원 = (예정가 - A합산) × 낙찰하한율 + A합산 + 1
+  const aLowerLimit = (estimatedPriceByA != null && aValueTotal != null && lowerLimitRate != null)
+    ? Math.round((estimatedPriceByA - aValueTotal) * (lowerLimitRate / 100) + aValueTotal)
+    : null;
+
   return {
     bidStrategy: {
       predictedSajungRate: Number(pred.predictedSajungRate) || 103.8,
@@ -210,12 +224,12 @@ function buildResponse(
         return { min: r?.min ?? 97, max: r?.max ?? 112, p25: r?.p25 ?? 101, p75: r?.p75 ?? 106 };
       })(),
       sampleSize: pred.sampleSize,
-      optimalBidPrice: estimatedPriceByA != null
-        ? Math.round(estimatedPriceByA * 0.9997)
+      optimalBidPrice: aLowerLimit != null
+        ? aLowerLimit + 1
         : Number(pred.optimalBidPrice),
       bidPriceRangeLow: Number(pred.bidPriceRangeLow),
       bidPriceRangeHigh: Number(pred.bidPriceRangeHigh),
-      lowerLimitPrice: Number(pred.lowerLimitPrice),
+      lowerLimitPrice: aLowerLimit != null ? aLowerLimit : Number(pred.lowerLimitPrice),
       winProbability: pred.winProbability,
       numberStrategy,
       weightedAvg:       trendMeta?.weightedAvg ?? null,
@@ -233,7 +247,7 @@ function buildResponse(
     meta: {
       annId: ann.id,
       orgName: ann.orgName,
-      budget: Number(ann.budget),
+      budget: budgetNum ?? Number(ann.budget),
       isFallback: (pred.sampleSize as number) < 10,
       disclaimer: "예측 결과는 통계적 참고 자료입니다. 실제 낙찰을 보장하지 않습니다.",
       modelVersion: pred.modelVersion,
