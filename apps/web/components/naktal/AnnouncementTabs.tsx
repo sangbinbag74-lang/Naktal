@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
-import { WinProbCalculator } from "./WinProbCalculator";
 import { SajungHistogram } from "./SajungHistogram";
 import { SajungTrendOverlay } from "./SajungTrendOverlay";
 import { SajungTopTen } from "./SajungTopTen";
@@ -331,16 +330,6 @@ export function AnnouncementTabs({
               />
             )}
           </div>
-
-          {/* WinProbCalculator */}
-          <WinProbCalculator
-            budget={budget}
-            sajungMean={bs.predictedSajungRate}
-            sajungStd={Math.max(0.3, ((bs.sajungRateRange?.p75 ?? 106) - (bs.sajungRateRange?.p25 ?? 101)) / 1.35)}
-            lowerLimitRate={lowerLimitRate}
-            optimalBidPrice={bs.optimalBidPrice}
-            lowerLimitPrice={bs.lowerLimitPrice}
-          />
 
         </div>
       )}

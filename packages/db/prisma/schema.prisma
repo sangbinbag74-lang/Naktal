@@ -463,6 +463,10 @@ model BidRequest {
   feeStatus                  String    @default("pending")
   invoicedAt                 DateTime?
   paidAt                     DateTime?
+  bizRegNo                   String?
+  repName                    String?
+  contractAt                 DateTime?
+  contractIp                 String?   @db.Text
   cancelledAt                DateTime?
   memo                       String?
   createdAt                  DateTime  @default(now())
