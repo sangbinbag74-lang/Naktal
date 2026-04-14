@@ -105,7 +105,7 @@ export default async function BidResultPage({
             { label: "낙찰하한가", value: fmtPrice(lowerLimit) },
             { label: "예측 사정율", value: `${sajungRate.toFixed(2)}%` },
             { label: "추정 낙찰확률", value: `${Math.round(winProb)}%` },
-          ].filter(Boolean).map(({ label, value, bold }) => (
+          ].filter((x): x is { label: string; value: string; bold?: boolean } => x !== null).map(({ label, value, bold }) => (
             <div key={label} style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <span style={{ fontSize: 13, color: "#64748B" }}>{label}</span>
               <span style={{ fontSize: 14, fontWeight: bold ? 800 : 600, color: bold ? "#1B3A6B" : "#0F172A" }}>{value}</span>
