@@ -104,8 +104,8 @@ export function SajungHistogram({ annId, predictedSajungRate, lowerLimitRate, pe
   let cum = 0, p1rate = filled[0]?.rate ?? 97, p99rate = filled[filled.length - 1]?.rate ?? 103;
   for (const h of filled) {
     cum += h.count;
-    if (cum / total >= 0.01 && p1rate === filled[0]?.rate) p1rate = h.rate;
-    if (cum / total >= 0.99) { p99rate = h.rate; break; }
+    if (cum / total >= 0.05 && p1rate === filled[0]?.rate) p1rate = h.rate;
+    if (cum / total >= 0.95) { p99rate = h.rate; break; }
   }
   const xMin = Math.floor(p1rate * 10 - 5) / 10;
   const xMax = Math.ceil(p99rate * 10 + 5) / 10;
