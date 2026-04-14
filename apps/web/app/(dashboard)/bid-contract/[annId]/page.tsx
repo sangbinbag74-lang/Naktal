@@ -2,6 +2,7 @@ import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
 import { createAdminClient, createClient } from "@/lib/supabase/server";
 import { ContractForm } from "@/components/naktal/ContractForm";
+import { AutoAnalysisTrigger } from "@/components/naktal/AutoAnalysisTrigger";
 
 export const dynamic = "force-dynamic";
 
@@ -181,8 +182,10 @@ export default async function BidContractPage({
         </div>
       </div>
 
-      {/* 서명 폼 */}
-      {optimalBidPrice === 0 ? redirect(`/announcements/${ann.id}`) : (
+      {/* 서명 폼 (분석 데이터 없으면 자동 분석 트리거) */}
+      {optimalBidPrice === 0 ? (
+        <AutoAnalysisTrigger annId={ann.id as string} annDbId={ann.id as string} />
+      ) : (
         <div style={{ background: "#fff", borderRadius: 14, border: "1px solid #E8ECF2", padding: "24px 28px" }}>
           <div style={{ fontSize: 14, fontWeight: 700, color: "#0F172A", marginBottom: 16 }}>전자서명</div>
           <ContractForm
