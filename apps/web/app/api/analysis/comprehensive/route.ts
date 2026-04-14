@@ -158,7 +158,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     lowerLimitPrice: String(sajung.lowerLimitPrice),
     winProbability: sajung.winProbability,
     competitionScore: competition.competitionScore,
-    expectedBidders: competition.expectedBidders,
+    expectedBidders: competition.expectedBidders ?? 0,
     dominantCompany: competition.dominantCompany,
     dominantWinRate: competition.dominantWinRate,
     modelVersion: sajung.modelVersion,
