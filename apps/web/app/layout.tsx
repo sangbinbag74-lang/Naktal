@@ -1,9 +1,15 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist } from "next/font/google";
 import { cn } from "@/lib/utils";
 import "./globals.css";
 
 const geist = Geist({ subsets: ["latin"], variable: "--font-sans" });
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+};
 
 export const metadata: Metadata = {
   title: {
