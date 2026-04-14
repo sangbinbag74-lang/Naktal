@@ -21,13 +21,16 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
 
   try {
     const { data, error } = await admin.rpc("collect_sajung_stat");
-    if (error) throw error;
+    if (error) {
+      console.error("[collect-sajung-stat cron] RPC error:", JSON.stringify(error));
+      return NextResponse.json({ error: error.message, details: error }, { status: 500 });
+    }
 
     const elapsed = ((Date.now() - startedAt) / 1000).toFixed(1);
     return NextResponse.json({ ...(data as object), elapsed: `${elapsed}s` });
 
   } catch (e: unknown) {
-    const msg = e instanceof Error ? e.message : String(e);
+    const msg = e instanceof Error ? e.message : JSON.stringify(e);
     console.error("[collect-sajung-stat cron]", msg);
     return NextResponse.json({ error: msg }, { status: 500 });
   }
