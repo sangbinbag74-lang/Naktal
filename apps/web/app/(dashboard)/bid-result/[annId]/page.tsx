@@ -41,7 +41,7 @@ export default async function BidResultPage({
   // 계약 완료된 BidRequest 조회
   const { data: req } = await admin
     .from("BidRequest")
-    .select("recommendedBidPrice,lowerLimitPrice,predictedSajungRate,winProbability,agreedFeeRate,agreedFeeAmount,contractAt")
+    .select("recommendedBidPrice,lowerLimitPrice,estimatedPrice,budget,predictedSajungRate,winProbability,agreedFeeRate,agreedFeeAmount,contractAt")
     .eq("userId", dbUser.id as string)
     .eq("annId", ann.id as string)
     .not("contractAt", "is", null)
@@ -52,10 +52,14 @@ export default async function BidResultPage({
 
   const price = Number(req.recommendedBidPrice ?? 0);
   const lowerLimit = Number(req.lowerLimitPrice ?? 0);
+  const estimatedPrice = Number(req.estimatedPrice ?? 0);
+  const budget = Number(req.budget ?? 0);
   const sajungRate = Number(req.predictedSajungRate ?? 0);
   const winProb = Number(req.winProbability ?? 0);
   const feeRate = Number(req.agreedFeeRate ?? 0);
   const feeAmount = Number(req.agreedFeeAmount ?? 0);
+  // 투찰률: 추천투찰가 ÷ 기초금액 × 100
+  const bidRate = budget > 0 ? (price / budget) * 100 : null;
 
   return (
     <div style={{ maxWidth: 560, margin: "0 auto", display: "flex", flexDirection: "column", gap: 20, paddingBottom: 40 }}>
@@ -97,10 +101,11 @@ export default async function BidResultPage({
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
           {[
             { label: "AI 추천 투찰금액", value: fmtPrice(price), bold: true },
+            bidRate != null ? { label: "투찰률 (기초금액 대비)", value: `${bidRate.toFixed(4)}%` } : null,
             { label: "낙찰하한가", value: fmtPrice(lowerLimit) },
             { label: "예측 사정율", value: `${sajungRate.toFixed(2)}%` },
             { label: "추정 낙찰확률", value: `${Math.round(winProb)}%` },
-          ].map(({ label, value, bold }) => (
+          ].filter(Boolean).map(({ label, value, bold }) => (
             <div key={label} style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <span style={{ fontSize: 13, color: "#64748B" }}>{label}</span>
               <span style={{ fontSize: 14, fontWeight: bold ? 800 : 600, color: bold ? "#1B3A6B" : "#0F172A" }}>{value}</span>
