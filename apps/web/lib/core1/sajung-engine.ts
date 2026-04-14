@@ -286,7 +286,7 @@ export async function predictOptimalBid(params: {
   deadlineMonth: number;  // 1~12
 }): Promise<SajungPrediction> {
   const budgetRange = classifyBudget(params.budget);
-  const orgName = extractCoreOrgName(params.orgName); // "전북특별자치도 익산시" → "익산시"
+  const orgName = params.orgName;
   let isFallback = false;
 
   // raw 데이터와 SajungRateStat 병렬 조회
