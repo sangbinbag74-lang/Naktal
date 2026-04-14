@@ -121,6 +121,7 @@ export default async function AnnouncementDetailPage({
   const participationConditions = extractParticipationConditions(a.rawJson);
   const prtcptnLmtNm = String(rawJson.prtcptnLmtNm ?? "");
   const aValueYn = a.aValueYn ?? "";
+  const aValueAmt = Number(String(rawJson.aValueAmt ?? a.aValueAmt ?? "0").replace(/[^0-9]/g, "")) || 0;
   const priceRangeRate = a.priceRangeRate ?? "";
   const subCats = (a.subCategories && a.subCategories.length > 0)
     ? a.subCategories
@@ -270,6 +271,25 @@ export default async function AnnouncementDetailPage({
                 </div>
               ))}
             </div>
+
+            {/* A값 섹션 */}
+            {aValueYn === "Y" && (
+              <div style={{ marginTop: 16, padding: "12px 14px", background: "#FFFBEB", borderRadius: 10, border: "1px solid #FDE68A" }}>
+                <div style={{ fontSize: 11, color: "#92400E", fontWeight: 600, marginBottom: 6 }}>A값 적용 공고</div>
+                {aValueAmt > 0 ? (
+                  <>
+                    <div style={{ fontSize: 15, fontWeight: 700, color: "#92400E" }}>
+                      A값: {new Intl.NumberFormat("ko-KR").format(aValueAmt)}원
+                    </div>
+                    <div style={{ fontSize: 11, color: "#B45309", marginTop: 4 }}>
+                      투찰가 ≈ (예정가 − A값) × 낙찰하한율 + A값
+                    </div>
+                  </>
+                ) : (
+                  <div style={{ fontSize: 12, color: "#B45309" }}>A값 금액 미공개 (공고문 확인)</div>
+                )}
+              </div>
+            )}
           </div>
 
           {/* 참가자격 카드 */}
