@@ -120,6 +120,14 @@ export async function upsertBidResult(data: BidResultRow): Promise<void> {
   await fillAIPredictionResult(data).catch((e) =>
     console.error("[fillAIPredictionResult] 에러:", e)
   );
+  // BidRequest 낙찰 결과 자동 매칭 (계약 완료된 의뢰에 결과 기록)
+  await fillBidRequestResult(
+    data.annId,
+    Number(data.bidRate),
+    Number(data.finalPrice),
+    data.winnerName ?? null,
+    data.numBidders ?? null,
+  ).catch((e) => console.error("[fillBidRequestResult] 에러:", e));
 }
 
 export async function upsertBidResultBatch(rows: BidResultRow[]): Promise<number> {
@@ -251,6 +259,77 @@ export async function fillAIPredictionResult(data: BidResultRow): Promise<void> 
 
   if (updateErr) {
     console.error(`[AIPrediction] 결과 업데이트 실패 (${data.annId}): ${updateErr.message}`);
+  }
+}
+
+// ─── BidRequest 낙찰 결과 자동 매칭 ───────────────────────────────────────────
+
+export async function fillBidRequestResult(
+  konepsId: string,
+  bidRate: number,
+  actualFinalPrice: number,
+  winnerName: string | null,
+  totalBidders: number | null,
+): Promise<void> {
+  // 1. BidRequest 조회: konepsId + contractAt IS NOT NULL + isWon IS NULL
+  const { data: reqs } = await supabase
+    .from("BidRequest")
+    .select("id, userId, budget, recommendedBidPrice, predictedSajungRate")
+    .eq("konepsId", konepsId)
+    .not("contractAt", "is", null)
+    .is("isWon", null);
+  if (!reqs || reqs.length === 0) return;
+
+  for (const req of reqs) {
+    // 2. User.bizName 조회 → isWon 판별
+    const { data: user } = await supabase
+      .from("User")
+      .select("bizName")
+      .eq("id", req.userId as string)
+      .maybeSingle();
+    const bizName = (user?.bizName as string) ?? "";
+    const isWon =
+      winnerName != null && bizName.length > 0
+        ? winnerName.includes(bizName) || bizName.includes(winnerName)
+        : false;
+
+    // 3. 계산
+    const budget = Number(req.budget ?? 0);
+    const actualSajungRate =
+      budget > 0 && bidRate > 0
+        ? ((actualFinalPrice / (bidRate / 100)) / budget) * 100
+        : 0;
+    const predictedSajungRate = Number(req.predictedSajungRate ?? 0);
+    const deviationPct = actualSajungRate - predictedSajungRate;
+    const isHit = Math.abs(deviationPct) <= 0.5;
+    const recommendedBidPrice = Number(req.recommendedBidPrice ?? 0);
+    const feeRate =
+      recommendedBidPrice > 0 && recommendedBidPrice < 100_000_000 ? 0.017 : 0.015;
+    const feeAmount = isWon ? Math.round(actualFinalPrice * feeRate) : 0;
+    const feeStatus = isWon ? "invoiced" : "waived";
+
+    // 4. BidRequest 업데이트
+    const { error: updateErr } = await supabase
+      .from("BidRequest")
+      .update({
+        isWon,
+        actualFinalPrice: String(Math.round(actualFinalPrice)),
+        winnerName: winnerName ?? null,
+        totalBidders: totalBidders ?? null,
+        actualSajungRate: actualSajungRate.toFixed(4),
+        resultDetectedAt: new Date().toISOString(),
+        feeRate: feeRate.toFixed(4),
+        feeAmount: String(feeAmount),
+        feeStatus,
+        deviationPct: deviationPct.toFixed(4),
+        isHit,
+        updatedAt: new Date().toISOString(),
+      })
+      .eq("id", req.id as string);
+
+    if (updateErr) {
+      console.error(`[BidRequest] 결과 업데이트 실패 (${req.id}): ${updateErr.message}`);
+    }
   }
 }
 
