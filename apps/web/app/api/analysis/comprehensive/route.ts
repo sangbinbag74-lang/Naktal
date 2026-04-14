@@ -147,7 +147,9 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     : null;
 
   // ─── BidPricePrediction 저장 ───────────────────────────────────────────────
+  // Supabase JS SDK는 Prisma @default(cuid()) 를 모르므로 id 직접 생성
   const predRecord = {
+    id: crypto.randomUUID(),
     annId,
     predictedSajungRate: sajung.predictedSajungRate,
     sajungRateRange: sajung.sajungRateRange,
@@ -165,7 +167,8 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     expiresAt: new Date(Date.now() + CACHE_TTL_MS).toISOString(),
   };
 
-  await admin.from("BidPricePrediction").upsert(predRecord, { onConflict: "annId" });
+  const { error: upsertErr } = await admin.from("BidPricePrediction").upsert(predRecord, { onConflict: "annId" });
+  if (upsertErr) console.error("[BidPricePrediction] upsert 실패:", upsertErr.message);
 
   // ─── AIPrediction 영구 저장 (캐시 만료 후에도 예측 이력 보존) ─────────────
   try {
