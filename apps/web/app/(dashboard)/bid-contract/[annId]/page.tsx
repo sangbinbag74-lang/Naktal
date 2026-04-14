@@ -2,6 +2,7 @@ import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
 import { createAdminClient, createClient } from "@/lib/supabase/server";
 import { ContractForm } from "@/components/naktal/ContractForm";
+import { AutoAnalysisTrigger } from "@/components/naktal/AutoAnalysisTrigger";
 
 export const dynamic = "force-dynamic";
 
@@ -181,30 +182,9 @@ export default async function BidContractPage({
         </div>
       </div>
 
-      {/* 서명 폼 (분석 데이터 없으면 안내) */}
+      {/* 서명 폼 (분석 데이터 없으면 자동 분석 트리거) */}
       {optimalBidPrice === 0 ? (
-        <div style={{
-          background: "#FFF7ED", border: "1px solid #FED7AA",
-          borderRadius: 12, padding: "20px 24px", textAlign: "center",
-        }}>
-          <div style={{ fontSize: 14, fontWeight: 600, color: "#92400E", marginBottom: 8 }}>
-            AI 분석 데이터가 없습니다
-          </div>
-          <div style={{ fontSize: 12, color: "#B45309", marginBottom: 16 }}>
-            공고 상세 페이지에서 AI 분석을 먼저 실행해주세요.
-          </div>
-          <Link
-            href={`/announcements/${ann.id}`}
-            style={{
-              display: "inline-block", padding: "8px 20px",
-              background: "#1B3A6B", color: "#fff",
-              borderRadius: 8, fontSize: 13, fontWeight: 700,
-              textDecoration: "none",
-            }}
-          >
-            공고 상세로 이동
-          </Link>
-        </div>
+        <AutoAnalysisTrigger annId={ann.id as string} annDbId={ann.id as string} />
       ) : (
         <div style={{ background: "#fff", borderRadius: 14, border: "1px solid #E8ECF2", padding: "24px 28px" }}>
           <div style={{ fontSize: 14, fontWeight: 700, color: "#0F172A", marginBottom: 16 }}>전자서명</div>
