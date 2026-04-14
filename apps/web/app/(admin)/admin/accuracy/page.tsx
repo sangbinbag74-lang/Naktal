@@ -1,14 +1,6 @@
-import { redirect } from "next/navigation";
-import { createClient, createAdminClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/server";
 
 export default async function AdminAccuracyPage() {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
-
-  const { data: dbUser } = await supabase.from("User").select("isAdmin").eq("supabaseId", user.id).single();
-  if (!dbUser?.isAdmin) redirect("/dashboard");
-
   const admin = createAdminClient();
 
   // ─── AIPrediction 적중률 ─────────────────────────────────────────────────────

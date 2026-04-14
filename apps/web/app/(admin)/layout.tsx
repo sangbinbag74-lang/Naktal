@@ -11,7 +11,6 @@ const adminNav = [
   { href: "/admin/payments",      label: "결제 내역",  icon: "💳" },
   { href: "/admin/announcements", label: "공고 관리",  icon: "📋" },
   { href: "/admin/accuracy",      label: "정확도 분석", icon: "🎯" },
-  { href: "/admin/beta",          label: "베타 신청",  icon: "🎟️" },
 ];
 
 export default async function AdminLayout({
