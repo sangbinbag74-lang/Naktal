@@ -4,48 +4,64 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 
+const STEPS = [
+  "과거 낙찰 데이터 수집 중...",
+  "사정율 통계 분석 중...",
+  "몬테카를로 시뮬레이션 실행 중...",
+  "최적 투찰가 계산 중...",
+  "분석 완료 중...",
+];
+
 export function AutoAnalysisTrigger({ annId, annDbId }: { annId: string; annDbId: string }) {
   const router = useRouter();
   const [failed, setFailed] = useState(false);
+  const [stepIdx, setStepIdx] = useState(0);
 
   useEffect(() => {
+    const interval = setInterval(() => {
+      setStepIdx((i) => (i < STEPS.length - 1 ? i + 1 : i));
+    }, 900);
+
     fetch("/api/analysis/comprehensive", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ annId: annDbId }),
     })
       .then((res) => {
+        clearInterval(interval);
         if (res.ok) {
           router.refresh();
         } else {
           setFailed(true);
         }
       })
-      .catch(() => setFailed(true));
+      .catch(() => {
+        clearInterval(interval);
+        setFailed(true);
+      });
+
+    return () => clearInterval(interval);
   }, [annDbId, router]);
 
   if (failed) {
     return (
       <div style={{
-        background: "#FFF7ED", border: "1px solid #FED7AA",
-        borderRadius: 12, padding: "20px 24px", textAlign: "center",
+        minHeight: "60vh", display: "flex", flexDirection: "column",
+        alignItems: "center", justifyContent: "center", gap: 16, textAlign: "center",
       }}>
-        <div style={{ fontSize: 14, fontWeight: 600, color: "#92400E", marginBottom: 8 }}>
-          AI 분석에 실패했습니다
-        </div>
-        <div style={{ fontSize: 12, color: "#B45309", marginBottom: 16 }}>
-          공고 상세 페이지에서 AI 분석을 다시 시도해주세요.
-        </div>
+        <div style={{ fontSize: 40 }}>⚠️</div>
+        <div style={{ fontSize: 18, fontWeight: 700, color: "#0F172A" }}>AI 분석에 실패했습니다</div>
+        <div style={{ fontSize: 13, color: "#64748B" }}>잠시 후 다시 시도하거나 공고 상세로 돌아가세요.</div>
         <Link
           href={`/announcements/${annId}`}
           style={{
-            display: "inline-block", padding: "8px 20px",
+            marginTop: 8, padding: "12px 28px",
             background: "#1B3A6B", color: "#fff",
-            borderRadius: 8, fontSize: 13, fontWeight: 700,
+            borderRadius: 10, fontSize: 14, fontWeight: 700,
             textDecoration: "none",
           }}
         >
-          공고 상세로 이동
+          ← 공고 상세로
         </Link>
       </div>
     );
@@ -53,21 +69,49 @@ export function AutoAnalysisTrigger({ annId, annDbId }: { annId: string; annDbId
 
   return (
     <div style={{
-      background: "#fff", borderRadius: 14, border: "1px solid #E8ECF2",
-      padding: "40px 28px", textAlign: "center",
+      minHeight: "60vh", display: "flex", flexDirection: "column",
+      alignItems: "center", justifyContent: "center", gap: 24, textAlign: "center",
     }}>
-      <div style={{
-        width: 36, height: 36, border: "3px solid #E8ECF2",
-        borderTop: "3px solid #1B3A6B", borderRadius: "50%",
-        margin: "0 auto 16px",
-        animation: "spin 0.8s linear infinite",
-      }} />
-      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
-      <div style={{ fontSize: 14, fontWeight: 600, color: "#0F172A", marginBottom: 6 }}>
-        AI 분석 중...
+      {/* 스피너 */}
+      <div style={{ position: "relative", width: 72, height: 72 }}>
+        <div style={{
+          position: "absolute", inset: 0,
+          border: "5px solid #E8ECF2",
+          borderTop: "5px solid #1B3A6B",
+          borderRadius: "50%",
+          animation: "spin 0.9s linear infinite",
+        }} />
+        <div style={{
+          position: "absolute", inset: 12,
+          border: "3px solid #E8ECF2",
+          borderTop: "3px solid #60A5FA",
+          borderRadius: "50%",
+          animation: "spin 1.4s linear infinite reverse",
+        }} />
       </div>
-      <div style={{ fontSize: 12, color: "#94A3B8" }}>
-        잠시만 기다려 주세요
+      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+
+      <div>
+        <div style={{ fontSize: 20, fontWeight: 800, color: "#0F172A", marginBottom: 8 }}>
+          AI 분석 중
+        </div>
+        <div style={{ fontSize: 14, color: "#1B3A6B", fontWeight: 600, marginBottom: 4 }}>
+          {STEPS[stepIdx]}
+        </div>
+        <div style={{ fontSize: 12, color: "#94A3B8" }}>
+          계약 진행을 위해 분석 결과를 준비하고 있습니다
+        </div>
+      </div>
+
+      {/* 진행 바 */}
+      <div style={{ width: 240, height: 4, background: "#E8ECF2", borderRadius: 99, overflow: "hidden" }}>
+        <div style={{
+          height: "100%",
+          width: `${((stepIdx + 1) / STEPS.length) * 100}%`,
+          background: "linear-gradient(90deg, #1B3A6B, #60A5FA)",
+          borderRadius: 99,
+          transition: "width 0.8s ease",
+        }} />
       </div>
     </div>
   );

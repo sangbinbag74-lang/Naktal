@@ -71,6 +71,11 @@ export default async function BidContractPage({
   const feeRate = optimalBidPrice > 0 && optimalBidPrice < 100_000_000 ? 0.017 : 0.015;
   const feeAmount = Math.round(optimalBidPrice * feeRate);
 
+  // 분석 없으면 계약서 없이 분석 화면만 표시
+  if (optimalBidPrice === 0) {
+    return <AutoAnalysisTrigger annId={ann.id as string} annDbId={ann.id as string} />;
+  }
+
   return (
     <div style={{ maxWidth: 680, margin: "0 auto", display: "flex", flexDirection: "column", gap: 20 }}>
 
@@ -182,33 +187,29 @@ export default async function BidContractPage({
         </div>
       </div>
 
-      {/* 서명 폼 (분석 데이터 없으면 자동 분석 트리거) */}
-      {optimalBidPrice === 0 ? (
-        <AutoAnalysisTrigger annId={ann.id as string} annDbId={ann.id as string} />
-      ) : (
-        <div style={{ background: "#fff", borderRadius: 14, border: "1px solid #E8ECF2", padding: "24px 28px" }}>
-          <div style={{ fontSize: 14, fontWeight: 700, color: "#0F172A", marginBottom: 16 }}>전자서명</div>
-          <ContractForm
-            annId={ann.id as string}
-            konepsId={ann.konepsId as string}
-            title={ann.title as string}
-            orgName={ann.orgName as string}
-            deadline={ann.deadline as string}
-            budget={budgetNum}
-            lowerLimitRate={lowerLimitRate}
-            aValueYn={aValueYn}
-            aValueTotal={aValueTotal}
-            optimalBidPrice={optimalBidPrice}
-            lowerLimitPrice={lowerLimitPrice}
-            predictedSajungRate={predictedSajungRate}
-            estimatedPrice={estimatedPrice}
-            winProbability={winProbability}
-            competitionScore={competitionScore}
-            feeRate={feeRate}
-            feeAmount={feeAmount}
-          />
-        </div>
-      )}
+      {/* 서명 폼 */}
+      <div style={{ background: "#fff", borderRadius: 14, border: "1px solid #E8ECF2", padding: "24px 28px" }}>
+        <div style={{ fontSize: 14, fontWeight: 700, color: "#0F172A", marginBottom: 16 }}>전자서명</div>
+        <ContractForm
+          annId={ann.id as string}
+          konepsId={ann.konepsId as string}
+          title={ann.title as string}
+          orgName={ann.orgName as string}
+          deadline={ann.deadline as string}
+          budget={budgetNum}
+          lowerLimitRate={lowerLimitRate}
+          aValueYn={aValueYn}
+          aValueTotal={aValueTotal}
+          optimalBidPrice={optimalBidPrice}
+          lowerLimitPrice={lowerLimitPrice}
+          predictedSajungRate={predictedSajungRate}
+          estimatedPrice={estimatedPrice}
+          winProbability={winProbability}
+          competitionScore={competitionScore}
+          feeRate={feeRate}
+          feeAmount={feeAmount}
+        />
+      </div>
     </div>
   );
 }
