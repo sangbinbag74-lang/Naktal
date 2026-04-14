@@ -33,6 +33,8 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     lowerLimitPrice: number;
     winProbability: number;
     competitionScore: number;
+    bizRegNo?: string;
+    repName?: string;
   };
 
   const {
@@ -40,7 +42,10 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     lowerLimitRate, aValueYn, aValueTotal,
     recommendedBidPrice, predictedSajungRate,
     estimatedPrice, lowerLimitPrice, winProbability, competitionScore,
+    bizRegNo, repName,
   } = body;
+
+  const contractIp = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
 
   const feeRate = recommendedBidPrice < 100_000_000 ? 0.017 : 0.015;
   const agreedFeeAmount = Math.round(recommendedBidPrice * feeRate);
@@ -67,6 +72,9 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         agreedFeeRate: feeRate,
         agreedFeeAmount: String(agreedFeeAmount),
         agreedAt: new Date().toISOString(),
+        ...(bizRegNo ? { bizRegNo } : {}),
+        ...(repName ? { repName } : {}),
+        ...(bizRegNo ? { contractAt: new Date().toISOString(), contractIp } : {}),
       })
       .eq("id", existing.id)
       .select("id")
@@ -100,6 +108,9 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         agreedFeeAmount: String(agreedFeeAmount),
         agreedAt: new Date().toISOString(),
         recommendedAt: new Date().toISOString(),
+        ...(bizRegNo ? { bizRegNo } : {}),
+        ...(repName ? { repName } : {}),
+        ...(bizRegNo ? { contractAt: new Date().toISOString(), contractIp } : {}),
       })
       .select("id")
       .single();

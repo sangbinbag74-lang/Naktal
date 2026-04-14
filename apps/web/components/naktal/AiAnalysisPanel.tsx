@@ -9,6 +9,7 @@ interface AiAnalysisPanelProps {
   budget: number;
   g2bUrl: string;
   onRefresh?: () => void;
+  isContracted?: boolean;
 }
 
 // ── 숫자 포맷 ─────────────────────────────────────────────────────────────────
@@ -56,7 +57,7 @@ function SajungDistBar({ range, predicted }: {
 
 // ── 메인 컴포넌트 ─────────────────────────────────────────────────────────────
 
-export function AiAnalysisPanel({ annDbId, budget, g2bUrl, onRefresh }: AiAnalysisPanelProps) {
+export function AiAnalysisPanel({ annDbId, budget, g2bUrl, onRefresh, isContracted = false }: AiAnalysisPanelProps) {
   const [analysis, setAnalysis] = useState<ComprehensiveResult | null>(null);
   const [loading, setLoading] = useState(true);
   const userIdRef = useRef<string | null>(null);
@@ -166,12 +167,30 @@ export function AiAnalysisPanel({ annDbId, budget, g2bUrl, onRefresh }: AiAnalys
             <div style={{ textAlign: "center", padding: "16px 12px", background: "#F8FAFC", borderRadius: 10 }}>
               <div style={{ fontSize: 11, color: "#94A3B8", marginBottom: 6 }}>AI 추천 투찰가</div>
               <div style={{ fontSize: 22, fontWeight: 800, color: cl === "LOW" ? "#94A3B8" : "#1B3A6B", lineHeight: 1.2 }}>
-                {cl === "LOW" ? "데이터 부족" : fmt(bs.optimalBidPrice)}
+                {cl === "LOW" ? "데이터 부족" : (
+                  isContracted
+                    ? fmt(bs.optimalBidPrice)
+                    : <span style={{ filter: "blur(6px)", userSelect: "none", pointerEvents: "none" }}>{fmt(bs.optimalBidPrice)}</span>
+                )}
               </div>
-              {cl !== "LOW" && (
+              {cl !== "LOW" && isContracted && (
                 <div style={{ fontSize: 11, color: "#64748B", marginTop: 6 }}>
                   범위 {fmt(bs.bidPriceRangeLow)}<br />~ {fmt(bs.bidPriceRangeHigh)}
                 </div>
+              )}
+              {cl !== "LOW" && !isContracted && (
+                <a
+                  href={`/bid-contract/${annDbId}`}
+                  style={{
+                    display: "inline-block", marginTop: 10,
+                    fontSize: 12, fontWeight: 700,
+                    color: "#fff", background: "#1B3A6B",
+                    borderRadius: 8, padding: "6px 14px",
+                    textDecoration: "none",
+                  }}
+                >
+                  계약하고 확인하기 →
+                </a>
               )}
             </div>
 
@@ -287,7 +306,10 @@ export function AiAnalysisPanel({ annDbId, budget, g2bUrl, onRefresh }: AiAnalys
                   display: "flex", alignItems: "center", gap: 8,
                 }}>
                   <span style={{ fontSize: 12, color: isAboveLower ? "#16A34A" : "#DC2626", flexShrink: 0 }}>{isAboveLower ? "✓ 낙찰하한가" : "⚠ 낙찰하한가"}</span>
-                  <span style={{ fontSize: 13, fontWeight: 700, color: isAboveLower ? "#16A34A" : "#DC2626" }}>{fmt(bs.lowerLimitPrice)}</span>
+                  {isContracted
+                    ? <span style={{ fontSize: 13, fontWeight: 700, color: isAboveLower ? "#16A34A" : "#DC2626" }}>{fmt(bs.lowerLimitPrice)}</span>
+                    : <span style={{ fontSize: 13, fontWeight: 700, color: isAboveLower ? "#16A34A" : "#DC2626", filter: "blur(5px)", userSelect: "none", pointerEvents: "none" }}>{fmt(bs.lowerLimitPrice)}</span>
+                  }
                   <span style={{ fontSize: 11, color: "#94A3B8", marginLeft: "auto", flexShrink: 0 }}>{isAboveLower ? "이상 (충족)" : "이상 필수"}</span>
                 </div>
               );

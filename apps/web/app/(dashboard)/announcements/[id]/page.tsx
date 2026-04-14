@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { createAdminClient } from "@/lib/supabase/server";
+import { createAdminClient, createClient } from "@/lib/supabase/server";
 import { isMultiplePriceBid } from "@/lib/bid-utils";
 import { AnnouncementTabs } from "@/components/naktal/AnnouncementTabs";
 import { AiAnalysisPanel } from "@/components/naktal/AiAnalysisPanel";
@@ -131,6 +131,25 @@ export default async function AnnouncementDetailPage({
   const budgetNum = parseInt(a.budget, 10); // presmptPrce (추정가격)
   const bdgtAmt = Number(rawJson.bdgtAmt ?? 0) || budgetNum; // 기초금액 (없으면 추정가격으로 폴백)
   const g2bUrl = String(rawJson.ntcePbancUrl || `https://www.g2b.go.kr:8081/ep/peoplecvpl/narasVary.do?bidno=${a.konepsId}&bidseq=${String(rawJson.bidNtceSqNo ?? "00")}`);
+
+  // 유저 세션 + 계약 여부 확인
+  let isContracted = false;
+  try {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      const { data: dbUser } = await admin.from("User").select("id").eq("supabaseId", user.id).single();
+      if (dbUser) {
+        const { data: bidReq } = await admin
+          .from("BidRequest")
+          .select("contractAt")
+          .eq("userId", dbUser.id as string)
+          .eq("annId", a.id)
+          .maybeSingle();
+        isContracted = !!(bidReq?.contractAt);
+      }
+    }
+  } catch { /* 세션 없음 */ }
 
   return (
     <div style={{
@@ -353,6 +372,7 @@ export default async function AnnouncementDetailPage({
             annDbId={a.id}
             budget={bdgtAmt || 0}
             g2bUrl={g2bUrl}
+            isContracted={isContracted}
           />
           {multiplePrice && (
             <div style={{ border: "2px solid #C7D2FE", borderRadius: 12, padding: "20px 24px", background: "#fff" }}>
