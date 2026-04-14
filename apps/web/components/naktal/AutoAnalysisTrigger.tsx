@@ -29,11 +29,17 @@ export function AutoAnalysisTrigger({ annId, annDbId }: { annId: string; annDbId
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ annId: annDbId }),
     })
-      .then((res) => {
+      .then(async (res) => {
         clearInterval(interval);
         if (res.ok) {
-          // router.refresh() 대신 완전히 새로 로드 — 서버 컴포넌트 캐시 확실히 무효화
-          window.location.reload();
+          const data = await res.json().catch(() => null);
+          const price = Number(data?.bidStrategy?.optimalBidPrice ?? 0);
+          if (price > 0) {
+            window.location.reload();
+          } else {
+            // 분석은 성공했지만 데이터 부족으로 optimalBidPrice=0
+            setFailed(true);
+          }
         } else {
           setFailed(true);
         }
