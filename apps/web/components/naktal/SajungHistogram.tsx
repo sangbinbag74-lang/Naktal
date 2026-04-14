@@ -99,8 +99,9 @@ export function SajungHistogram({ annId, predictedSajungRate, lowerLimitRate, pe
 
   const { histogram, sampleSize, stats } = data;
   const lr = lowerLimitRate ?? data.lowerLimitRate;
-  const xMin = Math.floor((histogram[0]?.rate ?? 100) * 10 - 5) / 10;
-  const xMax = Math.ceil((histogram[histogram.length - 1]?.rate ?? 115) * 10 + 5) / 10;
+  const filled = histogram.filter(h => h.count > 0);
+  const xMin = Math.floor(((filled[0]?.rate ?? 97) * 10) - 5) / 10;
+  const xMax = Math.ceil(((filled[filled.length - 1]?.rate ?? 103) * 10) + 5) / 10;
   const predicted = predictedSajungRate ?? stats.avg;
   const modeRate = stats.mode;
   const orgAvg = stats.avg; // 편차 기준값
