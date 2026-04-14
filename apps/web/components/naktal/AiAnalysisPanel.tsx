@@ -230,20 +230,22 @@ export function AiAnalysisPanel({ annDbId, budget, g2bUrl, onRefresh, isContract
                   (예정가 ÷ 기초금액 × 100)
                 </span>
               </div>
-              <SajungDistBar range={bs.sajungRateRange} predicted={bs.predictedSajungRate} />
-              <div style={{ fontSize: 11, color: "#64748B", marginTop: 8 }}>
-                예상 예정가{" "}
-                <strong>
-                  {analysis?.meta?.estimatedPriceByA != null
-                    ? fmt(analysis.meta.estimatedPriceByA)
-                    : fmt(budget * (bs.predictedSajungRate / 100))}
-                </strong>
-                {analysis?.meta?.aValueYn === "Y" && (
-                  <span style={{ marginLeft: 6, fontSize: 10, color: "#92400E", background: "#FEF3C7",
-                    padding: "1px 5px", borderRadius: 3, border: "1px solid #FDE68A", fontWeight: 600 }}>
-                    A값 기반
-                  </span>
-                )}
+              <div style={!isContracted ? { filter: "blur(5px)", userSelect: "none", pointerEvents: "none" } : undefined}>
+                <SajungDistBar range={bs.sajungRateRange} predicted={bs.predictedSajungRate} />
+                <div style={{ fontSize: 11, color: "#64748B", marginTop: 8 }}>
+                  예상 예정가{" "}
+                  <strong>
+                    {analysis?.meta?.estimatedPriceByA != null
+                      ? fmt(analysis.meta.estimatedPriceByA)
+                      : fmt(budget * (bs.predictedSajungRate / 100))}
+                  </strong>
+                  {analysis?.meta?.aValueYn === "Y" && (
+                    <span style={{ marginLeft: 6, fontSize: 10, color: "#92400E", background: "#FEF3C7",
+                      padding: "1px 5px", borderRadius: 3, border: "1px solid #FDE68A", fontWeight: 600 }}>
+                      A값 기반
+                    </span>
+                  )}
+                </div>
               </div>
             </div>
 
