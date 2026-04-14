@@ -50,7 +50,8 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   if (!ann) return NextResponse.json({ error: "공고 없음" }, { status: 404 });
 
   const annId = ann.id as string;
-  const budgetNum = Number(ann.budget);
+  const rawJsonData = ann.rawJson as Record<string, string> | null;
+  const budgetNum = Number(rawJsonData?.bdgtAmt) || Number(ann.budget);
   const budgetRange = classifyBudget(budgetNum);
 
   // A값 적용 공고: 예정가격 = 기초금액(aValueAmt) + A합산(aValueTotal)

@@ -239,14 +239,14 @@ export async function queryRawDataPoints(
 
   const { data: anns } = await supabase
     .from("Announcement")
-    .select("konepsId,budget,deadline")
+    .select("konepsId,budget,rawJson->>bdgtAmt,deadline")
     .eq("orgName", orgName)
     .eq("category", category)
     .eq("region", region)
     .limit(200);
 
   const filtered = (anns ?? []).filter(
-    a => classifyBudget(Number(a.budget)) === budgetRange
+    a => classifyBudget(Number((a as Record<string, unknown>).bdgtAmt) || Number(a.budget)) === budgetRange
   );
   const konepsIds = filtered.map(a => a.konepsId as string).filter(Boolean);
   if (konepsIds.length === 0) return [];
@@ -265,7 +265,7 @@ export async function queryRawDataPoints(
     if (!ann) continue;
     const bidRate    = Number(bid.bidRate);
     const finalPrice = Number(bid.finalPrice);
-    const budget     = Number(ann.budget);
+    const budget     = Number((ann as Record<string, unknown>).bdgtAmt) || Number(ann.budget);
     if (!bidRate || !finalPrice || !budget) continue;
     const sajung = (finalPrice / (bidRate / 100)) / budget * 100;
     if (sajung < 85 || sajung > 125) continue;
