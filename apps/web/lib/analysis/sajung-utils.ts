@@ -21,12 +21,15 @@ export async function buildBudgetAndDateMap(
   const unique = [...new Set(konepsIds)];
   const { data } = await supabase
     .from("Announcement")
-    .select("konepsId, budget, deadline")
+    .select("konepsId, budget, rawJson->>bdgtAmt, deadline")
     .in("konepsId", unique);
   return new Map(
-    (data ?? []).map((a: { konepsId: string; budget: string | number; deadline: string | null }) => [
+    (data ?? []).map((a: { konepsId: string; budget: string | number; bdgtAmt: string | null; deadline: string | null }) => [
       a.konepsId as string,
-      { budget: Number(a.budget), deadline: a.deadline as string | null },
+      {
+        budget: Number(a.bdgtAmt) || Number(a.budget),
+        deadline: a.deadline as string | null,
+      },
     ]),
   );
 }
@@ -40,12 +43,12 @@ export async function buildBudgetMap(
   const unique = [...new Set(konepsIds)];
   const { data } = await supabase
     .from("Announcement")
-    .select("konepsId, budget")
+    .select("konepsId, budget, rawJson->>bdgtAmt")
     .in("konepsId", unique);
   return new Map(
-    (data ?? []).map((a: { konepsId: string; budget: string | number }) => [
+    (data ?? []).map((a: { konepsId: string; budget: string | number; bdgtAmt: string | null }) => [
       a.konepsId as string,
-      Number(a.budget),
+      Number(a.bdgtAmt) || Number(a.budget),
     ]),
   );
 }
