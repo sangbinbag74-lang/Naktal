@@ -240,9 +240,8 @@ export default async function AnnouncementDetailPage({
       <div style={{
         flex: 1,
         display: "grid",
-        gridTemplateColumns: "300px minmax(380px, 1fr) minmax(560px, 1.6fr)",
+        gridTemplateColumns: "240px minmax(280px, 1fr) minmax(480px, 1.6fr)",
         gap: 16,
-        minWidth: 1260,
         alignItems: "start",
       }}>
 
