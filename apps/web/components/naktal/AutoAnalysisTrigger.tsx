@@ -1,7 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 
 const STEPS = [
@@ -13,11 +12,14 @@ const STEPS = [
 ];
 
 export function AutoAnalysisTrigger({ annId, annDbId }: { annId: string; annDbId: string }) {
-  const router = useRouter();
   const [failed, setFailed] = useState(false);
   const [stepIdx, setStepIdx] = useState(0);
+  const called = useRef(false);
 
   useEffect(() => {
+    if (called.current) return;
+    called.current = true;
+
     const interval = setInterval(() => {
       setStepIdx((i) => (i < STEPS.length - 1 ? i + 1 : i));
     }, 900);
@@ -30,7 +32,8 @@ export function AutoAnalysisTrigger({ annId, annDbId }: { annId: string; annDbId
       .then((res) => {
         clearInterval(interval);
         if (res.ok) {
-          router.refresh();
+          // router.refresh() 대신 완전히 새로 로드 — 서버 컴포넌트 캐시 확실히 무효화
+          window.location.reload();
         } else {
           setFailed(true);
         }
@@ -41,7 +44,7 @@ export function AutoAnalysisTrigger({ annId, annDbId }: { annId: string; annDbId
       });
 
     return () => clearInterval(interval);
-  }, [annDbId, router]);
+  }, [annDbId]);
 
   if (failed) {
     return (
