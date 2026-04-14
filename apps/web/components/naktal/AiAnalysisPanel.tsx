@@ -61,7 +61,7 @@ export function AiAnalysisPanel({ annDbId, budget, g2bUrl, onRefresh }: AiAnalys
   const [loading, setLoading] = useState(true);
   const userIdRef = useRef<string | null>(null);
 
-  const cacheKey = (uid: string) => `analysis_v2_${uid}_${annDbId}`;
+  const cacheKey = (uid: string) => `analysis_v3_${uid}_${annDbId}_${new Date().toISOString().slice(0, 10)}`;
 
   const fetchAnalysis = useCallback(async (forceRefresh = false) => {
     if (!userIdRef.current) {
