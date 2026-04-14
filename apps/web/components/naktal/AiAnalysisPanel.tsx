@@ -87,7 +87,7 @@ export function AiAnalysisPanel({ annDbId, budget, g2bUrl, onRefresh }: AiAnalys
       const res = await fetch("/api/analysis/comprehensive", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ annId: annDbId }),
+        body: JSON.stringify({ annId: annDbId, force: forceRefresh }),
       });
       if (res.ok) {
         const data = (await res.json()) as ComprehensiveResult;

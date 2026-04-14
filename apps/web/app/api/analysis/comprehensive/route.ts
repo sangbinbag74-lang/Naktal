@@ -35,7 +35,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ error: "PRO_REQUIRED", message: "AI 분석은 프로 플랜부터 이용할 수 있습니다.", upgradeUrl: "/pricing" }, { status: 403 });
   }
 
-  const body = (await request.json()) as { annId?: string };
+  const body = (await request.json()) as { annId?: string; force?: boolean };
   if (!body.annId) {
     return NextResponse.json({ error: "annId 필수" }, { status: 400 });
   }
@@ -71,8 +71,9 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     .maybeSingle();
 
   // sampleSize=0 또는 sajungRateRange 필드 null인 캐시는 재분석
+  const force = body.force === true;
   const cachedRng = cached?.sajungRateRange as { min?: number | null } | null | undefined;
-  if (cached && (cached.sampleSize as number) > 0 && cachedRng?.min != null) {
+  if (!force && cached && (cached.sampleSize as number) > 0 && cachedRng?.min != null) {
     // trend 는 DB에 저장되지 않으므로 캐시 히트 시에도 보완 계산
     const rawPoints = await queryRawDataPoints(
       ann.orgName as string,
