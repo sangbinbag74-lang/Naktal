@@ -27,7 +27,7 @@ export async function buildBudgetAndDateMap(
     (data ?? []).map((a: { konepsId: string; budget: string | number; bdgtAmt: string | null; deadline: string | null }) => [
       a.konepsId as string,
       {
-        budget: Number(a.bdgtAmt) || Number(a.budget),
+        budget: (() => { const raw = Number(a.bdgtAmt); return raw > 0 ? raw : Number(a.budget) * 1.1; })(),
         deadline: a.deadline as string | null,
       },
     ]),
@@ -48,7 +48,7 @@ export async function buildBudgetMap(
   return new Map(
     (data ?? []).map((a: { konepsId: string; budget: string | number; bdgtAmt: string | null }) => [
       a.konepsId as string,
-      Number(a.bdgtAmt) || Number(a.budget),
+      (() => { const raw = Number(a.bdgtAmt); return raw > 0 ? raw : Number(a.budget) * 1.1; })(),
     ]),
   );
 }

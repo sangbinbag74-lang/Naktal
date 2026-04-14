@@ -246,7 +246,7 @@ export async function queryRawDataPoints(
     .limit(200);
 
   const filtered = (anns ?? []).filter(
-    a => classifyBudget(Number((a as Record<string, unknown>).bdgtAmt) || Number(a.budget)) === budgetRange
+    a => { const raw = Number((a as Record<string, unknown>).bdgtAmt); const b = raw > 0 ? raw : Number(a.budget) * 1.1; return classifyBudget(b) === budgetRange; }
   );
   const konepsIds = filtered.map(a => a.konepsId as string).filter(Boolean);
   if (konepsIds.length === 0) return [];
@@ -265,7 +265,8 @@ export async function queryRawDataPoints(
     if (!ann) continue;
     const bidRate    = Number(bid.bidRate);
     const finalPrice = Number(bid.finalPrice);
-    const budget     = Number((ann as Record<string, unknown>).bdgtAmt) || Number(ann.budget);
+    const bdgtAmt    = Number((ann as Record<string, unknown>).bdgtAmt);
+    const budget     = bdgtAmt > 0 ? bdgtAmt : Number(ann.budget) * 1.1;
     if (!bidRate || !finalPrice || !budget) continue;
     const sajung = (finalPrice / (bidRate / 100)) / budget * 100;
     if (sajung < 85 || sajung > 125) continue;
