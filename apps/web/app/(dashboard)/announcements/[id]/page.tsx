@@ -27,7 +27,7 @@ interface Announcement {
   rawJson: Record<string, unknown> | null;
   subCategories?: string[];
   aValueYn?: string;
-  aValueAmt?: string;
+  aValueTotal?: string;
   priceRangeRate?: string;
 }
 
@@ -121,7 +121,7 @@ export default async function AnnouncementDetailPage({
   const participationConditions = extractParticipationConditions(a.rawJson);
   const prtcptnLmtNm = String(rawJson.prtcptnLmtNm ?? "");
   const aValueYn = a.aValueYn ?? "";
-  const aValueAmt = Number(String(rawJson.aValueAmt ?? a.aValueAmt ?? "0").replace(/[^0-9]/g, "")) || 0;
+  const aValueTotal = Number(String(a.aValueTotal ?? "0").replace(/[^0-9]/g, "")) || 0;
   const priceRangeRate = a.priceRangeRate ?? "";
   const subCats = (a.subCategories && a.subCategories.length > 0)
     ? a.subCategories
@@ -276,10 +276,10 @@ export default async function AnnouncementDetailPage({
             {aValueYn === "Y" && (
               <div style={{ marginTop: 16, padding: "12px 14px", background: "#FFFBEB", borderRadius: 10, border: "1px solid #FDE68A" }}>
                 <div style={{ fontSize: 11, color: "#92400E", fontWeight: 600, marginBottom: 6 }}>A값 적용 공고</div>
-                {aValueAmt > 0 ? (
+                {aValueTotal > 0 ? (
                   <>
                     <div style={{ fontSize: 15, fontWeight: 700, color: "#92400E" }}>
-                      A값: {new Intl.NumberFormat("ko-KR").format(aValueAmt)}원
+                      A값: {new Intl.NumberFormat("ko-KR").format(aValueTotal)}원
                     </div>
                     <div style={{ fontSize: 11, color: "#B45309", marginTop: 4 }}>
                       투찰가 ≈ (예정가 − A값) × 낙찰하한율 + A값
