@@ -88,6 +88,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     const { data: inserted, error } = await admin
       .from("BidRequest")
       .insert({
+        id: crypto.randomUUID(),
         userId,
         annId,
         konepsId,

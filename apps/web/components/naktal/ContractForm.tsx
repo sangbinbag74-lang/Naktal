@@ -86,7 +86,7 @@ export function ContractForm(props: Props) {
         setLoading(false);
         return;
       }
-      router.push(`/announcements/${annId}`);
+      router.push(`/bid-result/${annId}`);
     } catch {
       setError("네트워크 오류가 발생했습니다.");
       setLoading(false);
@@ -95,20 +95,6 @@ export function ContractForm(props: Props) {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-      {/* 추천 투찰금액 미리보기 */}
-      <div style={{
-        background: "#EEF2FF", borderRadius: 12,
-        padding: "20px 24px", textAlign: "center",
-      }}>
-        <div style={{ fontSize: 11, color: "#6366F1", marginBottom: 4 }}>계약 체결 후 공개되는 AI 추천 투찰금액</div>
-        <div style={{ fontSize: 32, fontWeight: 800, color: "#1B3A6B", filter: "blur(7px)", userSelect: "none" }}>
-          {fmtPrice(optimalBidPrice)}
-        </div>
-        <div style={{ fontSize: 11, color: "#94A3B8", marginTop: 6 }}>
-          서명 완료 후 즉시 공개됩니다
-        </div>
-      </div>
-
       {/* 수수료 안내 */}
       <div style={{
         background: "#FFFBEB", border: "1px solid #FDE68A",
