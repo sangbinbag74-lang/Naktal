@@ -4,6 +4,8 @@ import { verifyAdminSession } from "@/lib/admin-auth";
 import { createClient, createAdminClient } from "@/lib/supabase/server";
 import { AdminLogoutButton } from "./AdminLogoutButton";
 
+export const dynamic = "force-dynamic";
+
 const adminNav = [
   { href: "/admin/model",         label: "운영 현황",  icon: "📊" },
   { href: "/admin/outcomes",      label: "투찰 현황",  icon: "🗂️" },
