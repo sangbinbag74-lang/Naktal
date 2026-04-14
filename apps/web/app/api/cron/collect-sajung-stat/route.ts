@@ -22,12 +22,11 @@ function statKey(orgName: string, category: string, budgetRange: string, region:
 }
 
 function classifyBudget(budget: number): string {
-  if (budget < 50_000_000)   return "5000만미만";
-  if (budget < 100_000_000)  return "5000만~1억";
-  if (budget < 300_000_000)  return "1억~3억";
-  if (budget < 500_000_000)  return "3억~5억";
-  if (budget < 1_000_000_000) return "5억~10억";
-  return "10억이상";
+  if (budget < 100_000_000)   return "1억미만";
+  if (budget < 300_000_000)   return "1억-3억";
+  if (budget < 1_000_000_000) return "3억-10억";
+  if (budget < 3_000_000_000) return "10억-30억";
+  return "30억이상";
 }
 
 function percentile(sorted: number[], p: number): number {
@@ -111,13 +110,13 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
 
     // ─── 2. Announcement 배치 조회 ──────────────────────────────────────────
     const annIds = [...new Set(bidResults.map((r) => r.annId))];
-    const annMap = new Map<string, { orgName: string; category: string; region: string; budget: string; deadline: string }>();
+    const annMap = new Map<string, { orgName: string; category: string; region: string; budget: string; bdgtAmt: string | null; deadline: string }>();
 
     for (let i = 0; i < annIds.length; i += 500) {
       const chunk = annIds.slice(i, i + 500);
       const { data } = await admin
         .from("Announcement")
-        .select("konepsId,orgName,category,region,budget,deadline")
+        .select("konepsId,orgName,category,region,budget,rawJson->>bdgtAmt,deadline")
         .in("konepsId", chunk);
       for (const a of data ?? []) annMap.set(a.konepsId, a);
     }
@@ -131,7 +130,8 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       if (!ann) continue;
       const bidRate = parseFloat(row.bidRate);
       const finalPrice = parseFloat(row.finalPrice);
-      const budget = parseFloat(ann.budget);
+      // 기초금액(bdgtAmt) 우선, 없으면 추정가격(budget) 폴백
+      const budget = Number(ann.bdgtAmt) || parseFloat(ann.budget);
       if (!bidRate || !finalPrice || !budget || bidRate <= 0) continue;
 
       const estimatedPrice = finalPrice / (bidRate / 100);
