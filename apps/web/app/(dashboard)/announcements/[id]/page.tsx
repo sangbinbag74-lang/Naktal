@@ -6,6 +6,7 @@ import { AnnouncementTabs } from "@/components/naktal/AnnouncementTabs";
 import { AiAnalysisPanel } from "@/components/naktal/AiAnalysisPanel";
 import { NumberAnalysisSection } from "@/components/naktal/NumberAnalysisSection";
 import { SaveButton } from "@/components/naktal/SaveButton";
+import { BidRequestButton } from "@/components/naktal/BidRequestButton";
 import {
   g2bFetchAnnouncementByNo,
   g2bParseDate,
@@ -216,6 +217,17 @@ export default async function AnnouncementDetailPage({
               나라장터 원문 ↗
             </a>
             <SaveButton annId={a.id} />
+            <BidRequestButton
+              annId={a.id}
+              konepsId={a.konepsId}
+              title={a.title}
+              orgName={a.orgName}
+              deadline={a.deadline}
+              budget={bdgtAmt || 0}
+              lowerLimitRate={lowerLimitRate}
+              aValueYn={aValueYn}
+              aValueTotal={aValueTotal}
+            />
           </div>
         </div>
 
