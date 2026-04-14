@@ -279,14 +279,19 @@ export function AiAnalysisPanel({ annDbId, budget, g2bUrl, onRefresh }: AiAnalys
             </div>
 
             {/* ⑤ 낙찰하한가 */}
-            <div style={{
-              background: "#FEF2F2", borderRadius: 8, padding: "10px 12px",
-              display: "flex", alignItems: "center", gap: 8,
-            }}>
-              <span style={{ fontSize: 12, color: "#DC2626", flexShrink: 0 }}>⚠ 낙찰하한가</span>
-              <span style={{ fontSize: 13, fontWeight: 700, color: "#DC2626" }}>{fmt(bs.lowerLimitPrice)}</span>
-              <span style={{ fontSize: 11, color: "#94A3B8", marginLeft: "auto", flexShrink: 0 }}>이상 필수</span>
-            </div>
+            {(() => {
+              const isAboveLower = Number(bs.optimalBidPrice) >= bs.lowerLimitPrice;
+              return (
+                <div style={{
+                  background: isAboveLower ? "#F0FDF4" : "#FEF2F2", borderRadius: 8, padding: "10px 12px",
+                  display: "flex", alignItems: "center", gap: 8,
+                }}>
+                  <span style={{ fontSize: 12, color: isAboveLower ? "#16A34A" : "#DC2626", flexShrink: 0 }}>{isAboveLower ? "✓ 낙찰하한가" : "⚠ 낙찰하한가"}</span>
+                  <span style={{ fontSize: 13, fontWeight: 700, color: isAboveLower ? "#16A34A" : "#DC2626" }}>{fmt(bs.lowerLimitPrice)}</span>
+                  <span style={{ fontSize: 11, color: "#94A3B8", marginLeft: "auto", flexShrink: 0 }}>{isAboveLower ? "이상 (충족)" : "이상 필수"}</span>
+                </div>
+              );
+            })()}
 
             {/* ⑥ 나라장터 투찰하기 */}
             <a
