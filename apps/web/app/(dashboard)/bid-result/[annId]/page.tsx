@@ -1,6 +1,7 @@
 import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
 import { createAdminClient, createClient } from "@/lib/supabase/server";
+import { BidResultAnalysis } from "@/components/naktal/BidResultAnalysis";
 
 export const dynamic = "force-dynamic";
 
@@ -124,6 +125,9 @@ export default async function BidResultPage({
           미낙찰 시 수수료 없음 · 낙찰 결과 공고일로부터 14일 이내 납부
         </div>
       </div>
+
+      {/* AI 번호 분석 (복수예가 공고면 표시, 사정율 분석 요약 포함) */}
+      <BidResultAnalysis annDbId={ann.id as string} />
 
       {/* 공고 상세로 */}
       <Link
