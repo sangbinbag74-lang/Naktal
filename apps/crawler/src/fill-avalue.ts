@@ -1,13 +1,21 @@
 import { createClient } from "@supabase/supabase-js";
 import * as fs from "fs";
+import * as https from "https";
 import * as path from "path";
 
 // .env 로드 (파일 없으면 process.env 폴백)
 function loadEnv(): { url: string; key: string; apiKey: string } {
   let text = "";
+  // tsx에서 __dirname이 "."로 나오는 이슈 → 여러 경로 순서대로 시도
+  const candidates = [
+    path.resolve(__dirname, "../../../.env"),
+    path.resolve(process.cwd(), "../../.env"),
+    path.resolve(process.cwd(), ".env"),
+  ];
   try {
-    const envPath = path.resolve(__dirname, "../../../.env");
-    text = fs.readFileSync(envPath, "utf8");
+    for (const p of candidates) {
+      if (fs.existsSync(p)) { text = fs.readFileSync(p, "utf8"); break; }
+    }
   } catch {
     // GitHub Actions 등 파일 없는 환경 → process.env에서 직접 읽음
   }
@@ -49,10 +57,28 @@ interface AInfoItem {
 /**
  * 기초금액 API → bssamt(기초금액), bidPrceCalclAYn(A값여부) 조회
  */
+// Node.js 내장 fetch가 Windows에서 hang → https 모듈 직접 사용
+function httpsGet(url: string, ms = 8000): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => { req.destroy(); reject(new Error("timeout")); }, ms);
+    const req = https.get(url, (res) => {
+      let body = "";
+      res.on("data", (d: Buffer) => { body += d.toString(); });
+      res.on("end", () => { clearTimeout(timer); resolve(body); });
+      res.on("error", (e: Error) => { clearTimeout(timer); reject(e); });
+    });
+    req.on("error", (e: Error) => { clearTimeout(timer); reject(e); });
+  });
+}
+
+function safeJson<T>(text: string): T | null {
+  try { return JSON.parse(text) as T; } catch { return null; }
+}
+
 async function fetchBsisAmount(bidNtceNo: string, apiKey: string): Promise<{ aValueYn: string; aValueAmt: bigint; priceRangeRate: string } | null> {
   const url = `${BASE}/getBidPblancListInfoCnstwkBsisAmount?serviceKey=${apiKey}&inqryDiv=2&bidNtceNo=${bidNtceNo}&bidNtceOrd=000&numOfRows=1&pageNo=1&type=json`;
-  const res = await fetch(url, { signal: AbortSignal.timeout(10000) });
-  const json = await res.json() as { response?: { body?: { items?: BsisAmountItem[] } } };
+  const text = await httpsGet(url);
+  const json = safeJson<{ response?: { body?: { items?: BsisAmountItem[] } } }>(text);
   const items = json?.response?.body?.items ?? [];
   if (!Array.isArray(items) || items.length === 0) return null;
 
@@ -70,8 +96,8 @@ async function fetchBsisAmount(bidNtceNo: string, apiKey: string): Promise<{ aVa
  */
 async function fetchATotal(bidNtceNo: string, apiKey: string): Promise<bigint> {
   const url = `${BASE}/getBidPblancListBidPrceCalclAInfo?serviceKey=${apiKey}&inqryDiv=2&bidNtceNo=${bidNtceNo}&bidNtceOrd=000&numOfRows=1&pageNo=1&type=json`;
-  const res = await fetch(url, { signal: AbortSignal.timeout(10000) });
-  const json = await res.json() as { response?: { body?: { items?: AInfoItem[] } } };
+  const text = await httpsGet(url);
+  const json = safeJson<{ response?: { body?: { items?: AInfoItem[] } } }>(text);
   const items = json?.response?.body?.items ?? [];
   if (!Array.isArray(items) || items.length === 0) return 0n;
 
