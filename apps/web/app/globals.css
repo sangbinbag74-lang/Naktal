@@ -70,19 +70,6 @@ body {
   overflow-x: hidden;
 }
 
-/* 화면 너비에 따른 자동 축소 — 노트북 대응 */
-@media (max-width: 1540px) {
-  html { zoom: 0.95; }
-}
-@media (max-width: 1440px) {
-  html { zoom: 0.9; }
-}
-@media (max-width: 1366px) {
-  html { zoom: 0.85; }
-}
-@media (max-width: 1280px) {
-  html { zoom: 0.8; }
-}
 
 body {
   font-family: 'Pretendard', -apple-system, 'Apple SD Gothic Neo', BlinkMacSystemFont, sans-serif;
