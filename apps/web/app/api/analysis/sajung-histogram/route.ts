@@ -158,7 +158,7 @@ export async function GET(req: NextRequest) {
   const orgRange = getSajungRange(ann.orgName as string);
   const sinceDate = periodToDate(period);
   const sinceDateStr = sinceDate ? sinceDate.slice(0, 10) : null;
-  const sajungFilter = { min: 85, max: 125 };
+  const sajungFilter = { min: 94, max: 106 };
 
   const currentAnn = { bidMethod, budget: currentBudget };
   const categoryForFilter = categoryFilter === "all" ? null : ann.category as string;
