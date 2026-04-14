@@ -119,7 +119,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       .single();
     if (error) {
       console.error("[BidRequest] insert error:", error);
-      return NextResponse.json({ error: "저장 실패" }, { status: 500 });
+      return NextResponse.json({ error: `저장 실패: ${error.message} (code: ${error.code})` }, { status: 500 });
     }
     resultId = (inserted as { id: string }).id;
   }
