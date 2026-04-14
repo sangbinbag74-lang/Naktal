@@ -229,21 +229,21 @@ export function calcStabilityScore(
 
 // ─── raw 데이터 포인트 조회 (BidResult + Announcement 조인) ──────────────────
 
-export async function queryRawDataPoints(
-  orgName: string,
+async function _fetchPoints(
+  orgName: string | null,
   category: string,
   budgetRange: string,
   region: string
 ): Promise<{ sajung: number; deadline: string }[]> {
   const supabase = createAdminClient();
 
-  const { data: anns } = await supabase
+  let q = supabase
     .from("Announcement")
     .select("konepsId,budget,rawJson->>bdgtAmt,deadline")
-    .eq("orgName", orgName)
     .eq("category", category)
-    .eq("region", region)
-    .limit(200);
+    .eq("region", region);
+  if (orgName) q = q.eq("orgName", orgName);
+  const { data: anns } = await q.limit(200);
 
   const filtered = (anns ?? []).filter(
     a => { const raw = Number((a as Record<string, unknown>).bdgtAmt); const b = raw > 0 ? raw : Number(a.budget) * 1.1; return classifyBudget(b) === budgetRange; }
@@ -273,6 +273,18 @@ export async function queryRawDataPoints(
     points.push({ sajung, deadline: ann.deadline as string });
   }
   return points;
+}
+
+export async function queryRawDataPoints(
+  orgName: string,
+  category: string,
+  budgetRange: string,
+  region: string
+): Promise<{ sajung: number; deadline: string }[]> {
+  const primary = await _fetchPoints(orgName, category, budgetRange, region);
+  if (primary.length >= 10) return primary;
+  // 발주처 조건 제거 후 업종+예산구간+지역 기준 폴백
+  return _fetchPoints(null, category, budgetRange, region);
 }
 
 // ─── 최적 투찰가 예측 ─────────────────────────────────────────────────────────

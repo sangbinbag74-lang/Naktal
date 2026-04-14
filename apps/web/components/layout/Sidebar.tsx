@@ -21,6 +21,7 @@ const MENU_SECTIONS = [
     items: [
       { href: "/history",  label: "분석 이력",  icon: "🎯" },
       { href: "/folder",   label: "서류함",     icon: "📂" },
+      { href: "/contracts", label: "계약 서류", icon: "📄" },
       { href: "/alerts",   label: "알림 설정",  icon: "◌" },
     ],
   },

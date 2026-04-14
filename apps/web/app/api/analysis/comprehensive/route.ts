@@ -77,12 +77,26 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   const cachedRng = cached?.sajungRateRange as { min?: number | null } | null | undefined;
   if (!force && cached && (cached.sampleSize as number) > 0 && cachedRng?.min != null) {
     // trend 는 DB에 저장되지 않으므로 캐시 히트 시에도 보완 계산
-    const rawPoints = await queryRawDataPoints(
-      ann.orgName as string,
-      ann.category as string,
-      budgetRange,
-      ann.region as string
-    );
+    // numberStrategy도 캐시에 없으므로 복수예가 공고는 다시 계산
+    const isMultipleCached = isMultiplePriceBid(rawJsonEarly);
+    const [rawPoints, numberStrategyCached] = await Promise.all([
+      queryRawDataPoints(
+        ann.orgName as string,
+        ann.category as string,
+        budgetRange,
+        ann.region as string
+      ),
+      isMultipleCached
+        ? recommendNumbers({
+            annId,
+            supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL!,
+            supabaseKey: process.env.SUPABASE_SERVICE_ROLE_KEY!,
+            category: ann.category as string,
+            budgetRange,
+            region: ann.region as string,
+          }).catch(() => null)
+        : Promise.resolve(null),
+    ]);
     const trendMeta: TrendMeta = {
       weightedAvg: rawPoints.length >= 5
         ? Math.round(calcWeightedAvgSajung(rawPoints) * 1000) / 1000
@@ -99,7 +113,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     const estimatedPriceByACached = isAValue
       ? budgetNum * ((Number(cached.predictedSajungRate) || 103.8) / 100)
       : null;
-    return NextResponse.json(buildResponse(ann, cached, null, trendMeta, estimatedPriceByACached, aValueTotal, lowerLimitRateEarly, budgetNum));
+    return NextResponse.json(buildResponse(ann, cached, numberStrategyCached, trendMeta, estimatedPriceByACached, aValueTotal, lowerLimitRateEarly, budgetNum));
   }
 
   // ─── 공고 메타 파싱 ────────────────────────────────────────────────────────
