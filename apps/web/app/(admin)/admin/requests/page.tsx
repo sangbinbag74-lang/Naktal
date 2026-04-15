@@ -1,10 +1,12 @@
 import { createAdminClient } from "@/lib/supabase/server";
+import { RequestsTable } from "./RequestsTable";
 
 export const dynamic = "force-dynamic";
 
 export default async function AdminRequestsPage() {
   const admin = createAdminClient();
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let requests: any[] = [];
   let totalCount = 0;
   let pendingCount = 0;
@@ -18,6 +20,11 @@ export default async function AdminRequestsPage() {
   let avgDeviation = 0;
   let followWonCount = 0;
   let followCount = 0;
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let userMap: Record<string, any> = {};
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let bidResultMap: Record<string, any> = {};
 
   try {
     const [
@@ -45,38 +52,70 @@ export default async function AdminRequestsPage() {
       .select("isHit,deviationPct,userFollowedRecommendation,isWon")
       .not("resultDetectedAt", "is", null);
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     if (statRows && statRows.length > 0) {
       resultCount   = statRows.length;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       hitCount      = statRows.filter((r: any) => r.isHit).length;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const devRows = statRows.filter((r: any) => r.deviationPct != null);
       avgDeviation  = devRows.length > 0
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         ? devRows.reduce((s: number, r: any) => s + Math.abs(Number(r.deviationPct)), 0) / devRows.length
         : 0;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const followed = statRows.filter((r: any) => r.userFollowedRecommendation === true);
       followCount    = followed.length;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       followWonCount = followed.filter((r: any) => r.isWon === true).length;
     }
 
-    // 목록
+    // 의뢰 목록 (확장된 필드)
     const { data } = await admin
       .from("BidRequest")
-      .select("id,title,orgName,deadline,recommendedBidPrice,userBidPrice,openingDt,isWon,feeAmount,feeStatus,agreedAt,recommendedAt")
+      .select([
+        "id,title,orgName,deadline,budget",
+        "recommendedBidPrice,predictedSajungRate,winProbability",
+        "userBidPrice,userBidAt,userFollowedRecommendation",
+        "openingDt,isWon,actualFinalPrice,actualSajungRate",
+        "winnerName,totalBidders",
+        "feeAmount,feeStatus,agreedFeeRate,agreedFeeAmount",
+        "deviationPct,isHit,resultDetectedAt",
+        "memo,konepsId,userId,annId",
+        "recommendedAt,agreedAt,paidAt,invoicedAt",
+      ].join(","))
       .order("recommendedAt", { ascending: false })
       .limit(50);
     requests = data ?? [];
+
+    // User 배치 조회 (회사명, 사업자번호)
+    if (requests.length > 0) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const userIds = [...new Set(requests.map((r: any) => r.userId).filter(Boolean))] as string[];
+      if (userIds.length > 0) {
+        const { data: users } = await admin
+          .from("User")
+          .select("id,bizName,bizNo,ownerName,plan")
+          .in("id", userIds);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        userMap = Object.fromEntries((users ?? []).map((u: any) => [u.id, u]));
+      }
+
+      // BidResult 배치 조회 (낙찰 업체 보완)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const annIds = [...new Set(requests.map((r: any) => r.annId).filter(Boolean))] as string[];
+      if (annIds.length > 0) {
+        const { data: bidResults } = await admin
+          .from("BidResult")
+          .select("annId,winnerName,finalPrice,numBidders,bidRate")
+          .in("annId", annIds);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        bidResultMap = Object.fromEntries((bidResults ?? []).map((b: any) => [b.annId, b]));
+      }
+    }
   } catch {
     // BidRequest 테이블 미존재 (마이그레이션 전)
   }
-
-  const fmtPrice = (n: any) =>
-    n != null ? Number(n).toLocaleString("ko-KR") + "원" : "-";
-
-  const feeStatusStyle: Record<string, { label: string; color: string }> = {
-    pending:   { label: "대기",   color: "#9CA3AF" },
-    invoiced:  { label: "청구중", color: "#D97706" },
-    paid:      { label: "수납",   color: "#059669" },
-    cancelled: { label: "취소",   color: "#DC2626" },
-  };
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
@@ -145,69 +184,7 @@ export default async function AdminRequestsPage() {
       {/* ── 의뢰 목록 테이블 ── */}
       <div style={{ background: "#fff", borderRadius: 14, border: "1px solid #E8ECF2", padding: "20px" }}>
         <div style={{ fontSize: 14, fontWeight: 700, color: "#0F172A", marginBottom: 14 }}>의뢰 목록 (최근 50건)</div>
-        {requests.length === 0 ? (
-          <div style={{ color: "#9CA3AF", fontSize: 13 }}>데이터 없음 — BidRequest 마이그레이션 후 표시됩니다</div>
-        ) : (
-          <div style={{ overflowX: "auto" }}>
-            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12.5 }}>
-              <thead>
-                <tr style={{ background: "#F8FAFC" }}>
-                  {["공고명", "발주처", "마감일", "추천금액", "실투찰금액", "개찰일", "낙찰", "수수료", "상태"].map((h) => (
-                    <th key={h} style={{ padding: "9px 12px", textAlign: "left", color: "#374151", fontWeight: 600, borderBottom: "2px solid #E8ECF2", whiteSpace: "nowrap" }}>{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {requests.map((r: any, i: number) => {
-                  const fee = feeStatusStyle[r.feeStatus as string] ?? { label: r.feeStatus ?? "-", color: "#9CA3AF" };
-                  const wonColor = r.isWon === true ? "#059669" : r.isWon === false ? "#DC2626" : "#9CA3AF";
-                  const wonLabel = r.isWon === true ? "낙찰" : r.isWon === false ? "미낙찰" : "대기";
-                  return (
-                    <tr key={r.id ?? i} style={{ borderBottom: "1px solid #F1F5F9" }}>
-                      <td style={{ padding: "8px 12px", color: "#374151", maxWidth: 180, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={r.title}>
-                        {r.title}
-                      </td>
-                      <td style={{ padding: "8px 12px", color: "#374151", maxWidth: 120, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={r.orgName}>
-                        {r.orgName}
-                      </td>
-                      <td style={{ padding: "8px 12px", color: "#6B7280", whiteSpace: "nowrap" }}>
-                        {new Date(r.deadline).toLocaleDateString("ko-KR")}
-                      </td>
-                      <td style={{ padding: "8px 12px", color: "#1B3A6B", fontWeight: 600, whiteSpace: "nowrap" }}>
-                        {fmtPrice(r.recommendedBidPrice)}
-                      </td>
-                      <td style={{ padding: "8px 12px", whiteSpace: "nowrap" }}>
-                        {r.userBidPrice
-                          ? <span style={{ color: "#374151" }}>{fmtPrice(r.userBidPrice)}</span>
-                          : <span style={{ color: "#D1D5DB" }}>미입력</span>}
-                      </td>
-                      <td style={{ padding: "8px 12px", color: "#6B7280", whiteSpace: "nowrap" }}>
-                        {r.openingDt
-                          ? new Date(r.openingDt).toLocaleDateString("ko-KR")
-                          : <span style={{ color: "#D1D5DB" }}>-</span>}
-                      </td>
-                      <td style={{ padding: "8px 12px" }}>
-                        <span style={{ fontSize: 11, fontWeight: 700, color: wonColor, background: wonColor + "1a", padding: "2px 7px", borderRadius: 5 }}>
-                          {wonLabel}
-                        </span>
-                      </td>
-                      <td style={{ padding: "8px 12px", whiteSpace: "nowrap" }}>
-                        {r.feeAmount
-                          ? <span style={{ color: "#374151", fontWeight: 600 }}>{fmtPrice(r.feeAmount)}</span>
-                          : <span style={{ color: "#D1D5DB" }}>-</span>}
-                      </td>
-                      <td style={{ padding: "8px 12px" }}>
-                        <span style={{ fontSize: 11, fontWeight: 700, color: fee.color, background: fee.color + "1a", padding: "2px 7px", borderRadius: 5 }}>
-                          {fee.label}
-                        </span>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
+        <RequestsTable requests={requests} userMap={userMap} bidResultMap={bidResultMap} />
       </div>
     </div>
   );
