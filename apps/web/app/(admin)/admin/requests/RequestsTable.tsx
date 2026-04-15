@@ -495,7 +495,7 @@ export function RequestsTable({ requests, userMap, bidResultMap }: Props) {
 
             {/* 수수료 정산 */}
             <Section label="수수료 정산">
-              {form.isWon === "true" && form.actualFinalPrice && (
+              {form.isWon === "true" && !!form.actualFinalPrice && (
                 <div style={{ fontSize: 11, color: "#059669", background: "#ECFDF5", padding: "6px 10px", borderRadius: 7, marginBottom: 6 }}>
                   ✓ 수수료 자동 계산됨 — 낙찰금액 × {form.feeRate ? (Number(form.feeRate) * 100).toFixed(1) : "?"}%
                 </div>
