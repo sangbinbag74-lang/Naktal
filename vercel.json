@@ -20,6 +20,6 @@
     { "path": "/api/cron/sync-g2b", "schedule": "0 9 * * *" },
     { "path": "/api/cron/collect-sajung-stat", "schedule": "0 19 * * *" },
     { "path": "/api/cron/prefill-predictions", "schedule": "0 20 * * *" },
-    { "path": "/api/cron/fill-bid-results", "schedule": "0 12 * * *" }
+    { "path": "/api/cron/fill-bid-results", "schedule": "0 1-9 * * 1-5" }
   ]
 }
