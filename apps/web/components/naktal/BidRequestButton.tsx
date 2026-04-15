@@ -29,6 +29,7 @@ interface AnalysisData {
   };
   meta: {
     isFallback: boolean;
+    bidRequestCount?: number;
   };
 }
 
