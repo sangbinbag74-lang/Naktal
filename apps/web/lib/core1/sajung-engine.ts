@@ -282,9 +282,16 @@ export async function queryRawDataPoints(
   region: string
 ): Promise<{ sajung: number; deadline: string }[]> {
   const primary = await _fetchPoints(orgName, category, budgetRange, region);
-  if (primary.length >= 10) return primary;
-  // 발주처 조건 제거 후 업종+예산구간+지역 기준 폴백
-  return _fetchPoints(null, category, budgetRange, region);
+  // 30건 이상이면 발주처 특화 데이터로 충분
+  if (primary.length >= 30) return primary;
+  // 30건 미만이면 업종 전체 데이터로 보충
+  const fallback = await _fetchPoints(null, category, budgetRange, region);
+  if (primary.length >= 5) {
+    // 발주처 특화 데이터 유지 + 부족분 보충 (중복 제외)
+    const supplement = fallback.filter(f => !primary.some(p => p.deadline === f.deadline));
+    return [...primary, ...supplement.slice(0, Math.max(0, 30 - primary.length))];
+  }
+  return fallback;
 }
 
 // ─── 최적 투찰가 예측 ─────────────────────────────────────────────────────────
@@ -320,6 +327,23 @@ export async function predictOptimalBid(params: {
       stat = await querySajungStat("ALL", params.category, budgetRange, "");
     }
     isFallback = true;
+  }
+
+  // 2-b. stat이 있지만 sparse(< 30)하면 ALL 카테고리 stat과 비율 블렌딩
+  if (stat && stat.sampleSize >= 5 && stat.sampleSize < 30) {
+    const allStat = await querySajungStat("ALL", params.category, budgetRange, params.region)
+      ?? (params.region ? await querySajungStat("ALL", params.category, budgetRange, "") : null);
+    if (allStat && allStat.sampleSize >= 30) {
+      const w = stat.sampleSize / 30;
+      stat = {
+        ...allStat,
+        avg:    stat.avg    * w + allStat.avg    * (1 - w),
+        stddev: (stat.stddev ?? 2) * w + (allStat.stddev ?? 2) * (1 - w),
+        p25:    (stat.p25 ?? allStat.p25 ?? 101) * w + (allStat.p25 ?? 101) * (1 - w),
+        p75:    (stat.p75 ?? allStat.p75 ?? 106) * w + (allStat.p75 ?? 106) * (1 - w),
+        sampleSize: stat.sampleSize, // 표시용 원래 건수 유지
+      } as SajungStatRow;
+    }
   }
 
   // 3. budgetRange 무관 ALL 카테고리 폴백 (가장 샘플 많은 구간 사용)
