@@ -76,7 +76,7 @@ export async function upsertAnnouncementBatch(rows: AnnouncementRow[]): Promise<
     seen.add(r.konepsId);
     return true;
   });
-  const BATCH = 100;
+  const BATCH = 50;
   let saved = 0;
   for (let i = 0; i < unique.length; i += BATCH) {
     const chunk = unique.slice(i, i + BATCH);
