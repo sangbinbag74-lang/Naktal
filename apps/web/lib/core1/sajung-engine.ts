@@ -239,14 +239,14 @@ async function _fetchPoints(
 
   let q = supabase
     .from("Announcement")
-    .select("konepsId,budget,aValueAmt,rawJson->>bdgtAmt,deadline")
+    .select("konepsId,budget,aValueAmt,deadline")
     .eq("category", category)
     .eq("region", region);
   if (orgName) q = q.eq("orgName", orgName);
   const { data: anns } = await q.limit(200);
 
   const filtered = (anns ?? []).filter(
-    a => { const aV = Number((a as Record<string, unknown>).aValueAmt); if (aV > 0) return classifyBudget(aV) === budgetRange; const raw = Number((a as Record<string, unknown>).bdgtAmt); const b = raw > 0 ? raw : Number(a.budget) * 1.1; return classifyBudget(b) === budgetRange; }
+    a => { const aV = Number((a as Record<string, unknown>).aValueAmt); const b = aV > 0 ? aV : Number(a.budget) * 1.1; return classifyBudget(b) === budgetRange; }
   );
   const konepsIds = filtered.map(a => a.konepsId as string).filter(Boolean);
   if (konepsIds.length === 0) return [];
@@ -266,8 +266,7 @@ async function _fetchPoints(
     const bidRate    = Number(bid.bidRate);
     const finalPrice = Number(bid.finalPrice);
     const aValueAmtE = Number((ann as Record<string, unknown>).aValueAmt);
-    const bdgtAmt    = Number((ann as Record<string, unknown>).bdgtAmt);
-    const budget     = aValueAmtE > 0 ? aValueAmtE : bdgtAmt > 0 ? bdgtAmt : Number(ann.budget) * 1.1;
+    const budget     = aValueAmtE > 0 ? aValueAmtE : Number(ann.budget) * 1.1;
     if (!bidRate || !finalPrice || !budget) continue;
     const sajung = (finalPrice / (bidRate / 100)) / budget * 100;
     if (sajung < 85 || sajung > 125) continue;

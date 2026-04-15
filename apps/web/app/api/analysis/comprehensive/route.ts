@@ -54,7 +54,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   // A값 파싱 (낙찰하한가 계산용 — estimatedPriceByA는 sajung 계산 후 설정)
   const aValueYn = String(ann.aValueYn ?? "");
   const aValueAmt = Number(ann.aValueAmt ?? 0);
-  const budgetNum = aValueAmt || Number(rawJsonData?.bdgtAmt) || Number(ann.budget) * 1.1;
+  const budgetNum = aValueAmt > 0 ? aValueAmt : Number(ann.budget) * 1.1;
   const budgetRange = classifyBudget(budgetNum);
   const aValueTotal = Number(ann.aValueTotal ?? 0);
   const isAValue = aValueYn === "Y" && aValueAmt > 0;
