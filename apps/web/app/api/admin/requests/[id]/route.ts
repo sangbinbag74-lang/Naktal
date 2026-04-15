@@ -16,7 +16,7 @@ export async function PATCH(
   const allowed = [
     "userBidPrice", "userFollowedRecommendation",
     "openingDt", "isWon", "winnerName", "actualFinalPrice", "totalBidders",
-    "feeAmount", "feeStatus", "memo",
+    "feeAmount", "feeRate", "feeStatus", "paidAt", "invoicedAt", "memo",
   ];
   const update: Record<string, unknown> = {};
   for (const key of allowed) {

@@ -30,31 +30,104 @@ const feeStatusStyle: Record<string, { label: string; color: string }> = {
 };
 
 const fmtPrice = (n: unknown) =>
-  n != null ? Number(n).toLocaleString("ko-KR") + "원" : "-";
+  n != null && n !== "" ? Number(n).toLocaleString("ko-KR") + "원" : "-";
 
 const planLabel: Record<string, string> = { FREE: "무료", STANDARD: "스탠다드", PRO: "프로" };
+
+function calcFee(isWon: string, actualFinalPrice: string, recommendedBidPrice: string | number | null) {
+  if (isWon !== "true" || !actualFinalPrice) return { feeRate: "", feeAmount: "", feeStatus: "pending" };
+  const finalPrice = Number(actualFinalPrice);
+  if (!finalPrice) return { feeRate: "", feeAmount: "", feeStatus: "pending" };
+  const recPrice = Number(recommendedBidPrice ?? 0);
+  const rate = recPrice > 0 && recPrice < 100_000_000 ? 0.017 : 0.015;
+  return {
+    feeRate: String(rate),
+    feeAmount: String(Math.round(finalPrice * rate)),
+    feeStatus: "invoiced",
+  };
+}
 
 export function RequestsTable({ requests, userMap, bidResultMap }: Props) {
   const router = useRouter();
   const [editingRow, setEditingRow] = useState<Request | null>(null);
   const [saving, setSaving] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [fetchingId, setFetchingId] = useState<string | null>(null);
   const [form, setForm] = useState<Record<string, unknown>>({});
 
+  // 검색/필터 상태
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
+
   const now = new Date();
+
+  // 필터링
+  const filtered = requests.filter((r) => {
+    const bizName = userMap[r.userId]?.bizName ?? "";
+    const matchSearch = !search ||
+      bizName.includes(search) ||
+      (r.title ?? "").includes(search) ||
+      (r.orgName ?? "").includes(search);
+    const isPast = new Date(r.deadline) < now && r.isWon === null;
+    const matchStatus =
+      statusFilter === "all" ? true :
+      statusFilter === "pending" ? isPast :
+      statusFilter === "won" ? r.isWon === true :
+      statusFilter === "lost" ? r.isWon === false :
+      statusFilter === "invoiced" ? r.feeStatus === "invoiced" :
+      statusFilter === "paid" ? r.feeStatus === "paid" :
+      true;
+    return matchSearch && matchStatus;
+  });
+
+  // 대기 건수 (결과 재조회 버튼 표시용)
+  const pendingCount = requests.filter(r => new Date(r.deadline) < now && r.isWon === null).length;
 
   async function handleRefreshOutcomes() {
     setRefreshing(true);
     try {
       const res = await fetch("/api/admin/refresh-outcomes", { method: "POST" });
       const result = await res.json();
-      alert(`결과 재조회 완료: ${result.updated ?? 0}건 업데이트, ${result.skipped ?? 0}건 BidResult 없음`);
+      const msg = result.updated > 0
+        ? `✅ ${result.updated}건 결과 자동 입력 완료\n(BidResult 없음: ${result.skipped ?? 0}건)`
+        : `조회 대상 없음 또는 G2B 미게재\n(skipped: ${result.skipped ?? 0}건)`;
+      alert(msg);
       router.refresh();
     } catch {
       alert("재조회 중 오류가 발생했습니다.");
     } finally {
       setRefreshing(false);
     }
+  }
+
+  async function handleFetchResult(r: Request) {
+    if (!r.konepsId) { alert("konepsId 없음"); return; }
+    setFetchingId(r.id);
+    try {
+      const res = await fetch(`/api/admin/requests/${r.id}/fetch-result`, { method: "POST" });
+      const result = await res.json();
+      if (result.ok) {
+        alert(`✅ G2B 조회 성공: 결과 입력 완료`);
+        router.refresh();
+      } else {
+        alert(`G2B에 개찰결과 미게재\n(${result.message ?? "결과 없음"})`);
+      }
+    } catch {
+      alert("G2B 조회 중 오류 발생");
+    } finally {
+      setFetchingId(null);
+    }
+  }
+
+  async function handleMarkPaid(id: string) {
+    if (!confirm("수납 처리 하시겠습니까?")) return;
+    const res = await fetch(`/api/admin/requests/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ feeStatus: "paid", paidAt: new Date().toISOString() }),
+    });
+    if (res.ok) router.refresh();
+    else alert("처리 실패");
   }
 
   function openEdit(r: Request) {
@@ -68,9 +141,28 @@ export function RequestsTable({ requests, userMap, bidResultMap }: Props) {
       actualFinalPrice: r.actualFinalPrice ?? "",
       totalBidders: r.totalBidders ?? "",
       feeAmount: r.feeAmount ?? "",
+      feeRate: r.feeRate ?? "",
       feeStatus: r.feeStatus ?? "pending",
       memo: r.memo ?? "",
     });
+  }
+
+  function handleFormChange(patch: Record<string, unknown>) {
+    const next = { ...form, ...patch };
+    // isWon=true + actualFinalPrice 있으면 수수료 자동계산
+    if ("isWon" in patch || "actualFinalPrice" in patch) {
+      const recalc = calcFee(
+        String(next.isWon ?? ""),
+        String(next.actualFinalPrice ?? ""),
+        editingRow?.recommendedBidPrice ?? null,
+      );
+      if (recalc.feeAmount) {
+        next.feeRate = recalc.feeRate;
+        next.feeAmount = recalc.feeAmount;
+        next.feeStatus = recalc.feeStatus;
+      }
+    }
+    setForm(next);
   }
 
   async function handleSave() {
@@ -104,6 +196,7 @@ export function RequestsTable({ requests, userMap, bidResultMap }: Props) {
       const feeAmount = form.feeAmount !== "" ? Number(form.feeAmount) : null;
       if (feeAmount !== null) payload.feeAmount = feeAmount;
 
+      if (form.feeRate !== "") payload.feeRate = form.feeRate;
       payload.feeStatus = form.feeStatus;
       payload.memo = form.memo || null;
 
@@ -124,20 +217,82 @@ export function RequestsTable({ requests, userMap, bidResultMap }: Props) {
     }
   }
 
+  // CSV 내보내기
+  function handleExportCsv() {
+    const headers = ["회사명", "사업자번호", "공고명", "기관명", "마감일", "낙찰여부", "수수료율", "수수료금액", "상태", "납부일"];
+    const rows = filtered.map((r) => {
+      const u = userMap[r.userId];
+      return [
+        u?.bizName ?? "",
+        u?.bizNo ?? "",
+        r.title ?? "",
+        r.orgName ?? "",
+        r.deadline ? new Date(r.deadline).toLocaleDateString("ko-KR") : "",
+        r.isWon === true ? "낙찰" : r.isWon === false ? "미낙찰" : "대기",
+        r.feeRate ? (Number(r.feeRate) * 100).toFixed(1) + "%" : "",
+        r.feeAmount ? Number(r.feeAmount).toLocaleString("ko-KR") : "",
+        feeStatusStyle[r.feeStatus]?.label ?? r.feeStatus ?? "",
+        r.paidAt ? new Date(r.paidAt).toLocaleDateString("ko-KR") : "",
+      ].map((v) => `"${String(v).replace(/"/g, '""')}"`).join(",");
+    });
+    const csv = "\uFEFF" + [headers.join(","), ...rows].join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `수수료정산_${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
   return (
     <>
-      {/* 결과 재조회 버튼 */}
-      <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 12 }}>
-        <button
-          onClick={handleRefreshOutcomes}
-          disabled={refreshing}
-          style={{ fontSize: 12, padding: "7px 14px", borderRadius: 8, border: "1px solid #CBD5E1", background: refreshing ? "#F1F5F9" : "#fff", cursor: "pointer", color: "#1B3A6B", fontWeight: 600, opacity: refreshing ? 0.7 : 1 }}
+      {/* 툴바 */}
+      <div style={{ display: "flex", gap: 8, marginBottom: 12, flexWrap: "wrap", alignItems: "center" }}>
+        {/* 검색 */}
+        <input
+          type="text"
+          placeholder="회사명 / 공고명 검색"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          style={{ flex: "1 1 160px", minWidth: 140, padding: "7px 11px", border: "1.5px solid #E2E8F0", borderRadius: 8, fontSize: 12.5, color: "#374151", outline: "none" }}
+        />
+        {/* 상태 필터 */}
+        <select
+          value={statusFilter}
+          onChange={(e) => setStatusFilter(e.target.value)}
+          style={{ padding: "7px 10px", border: "1.5px solid #E2E8F0", borderRadius: 8, fontSize: 12.5, color: "#374151", background: "#fff" }}
         >
-          {refreshing ? "조회 중..." : "⟳ 결과 재조회"}
-        </button>
+          <option value="all">전체</option>
+          <option value="pending">확인 필요</option>
+          <option value="won">낙찰</option>
+          <option value="lost">미낙찰</option>
+          <option value="invoiced">수수료 청구중</option>
+          <option value="paid">납부 완료</option>
+        </select>
+        <span style={{ fontSize: 12, color: "#9CA3AF", whiteSpace: "nowrap" }}>{filtered.length}건</span>
+        {/* 버튼들 */}
+        <div style={{ display: "flex", gap: 6, marginLeft: "auto" }}>
+          <button
+            onClick={handleExportCsv}
+            style={{ fontSize: 12, padding: "7px 12px", borderRadius: 8, border: "1px solid #CBD5E1", background: "#fff", cursor: "pointer", color: "#374151", fontWeight: 600 }}
+          >
+            CSV 다운로드
+          </button>
+          <button
+            onClick={handleRefreshOutcomes}
+            disabled={refreshing}
+            style={{ fontSize: 12, padding: "7px 14px", borderRadius: 8, border: "1px solid #CBD5E1", background: refreshing ? "#F1F5F9" : "#fff", cursor: "pointer", color: "#1B3A6B", fontWeight: 600, opacity: refreshing ? 0.7 : 1, whiteSpace: "nowrap" }}
+          >
+            {refreshing ? "조회 중..." : `⟳ 결과 재조회${pendingCount > 0 ? ` (${pendingCount}건 대기)` : ""}`}
+          </button>
+        </div>
       </div>
-      {requests.length === 0 ? (
-        <div style={{ color: "#9CA3AF", fontSize: 13 }}>데이터 없음 — BidRequest 마이그레이션 후 표시됩니다</div>
+
+      {filtered.length === 0 ? (
+        <div style={{ color: "#9CA3AF", fontSize: 13, padding: "20px 0" }}>
+          {requests.length === 0 ? "데이터 없음" : "검색 결과 없음"}
+        </div>
       ) : (
         <div style={{ overflowX: "auto" }}>
           <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12.5 }}>
@@ -149,11 +304,12 @@ export function RequestsTable({ requests, userMap, bidResultMap }: Props) {
               </tr>
             </thead>
             <tbody>
-              {requests.map((r: Request, i: number) => {
+              {filtered.map((r: Request, i: number) => {
                 const isPast = new Date(r.deadline) < now && r.isWon === null;
                 const user = userMap[r.userId];
                 const bidResult = bidResultMap[r.annId];
                 const effectiveWinnerName = r.winnerName || bidResult?.winnerName;
+                const noResult = !r.openingDt && !r.isWon && new Date(r.deadline) < now;
 
                 const fee = feeStatusStyle[r.feeStatus as string] ?? { label: r.feeStatus ?? "-", color: "#9CA3AF" };
                 const wonColor = isPast
@@ -179,7 +335,7 @@ export function RequestsTable({ requests, userMap, bidResultMap }: Props) {
                         </span>
                       )}
                     </td>
-                    {/* 공고명 — 클릭 시 공고 상세 이동 */}
+                    {/* 공고명 */}
                     <td style={{ padding: "8px 12px", maxWidth: 180, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={r.title}>
                       <Link href={`/announcements/${r.annId}`} target="_blank"
                         style={{ color: "#1B3A6B", fontWeight: 500, textDecoration: "none", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", display: "block" }}>
@@ -209,7 +365,17 @@ export function RequestsTable({ requests, userMap, bidResultMap }: Props) {
                     <td style={{ padding: "8px 12px", color: "#6B7280", whiteSpace: "nowrap" }}>
                       {r.openingDt
                         ? new Date(r.openingDt).toLocaleDateString("ko-KR")
-                        : <span style={{ color: "#D1D5DB" }}>-</span>}
+                        : noResult
+                          ? (
+                            <button
+                              onClick={() => handleFetchResult(r)}
+                              disabled={fetchingId === r.id}
+                              style={{ fontSize: 10, padding: "3px 7px", borderRadius: 5, border: "1px solid #CBD5E1", background: fetchingId === r.id ? "#F1F5F9" : "#fff", cursor: "pointer", color: "#1B3A6B", fontWeight: 600, opacity: fetchingId === r.id ? 0.7 : 1 }}
+                            >
+                              {fetchingId === r.id ? "조회중..." : "G2B 조회"}
+                            </button>
+                          )
+                          : <span style={{ color: "#D1D5DB" }}>-</span>}
                     </td>
                     {/* 낙찰 */}
                     <td style={{ padding: "8px 12px", minWidth: 100 }}>
@@ -227,23 +393,39 @@ export function RequestsTable({ requests, userMap, bidResultMap }: Props) {
                     </td>
                     {/* 수수료 */}
                     <td style={{ padding: "8px 12px", whiteSpace: "nowrap" }}>
-                      {r.feeAmount
-                        ? <span style={{ color: "#374151", fontWeight: 600 }}>{fmtPrice(r.feeAmount)}</span>
+                      {r.feeAmount && Number(r.feeAmount) > 0
+                        ? (
+                          <div>
+                            <span style={{ color: "#374151", fontWeight: 600 }}>{fmtPrice(r.feeAmount)}</span>
+                            {r.feeRate && <div style={{ color: "#9CA3AF", fontSize: 10 }}>{(Number(r.feeRate) * 100).toFixed(1)}%</div>}
+                          </div>
+                        )
                         : <span style={{ color: "#D1D5DB" }}>-</span>}
                     </td>
                     {/* 상태 */}
                     <td style={{ padding: "8px 12px" }}>
-                      <span style={{ fontSize: 11, fontWeight: 700, color: fee.color, background: fee.color + "1a", padding: "2px 7px", borderRadius: 5 }}>
-                        {fee.label}
-                      </span>
-                      {r.isHit != null && (
-                        <div style={{ fontSize: 10, marginTop: 3, color: r.isHit ? "#059669" : "#9CA3AF" }}>
-                          {r.isHit ? "✓ 적중" : `오차 ${r.deviationPct ? Number(r.deviationPct).toFixed(3) : "?"}%`}
-                        </div>
-                      )}
-                      {r.memo && (
-                        <div style={{ fontSize: 10, color: "#D97706", marginTop: 2 }}>📝 메모있음</div>
-                      )}
+                      <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+                        <span style={{ fontSize: 11, fontWeight: 700, color: fee.color, background: fee.color + "1a", padding: "2px 7px", borderRadius: 5, display: "inline-block" }}>
+                          {fee.label}
+                        </span>
+                        {/* 납부 확인 버튼 */}
+                        {r.feeStatus === "invoiced" && (
+                          <button
+                            onClick={() => handleMarkPaid(r.id)}
+                            style={{ fontSize: 10, padding: "2px 7px", borderRadius: 5, border: "1px solid #059669", background: "#ECFDF5", cursor: "pointer", color: "#059669", fontWeight: 700 }}
+                          >
+                            납부 확인
+                          </button>
+                        )}
+                        {r.isHit != null && (
+                          <div style={{ fontSize: 10, color: r.isHit ? "#059669" : "#9CA3AF" }}>
+                            {r.isHit ? "✓ 적중" : `오차 ${r.deviationPct ? Number(r.deviationPct).toFixed(3) : "?"}%`}
+                          </div>
+                        )}
+                        {r.memo && (
+                          <div style={{ fontSize: 10, color: "#D97706" }}>📝 메모있음</div>
+                        )}
+                      </div>
                     </td>
                     {/* 편집 */}
                     <td style={{ padding: "8px 12px" }}>
@@ -273,11 +455,11 @@ export function RequestsTable({ requests, userMap, bidResultMap }: Props) {
             {/* 투찰 정보 */}
             <Section label="투찰 정보">
               <Field label="실투찰금액 (원)">
-                <input type="number" value={form.userBidPrice as string} onChange={(e) => setForm({ ...form, userBidPrice: e.target.value })}
+                <input type="number" value={form.userBidPrice as string} onChange={(e) => handleFormChange({ userBidPrice: e.target.value })}
                   style={inputStyle} placeholder="미입력" />
               </Field>
               <Field label="추천 따름 여부">
-                <select value={form.userFollowedRecommendation as string} onChange={(e) => setForm({ ...form, userFollowedRecommendation: e.target.value })} style={inputStyle}>
+                <select value={form.userFollowedRecommendation as string} onChange={(e) => handleFormChange({ userFollowedRecommendation: e.target.value })} style={inputStyle}>
                   <option value="">미선택</option>
                   <option value="true">추천 따름</option>
                   <option value="false">직접 입력</option>
@@ -288,37 +470,42 @@ export function RequestsTable({ requests, userMap, bidResultMap }: Props) {
             {/* 개찰 결과 */}
             <Section label="개찰 결과">
               <Field label="개찰일">
-                <input type="date" value={form.openingDt as string} onChange={(e) => setForm({ ...form, openingDt: e.target.value })} style={inputStyle} />
+                <input type="date" value={form.openingDt as string} onChange={(e) => handleFormChange({ openingDt: e.target.value })} style={inputStyle} />
               </Field>
               <Field label="낙찰 여부">
-                <select value={form.isWon as string} onChange={(e) => setForm({ ...form, isWon: e.target.value })} style={inputStyle}>
+                <select value={form.isWon as string} onChange={(e) => handleFormChange({ isWon: e.target.value })} style={inputStyle}>
                   <option value="">대기</option>
                   <option value="true">낙찰</option>
                   <option value="false">미낙찰</option>
                 </select>
               </Field>
               <Field label="낙찰 업체명">
-                <input type="text" value={form.winnerName as string} onChange={(e) => setForm({ ...form, winnerName: e.target.value })}
+                <input type="text" value={form.winnerName as string} onChange={(e) => handleFormChange({ winnerName: e.target.value })}
                   style={inputStyle} placeholder="낙찰 업체명" />
               </Field>
               <Field label="실제 낙찰금액 (원)">
-                <input type="number" value={form.actualFinalPrice as string} onChange={(e) => setForm({ ...form, actualFinalPrice: e.target.value })}
+                <input type="number" value={form.actualFinalPrice as string} onChange={(e) => handleFormChange({ actualFinalPrice: e.target.value })}
                   style={inputStyle} placeholder="미입력" />
               </Field>
               <Field label="참여 업체 수">
-                <input type="number" value={form.totalBidders as string} onChange={(e) => setForm({ ...form, totalBidders: e.target.value })}
+                <input type="number" value={form.totalBidders as string} onChange={(e) => handleFormChange({ totalBidders: e.target.value })}
                   style={inputStyle} placeholder="미입력" />
               </Field>
             </Section>
 
             {/* 수수료 정산 */}
             <Section label="수수료 정산">
+              {form.isWon === "true" && form.actualFinalPrice && (
+                <div style={{ fontSize: 11, color: "#059669", background: "#ECFDF5", padding: "6px 10px", borderRadius: 7, marginBottom: 6 }}>
+                  ✓ 수수료 자동 계산됨 — 낙찰금액 × {form.feeRate ? (Number(form.feeRate) * 100).toFixed(1) : "?"}%
+                </div>
+              )}
               <Field label="수수료 금액 (원)">
-                <input type="number" value={form.feeAmount as string} onChange={(e) => setForm({ ...form, feeAmount: e.target.value })}
+                <input type="number" value={form.feeAmount as string} onChange={(e) => handleFormChange({ feeAmount: e.target.value })}
                   style={inputStyle} placeholder="미입력" />
               </Field>
               <Field label="수수료 상태">
-                <select value={form.feeStatus as string} onChange={(e) => setForm({ ...form, feeStatus: e.target.value })} style={inputStyle}>
+                <select value={form.feeStatus as string} onChange={(e) => handleFormChange({ feeStatus: e.target.value })} style={inputStyle}>
                   {feeStatusOptions.map((o) => (
                     <option key={o.value} value={o.value}>{o.label}</option>
                   ))}
@@ -328,7 +515,7 @@ export function RequestsTable({ requests, userMap, bidResultMap }: Props) {
 
             {/* 메모 */}
             <Section label="관리자 메모">
-              <textarea value={form.memo as string} onChange={(e) => setForm({ ...form, memo: e.target.value })}
+              <textarea value={form.memo as string} onChange={(e) => handleFormChange({ memo: e.target.value })}
                 rows={3} style={{ ...inputStyle, resize: "vertical" }} placeholder="내부 메모 (사용자에게 표시 안 됨)" />
             </Section>
 
