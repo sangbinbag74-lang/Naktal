@@ -1,7 +1,8 @@
 import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
 import { createAdminClient, createClient } from "@/lib/supabase/server";
-import { BidResultAnalysis } from "@/components/naktal/BidResultAnalysis";
+import { BidResultCombos } from "@/components/naktal/BidResultCombos";
+import { classifyBudget } from "@/lib/core1/sajung-engine";
 
 export const dynamic = "force-dynamic";
 
@@ -13,6 +14,11 @@ function fmtDate(iso: string) {
   return new Date(iso).toLocaleDateString("ko-KR", {
     year: "numeric", month: "long", day: "numeric",
   });
+}
+
+function fmtDeviation(dev: number) {
+  const sign = dev >= 0 ? "+" : "";
+  return `${sign}${dev.toFixed(3)}%p`;
 }
 
 export default async function BidResultPage({
@@ -30,10 +36,10 @@ export default async function BidResultPage({
   const { data: dbUser } = await admin.from("User").select("id").eq("supabaseId", user.id).single();
   if (!dbUser) redirect("/login");
 
-  // 공고 조회
+  // 공고 조회 (category/region/budget 포함)
   const { data: ann } = await admin
     .from("Announcement")
-    .select("id,title,orgName,deadline")
+    .select("id,title,orgName,deadline,category,region,budget")
     .or(`id.eq.${annId},konepsId.eq.${annId}`)
     .maybeSingle();
   if (!ann) notFound();
@@ -41,7 +47,7 @@ export default async function BidResultPage({
   // 계약 완료된 BidRequest 조회
   const { data: req } = await admin
     .from("BidRequest")
-    .select("recommendedBidPrice,lowerLimitPrice,estimatedPrice,budget,predictedSajungRate,winProbability,agreedFeeRate,agreedFeeAmount,contractAt")
+    .select("recommendedBidPrice,lowerLimitPrice,estimatedPrice,budget,predictedSajungRate,agreedFeeRate,agreedFeeAmount,contractAt")
     .eq("userId", dbUser.id as string)
     .eq("annId", ann.id as string)
     .not("contractAt", "is", null)
@@ -52,14 +58,37 @@ export default async function BidResultPage({
 
   const price = Number(req.recommendedBidPrice ?? 0);
   const lowerLimit = Number(req.lowerLimitPrice ?? 0);
-  const estimatedPrice = Number(req.estimatedPrice ?? 0);
   const budget = Number(req.budget ?? 0);
   const sajungRate = Number(req.predictedSajungRate ?? 0);
-  const winProb = Number(req.winProbability ?? 0);
   const feeRate = Number(req.agreedFeeRate ?? 0);
   const feeAmount = Number(req.agreedFeeAmount ?? 0);
-  // 투찰률: 추천투찰가 ÷ 기초금액 × 100
   const bidRate = budget > 0 ? (price / budget) * 100 : null;
+
+  // 사정율 편차 계산 (SajungRateStat avg 조회)
+  const annBudget = Number(ann.budget ?? 0);
+  const budgetRange = classifyBudget(annBudget > 0 ? annBudget : budget);
+
+  const { data: statRow } = await admin
+    .from("SajungRateStat")
+    .select("avg,sampleSize")
+    .eq("orgName", ann.orgName as string)
+    .eq("category", ann.category as string)
+    .eq("budgetRange", budgetRange)
+    .eq("region", ann.region as string)
+    .maybeSingle();
+
+  const needFallback = !statRow || (Number(statRow.sampleSize ?? 0) < 5);
+  const { data: statFallback } = needFallback
+    ? await admin.from("SajungRateStat").select("avg,sampleSize")
+        .eq("orgName", "ALL")
+        .eq("category", ann.category as string)
+        .eq("budgetRange", budgetRange)
+        .eq("region", "")
+        .maybeSingle()
+    : { data: null };
+
+  const avgSajungRate = Number((statRow ?? statFallback)?.avg ?? 0);
+  const sajungDeviation = avgSajungRate > 0 ? sajungRate - avgSajungRate : null;
 
   return (
     <div style={{ maxWidth: 560, margin: "0 auto", display: "flex", flexDirection: "column", gap: 20, paddingBottom: 40 }}>
@@ -91,7 +120,16 @@ export default async function BidResultPage({
           {fmtPrice(price)}
         </div>
         <div style={{ fontSize: 12, color: "#BFDBFE", marginTop: 8 }}>
-          예측 사정율 {sajungRate.toFixed(2)}% · 낙찰확률 {Math.round(winProb)}%
+          예측 사정율 {sajungRate.toFixed(3)}%
+          {sajungDeviation !== null && (
+            <span style={{
+              marginLeft: 6,
+              color: sajungDeviation >= 0 ? "#86EFAC" : "#FCA5A5",
+              fontWeight: 700,
+            }}>
+              ({fmtDeviation(sajungDeviation)})
+            </span>
+          )}
         </div>
       </div>
 
@@ -103,8 +141,12 @@ export default async function BidResultPage({
             { label: "AI 추천 투찰금액", value: fmtPrice(price), bold: true },
             bidRate != null ? { label: "투찰률 (기초금액 대비)", value: `${bidRate.toFixed(4)}%` } : null,
             { label: "낙찰하한가", value: fmtPrice(lowerLimit) },
-            { label: "예측 사정율", value: `${sajungRate.toFixed(2)}%` },
-            { label: "추정 낙찰확률", value: `${Math.round(winProb)}%` },
+            {
+              label: "예측 사정율",
+              value: sajungDeviation !== null
+                ? `${sajungRate.toFixed(3)}% (발주처 평균 ${fmtDeviation(sajungDeviation)})`
+                : `${sajungRate.toFixed(3)}%`,
+            },
           ].filter((x): x is { label: string; value: string; bold?: boolean } => x !== null).map(({ label, value, bold }) => (
             <div key={label} style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <span style={{ fontSize: 13, color: "#64748B" }}>{label}</span>
@@ -131,8 +173,8 @@ export default async function BidResultPage({
         </div>
       </div>
 
-      {/* AI 번호 분석 (복수예가 공고면 표시, 사정율 분석 요약 포함) */}
-      <BidResultAnalysis annDbId={ann.id as string} />
+      {/* AI 번호 추천 결과 (복수예가 공고만 자동 표시) */}
+      <BidResultCombos annDbId={ann.id as string} />
 
       {/* 공고 상세로 */}
       <Link
