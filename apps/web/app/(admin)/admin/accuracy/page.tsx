@@ -47,7 +47,8 @@ export default async function AdminAccuracyPage() {
   const { data: statSummary } = await admin
     .from("SajungRateStat")
     .select("sampleSize,avg,stddev")
-    .neq("orgName", "ALL");
+    .neq("orgName", "ALL")
+    .limit(100000);
 
   const totalStatRows = statSummary?.length ?? 0;
   const avgSajung = statSummary && statSummary.length > 0
@@ -58,8 +59,8 @@ export default async function AdminAccuracyPage() {
   for (const r of statSummary ?? []) {
     const ss = r.sampleSize ?? 0;
     const sd = r.stddev ?? 99;
-    if (ss >= 30 && sd <= 0.5) highCount++;
-    else if (ss >= 10 && sd <= 1.0) mediumCount++;
+    if (ss >= 15 && sd <= 2.0) highCount++;
+    else if (ss >= 5 && sd <= 3.0) mediumCount++;
     else lowCount++;
   }
   const confidenceTotal = highCount + mediumCount + lowCount;
@@ -220,8 +221,8 @@ export default async function AdminAccuracyPage() {
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10, marginBottom: 14 }}>
           {[
-            { label: "HIGH", count: highCount, desc: "N≥30 & stddev≤0.5", bg: "#ECFDF5", color: "#059669", border: "#A7F3D0" },
-            { label: "MEDIUM", count: mediumCount, desc: "N≥10 & stddev≤1.0", bg: "#FFFBEB", color: "#D97706", border: "#FCD34D" },
+            { label: "HIGH", count: highCount, desc: "N≥15 & stddev≤2.0", bg: "#ECFDF5", color: "#059669", border: "#A7F3D0" },
+            { label: "MEDIUM", count: mediumCount, desc: "N≥5 & stddev≤3.0", bg: "#FFFBEB", color: "#D97706", border: "#FCD34D" },
             { label: "LOW", count: lowCount, desc: "그 외 (데이터 부족)", bg: "#FEF2F2", color: "#DC2626", border: "#FECACA" },
           ].map(({ label, count, desc, bg, color, border }) => (
             <div key={label} style={{ background: bg, borderRadius: 10, border: `1px solid ${border}`, padding: "14px 16px" }}>
