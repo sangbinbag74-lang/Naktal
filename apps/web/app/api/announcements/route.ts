@@ -251,6 +251,18 @@ async function fetchFromDB(opts: Record<string, string | number>): Promise<NextR
     return NextResponse.json({ data: [], total: 0, hasMore: false, page, limit, error: error.message });
   }
   const rows = data ?? [];
+
+  // 단일 단어 키워드 0건 → 공백 무시 RPC fallback
+  if (keyword && !keyword.includes(" ") && rows.length === 0) {
+    const { data: fuzzy } = await admin.rpc("search_ann_nospace", {
+      p_keyword:      keyword,
+      p_deadline_gte: deadlineRange === "active" ? nowIso : null,
+      p_limit:        limit,
+      p_offset:       offset,
+    });
+    return NextResponse.json({ data: fuzzy ?? [], total: fuzzy?.length ?? 0, hasMore: false, page, limit });
+  }
+
   const hasMore = rows.length > limit;
   return NextResponse.json({
     data: hasMore ? rows.slice(0, limit) : rows,
