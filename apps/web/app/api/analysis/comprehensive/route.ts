@@ -59,6 +59,13 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   const aValueTotal = Number(ann.aValueTotal ?? 0);
   const isAValue = aValueYn === "Y" && aValueAmt > 0;
 
+  // ─── 이 공고의 기존 분석 의뢰 수 (순번 표시용) ───────────────────────────
+  const { count: bidRequestCount } = await admin
+    .from("BidRequest")
+    .select("id", { count: "exact", head: true })
+    .eq("annId", annId)
+    .is("cancelledAt", null);
+
   // ─── 낙찰하한율 파싱 (캐시·분석 공통) ────────────────────────────────────
   const rawJsonEarly = (ann.rawJson as Record<string, string>) ?? {};
   const lowerLimitRateEarly = parseFloat((rawJsonEarly.sucsfbidLwltRate ?? "87.745").replace(/[^0-9.]/g, "")) || 87.745;
@@ -112,7 +119,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     const estimatedPriceByACached = isAValue
       ? budgetNum * ((Number(cached.predictedSajungRate) || 103.8) / 100)
       : null;
-    return NextResponse.json(buildResponse(ann, cached, numberStrategyCached, trendMeta, estimatedPriceByACached, aValueTotal, lowerLimitRateEarly, budgetNum));
+    return NextResponse.json(buildResponse(ann, cached, numberStrategyCached, trendMeta, estimatedPriceByACached, aValueTotal, lowerLimitRateEarly, budgetNum, bidRequestCount ?? 0));
   }
 
   // ─── 공고 메타 파싱 ────────────────────────────────────────────────────────
@@ -212,7 +219,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     recentSampleSize: sajung.recentSampleSize,
   };
 
-  return NextResponse.json(buildResponse(ann, predRecord, numberStrategy, trendMeta, estimatedPriceByA, aValueTotal, lowerLimitRate, budgetNum));
+  return NextResponse.json(buildResponse(ann, predRecord, numberStrategy, trendMeta, estimatedPriceByA, aValueTotal, lowerLimitRate, budgetNum, bidRequestCount ?? 0));
 }
 
 // ─── 응답 빌더 ───────────────────────────────────────────────────────────────
@@ -225,7 +232,8 @@ function buildResponse(
   estimatedPriceByA?: number | null,
   aValueTotal?: number,
   lowerLimitRate?: number,
-  budgetNum?: number
+  budgetNum?: number,
+  bidRequestCount?: number
 ) {
   // A값 공고: 낙찰하한가 + 1원 = (예정가 - A합산) × 낙찰하한율 + A합산 + 1
   const aLowerLimit = (estimatedPriceByA != null && aValueTotal != null && lowerLimitRate != null)
@@ -275,6 +283,7 @@ function buildResponse(
       analyzedAt: new Date().toISOString(),
       aValueYn: String(ann.aValueYn ?? ""),
       estimatedPriceByA: estimatedPriceByA ?? null,
+      bidRequestCount: bidRequestCount ?? 0,
     },
   };
 }

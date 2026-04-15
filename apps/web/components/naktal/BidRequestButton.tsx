@@ -183,6 +183,9 @@ export function BidRequestButton({
                 {title}
               </div>
               <div style={{ fontSize: 11, color: "#94A3B8" }}>{orgName}</div>
+              <div style={{ fontSize: 11, color: "#6366F1", fontWeight: 600, marginTop: 4 }}>
+                해당 공고의 {(analysis.meta.bidRequestCount ?? 0) + 1}번째 분석 의뢰
+              </div>
             </div>
 
             {/* AI 추천 금액 */}
