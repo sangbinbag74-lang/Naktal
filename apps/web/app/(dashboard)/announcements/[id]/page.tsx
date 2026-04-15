@@ -98,11 +98,14 @@ export default async function AnnouncementDetailPage({
   let ann: Announcement | null = null;
 
   if (isUUID(id)) {
-    const { data } = await admin.from("Announcement").select("*").eq("id", id).single();
+    const { data, error } = await admin.from("Announcement").select("*").eq("id", id).single();
+    if (error && error.code !== "PGRST116") console.error("[ann-detail] UUID lookup error:", error.code, error.message, "id:", id);
     ann = data as Announcement | null;
   }
   if (!ann) {
-    const { data } = await admin.from("Announcement").select("*").eq("konepsId", id).single();
+    const { data, error } = await admin.from("Announcement").select("*").eq("konepsId", id).single();
+    if (error && error.code !== "PGRST116") console.error("[ann-detail] konepsId lookup error:", error.code, error.message, "id:", id);
+    if (!data) console.error("[ann-detail] not found in DB:", id);
     ann = data as Announcement | null;
   }
   if (!ann) {
