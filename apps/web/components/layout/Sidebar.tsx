@@ -21,7 +21,7 @@ const MENU_SECTIONS = [
     items: [
       { href: "/history",  label: "열람 이력",  icon: "🎯" },
       { href: "/folder",   label: "찜 목록",    icon: "⭐" },
-      { href: "/contracts", label: "계약 서류", icon: "📄" },
+      { href: "/contracts", label: "투찰 의뢰 내역", icon: "📋" },
       { href: "/alerts",   label: "알림 설정",  icon: "◌" },
     ],
   },
