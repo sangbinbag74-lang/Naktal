@@ -2,13 +2,15 @@
 
 import { useState, useEffect } from "react";
 
+interface NumberCombo {
+  numbers: number[];
+  hitRate: number;
+}
+
 interface NumberStrategy {
-  combo1: number[];
-  combo2: number[];
-  combo3: number[];
-  hitRate1: number;
-  hitRate2: number;
-  hitRate3: number;
+  combo1: NumberCombo;
+  combo2: NumberCombo;
+  combo3: NumberCombo;
 }
 
 interface Props {
@@ -49,9 +51,9 @@ export function BidResultCombos({ annDbId }: Props) {
   if (!ns) return null;
 
   const combos = [
-    { label: "조합 1", numbers: ns.combo1, hitRate: ns.hitRate1, recommended: true },
-    { label: "조합 2", numbers: ns.combo2, hitRate: ns.hitRate2, recommended: false },
-    { label: "조합 3", numbers: ns.combo3, hitRate: ns.hitRate3, recommended: false },
+    { label: "조합 1", numbers: ns.combo1.numbers, hitRate: ns.combo1.hitRate, recommended: true },
+    { label: "조합 2", numbers: ns.combo2.numbers, hitRate: ns.combo2.hitRate, recommended: false },
+    { label: "조합 3", numbers: ns.combo3.numbers, hitRate: ns.combo3.hitRate, recommended: false },
   ];
 
   return (
