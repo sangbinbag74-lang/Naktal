@@ -39,7 +39,7 @@ export default function HistoryPage() {
   const [filterCat, setFilterCat] = useState("");
   const [filterRegion, setFilterRegion] = useState("");
   const [filterMultiple, setFilterMultiple] = useState<"all" | "yes" | "no">("all");
-  const [filterClosed, setFilterClosed] = useState<"active" | "closed" | "all">("active");
+  const [filterClosed, setFilterClosed] = useState<"active" | "closed" | "all">("all");
 
   useEffect(() => {
     async function load() {
@@ -82,14 +82,14 @@ export default function HistoryPage() {
     return true;
   }), [items, search, filterCat, filterRegion, filterMultiple, filterClosed]);
 
-  const isFiltered = search !== "" || filterCat !== "" || filterRegion !== "" || filterMultiple !== "all" || filterClosed !== "active";
+  const isFiltered = search !== "" || filterCat !== "" || filterRegion !== "" || filterMultiple !== "all" || filterClosed !== "all";
 
   function resetFilters() {
     setSearch("");
     setFilterCat("");
     setFilterRegion("");
     setFilterMultiple("all");
-    setFilterClosed("active");
+    setFilterClosed("all");
   }
 
   if (loading) return <div style={{ padding: 40, color: "#94A3B8" }}>불러오는 중...</div>;
