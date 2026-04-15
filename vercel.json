@@ -9,13 +9,15 @@
     "apps/web/app/api/analysis/qualification/route.ts": { "maxDuration": 20 },
     "apps/web/app/api/analysis/comprehensive/route.ts": { "maxDuration": 30 },
     "apps/web/app/api/cron/sync-g2b/route.ts": { "maxDuration": 300 },
-    "apps/web/app/api/cron/collect-sajung-stat/route.ts": { "maxDuration": 300 }
+    "apps/web/app/api/cron/collect-sajung-stat/route.ts": { "maxDuration": 300 },
+    "apps/web/app/api/cron/prefill-predictions/route.ts": { "maxDuration": 120 }
   },
   "crons": [
     { "path": "/api/cron/sync-g2b", "schedule": "0 0 * * *" },
     { "path": "/api/cron/sync-g2b", "schedule": "0 3 * * *" },
     { "path": "/api/cron/sync-g2b", "schedule": "0 6 * * *" },
     { "path": "/api/cron/sync-g2b", "schedule": "0 9 * * *" },
-    { "path": "/api/cron/collect-sajung-stat", "schedule": "0 19 * * *" }
+    { "path": "/api/cron/collect-sajung-stat", "schedule": "0 19 * * *" },
+    { "path": "/api/cron/prefill-predictions", "schedule": "0 20 * * *" }
   ]
 }
