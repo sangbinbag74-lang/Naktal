@@ -226,20 +226,8 @@ export default async function AnnouncementDetailPage({
             </p>
           </div>
 
-          {/* 오른쪽: D-day 배지 */}
-          <div style={{ flexShrink: 0, display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 8 }}>
-            <div style={{ background: "#1B3A6B", color: "#fff", borderRadius: 12, padding: "12px 20px", textAlign: "center", minWidth: 120 }}>
-              <div style={{ fontSize: 10, opacity: 0.6, marginBottom: 4 }}>입찰 마감</div>
-              <div style={{ fontSize: 13, fontWeight: 600, whiteSpace: "nowrap" }}>
-                {new Date(a.deadline).toLocaleDateString("ko-KR", { month: "long", day: "numeric", hour: "2-digit", minute: "2-digit" })}
-              </div>
-              <div style={{ fontSize: 12, fontWeight: 700, marginTop: 4, background: "rgba(255,255,255,0.15)", borderRadius: 99, padding: "2px 10px" }}>
-                {getDDay(a.deadline)}
-              </div>
-            </div>
-            <a href={g2bUrl} target="_blank" rel="noopener noreferrer" style={{ fontSize: 12, color: "#3B82F6", textDecoration: "none" }}>
-              나라장터 원문 ↗
-            </a>
+          {/* 오른쪽: 저장 · 투찰의뢰 · 마감 (가로 배치) */}
+          <div style={{ flexShrink: 0, display: "flex", flexDirection: "row", alignItems: "center", gap: 12 }}>
             <SaveButton annId={a.id} />
             <BidRequestButton
               annId={a.id}
@@ -252,6 +240,20 @@ export default async function AnnouncementDetailPage({
               aValueYn={aValueYn}
               aValueTotal={aValueTotal}
             />
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
+              <div style={{ background: "#1B3A6B", color: "#fff", borderRadius: 12, padding: "12px 20px", textAlign: "center", minWidth: 120 }}>
+                <div style={{ fontSize: 10, opacity: 0.6, marginBottom: 4 }}>입찰 마감</div>
+                <div style={{ fontSize: 13, fontWeight: 600, whiteSpace: "nowrap" }}>
+                  {new Date(a.deadline).toLocaleDateString("ko-KR", { month: "long", day: "numeric", hour: "2-digit", minute: "2-digit" })}
+                </div>
+                <div style={{ fontSize: 12, fontWeight: 700, marginTop: 4, background: "rgba(255,255,255,0.15)", borderRadius: 99, padding: "2px 10px" }}>
+                  {getDDay(a.deadline)}
+                </div>
+              </div>
+              <a href={g2bUrl} target="_blank" rel="noopener noreferrer" style={{ fontSize: 12, color: "#3B82F6", textDecoration: "none" }}>
+                나라장터 원문 ↗
+              </a>
+            </div>
           </div>
         </div>
 
