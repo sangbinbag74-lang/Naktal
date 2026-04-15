@@ -47,8 +47,9 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
   const contractIp = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
 
-  const feeRate = recommendedBidPrice < 100_000_000 ? 0.017 : 0.015;
-  const agreedFeeAmount = Math.round(recommendedBidPrice * feeRate);
+  // UPDATE 분기용 기본 수수료 (INSERT는 personalFeeRate/Amount로 override)
+  let feeRate = recommendedBidPrice < 100_000_000 ? 0.017 : 0.015;
+  let agreedFeeAmount = Math.round(recommendedBidPrice * feeRate);
 
   const { data: existing } = await admin
     .from("BidRequest")
@@ -86,6 +87,21 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     }
     resultId = (updated as { id: string }).id;
   } else {
+    // 순번 기반 개인화: 같은 공고를 분석한 회사 수 조회
+    const { count: priorCount } = await admin
+      .from("BidRequest")
+      .select("id", { count: "exact", head: true })
+      .eq("annId", annId)
+      .is("cancelledAt", null);
+
+    const seq = (priorCount ?? 0) + 1;
+    const personalBidPrice = Math.max(
+      Math.round(estimatedPrice) - seq * 100,
+      Math.round(lowerLimitPrice) + 1
+    );
+    feeRate = personalBidPrice < 100_000_000 ? 0.017 : 0.015;
+    agreedFeeAmount = Math.round(personalBidPrice * feeRate);
+
     const { data: inserted, error } = await admin
       .from("BidRequest")
       .insert({
@@ -100,7 +116,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         lowerLimitRate,
         aValueYn: aValueYn ?? "",
         aValueTotal: String(Math.round(aValueTotal ?? 0)),
-        recommendedBidPrice: String(Math.round(recommendedBidPrice)),
+        recommendedBidPrice: String(personalBidPrice),
         predictedSajungRate,
         estimatedPrice: String(Math.round(estimatedPrice ?? 0)),
         lowerLimitPrice: String(Math.round(lowerLimitPrice ?? 0)),

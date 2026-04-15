@@ -240,9 +240,14 @@ function buildResponse(
         return { min: r?.min ?? 97, max: r?.max ?? 112, p25: r?.p25 ?? 101, p75: r?.p75 ?? 106 };
       })(),
       sampleSize: pred.sampleSize,
-      optimalBidPrice: aLowerLimit != null
-        ? aLowerLimit + 1
-        : Number(pred.optimalBidPrice),
+      optimalBidPrice: (() => {
+        const est = estimatedPriceByA
+          ?? Math.round((budgetNum ?? Number(ann.budget)) * (Number(pred.predictedSajungRate) / 100));
+        const lower = aLowerLimit != null ? aLowerLimit : (Number(pred.lowerLimitPrice) || 0);
+        return lower > 0
+          ? Math.max(Math.round(est) - 100, lower + 1)
+          : Math.round(est) - 100;
+      })(),
       bidPriceRangeLow: Number(pred.bidPriceRangeLow),
       bidPriceRangeHigh: Number(pred.bidPriceRangeHigh),
       lowerLimitPrice: aLowerLimit != null ? aLowerLimit : Number(pred.lowerLimitPrice),
