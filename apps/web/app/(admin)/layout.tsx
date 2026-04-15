@@ -6,14 +6,34 @@ import { AdminLogoutButton } from "./AdminLogoutButton";
 
 export const dynamic = "force-dynamic";
 
-const adminNav = [
-  { href: "/admin/model",         label: "운영 현황",  icon: "📊" },
-  { href: "/admin/outcomes",      label: "투찰 현황",  icon: "🗂️" },
-  { href: "/admin/users",         label: "회원 관리",  icon: "👥" },
-  { href: "/admin/payments",      label: "결제 내역",  icon: "💳" },
-  { href: "/admin/announcements", label: "공고 관리",  icon: "📋" },
-  { href: "/admin/requests",      label: "투찰 요청",   icon: "📝" },
-  { href: "/admin/accuracy",      label: "정확도 분석", icon: "🎯" },
+const adminSections = [
+  {
+    label: "현황",
+    items: [
+      { href: "/admin/model", label: "대시보드", icon: "🏠" },
+    ],
+  },
+  {
+    label: "사용자",
+    items: [
+      { href: "/admin/users",    label: "회원 관리", icon: "👥" },
+      { href: "/admin/payments", label: "결제·구독", icon: "💳" },
+    ],
+  },
+  {
+    label: "서비스",
+    items: [
+      { href: "/admin/announcements", label: "공고 관리", icon: "📋" },
+      { href: "/admin/requests",      label: "투찰 의뢰", icon: "📬" },
+      { href: "/admin/outcomes",      label: "낙찰 결과", icon: "📈" },
+    ],
+  },
+  {
+    label: "시스템",
+    items: [
+      { href: "/admin/accuracy", label: "AI 적중률", icon: "🎯" },
+    ],
+  },
 ];
 
 export default async function AdminLayout({
@@ -66,21 +86,32 @@ export default async function AdminLayout({
         </div>
 
         {/* 네비게이션 */}
-        <nav style={{ flex: 1, padding: "12px 8px", display: "flex", flexDirection: "column", gap: 2 }}>
-          {adminNav.map((item) => (
-            <Link
-              key={item.href}
-              href={item.href}
-              style={{
-                display: "flex", alignItems: "center", gap: 10,
-                padding: "9px 12px", borderRadius: 8,
-                fontSize: 13, fontWeight: 500, color: "rgba(255,255,255,0.7)",
-                textDecoration: "none",
-              }}
-            >
-              <span style={{ fontSize: 16, lineHeight: 1 }}>{item.icon}</span>
-              <span>{item.label}</span>
-            </Link>
+        <nav style={{ flex: 1, padding: "12px 8px", overflowY: "auto" }}>
+          {adminSections.map((section) => (
+            <div key={section.label} style={{ marginBottom: 18 }}>
+              <div style={{
+                fontSize: 10, fontWeight: 600, color: "#475569",
+                textTransform: "uppercase", letterSpacing: "0.08em",
+                padding: "0 8px", marginBottom: 4,
+              }}>
+                {section.label}
+              </div>
+              {section.items.map((item) => (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  style={{
+                    display: "flex", alignItems: "center", gap: 10,
+                    padding: "9px 12px", borderRadius: 8, marginBottom: 2,
+                    fontSize: 13, fontWeight: 500, color: "rgba(255,255,255,0.7)",
+                    textDecoration: "none",
+                  }}
+                >
+                  <span style={{ fontSize: 15, lineHeight: 1 }}>{item.icon}</span>
+                  <span>{item.label}</span>
+                </Link>
+              ))}
+            </div>
           ))}
         </nav>
 

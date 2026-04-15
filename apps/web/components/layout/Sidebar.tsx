@@ -36,13 +36,13 @@ const MENU_SECTIONS = [
   {
     label: "어드민",
     items: [
-      { href: "/admin/model",          label: "운영 현황",  icon: "📊", adminOnly: true },
-      { href: "/admin/outcomes",       label: "투찰 현황",  icon: "🗂", adminOnly: true },
+      { href: "/admin/model",          label: "대시보드",   icon: "🏠", adminOnly: true },
       { href: "/admin/users",          label: "회원 관리",  icon: "👥", adminOnly: true },
-      { href: "/admin/payments",       label: "결제 내역",  icon: "💳", adminOnly: true },
+      { href: "/admin/payments",       label: "결제·구독",  icon: "💳", adminOnly: true },
       { href: "/admin/announcements",  label: "공고 관리",  icon: "📋", adminOnly: true },
-      { href: "/admin/crawl",          label: "크롤링",     icon: "🕷", adminOnly: true },
-      { href: "/admin/beta",           label: "베타 신청",  icon: "🎟", adminOnly: true },
+      { href: "/admin/requests",       label: "투찰 의뢰",  icon: "📬", adminOnly: true },
+      { href: "/admin/outcomes",       label: "낙찰 결과",  icon: "📈", adminOnly: true },
+      { href: "/admin/accuracy",       label: "AI 적중률",  icon: "🎯", adminOnly: true },
     ],
   },
 ];
