@@ -61,3 +61,5 @@ jobs:
           if [ "$SKIP_ANN" = "true" ]; then CMD="$CMD --skip-ann"; fi
           echo "실행: $CMD"
           eval $CMD
+
+# trigger fix
