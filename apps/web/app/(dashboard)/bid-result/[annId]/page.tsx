@@ -2,7 +2,14 @@ import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
 import { createAdminClient, createClient } from "@/lib/supabase/server";
 import { BidResultCombos } from "@/components/naktal/BidResultCombos";
-import { classifyBudget } from "@/lib/core1/sajung-engine";
+
+function classifyBudget(budget: number): string {
+  if (budget < 100_000_000)   return "1억미만";
+  if (budget < 300_000_000)   return "1억-3억";
+  if (budget < 1_000_000_000) return "3억-10억";
+  if (budget < 3_000_000_000) return "10억-30억";
+  return "30억이상";
+}
 
 export const dynamic = "force-dynamic";
 
