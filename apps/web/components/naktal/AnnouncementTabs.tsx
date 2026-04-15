@@ -185,7 +185,7 @@ export function AnnouncementTabs({
         <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
           {/* 신뢰도 경고 배너 */}
           {(() => {
-            const cl = bs.confidenceLevel ?? (bs.isFallback ? "LOW" : bs.sampleSize >= 30 ? "HIGH" : bs.sampleSize >= 10 ? "MEDIUM" : "LOW");
+            const cl = bs.confidenceLevel ?? (bs.isFallback ? "LOW" : bs.sampleSize >= 5 ? "HIGH" : bs.sampleSize > 0 ? "MEDIUM" : "LOW");
             if (cl === "MEDIUM") return (
               <div style={{ padding: "10px 14px", background: "#FFFBEB", border: "1px solid #FCD34D", borderRadius: 10, fontSize: 13, color: "#92400E" }}>
                 ⚠️ 데이터가 충분하지 않아 예측 정확도가 낮을 수 있습니다. ({bs.sampleSize}건 기준)

@@ -76,7 +76,7 @@ export function AiAnalysisPanel({ annDbId, budget, g2bUrl, onRefresh, isContract
   const [loading, setLoading] = useState(true);
   const userIdRef = useRef<string | null>(null);
 
-  const cacheKey = (uid: string) => `analysis_v3_${uid}_${annDbId}_${new Date().toISOString().slice(0, 10)}`;
+  const cacheKey = (uid: string) => `analysis_v4_${uid}_${annDbId}`;
 
   const fetchAnalysis = useCallback(async (forceRefresh = false) => {
     if (!userIdRef.current) {
@@ -127,7 +127,7 @@ export function AiAnalysisPanel({ annDbId, budget, g2bUrl, onRefresh, isContract
   const bs = analysis?.bidStrategy;
   const comp = analysis?.competition;
   const cl = bs
-    ? (bs.confidenceLevel ?? (bs.isFallback ? "LOW" : bs.sampleSize >= 30 ? "HIGH" : bs.sampleSize >= 10 ? "MEDIUM" : "LOW"))
+    ? (bs.confidenceLevel ?? (bs.isFallback ? "LOW" : bs.sampleSize >= 5 ? "HIGH" : bs.sampleSize > 0 ? "MEDIUM" : "LOW"))
     : null;
 
   return (
