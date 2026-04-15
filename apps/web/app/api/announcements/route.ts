@@ -177,6 +177,19 @@ async function fetchFromDB(opts: Record<string, string | number>): Promise<NextR
     const totalCount = rows.length > 0 ? rows[0].total_count : 0;
     const hasMore = rows.length > limit;
     const data = hasMore ? rows.slice(0, limit) : rows;
+
+    // RPC 함수가 aValueYn을 반환하지 않으므로 별도 보강
+    if (data.length > 0) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const ids = data.map((r: any) => r.id as string);
+      const { data: aVals } = await admin.from("Announcement").select("id,aValueYn").in("id", ids);
+      if (aVals) {
+        const aMap = Object.fromEntries(aVals.map((r) => [r.id, r.aValueYn]));
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        data.forEach((r: any) => { r.aValueYn = aMap[r.id] ?? null; });
+      }
+    }
+
     return NextResponse.json({ data, total: Number(totalCount), hasMore, page, limit });
   }
 
