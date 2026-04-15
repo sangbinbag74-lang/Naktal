@@ -993,6 +993,26 @@ export default function AnnouncementsPage() {
                           {ann.region}
                         </span>
                       )}
+                      {isMultiplePriceBid(ann.rawJson) && (
+                        <span style={{ fontSize: 10, fontWeight: 600, background: "#EFF6FF", color: "#1D4ED8", padding: "2px 6px", borderRadius: 4 }}>
+                          복수예가
+                        </span>
+                      )}
+                      {ann.rawJson && Object.values(ann.rawJson).some((v) => typeof v === "string" && v.includes("A값")) && (
+                        <span style={{ fontSize: 10, fontWeight: 600, background: "#ECFDF5", color: "#065F46", padding: "2px 6px", borderRadius: 4 }}>
+                          A값 적용
+                        </span>
+                      )}
+                      {ann.rawJson && Object.values(ann.rawJson).some((v) => typeof v === "string" && v.includes("긴급")) && (
+                        <span style={{ fontSize: 10, fontWeight: 600, background: "#FEF2F2", color: "#DC2626", padding: "2px 6px", borderRadius: 4 }}>
+                          긴급
+                        </span>
+                      )}
+                      {ann.rawJson && Object.values(ann.rawJson).some((v) => typeof v === "string" && v.includes("재공고")) && (
+                        <span style={{ fontSize: 10, fontWeight: 600, background: "#FFFBEB", color: "#92400E", padding: "2px 6px", borderRadius: 4 }}>
+                          재공고
+                        </span>
+                      )}
                       {ann.rawJson?.prtcptnLmtNm && (
                         <span style={{
                           fontSize: 10, fontWeight: 600, padding: "2px 6px", borderRadius: 4,
