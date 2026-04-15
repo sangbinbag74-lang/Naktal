@@ -953,14 +953,14 @@ export default function AnnouncementsPage() {
         ))}
         {items.map((ann) => {
           const dday = getDDay(ann.deadline);
-          const isNavigating = navigatingId === ann.id;
+          const isNavigating = navigatingId === (ann.konepsId || ann.id);
           return (
             <div
-              key={ann.id}
+              key={ann.konepsId || ann.id}
               className={`ann-card${isNavigating ? " navigating" : ""}`}
               onClick={() => {
-                setNavigatingId(ann.id);
-                window.open(`/announcements/${ann.id}`, "_blank");
+                setNavigatingId(ann.konepsId || ann.id);
+                window.open(`/announcements/${ann.konepsId || ann.id}`, "_blank");
                 setNavigatingId(null);
               }}
               style={{ textDecoration: "none" }}
@@ -1041,7 +1041,7 @@ export default function AnnouncementsPage() {
                   </div>
                   <div style={{ display: 'flex', gap: 6 }}>
                     {isMultiplePriceBid(ann.rawJson) ? (
-                      <a href={`/announcements/${ann.id}#number-analysis`} onClick={e => e.stopPropagation()} style={{ fontSize: 11, fontWeight: 600, color: '#1B3A6B', background: '#EEF2FF', padding: '4px 8px', borderRadius: 6, textDecoration: 'none' }}>
+                      <a href={`/announcements/${ann.konepsId || ann.id}#number-analysis`} onClick={e => e.stopPropagation()} style={{ fontSize: 11, fontWeight: 600, color: '#1B3A6B', background: '#EEF2FF', padding: '4px 8px', borderRadius: 6, textDecoration: 'none' }}>
                         🎯 번호 분석
                       </a>
                     ) : (
