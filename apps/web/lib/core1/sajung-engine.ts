@@ -8,6 +8,7 @@
 
 import { createAdminClient } from "@/lib/supabase/server";
 import { extractCoreOrgName } from "@/lib/analysis/sajung-utils";
+import { SIMILAR_CATEGORIES } from "@/lib/category-map";
 
 // ─── 타입 ─────────────────────────────────────────────────────────────────────
 
@@ -237,19 +238,24 @@ export function calcStabilityScore(
 
 async function _fetchPoints(
   orgName: string | null,
-  category: string,
+  category: string | string[],
   budgetRange: string,
   region: string
 ): Promise<{ sajung: number; deadline: string }[]> {
   const supabase = createAdminClient();
+  const cats = Array.isArray(category) ? category : [category];
 
   let q = supabase
     .from("Announcement")
     .select("konepsId,budget,aValueAmt,deadline")
-    .eq("category", category)
     .eq("region", region);
+  if (cats.length === 1) {
+    q = q.eq("category", cats[0]);
+  } else {
+    q = q.in("category", cats);
+  }
   if (orgName) q = q.eq("orgName", orgName);
-  const { data: anns } = await q.limit(200);
+  const { data: anns } = await q.limit(300);
 
   const filtered = (anns ?? []).filter(
     a => { const aV = Number((a as Record<string, unknown>).aValueAmt); const b = aV > 0 ? aV : Number(a.budget) * 1.1; return classifyBudget(b) === budgetRange; }
@@ -287,13 +293,26 @@ export async function queryRawDataPoints(
   budgetRange: string,
   region: string
 ): Promise<{ sajung: number; deadline: string }[]> {
+  // 1단계: 발주처 + 정확한 업종
   const primary = await _fetchPoints(orgName, category, budgetRange, region);
-  // 30건 이상이면 발주처 특화 데이터로 충분
   if (primary.length >= 30) return primary;
-  // 30건 미만이면 업종 전체 데이터로 보충
+
+  // 2단계: 발주처 + 유사 업종 확장 (히스토그램과 동일 SIMILAR_CATEGORIES 활용)
+  const similarCats = SIMILAR_CATEGORIES[category] ?? [];
+  if (similarCats.length > 0) {
+    const withSimilar = await _fetchPoints(orgName, [category, ...similarCats], budgetRange, region);
+    if (withSimilar.length >= 30) return withSimilar;
+    if (withSimilar.length >= 5) {
+      // 유사 업종 포함 발주처 데이터 우선, 부족분만 ALL 업종으로 보충
+      const fallback = await _fetchPoints(null, category, budgetRange, region);
+      const supplement = fallback.filter(f => !withSimilar.some(p => p.deadline === f.deadline));
+      return [...withSimilar, ...supplement.slice(0, Math.max(0, 30 - withSimilar.length))];
+    }
+  }
+
+  // 3단계: ALL 업종 폴백 (기존 로직)
   const fallback = await _fetchPoints(null, category, budgetRange, region);
   if (primary.length >= 5) {
-    // 발주처 특화 데이터 유지 + 부족분 보충 (중복 제외)
     const supplement = fallback.filter(f => !primary.some(p => p.deadline === f.deadline));
     return [...primary, ...supplement.slice(0, Math.max(0, 30 - primary.length))];
   }
@@ -335,9 +354,36 @@ export async function predictOptimalBid(params: {
     isFallback = true;
   }
 
-  // 2-b. stat이 있지만 sparse(< 30)하면 ALL 카테고리 stat과 비율 블렌딩
+  // 2-a. stat이 sparse(< 30)하면 유사 업종 org stat과 먼저 블렌딩 (발주처 특성 우선 반영)
   let isBlended = false;
-  if (stat && stat.sampleSize >= 5 && stat.sampleSize < 30) {
+  if (stat && stat.sampleSize < 30 && !isFallback) {
+    const similarCats = SIMILAR_CATEGORIES[params.category] ?? [];
+    if (similarCats.length > 0) {
+      const similarStats = (
+        await Promise.all(
+          similarCats.map(cat => querySajungStat(orgName, cat, budgetRange, params.region))
+        )
+      ).filter(Boolean) as SajungStatRow[];
+      if (similarStats.length > 0) {
+        const allStats = [stat, ...similarStats];
+        const totalSamples = allStats.reduce((s, st) => s + st.sampleSize, 0);
+        if (totalSamples >= 15) {
+          stat = {
+            ...stat,
+            avg:    allStats.reduce((s, st) => s + st.avg    * st.sampleSize, 0) / totalSamples,
+            stddev: allStats.reduce((s, st) => s + (st.stddev ?? 2) * st.sampleSize, 0) / totalSamples,
+            p25:    allStats.reduce((s, st) => s + (st.p25 ?? 101) * st.sampleSize, 0) / totalSamples,
+            p75:    allStats.reduce((s, st) => s + (st.p75 ?? 106) * st.sampleSize, 0) / totalSamples,
+            sampleSize: stat.sampleSize, // 표시용 원래 건수 유지
+          } as SajungStatRow;
+          isBlended = true;
+        }
+      }
+    }
+  }
+
+  // 2-b. stat이 여전히 sparse(< 30)하면 ALL 카테고리 stat과 비율 블렌딩
+  if (stat && stat.sampleSize >= 5 && stat.sampleSize < 30 && !isBlended) {
     const allStat = await querySajungStat("ALL", params.category, budgetRange, params.region)
       ?? (params.region ? await querySajungStat("ALL", params.category, budgetRange, "") : null);
     if (allStat && allStat.sampleSize >= 30) {
