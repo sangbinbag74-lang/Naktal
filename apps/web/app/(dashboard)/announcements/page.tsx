@@ -36,6 +36,7 @@ interface Announcement {
   region: string;
   createdAt: string;
   rawJson?: Record<string, string> | null;
+  aValueYn?: string | null;
 }
 
 interface ApiResponse {
@@ -998,7 +999,7 @@ export default function AnnouncementsPage() {
                           복수예가
                         </span>
                       )}
-                      {ann.rawJson && Object.values(ann.rawJson).some((v) => typeof v === "string" && v.includes("A값")) && (
+                      {ann.aValueYn === "Y" && (
                         <span style={{ fontSize: 10, fontWeight: 600, background: "#ECFDF5", color: "#065F46", padding: "2px 6px", borderRadius: 4 }}>
                           A값 적용
                         </span>

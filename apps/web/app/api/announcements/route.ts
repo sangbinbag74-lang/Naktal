@@ -183,7 +183,7 @@ async function fetchFromDB(opts: Record<string, string | number>): Promise<NextR
   // ── categories 없거나 city 필터 있으면 체인 쿼리 (모든 필터 지원) ──────────
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let q: any = admin.from("Announcement").select(
-    "id,konepsId,title,orgName,budget,deadline,category,subCategories,region,createdAt,rawJson"
+    "id,konepsId,title,orgName,budget,deadline,category,subCategories,region,createdAt,rawJson,aValueYn"
   );
 
   // 다중 카테고리 (city 필터 등으로 RPC를 건너뛴 경우)
