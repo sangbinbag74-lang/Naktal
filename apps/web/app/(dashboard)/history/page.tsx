@@ -3,17 +3,6 @@ import { useEffect, useState, useMemo } from "react";
 import Link from "next/link";
 import type { VisitedAnn } from "@/components/naktal/AnnouncementTabs";
 
-interface CachedAnalysis {
-  bidStrategy: {
-    optimalBidPrice: number;
-    predictedSajungRate: number;
-    sampleSize: number;
-    lowerLimitPrice: number;
-    winProbability: number;
-    isFallback?: boolean;
-  };
-}
-
 function fmt(n: number) { return n.toLocaleString("ko-KR") + "원"; }
 
 function getDDay(deadline: string) {
@@ -32,7 +21,7 @@ const selectStyle: React.CSSProperties = {
 };
 
 export default function HistoryPage() {
-  const [items, setItems] = useState<{ visited: VisitedAnn; analysis: CachedAnalysis | null }[]>([]);
+  const [items, setItems] = useState<VisitedAnn[]>([]);
   const [loading, setLoading] = useState(true);
 
   const [search, setSearch] = useState("");
@@ -47,13 +36,7 @@ export default function HistoryPage() {
         const res = await fetch("/api/history/visits");
         if (!res.ok) throw new Error("fetch failed");
         const json = await res.json() as { visits: VisitedAnn[] };
-        const result = (json.visits ?? []).map((v) => ({
-          visited: v,
-          analysis: (v.optimalBidPrice != null && v.predictedSajungRate != null && v.sampleSize != null)
-            ? { bidStrategy: { optimalBidPrice: v.optimalBidPrice, predictedSajungRate: v.predictedSajungRate, sampleSize: v.sampleSize, lowerLimitPrice: 0, winProbability: 0 } } as CachedAnalysis
-            : null,
-        }));
-        setItems(result);
+        setItems(json.visits ?? []);
       } catch {
         setItems([]);
       }
@@ -63,15 +46,15 @@ export default function HistoryPage() {
   }, []);
 
   const categories = useMemo(
-    () => [...new Set(items.map((i) => i.visited.category).filter(Boolean))].sort(),
+    () => [...new Set(items.map((v) => v.category).filter(Boolean))].sort(),
     [items],
   );
   const regions = useMemo(
-    () => [...new Set(items.map((i) => i.visited.region).filter(Boolean))].sort(),
+    () => [...new Set(items.map((v) => v.region).filter(Boolean))].sort(),
     [items],
   );
 
-  const filtered = useMemo(() => items.filter(({ visited: v }) => {
+  const filtered = useMemo(() => items.filter((v) => {
     if (search && !v.title.includes(search) && !v.orgName.includes(search)) return false;
     if (filterCat && v.category !== filterCat) return false;
     if (filterRegion && v.region !== filterRegion) return false;
@@ -189,9 +172,8 @@ export default function HistoryPage() {
         </div>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          {filtered.map(({ visited: v, analysis }) => {
+          {filtered.map((v) => {
             const dday = getDDay(v.deadline);
-            const bs = analysis?.bidStrategy;
             return (
               <Link
                 key={v.annDbId}
@@ -246,27 +228,6 @@ export default function HistoryPage() {
                     </div>
                   </div>
 
-                  {/* 분석 결과 */}
-                  {bs ? (
-                    <div style={{ display: "flex", gap: 12, background: "#F8FAFC", borderRadius: 10, padding: "12px 14px", flexWrap: "wrap" }}>
-                      <div style={{ flex: 1, minWidth: 120 }}>
-                        <div style={{ fontSize: 10, color: "#94A3B8", marginBottom: 2 }}>AI 추천 투찰가</div>
-                        <div style={{ fontSize: 15, fontWeight: 800, color: "#1B3A6B" }}>{fmt(bs.optimalBidPrice)}</div>
-                      </div>
-                      <div style={{ flex: 1, minWidth: 100 }}>
-                        <div style={{ fontSize: 10, color: "#94A3B8", marginBottom: 2 }}>예측 사정율</div>
-                        <div style={{ fontSize: 15, fontWeight: 700, color: "#374151" }}>{bs.predictedSajungRate.toFixed(2)}%</div>
-                      </div>
-                      <div style={{ flex: 1, minWidth: 80 }}>
-                        <div style={{ fontSize: 10, color: "#94A3B8", marginBottom: 2 }}>분석 샘플</div>
-                        <div style={{ fontSize: 14, fontWeight: 600, color: bs.sampleSize >= 10 ? "#374151" : "#D97706" }}>
-                          {bs.sampleSize.toLocaleString()}건
-                        </div>
-                      </div>
-                    </div>
-                  ) : (
-                    <div style={{ fontSize: 12, color: "#CBD5E1", padding: "8px 0" }}>분석 결과 없음 — 공고를 열면 분석이 시작됩니다</div>
-                  )}
                 </div>
               </Link>
             );
