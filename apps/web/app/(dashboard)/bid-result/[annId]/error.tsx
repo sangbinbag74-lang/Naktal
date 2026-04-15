@@ -20,9 +20,14 @@ export default function BidResultError({
       <div style={{ fontSize: 17, fontWeight: 700, color: "#0F172A", marginBottom: 8 }}>
         페이지를 불러오지 못했습니다
       </div>
-      <div style={{ fontSize: 13, color: "#64748B", marginBottom: 24 }}>
+      <div style={{ fontSize: 13, color: "#64748B", marginBottom: 8 }}>
         잠시 후 다시 시도해 주세요.
       </div>
+      {process.env.NODE_ENV !== "production" || true ? (
+        <div style={{ fontSize: 11, color: "#DC2626", background: "#FEF2F2", borderRadius: 6, padding: "8px 12px", marginBottom: 24, textAlign: "left", wordBreak: "break-all" }}>
+          {error.message || String(error)}
+        </div>
+      ) : <div style={{ marginBottom: 24 }} />}
       <div style={{ display: "flex", gap: 12, justifyContent: "center" }}>
         <button
           onClick={reset}
