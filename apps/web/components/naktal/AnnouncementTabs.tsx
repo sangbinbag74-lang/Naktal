@@ -99,7 +99,7 @@ export function AnnouncementTabs({
   const userIdRef = useRef<string | null>(null);
 
   // ─── 분석 결과 로컬 캐시 (영구, 사용자별 분리) ───────────────────────────
-  function cacheKey(userId: string, id: string) { return `analysis_v2_${userId}_${id}`; }
+  function cacheKey(userId: string, id: string) { return `analysis_v3_${userId}_${id}`; }
   function loadCachedAnalysis(userId: string, id: string): ComprehensiveResult | null {
     if (typeof window === "undefined") return null;
     try {

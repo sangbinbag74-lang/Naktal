@@ -260,6 +260,12 @@ function buildResponse(
       bidPriceRangeHigh: Number(pred.bidPriceRangeHigh),
       lowerLimitPrice: aLowerLimit != null ? aLowerLimit : Number(pred.lowerLimitPrice),
       winProbability: pred.winProbability,
+      confidenceLevel: (() => {
+        const ss = Number(pred.sampleSize ?? 0);
+        if (ss === 0) return "LOW" as const;
+        if (ss < 5) return "MEDIUM" as const;
+        return "HIGH" as const; // 5건+: 유사업종/ALL 블렌딩 항상 적용
+      })(),
       numberStrategy,
       weightedAvg:       trendMeta?.weightedAvg ?? null,
       simpleAvg:         trendMeta?.simpleAvg ?? null,
