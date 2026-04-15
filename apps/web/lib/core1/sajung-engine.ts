@@ -44,8 +44,14 @@ function getConfidenceLevel(
   sampleSize: number,
   stddev: number,
   recentSampleSize: number,
-  stabilityScore: number
+  stabilityScore: number,
+  isBlended = false
 ): ConfidenceLevel {
+  // 업종 전체 데이터와 블렌딩된 경우: 발주처 특화 건수가 5건 이상이면 충분히 신뢰 가능
+  if (isBlended) {
+    if (sampleSize >= 5) return "HIGH";
+    return "MEDIUM";
+  }
   if (sampleSize >= 10 && recentSampleSize >= 5 && stabilityScore >= 0.7) return "HIGH";
   if (sampleSize >= 5  && recentSampleSize >= 3) return "MEDIUM";
   // fallback: legacy stddev-based check
@@ -330,6 +336,7 @@ export async function predictOptimalBid(params: {
   }
 
   // 2-b. stat이 있지만 sparse(< 30)하면 ALL 카테고리 stat과 비율 블렌딩
+  let isBlended = false;
   if (stat && stat.sampleSize >= 5 && stat.sampleSize < 30) {
     const allStat = await querySajungStat("ALL", params.category, budgetRange, params.region)
       ?? (params.region ? await querySajungStat("ALL", params.category, budgetRange, "") : null);
@@ -343,6 +350,7 @@ export async function predictOptimalBid(params: {
         p75:    (stat.p75 ?? allStat.p75 ?? 106) * w + (allStat.p75 ?? 106) * (1 - w),
         sampleSize: stat.sampleSize, // 표시용 원래 건수 유지
       } as SajungStatRow;
+      isBlended = true;
     }
   }
 
@@ -435,7 +443,7 @@ export async function predictOptimalBid(params: {
     winProbability: Math.round(winProb * 1000) / 1000,
     isFallback,
     confidenceLevel: getConfidenceLevel(
-      stat.sampleSize, stat.stddev, recentPoints.length, stabilityScore
+      stat.sampleSize, stat.stddev, recentPoints.length, stabilityScore, isBlended
     ),
     modelVersion: "sajung-v1.1",
     weightedAvg: Math.round(weightedAvg * 1000) / 1000,
