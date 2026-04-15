@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 
 type UserInfo = { id: string; bizName: string; bizNo: string; ownerName: string; plan: string };
 type BidResultInfo = { annId: string; winnerName: string | null; finalPrice: number | null; numBidders: number | null; bidRate: number | null };
@@ -37,9 +38,24 @@ export function RequestsTable({ requests, userMap, bidResultMap }: Props) {
   const router = useRouter();
   const [editingRow, setEditingRow] = useState<Request | null>(null);
   const [saving, setSaving] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const [form, setForm] = useState<Record<string, unknown>>({});
 
   const now = new Date();
+
+  async function handleRefreshOutcomes() {
+    setRefreshing(true);
+    try {
+      const res = await fetch("/api/admin/refresh-outcomes", { method: "POST" });
+      const result = await res.json();
+      alert(`결과 재조회 완료: ${result.updated ?? 0}건 업데이트, ${result.skipped ?? 0}건 BidResult 없음`);
+      router.refresh();
+    } catch {
+      alert("재조회 중 오류가 발생했습니다.");
+    } finally {
+      setRefreshing(false);
+    }
+  }
 
   function openEdit(r: Request) {
     setEditingRow(r);
@@ -110,6 +126,16 @@ export function RequestsTable({ requests, userMap, bidResultMap }: Props) {
 
   return (
     <>
+      {/* 결과 재조회 버튼 */}
+      <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 12 }}>
+        <button
+          onClick={handleRefreshOutcomes}
+          disabled={refreshing}
+          style={{ fontSize: 12, padding: "7px 14px", borderRadius: 8, border: "1px solid #CBD5E1", background: refreshing ? "#F1F5F9" : "#fff", cursor: "pointer", color: "#1B3A6B", fontWeight: 600, opacity: refreshing ? 0.7 : 1 }}
+        >
+          {refreshing ? "조회 중..." : "⟳ 결과 재조회"}
+        </button>
+      </div>
       {requests.length === 0 ? (
         <div style={{ color: "#9CA3AF", fontSize: 13 }}>데이터 없음 — BidRequest 마이그레이션 후 표시됩니다</div>
       ) : (
@@ -153,9 +179,12 @@ export function RequestsTable({ requests, userMap, bidResultMap }: Props) {
                         </span>
                       )}
                     </td>
-                    {/* 공고명 */}
+                    {/* 공고명 — 클릭 시 공고 상세 이동 */}
                     <td style={{ padding: "8px 12px", maxWidth: 180, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={r.title}>
-                      <div style={{ color: "#374151", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.title}</div>
+                      <Link href={`/announcements/${r.annId}`} target="_blank"
+                        style={{ color: "#1B3A6B", fontWeight: 500, textDecoration: "none", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", display: "block" }}>
+                        {r.title}
+                      </Link>
                       <div style={{ color: "#9CA3AF", fontSize: 10, marginTop: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.orgName}</div>
                     </td>
                     {/* 마감일 */}

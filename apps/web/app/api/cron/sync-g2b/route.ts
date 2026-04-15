@@ -119,6 +119,7 @@ async function importBidResults(
       finalPrice: String(parseInt(priceRaw, 10)),
       numBidders: parseInt((item.prtcptCnum || item.totPrtcptCo || "0").replace(/[^0-9]/g, ""), 10),
       winnerName: item.sucsfbidCorpNm?.trim() || item.bidwinnrNm?.trim() || null,
+      openedAt: item.opengDt ? g2bParseDate(item.opengDt) : null,
     };
   }).filter(Boolean);
 
