@@ -1013,13 +1013,34 @@ export default function AnnouncementsPage() {
                           재공고
                         </span>
                       )}
-                      {ann.rawJson?.prtcptnLmtNm && (
-                        <span style={{
-                          fontSize: 10, fontWeight: 600, padding: "2px 6px", borderRadius: 4,
-                          background: ann.rawJson.prtcptnLmtNm.includes("전국") ? "#F0FDF4" : "#FFF7ED",
-                          color:      ann.rawJson.prtcptnLmtNm.includes("전국") ? "#166534" : "#92400E",
-                        }}>
-                          {ann.rawJson.prtcptnLmtNm}
+                      {ann.rawJson?.prtcptnLmtNm && (() => {
+                        const lmt = ann.rawJson!.prtcptnLmtNm;
+                        const special: { text: string; bg: string; color: string }[] = [];
+                        if (lmt.includes("여성"))       special.push({ text: "여성기업",  bg: "#FDF2F8", color: "#9D174D" });
+                        if (lmt.includes("소상공인"))    special.push({ text: "소상공인",  bg: "#F5F3FF", color: "#6D28D9" });
+                        if (lmt.includes("장애인"))     special.push({ text: "장애인기업", bg: "#F0FDFA", color: "#0F766E" });
+                        if (lmt.includes("사회적기업"))  special.push({ text: "사회적기업", bg: "#EEF2FF", color: "#3730A3" });
+                        if (lmt.includes("벤처"))       special.push({ text: "벤처기업",  bg: "#FAF5FF", color: "#7C3AED" });
+                        if (special.length > 0) {
+                          return special.map((b) => (
+                            <span key={b.text} style={{ fontSize: 10, fontWeight: 600, padding: "2px 6px", borderRadius: 4, background: b.bg, color: b.color }}>
+                              {b.text}
+                            </span>
+                          ));
+                        }
+                        return (
+                          <span style={{
+                            fontSize: 10, fontWeight: 600, padding: "2px 6px", borderRadius: 4,
+                            background: lmt.includes("전국") ? "#F0FDF4" : "#FFF7ED",
+                            color:      lmt.includes("전국") ? "#166534" : "#92400E",
+                          }}>
+                            {lmt}
+                          </span>
+                        );
+                      })()}
+                      {ann.rawJson?.cntrctMthdNm?.includes("단가") && (
+                        <span style={{ fontSize: 10, fontWeight: 600, background: "#F8FAFC", color: "#475569", padding: "2px 6px", borderRadius: 4 }}>
+                          단가계약
                         </span>
                       )}
                     </div>
