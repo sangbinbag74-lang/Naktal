@@ -31,6 +31,10 @@ export interface Announcement {
   category: string;
   region: string;
   createdAt: string;
+  aValueYn?: string | null;
+  aValueAmt?: string | number | null;
+  aValueTotal?: string | number | null;
+  rawJson?: Record<string, string> | null;
 }
 
 export interface BidResult {

@@ -28,6 +28,7 @@ interface Announcement {
   rawJson: Record<string, unknown> | null;
   subCategories?: string[];
   aValueYn?: string;
+  aValueAmt?: string | null;
   aValueTotal?: string;
   priceRangeRate?: string;
 }
@@ -129,7 +130,8 @@ export default async function AnnouncementDetailPage({
     : parseSubCategories(a.rawJson as Record<string, string> | null);
   const allLicenses = getAllCategories(a.category, subCats);
   const budgetNum = parseInt(a.budget, 10); // presmptPrce (추정가격)
-  const bdgtAmt = Number(rawJson.bdgtAmt ?? 0) || budgetNum; // 기초금액 (없으면 추정가격으로 폴백)
+  const aValueAmtNum = Number(a.aValueAmt ?? 0);
+  const bdgtAmt = aValueAmtNum > 0 ? aValueAmtNum : Number(rawJson.bdgtAmt ?? 0) || budgetNum * 1.1; // 기초금액 우선순위: aValueAmt > bdgtAmt > budget*1.1
   const g2bUrl = String(rawJson.ntcePbancUrl || `https://www.g2b.go.kr:8081/ep/peoplecvpl/narasVary.do?bidno=${a.konepsId}&bidseq=${String(rawJson.bidNtceSqNo ?? "00")}`);
 
   // 유저 세션 + 계약 여부 확인

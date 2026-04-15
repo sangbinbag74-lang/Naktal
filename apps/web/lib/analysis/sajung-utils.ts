@@ -21,13 +21,13 @@ export async function buildBudgetAndDateMap(
   const unique = [...new Set(konepsIds)];
   const { data } = await supabase
     .from("Announcement")
-    .select("konepsId, budget, rawJson->>bdgtAmt, deadline")
+    .select("konepsId, budget, aValueAmt, rawJson->>bdgtAmt, deadline")
     .in("konepsId", unique);
   return new Map(
-    (data ?? []).map((a: { konepsId: string; budget: string | number; bdgtAmt: string | null; deadline: string | null }) => [
+    (data ?? []).map((a: { konepsId: string; budget: string | number; aValueAmt: string | number | null; bdgtAmt: string | null; deadline: string | null }) => [
       a.konepsId as string,
       {
-        budget: (() => { const raw = Number(a.bdgtAmt); return raw > 0 ? raw : Number(a.budget) * 1.1; })(),
+        budget: (() => { const aV = Number(a.aValueAmt); if (aV > 0) return aV; const raw = Number(a.bdgtAmt); return raw > 0 ? raw : Number(a.budget) * 1.1; })(),
         deadline: a.deadline as string | null,
       },
     ]),
@@ -43,12 +43,12 @@ export async function buildBudgetMap(
   const unique = [...new Set(konepsIds)];
   const { data } = await supabase
     .from("Announcement")
-    .select("konepsId, budget, rawJson->>bdgtAmt")
+    .select("konepsId, budget, aValueAmt, rawJson->>bdgtAmt")
     .in("konepsId", unique);
   return new Map(
-    (data ?? []).map((a: { konepsId: string; budget: string | number; bdgtAmt: string | null }) => [
+    (data ?? []).map((a: { konepsId: string; budget: string | number; aValueAmt: string | number | null; bdgtAmt: string | null }) => [
       a.konepsId as string,
-      (() => { const raw = Number(a.bdgtAmt); return raw > 0 ? raw : Number(a.budget) * 1.1; })(),
+      (() => { const aV = Number(a.aValueAmt); if (aV > 0) return aV; const raw = Number(a.bdgtAmt); return raw > 0 ? raw : Number(a.budget) * 1.1; })(),
     ]),
   );
 }
