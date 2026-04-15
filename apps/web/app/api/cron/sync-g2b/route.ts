@@ -21,7 +21,7 @@ import {
 export const maxDuration = 300;
 
 const NUM_OF_ROWS = 100;
-const MONTHS_PER_RUN = 12;
+const MONTHS_PER_RUN = 3;
 const G2B_OLDEST = "201201";
 
 type SupabaseHeaders = Record<string, string>;
@@ -65,7 +65,6 @@ async function importAnnouncementsOp(
       const rawJson: Record<string, string> = {};
       for (const [k, v] of Object.entries(item)) rawJson[k] = String(v ?? "");
       return {
-        id: crypto.randomUUID(),
         konepsId, title, orgName,
         budget: budgetNum,
         deadline,
