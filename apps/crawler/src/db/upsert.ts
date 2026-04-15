@@ -329,6 +329,20 @@ export async function fillBidRequestResult(
 
     if (updateErr) {
       console.error(`[BidRequest] 결과 업데이트 실패 (${req.id}): ${updateErr.message}`);
+    } else {
+      // 낙찰/미낙찰 이메일 알림 발송 (fire-and-forget)
+      const appUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://naktal.me";
+      const adminKey = process.env.ADMIN_SECRET_KEY ?? "";
+      if (adminKey) {
+        fetch(`${appUrl}/api/alerts/bid-won`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-admin-secret": adminKey,
+          },
+          body: JSON.stringify({ bidRequestId: req.id }),
+        }).catch((e) => console.error("[bid-won 알림] 발송 실패:", e));
+      }
     }
   }
 }
