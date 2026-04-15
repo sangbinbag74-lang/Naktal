@@ -20,9 +20,10 @@ function fmt(n: number): string {
 
 // ── 사정율 분포 바 ────────────────────────────────────────────────────────────
 
-function SajungDistBar({ range, predicted }: {
+function SajungDistBar({ range, predicted, avg }: {
   range: { min: number; max: number; p25: number; p75: number } | null | undefined;
   predicted: number | null | undefined;
+  avg?: number | null;
 }) {
   const min = range?.min ?? 97;
   const max = range?.max ?? 112;
@@ -31,6 +32,8 @@ function SajungDistBar({ range, predicted }: {
   const pred = predicted ?? 103.8;
   const span = max - min || 6;
   const toX = (v: number) => Math.max(0, Math.min(100, ((v - min) / span) * 100));
+  const deviation = avg != null && avg > 0 ? pred - avg : null;
+  const sign = deviation != null && deviation >= 0 ? "+" : "";
   return (
     <div>
       <div style={{ position: "relative", height: 36, marginBottom: 6 }}>
@@ -48,7 +51,18 @@ function SajungDistBar({ range, predicted }: {
       </div>
       <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, color: "#94A3B8" }}>
         <span>{min.toFixed(1)}%</span>
-        <span style={{ color: "#1B3A6B", fontWeight: 700 }}>예측 {pred.toFixed(2)}%</span>
+        <span style={{ color: "#1B3A6B", fontWeight: 700 }}>
+          예측 {pred.toFixed(3)}%
+          {deviation !== null && (
+            <span style={{
+              marginLeft: 4,
+              color: deviation >= 0 ? "#16A34A" : "#DC2626",
+              fontWeight: 600,
+            }}>
+              ({sign}{deviation.toFixed(3)}%p)
+            </span>
+          )}
+        </span>
         <span>{max.toFixed(1)}%</span>
       </div>
     </div>
@@ -231,7 +245,7 @@ export function AiAnalysisPanel({ annDbId, budget, g2bUrl, onRefresh, isContract
                 </span>
               </div>
               <div style={!isContracted ? { filter: "blur(5px)", userSelect: "none", pointerEvents: "none" } : undefined}>
-                <SajungDistBar range={bs.sajungRateRange} predicted={bs.predictedSajungRate} />
+                <SajungDistBar range={bs.sajungRateRange} predicted={bs.predictedSajungRate} avg={bs.weightedAvg ?? bs.simpleAvg} />
                 <div style={{ fontSize: 11, color: "#64748B", marginTop: 8 }}>
                   예상 예정가{" "}
                   <strong>
