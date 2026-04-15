@@ -115,7 +115,7 @@ export function AnnouncementTabs({
 
   // ─── 방문 이력 서버 저장 ────────────────────────────────────────────────────
   function saveVisitToServer(analysisData?: ComprehensiveResult): void {
-    void fetch("/api/history/visits", {
+    fetch("/api/history/visits", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -124,7 +124,7 @@ export function AnnouncementTabs({
         predictedSajungRate: analysisData?.bidStrategy?.predictedSajungRate ?? null,
         sampleSize: analysisData?.bidStrategy?.sampleSize ?? null,
       }),
-    });
+    }).catch((e) => console.error("[history] 방문 저장 실패:", e));
   }
 
   // 통합 분석 API 호출 (마운트 시 1회 — 사용자별 로컬 캐시 우선, 영구 보존)

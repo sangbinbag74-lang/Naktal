@@ -62,7 +62,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         sampleSize: body.sampleSize ?? null,
         visitedAt: new Date().toISOString(),
       },
-      { onConflict: "userId,annDbId" }
+      { onConflict: "userId,annId" }
     );
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });

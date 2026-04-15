@@ -195,7 +195,7 @@ export default function HistoryPage() {
             return (
               <Link
                 key={v.annDbId}
-                href={`/announcements/${v.annDbId}`}
+                href={`/announcements/${v.annId || v.annDbId}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 style={{ textDecoration: "none" }}
