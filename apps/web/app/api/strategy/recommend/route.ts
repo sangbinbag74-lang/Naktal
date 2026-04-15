@@ -40,7 +40,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       {
         error: "ANNOUNCEMENT_REQUIRED",
         message: "번호 분석은 실제 공고를 선택한 후에만 가능합니다.",
-        hint: "공고 목록 또는 서류함에서 공고를 선택해주세요.",
+        hint: "공고 목록 또는 찜 목록에서 공고를 선택해주세요.",
       },
       { status: 400 },
     );

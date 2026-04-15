@@ -20,7 +20,7 @@ const MENU_SECTIONS = [
     label: "내 활동",
     items: [
       { href: "/history",  label: "열람 이력",  icon: "🎯" },
-      { href: "/folder",   label: "서류함",     icon: "📂" },
+      { href: "/folder",   label: "찜 목록",    icon: "⭐" },
       { href: "/contracts", label: "계약 서류", icon: "📄" },
       { href: "/alerts",   label: "알림 설정",  icon: "◌" },
     ],

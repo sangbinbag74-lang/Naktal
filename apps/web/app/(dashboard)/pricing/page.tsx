@@ -9,7 +9,7 @@ const PLANS = [
     name: "무료",
     priceLabel: "0원",
     priceSub: "영원히 무료",
-    features: ["공고 목록 열람", "공고 저장(서류함)", "열람 이력 조회"],
+    features: ["공고 목록 열람", "공고 찜하기 (찜 목록)", "열람 이력 조회"],
     ctaDefault: "무료 플랜",
     accent: "#475569",
     recommended: false,

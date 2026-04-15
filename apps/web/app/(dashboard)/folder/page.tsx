@@ -67,7 +67,7 @@ export default function FolderPage() {
     fetch(`/api/folder?ids=${savedIds.join(",")}`)
       .then((r) => r.json())
       .then((d: { data: Announcement[] }) => setItems(d.data ?? []))
-      .catch(() => console.error("서류함 불러오기 실패"))
+      .catch(() => console.error("찜 목록 불러오기 실패"))
       .finally(() => setLoading(false));
   }, []);
 
@@ -87,7 +87,7 @@ export default function FolderPage() {
     <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between" }}>
         <div>
-          <h2 style={{ fontSize: 22, fontWeight: 700, color: "#0F172A", margin: "0 0 4px" }}>서류함</h2>
+          <h2 style={{ fontSize: 22, fontWeight: 700, color: "#0F172A", margin: "0 0 4px" }}>찜 목록</h2>
           <p style={{ fontSize: 13, color: "#64748B", margin: 0 }}>
             저장한 공고 {ids.length}건 · 번호 분석 가능 {items.filter((a) => isMultiplePriceBid(a.rawJson)).length}건
           </p>
