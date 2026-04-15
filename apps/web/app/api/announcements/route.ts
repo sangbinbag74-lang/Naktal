@@ -208,7 +208,12 @@ async function fetchFromDB(opts: Record<string, string | number>): Promise<NextR
   } else if (region) {
     q = q.filter("rawJson->>ntceInsttAddr", "ilike", `%${region}%`);
   }
-  if (keyword)        q = q.or(`title.ilike.%${keyword}%,orgName.ilike.%${keyword}%`);
+  if (keyword) {
+    const words = keyword.trim().split(/\s+/).filter(Boolean);
+    for (const word of words) {
+      q = q.or(`title.ilike.%${word}%,orgName.ilike.%${word}%`);
+    }
+  }
   if (minBudget)      q = q.gte("budget", minBudget);
   if (maxBudget)      q = q.lte("budget", maxBudget);
   if (contractMethod) q = q.or(`rawJson->>bidMthdNm.ilike.%${contractMethod}%,rawJson->>cntrctMthdNm.ilike.%${contractMethod}%`);
