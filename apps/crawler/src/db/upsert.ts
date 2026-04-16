@@ -76,7 +76,7 @@ export async function upsertAnnouncementBatch(rows: AnnouncementRow[]): Promise<
     seen.add(r.konepsId);
     return true;
   });
-  const BATCH = 50;
+  const BATCH = 25;
   let saved = 0;
   for (let i = 0; i < unique.length; i += BATCH) {
     const chunk = unique.slice(i, i + BATCH);
@@ -146,7 +146,7 @@ export async function upsertBidResultBatch(rows: BidResultRow[]): Promise<number
   }
 
   // 폴백: supabase-js (재시도 포함)
-  const BATCH = 50;
+  const BATCH = 25;
   let saved = 0;
   for (let i = 0; i < unique.length; i += BATCH) {
     const chunk = unique.slice(i, i + BATCH);
