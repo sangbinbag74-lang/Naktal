@@ -76,6 +76,12 @@ export async function upsertAnnouncementBatch(rows: AnnouncementRow[]): Promise<
     seen.add(r.konepsId);
     return true;
   });
+
+  // pg 직접 연결 우선 (Supabase REST statement_timeout 8초 우회)
+  if (pgPool) {
+    return upsertAnnouncementBatchPg(unique);
+  }
+
   const BATCH = 25;
   let saved = 0;
   for (let i = 0; i < unique.length; i += BATCH) {
@@ -97,6 +103,52 @@ export async function upsertAnnouncementBatch(rows: AnnouncementRow[]): Promise<
     );
     if (error) throw new Error(`upsertAnnouncementBatch 실패 (chunk ${i}~${i + chunk.length}): ${error.message}`);
     saved += chunk.length;
+  }
+  return saved;
+}
+
+async function upsertAnnouncementBatchPg(rows: AnnouncementRow[]): Promise<number> {
+  const BATCH = 200;
+  let saved = 0;
+  const client = await pgPool!.connect();
+  try {
+    for (let i = 0; i < rows.length; i += BATCH) {
+      const chunk = rows.slice(i, i + BATCH);
+      const values: unknown[] = [];
+      const placeholders = chunk.map((data, j) => {
+        const base = j * 10;
+        values.push(
+          konepsIdToUuid(data.konepsId),
+          data.konepsId,
+          data.title,
+          data.orgName,
+          data.budget.toString(),
+          data.deadline.toISOString(),
+          data.category,
+          data.region,
+          JSON.stringify(data.rawJson),
+          JSON.stringify(data.subCategories),
+        );
+        return `($${base+1},$${base+2},$${base+3},$${base+4},$${base+5},$${base+6},$${base+7},$${base+8},$${base+9},$${base+10})`;
+      }).join(",");
+      await client.query(
+        `INSERT INTO "Announcement" (id,"konepsId",title,"orgName",budget,deadline,category,region,"rawJson","subCategories")
+         VALUES ${placeholders}
+         ON CONFLICT ("konepsId") DO UPDATE SET
+           title           = EXCLUDED.title,
+           "orgName"       = EXCLUDED."orgName",
+           budget          = EXCLUDED.budget,
+           deadline        = EXCLUDED.deadline,
+           category        = EXCLUDED.category,
+           region          = EXCLUDED.region,
+           "rawJson"       = EXCLUDED."rawJson",
+           "subCategories" = EXCLUDED."subCategories"`,
+        values,
+      );
+      saved += chunk.length;
+    }
+  } finally {
+    client.release();
   }
   return saved;
 }
