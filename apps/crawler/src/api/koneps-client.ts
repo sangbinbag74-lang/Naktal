@@ -54,7 +54,7 @@ async function get<T>(
   url.searchParams.set("type", "json");
   for (const [k, v] of Object.entries(params)) url.searchParams.set(k, v);
 
-  const res = await fetch(url.toString(), { signal: AbortSignal.timeout(15_000) });
+  const res = await fetch(url.toString(), { signal: AbortSignal.timeout(60_000) });
   if (!res.ok) throw new Error(`KONEPS API 오류: ${res.status} ${endpoint}`);
 
   const data = (await res.json()) as KonepsResponse<T>;
