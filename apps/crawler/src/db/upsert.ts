@@ -129,7 +129,7 @@ async function upsertAnnouncementBatchPg(rows: AnnouncementRow[]): Promise<numbe
           JSON.stringify(data.rawJson),
           JSON.stringify(data.subCategories),
         );
-        return `($${base+1},$${base+2},$${base+3},$${base+4},$${base+5},$${base+6},$${base+7},$${base+8},$${base+9},$${base+10})`;
+        return `($${base+1},$${base+2},$${base+3},$${base+4},$${base+5},$${base+6},$${base+7},$${base+8},$${base+9}::jsonb,$${base+10}::jsonb)`;
       }).join(",");
       await client.query(
         `INSERT INTO "Announcement" (id,"konepsId",title,"orgName",budget,deadline,category,region,"rawJson","subCategories")
