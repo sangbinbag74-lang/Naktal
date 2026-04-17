@@ -382,21 +382,38 @@ export default function AnnouncementsPage() {
 
   useEffect(() => { setFolderIds(getFolderIds()); }, []);
 
-  const [keyword, setKeyword] = useState<string>(() => String(getSavedFilters().keyword ?? ""));
+  // Hydration-safe: 초기값은 SSR과 동일한 기본값으로 두고, 마운트 후 localStorage 복원
+  const [keyword, setKeyword] = useState<string>("");
   const [konepsId, setKonepsId] = useState("");
-  const [categories, setCategories] = useState<string[]>(() => { const s = getSavedFilters().categories; return Array.isArray(s) ? s as string[] : []; });
+  const [categories, setCategories] = useState<string[]>([]);
   const [catPanelOpen, setCatPanelOpen] = useState(false);
-  const [regions, setRegions] = useState<string[]>(() => { const s = getSavedFilters().regions; return Array.isArray(s) ? s as string[] : []; });
+  const [regions, setRegions] = useState<string[]>([]);
   const [regionPanelOpen, setRegionPanelOpen] = useState(false);
   const [openProvinces, setOpenProvinces] = useState<Set<string>>(new Set());
-  const [sort, setSort] = useState<string>(() => String(getSavedFilters().sort ?? "latest"));
-  const [contractMethod, setContractMethod] = useState<string>(() => String(getSavedFilters().contractMethod ?? ""));
-  const [deadlineRange, setDeadlineRange] = useState<string>(() => String(getSavedFilters().deadlineRange ?? "active"));
-  const [minBudget, setMinBudget] = useState<string>(() => String(getSavedFilters().minBudget ?? ""));
-  const [maxBudget, setMaxBudget] = useState<string>(() => String(getSavedFilters().maxBudget ?? ""));
-  const [budgetPreset, setBudgetPreset] = useState<string>(() => String(getSavedFilters().budgetPreset ?? ""));
-  const [rgnType, setRgnType] = useState<string>(() => String(getSavedFilters().rgnType ?? ""));
-  const [ntceKind, setNtceKind] = useState<string>(() => String(getSavedFilters().ntceKind ?? ""));
+  const [sort, setSort] = useState<string>("latest");
+  const [contractMethod, setContractMethod] = useState<string>("");
+  const [deadlineRange, setDeadlineRange] = useState<string>("active");
+  const [minBudget, setMinBudget] = useState<string>("");
+  const [maxBudget, setMaxBudget] = useState<string>("");
+  const [budgetPreset, setBudgetPreset] = useState<string>("");
+  const [rgnType, setRgnType] = useState<string>("");
+  const [ntceKind, setNtceKind] = useState<string>("");
+
+  // 마운트 후 localStorage에서 필터 복원 (hydration mismatch 방지)
+  useEffect(() => {
+    const saved = getSavedFilters();
+    if (typeof saved.keyword === "string")        setKeyword(saved.keyword);
+    if (Array.isArray(saved.categories))           setCategories(saved.categories as string[]);
+    if (Array.isArray(saved.regions))              setRegions(saved.regions as string[]);
+    if (typeof saved.sort === "string")            setSort(saved.sort);
+    if (typeof saved.contractMethod === "string")  setContractMethod(saved.contractMethod);
+    if (typeof saved.deadlineRange === "string")   setDeadlineRange(saved.deadlineRange);
+    if (typeof saved.minBudget === "string")       setMinBudget(saved.minBudget);
+    if (typeof saved.maxBudget === "string")       setMaxBudget(saved.maxBudget);
+    if (typeof saved.budgetPreset === "string")    setBudgetPreset(saved.budgetPreset);
+    if (typeof saved.rgnType === "string")         setRgnType(saved.rgnType);
+    if (typeof saved.ntceKind === "string")        setNtceKind(saved.ntceKind);
+  }, []);
 
   const observerRef = useRef<IntersectionObserver | null>(null);
   const sentinelRef = useRef<HTMLDivElement | null>(null);
