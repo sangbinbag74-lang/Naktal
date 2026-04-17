@@ -17,8 +17,18 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const maxDuration = 15;
 
-const MODEL_PATH = path.join(process.cwd(), "ml", "sajung_lgbm.onnx");
-const ENCODERS_PATH = path.join(process.cwd(), "ml", "sajung_encoders.json");
+const ML_DIR = path.join(process.cwd(), "ml");
+const MODEL_PATH = path.join(ML_DIR, "sajung_lgbm.onnx");
+const ENCODERS_PATH = path.join(ML_DIR, "sajung_encoders.json");
+
+// onnxruntime-web이 WASM 파일을 찾을 위치 지정 (번들에 포함된 local 경로)
+// file:// 프로토콜로 명시해야 Node.js dynamic import가 동작
+ort.env.wasm.wasmPaths = {
+  wasm: `file://${path.join(ML_DIR, "ort-wasm-simd-threaded.wasm").replace(/\\/g, "/")}`,
+  mjs: `file://${path.join(ML_DIR, "ort-wasm-simd-threaded.mjs").replace(/\\/g, "/")}`,
+};
+// 스레드 비활성화 (서버리스 환경)
+ort.env.wasm.numThreads = 1;
 
 interface Metadata {
   encoders: Record<string, Record<string, number>>;
