@@ -4,8 +4,8 @@ const nextConfig = {
   outputFileTracingIncludes: {
     "/api/ml-predict": ["./ml/**/*"],
   },
-  // onnxruntime-node는 네이티브 바이너리 사용 → webpack에서 제외
-  serverExternalPackages: ["onnxruntime-node"],
+  // onnxruntime-web은 WASM 바이너리 → 서버 번들에 포함되도록 external 처리
+  serverExternalPackages: ["onnxruntime-web"],
   async headers() {
     return [
       {

@@ -9,7 +9,7 @@
  *   POST /api/ml-predict  → 예측 (ML_API_KEY 설정 시 X-API-Key 헤더 검증)
  */
 import { NextRequest, NextResponse } from "next/server";
-import * as ort from "onnxruntime-node";
+import * as ort from "onnxruntime-web";
 import path from "path";
 import fs from "fs";
 
@@ -39,7 +39,9 @@ async function init(): Promise<void> {
       metadata = JSON.parse(raw) as Metadata;
     }
     if (!session) {
-      session = await ort.InferenceSession.create(MODEL_PATH);
+      // ONNX 바이너리를 Buffer로 로드 (onnxruntime-web은 Uint8Array/ArrayBuffer 지원)
+      const modelBuffer = fs.readFileSync(MODEL_PATH);
+      session = await ort.InferenceSession.create(modelBuffer);
     }
   } catch (err) {
     initError = err instanceof Error ? `${err.name}: ${err.message}` : String(err);
