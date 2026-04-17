@@ -69,6 +69,7 @@ export async function proxy(request: NextRequest) {
 
 export const config = {
   matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+    // Python serverless functions(api/ml-*)는 Next.js middleware 우회 — Vercel 루팅이 직접 처리
+    "/((?!_next/static|_next/image|favicon.ico|api/ml-|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
   ],
 };
