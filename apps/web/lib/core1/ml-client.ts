@@ -1,12 +1,12 @@
 /**
  * ML 예측 API 클라이언트 (Naktal ML — LightGBM 사정율 예측)
  *
- * Railway에 호스팅된 FastAPI 서버 호출.
+ * Vercel Python Function 호출 (같은 Vercel 프로젝트 내 /api/ml-predict).
  * 타임아웃 3초, 실패 시 null 반환 (호출측에서 기존 통계 로직으로 폴백).
  *
- * 환경변수:
- *   ML_API_URL   — 예: https://naktal-ml.up.railway.app
- *   ML_API_KEY   — 인증 키
+ * 환경변수 (선택):
+ *   NEXT_PUBLIC_SITE_URL  — 예: https://naktal.me (절대 URL 필요, 서버 측 fetch 기준)
+ *   ML_API_KEY            — 인증 키 (Python 함수와 동일 값)
  */
 
 export interface MlFeatures {
@@ -28,17 +28,25 @@ export interface MlFeatures {
   season_q: number;
 }
 
-const ML_API_URL = process.env.ML_API_URL ?? "";
+function getBaseUrl(): string {
+  if (process.env.NEXT_PUBLIC_SITE_URL) return process.env.NEXT_PUBLIC_SITE_URL;
+  if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}`;
+  return "http://localhost:3000";
+}
+
 const ML_API_KEY = process.env.ML_API_KEY ?? "";
+const ML_ENABLED = process.env.ML_ENABLED !== "false"; // 기본 활성, false로 비활성
 
 /**
  * ML 서버에 사정율 예측 요청. 실패 시 null 반환.
  */
 export async function fetchMlSajung(features: MlFeatures): Promise<number | null> {
-  if (!ML_API_URL) return null;
+  if (!ML_ENABLED) return null;
+
+  const url = `${getBaseUrl()}/api/ml-predict`;
 
   try {
-    const res = await fetch(`${ML_API_URL}/predict`, {
+    const res = await fetch(url, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
