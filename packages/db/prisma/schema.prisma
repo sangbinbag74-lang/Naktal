@@ -67,12 +67,59 @@ model Announcement {
   aValueYn             String                @default("")
   aValueAmt            BigInt                @default(0)
   aValueTotal          BigInt                @default(0)
+  aValueDetails        Json?                                // A값 구성요소 6종 상세
   priceRangeRate       String                @default("")
+  bsisAmt              BigInt                @default(0)     // 기초금액 (BsisAmount API)
+  rsrvtnPrceRngBgnRate Float                 @default(0)     // 예가범위 시작률 (예: -3)
+  rsrvtnPrceRngEndRate Float                 @default(0)     // 예가범위 끝률 (예: +3)
+  sucsfbidLwltRate     Float                 @default(0)     // 낙찰하한율 (rawJson에서 승격)
+  prtcptPsblRgnNm      String                @default("")    // 참가가능지역
+  jntcontrctDutyRgnNm  String                @default("")    // 공동수급의무지역
+  ciblAplYn            String                @default("")    // 건산법 적용여부
+  mtltyAdvcPsblYn      String                @default("")    // 상호시장 진출가능
+  bidNtceDtlUrl        String                @default("")    // 상세 URL
+  ntceInsttOfclTelNo   String                @default("")    // 담당자 전화
   isPinned             Boolean               @default(false)
   deletedAt            DateTime?
   createdAt            DateTime              @default(now())
   participantSnapshots ParticipantSnapshot[]
   bidPricePrediction   BidPricePrediction?
+  openingDetail        BidOpeningDetail?
+  chgHistories         AnnouncementChgHst[]
+}
+
+// 개찰결과 상세 (복수예가 15개 + 개찰 정보) — CORE 2 핵심
+model BidOpeningDetail {
+  id            String        @id @default(cuid())
+  annId         String        @unique
+  announcement  Announcement  @relation(fields: [annId], references: [konepsId], onDelete: Cascade)
+  prdprcList    Json          // 예비가 15개: [{order, amt, rate, selected}]
+  selPrdprcIdx  Int[]         @default([])  // 선택된 4개 순번 (1~15 중)
+  openingDate   DateTime?
+  bidCount      Int?
+  sucsfbidRate  Float?                      // 낙찰률
+  rawJson       Json?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  @@index([openingDate])
+}
+
+// 변경공고 이력
+model AnnouncementChgHst {
+  id           String        @id @default(cuid())
+  annId        String
+  announcement Announcement  @relation(fields: [annId], references: [konepsId], onDelete: Cascade)
+  chgNtceSeq   Int                           // 변경 회차 (0=원본, 1+=N차 변경)
+  chgRsnNm     String        @default("")    // 변경사유명
+  chgBefore    Json?
+  chgAfter     Json?
+  chgDate      DateTime?
+  rawJson      Json?
+  createdAt    DateTime      @default(now())
+
+  @@unique([annId, chgNtceSeq])
+  @@index([annId])
 }
 
 model AdminLog {

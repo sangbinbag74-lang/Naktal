@@ -1,0 +1,61 @@
+name: G2B 보조정보 수집 (업종/A값/기초금액/변경이력)
+
+on:
+  workflow_dispatch:
+    inputs:
+      from:
+        description: "수집 시작월 (YYYYMM, 기본 200201)"
+        required: false
+        default: "200201"
+      to:
+        description: "수집 종료월 (YYYYMM, 기본 현재월)"
+        required: false
+        default: ""
+  schedule:
+    # 매일 15 UTC (한국 00시) — 신규 공고 증분 (당일만)
+    - cron: "0 15 * * *"
+
+jobs:
+  bulk-extras:
+    name: 보조정보 bulk 수집
+    runs-on: ubuntu-latest
+    timeout-minutes: 355
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v3
+        with:
+          version: 9.0.0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: 의존성 설치
+        run: pnpm install --no-frozen-lockfile
+
+      - name: Prisma Client 생성
+        run: pnpm --filter @naktal/db exec prisma generate
+
+      - name: 보조정보 bulk 수집
+        working-directory: apps/crawler
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          KONEPS_API_KEY: ${{ secrets.KONEPS_API_KEY }}
+          G2B_API_KEY: ${{ secrets.G2B_API_KEY }}
+        run: |
+          # 스케줄 실행(cron)이면 어제~오늘만, 수동이면 입력 범위
+          if [ "${{ github.event_name }}" = "schedule" ]; then
+            FROM=$(date -d "1 day ago" +%Y%m)
+            TO=$(date +%Y%m)
+          else
+            FROM="${{ github.event.inputs.from || '200201' }}"
+            TO="${{ github.event.inputs.to }}"
+            if [ -z "$TO" ]; then TO=$(date +%Y%m); fi
+          fi
+          echo "실행: pnpm ts-node src/bulk-import-extras.ts --from $FROM --to $TO"
+          pnpm ts-node src/bulk-import-extras.ts --from $FROM --to $TO
