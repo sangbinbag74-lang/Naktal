@@ -8,7 +8,7 @@ import {
   toYMD,
   type G2BAnnouncement,
 } from "@/lib/g2b";
-import { CATEGORY_GROUPS, parseSubCategories } from "@/lib/category-map";
+import { CATEGORY_GROUPS, SIMILAR_CATEGORIES, parseSubCategories } from "@/lib/category-map";
 
 export const maxDuration = 60;
 
@@ -142,9 +142,21 @@ async function fetchFromDB(opts: Record<string, string | number>): Promise<NextR
     "id,konepsId,title,orgName,budget,deadline,category,subCategories,region,createdAt,rawJson,aValueYn"
   );
 
-  // 다중 카테고리 (city 필터 등으로 RPC를 건너뛴 경우)
+  // 다중 카테고리: category(주종) OR subCategories(부종) OR 유사 업종 확장
   if (cats.length > 0) {
-    q = q.in("category", cats);
+    const expanded = new Set<string>(cats);
+    for (const c of cats) {
+      (SIMILAR_CATEGORIES[c] ?? []).forEach((s) => expanded.add(s));
+    }
+    const list = [...expanded];
+    const orParts: string[] = [];
+    // category 주종 매칭
+    orParts.push(`category.in.(${list.join(",")})`);
+    // subCategories 부종 배열 contains (PostgreSQL array)
+    for (const c of list) {
+      orParts.push(`subCategories.cs.{${c}}`);
+    }
+    q = q.or(orParts.join(","));
   } else if (category) {
     q = q.or(`category.ilike.%${category}%,rawJson->>pubPrcrmntMidClsfcNm.ilike.%${category}%,rawJson->>pubPrcrmntLrgClsfcNm.ilike.%${category}%`);
   }
