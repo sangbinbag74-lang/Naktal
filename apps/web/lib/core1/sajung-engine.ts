@@ -9,6 +9,7 @@
 import { createAdminClient } from "@/lib/supabase/server";
 import { extractCoreOrgName } from "@/lib/analysis/sajung-utils";
 import { SIMILAR_CATEGORIES } from "@/lib/category-map";
+import { fetchMlSajung } from "./ml-client";
 
 // ─── 타입 ─────────────────────────────────────────────────────────────────────
 
@@ -464,10 +465,37 @@ export async function predictOptimalBid(params: {
   const monthKey = String(params.deadlineMonth);
   const monthAdj = (stat.monthlyAvg as Record<string, number>)[monthKey] ?? stat.avg;
 
-  // raw 충분 시: 가중평균 + 추세 조정 / 아니면 기존 시즌 가중 방식
-  const predictedRate = hasRaw
-    ? Math.max(85, Math.min(115, weightedAvg + trendResult.adjustment))
+  // 5-a. 통계 기반 예측 (기존 로직 유지 — ML 실패 시 폴백으로 사용)
+  const statPred = hasRaw
+    ? weightedAvg + trendResult.adjustment
     : stat.avg * 0.7 + monthAdj * 0.3;
+
+  // 5-b. ML 예측 (LightGBM, 통계 피처 전달). 실패 시 null.
+  const mlStddev = stat.stddev ?? 2;
+  const mlPred = await fetchMlSajung({
+    category: params.category,
+    orgName: params.orgName,
+    budgetRange,
+    region: params.region || "전국",
+    month: params.deadlineMonth,
+    year: new Date().getFullYear(),
+    budget_log: Math.log(Math.max(1, params.budget)),
+    numBidders: 25, // 디폴트 (competition 분석은 analyzeCompetition에서 별도 처리)
+    stat_avg: stat.avg,
+    stat_stddev: mlStddev,
+    stat_p25: stat.p25 ?? 99,
+    stat_p75: stat.p75 ?? 101,
+    sampleSize: stat.sampleSize,
+    bidder_volatility: stat.avg > 0 ? mlStddev / stat.avg : 0,
+    is_sparse_org: stat.sampleSize < 30 ? 1 : 0,
+    season_q: Math.ceil(params.deadlineMonth / 3),
+  });
+
+  // 5-c. 앙상블: ML 성공 시 0.4×stat + 0.6×ML, 실패 시 통계 단독
+  const predictedRate = mlPred !== null
+    ? Math.max(85, Math.min(115, 0.4 * statPred + 0.6 * mlPred))
+    : Math.max(85, Math.min(115, statPred));
+  const usedMl = mlPred !== null;
 
   // 6. 투찰가 역산 — 표준 공식: ROUNDUP((예정가 - A) × 투찰률 + A)
   const estimated  = params.budget * (predictedRate / 100);
@@ -495,7 +523,7 @@ export async function predictOptimalBid(params: {
     confidenceLevel: getConfidenceLevel(
       stat.sampleSize, stat.stddev, recentPoints.length, stabilityScore, isBlended
     ),
-    modelVersion: "sajung-v1.1",
+    modelVersion: usedMl ? "sajung-v1.1+ml" : "sajung-v1.1",
     weightedAvg: Math.round(weightedAvg * 1000) / 1000,
     simpleAvg:   Math.round(simpleAvg * 1000) / 1000,
     trend:       trendResult,

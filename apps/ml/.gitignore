@@ -1,0 +1,17 @@
+# Python
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# 학습 데이터 (너무 큼, Railway 배포에 불필요)
+data/*.csv
+
+# 환경변수
+.env
+.env.local
+
+# 로컬 테스트 아티팩트
+*.log
+.DS_Store
