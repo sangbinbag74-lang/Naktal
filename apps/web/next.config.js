@@ -1,5 +1,11 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // ML Route Handler가 fs.readFileSync로 읽는 ml/ 폴더를 Vercel 번들에 포함
+  outputFileTracingIncludes: {
+    "/api/ml-predict": ["./ml/**/*"],
+  },
+  // onnxruntime-node는 네이티브 바이너리 사용 → webpack에서 제외
+  serverExternalPackages: ["onnxruntime-node"],
   async headers() {
     return [
       {
