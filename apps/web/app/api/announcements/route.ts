@@ -131,69 +131,12 @@ async function fetchFromDB(opts: Record<string, string | number>): Promise<NextR
   const citiesInFilter = regionList.filter(r => !PROVINCE_CODES.includes(r));
   const hasCityFilter = citiesInFilter.length > 0;
 
-  // ── categories가 있고 city 필터 없을 때만 RPC 사용 ──────────────────────────
-  // city 필터가 있으면 RPC가 province 컬럼으로만 매칭해 0건 반환되므로 Path B로 처리
-  if (cats.length > 0 && !hasCityFilter && !keyword) {
-    // deadline 범위 계산
-    let deadlineFrom: string | null = null;
-    let deadlineTo: string | null = null;
-    if (deadlineRange === "active") {
-      deadlineFrom = nowIso;
-    } else if (deadlineRange === "today") {
-      deadlineFrom = nowIso;
-      deadlineTo = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59).toISOString();
-    } else if (deadlineRange === "3") {
-      deadlineFrom = nowIso;
-      deadlineTo = new Date(Date.now() + 3 * 86400000).toISOString();
-    } else if (deadlineRange === "7") {
-      deadlineFrom = nowIso;
-      deadlineTo = new Date(Date.now() + 7 * 86400000).toISOString();
-    } else if (deadlineRange === "30") {
-      deadlineFrom = nowIso;
-      deadlineTo = new Date(Date.now() + 30 * 86400000).toISOString();
-    }
-    // deadlineRange === "": 전체(마감포함) — 날짜 필터 없음
+  // [2026-04-18] RPC search_announcements 경로 비활성화
+  //   - 659만 행 DB에서 9초+ 소요 (statement_timeout 유발)
+  //   - 모든 필터는 Path B 체인 쿼리 + idx_ann_deadline_createdat 인덱스로 처리 (2초 이내)
+  //   - 추후 RPC 함수 최적화 후 재활성화 가능
 
-    // region 계산: 다중 지역은 첫 번째 사용 (RPC p_region은 단일값)
-    const regionParam = regionList[0] || region || null;
-
-    const { data: rpcData, error: rpcError } = await admin.rpc(
-      "search_announcements",
-      {
-        p_categories:    cats,
-        p_region:        regionParam || null,
-        p_keyword:       keyword || null,
-        p_deadline_from: deadlineFrom,
-        p_deadline_to:   deadlineTo,
-        p_limit:         limit + 1,
-        p_offset:        offset,
-      }
-    );
-    if (rpcError) {
-      console.error("[announcements RPC]", rpcError.message, rpcError.hint);
-      return NextResponse.json({ data: [], total: 0, hasMore: false, page, limit, error: rpcError.message });
-    }
-    const rows = rpcData ?? [];
-    const totalCount = rows.length > 0 ? rows[0].total_count : 0;
-    const hasMore = rows.length > limit;
-    const data = hasMore ? rows.slice(0, limit) : rows;
-
-    // RPC 함수가 aValueYn을 반환하지 않으므로 별도 보강
-    if (data.length > 0) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const ids = data.map((r: any) => r.id as string);
-      const { data: aVals } = await admin.from("Announcement").select("id,aValueYn").in("id", ids);
-      if (aVals) {
-        const aMap = Object.fromEntries(aVals.map((r) => [r.id, r.aValueYn]));
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        data.forEach((r: any) => { r.aValueYn = aMap[r.id] ?? null; });
-      }
-    }
-
-    return NextResponse.json({ data, total: Number(totalCount), hasMore, page, limit });
-  }
-
-  // ── categories 없거나 city 필터 있으면 체인 쿼리 (모든 필터 지원) ──────────
+  // ── 체인 쿼리 (모든 필터 지원) ────────────────────────────────────────────
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let q: any = admin.from("Announcement").select(
     "id,konepsId,title,orgName,budget,deadline,category,subCategories,region,createdAt,rawJson,aValueYn"
