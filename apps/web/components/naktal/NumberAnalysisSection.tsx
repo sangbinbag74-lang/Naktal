@@ -7,9 +7,11 @@ interface RecommendResult {
   combo1: number[];
   combo2: number[];
   combo3: number[];
+  combo4: number[];
   hitRate1: number;
   hitRate2: number;
   hitRate3: number;
+  hitRate4: number;
   freqMap?: Record<string, number>;
   sampleSize: number;
   modelVersion: string;
@@ -22,11 +24,12 @@ interface RecommendResult {
   announcementOrg?: string;
 }
 
-function FreqHeatmap({ freqMap, combo1, combo2, combo3 }: {
+function FreqHeatmap({ freqMap, combo1, combo2, combo3, combo4 }: {
   freqMap: Record<string, number>;
   combo1: number[];
   combo2: number[];
   combo3: number[];
+  combo4: number[];
 }) {
   // freqMap keys are 번호 1~15
   const vals = Array.from({ length: 15 }, (_, i) => {
@@ -41,6 +44,7 @@ function FreqHeatmap({ freqMap, combo1, combo2, combo3 }: {
     { nums: combo1, color: "#1B3A6B" },
     { nums: combo2, color: "#1E40AF" },
     { nums: combo3, color: "#2563EB" },
+    { nums: combo4, color: "#60A5FA" },
   ]) {
     for (const n of nums) {
       if (!markedNums[n]) markedNums[n] = color;
@@ -93,7 +97,7 @@ export function NumberAnalysisSection({ annId, isClosed, bidMethod, defaultBidde
   const [upgradeUrl, setUpgradeUrl] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(true);
 
-  const cacheKey = `naktal_analysis_${annId}`;
+  const cacheKey = `naktal_analysis_v2_${annId}`;
 
   // 마운트 시 캐시된 결과 복원
   useEffect(() => {
@@ -264,6 +268,7 @@ export function NumberAnalysisSection({ annId, isClosed, bidMethod, defaultBidde
             { combo: result.combo1, hitRate: result.hitRate1, label: "조합 1", accent: "#1B3A6B", best: true },
             { combo: result.combo2, hitRate: result.hitRate2, label: "조합 2", accent: "#475569", best: false },
             { combo: result.combo3, hitRate: result.hitRate3, label: "조합 3", accent: "#94A3B8", best: false },
+            { combo: result.combo4, hitRate: result.hitRate4, label: "조합 4", accent: "#CBD5E1", best: false },
           ] as const).map(({ combo, hitRate, label, accent, best }) => (
             <div key={label} style={{
               background: best ? "#EEF2FF" : "#fff",
@@ -306,7 +311,7 @@ export function NumberAnalysisSection({ annId, isClosed, bidMethod, defaultBidde
           ))}
 
           {result.freqMap && Object.keys(result.freqMap).length > 0 && (
-            <FreqHeatmap freqMap={result.freqMap} combo1={result.combo1} combo2={result.combo2} combo3={result.combo3} />
+            <FreqHeatmap freqMap={result.freqMap} combo1={result.combo1} combo2={result.combo2} combo3={result.combo3} combo4={result.combo4} />
           )}
 
           <div style={{ background: "#FFF7ED", border: "1px solid #FDE68A", borderRadius: 8, padding: "10px 14px", fontSize: 12, color: "#92400E", fontWeight: 500 }}>

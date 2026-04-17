@@ -36,7 +36,7 @@ async function syncBidResultsFromG2B(
       if (!annId || !rateRaw || !priceRaw) return null;
       return {
         annId,
-        bidRate: parseFloat(rateRaw).toFixed(4),
+        bidRate: parseFloat(rateRaw).toFixed(3),
         finalPrice: String(parseInt(priceRaw, 10)),
         numBidders: parseInt((item.totPrtcptCo || "0").replace(/[^0-9]/g, ""), 10),
       };

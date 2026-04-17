@@ -11,6 +11,7 @@ interface NumberStrategy {
   combo1: NumberCombo;
   combo2: NumberCombo;
   combo3: NumberCombo;
+  combo4: NumberCombo;
 }
 
 interface Props {
@@ -54,6 +55,7 @@ export function BidResultCombos({ annDbId }: Props) {
     { label: "조합 1", numbers: ns.combo1.numbers, hitRate: ns.combo1.hitRate, recommended: true },
     { label: "조합 2", numbers: ns.combo2.numbers, hitRate: ns.combo2.hitRate, recommended: false },
     { label: "조합 3", numbers: ns.combo3.numbers, hitRate: ns.combo3.hitRate, recommended: false },
+    { label: "조합 4", numbers: ns.combo4.numbers, hitRate: ns.combo4.hitRate, recommended: false },
   ];
 
   return (

@@ -18,6 +18,7 @@ export interface RecommendResult {
   combo1: NumberCombo;
   combo2: NumberCombo;
   combo3: NumberCombo;
+  combo4: NumberCombo;
   sampleSize: number;
   modelVersion: string;
   isEstimated: boolean;
@@ -86,6 +87,7 @@ function estimatedResult(annId: string): RecommendResult {
     combo1: toCombo(nums.slice(0, 3), "low"),
     combo2: toCombo(nums.slice(3, 6), "mid"),
     combo3: toCombo(nums.slice(6, 9), "high"),
+    combo4: toCombo(nums.slice(9, 12), "high"),
     sampleSize: 0,
     modelVersion: "estimated-v1",
     isEstimated: true,
@@ -135,7 +137,7 @@ function buildResult(
   const pool = sorted.map((x) => ({ num: x.num, weight: 1 / (x.freq + 1) }));
   const picks: number[] = [];
 
-  for (let i = 0; i < 9 && pool.length > 0; i++) {
+  for (let i = 0; i < 12 && pool.length > 0; i++) {
     const total = pool.reduce((s, x) => s + x.weight, 0);
     let r = rand() * total;
     let idx = pool.length - 1;
@@ -150,6 +152,7 @@ function buildResult(
   const c1 = picks.slice(0, 3);
   const c2 = picks.slice(3, 6);
   const c3 = picks.slice(6, 9);
+  const c4 = picks.slice(9, 12);
 
   return {
     combo1: {
@@ -167,6 +170,12 @@ function buildResult(
     combo3: {
       numbers: c3,
       hitRate: calcHitRate(numFreqMap, c3, totalCount),
+      freqMap: freqPctMap,
+      zone: "high",
+    },
+    combo4: {
+      numbers: c4,
+      hitRate: calcHitRate(numFreqMap, c4, totalCount),
       freqMap: freqPctMap,
       zone: "high",
     },

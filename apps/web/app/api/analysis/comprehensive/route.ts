@@ -141,6 +141,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       region: ann.region as string,
       lowerLimitRate,
       deadlineMonth,
+      aValueTotal,
     }),
     analyzeCompetition({
       orgName: ann.orgName as string,
@@ -249,15 +250,32 @@ function buildResponse(
       })(),
       sampleSize: pred.sampleSize,
       optimalBidPrice: (() => {
-        const est = estimatedPriceByA
-          ?? Math.round((budgetNum ?? Number(ann.budget)) * (Number(pred.predictedSajungRate) / 100));
-        const lower = aLowerLimit != null ? aLowerLimit : (Number(pred.lowerLimitPrice) || 0);
-        return lower > 0
-          ? Math.max(Math.round(est) - 100, lower + 1)
-          : Math.round(est) - 100;
+        // 표준 공식: ROUNDUP((기초금액 × 예측사정률 - A) × 낙찰하한율 + A)
+        const budget = budgetNum ?? Number(ann.budget) ?? 0;
+        const rate   = Number(pred.predictedSajungRate) || 103.8;
+        const llRate = lowerLimitRate ?? 87.745;
+        const aVal   = aValueTotal ?? 0;
+        const estPrice = budget * (rate / 100);
+        const bidPrice = (estPrice - aVal) * (llRate / 100) + aVal;
+        return Math.ceil(bidPrice);
       })(),
-      bidPriceRangeLow: Number(pred.bidPriceRangeLow),
-      bidPriceRangeHigh: Number(pred.bidPriceRangeHigh),
+      bidPriceRangeLow: (() => {
+        const budget = budgetNum ?? Number(ann.budget) ?? 0;
+        const rate   = Number(pred.predictedSajungRate) || 103.8;
+        const llRate = lowerLimitRate ?? 87.745;
+        const aVal   = aValueTotal ?? 0;
+        const estPrice = budget * (rate / 100);
+        return Math.ceil((estPrice - aVal) * (llRate / 100) + aVal);
+      })(),
+      bidPriceRangeHigh: (() => {
+        // 안전 버퍼: 낙찰하한율 +0.5%p
+        const budget = budgetNum ?? Number(ann.budget) ?? 0;
+        const rate   = Number(pred.predictedSajungRate) || 103.8;
+        const llRate = (lowerLimitRate ?? 87.745) + 0.5;
+        const aVal   = aValueTotal ?? 0;
+        const estPrice = budget * (rate / 100);
+        return Math.ceil((estPrice - aVal) * (llRate / 100) + aVal);
+      })(),
       lowerLimitPrice: aLowerLimit != null ? aLowerLimit : Number(pred.lowerLimitPrice),
       winProbability: pred.winProbability,
       confidenceLevel: (() => {

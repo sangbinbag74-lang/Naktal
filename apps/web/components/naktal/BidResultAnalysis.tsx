@@ -11,9 +11,11 @@ interface NumberStrategy {
   combo1: number[];
   combo2: number[];
   combo3: number[];
+  combo4: number[];
   hitRate1: number;
   hitRate2: number;
   hitRate3: number;
+  hitRate4: number;
   freqMap: Record<string, number>;
   isEstimated?: boolean;
 }

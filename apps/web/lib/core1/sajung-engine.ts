@@ -328,6 +328,7 @@ export async function predictOptimalBid(params: {
   region: string;
   lowerLimitRate: number; // 낙찰하한율 % (예: 87.745)
   deadlineMonth: number;  // 1~12
+  aValueTotal?: number;   // A값 합산 (원, A값 공고만. 없으면 0)
 }): Promise<SajungPrediction> {
   const budgetRange = classifyBudget(params.budget);
   const orgName = params.orgName;
@@ -434,15 +435,17 @@ export async function predictOptimalBid(params: {
   if (!stat || stat.sampleSize < 5) {
     const fallbackRate = 103.8;
     const estimated = params.budget * (fallbackRate / 100);
-    const lowerLimit = estimated * (params.lowerLimitRate / 100);
+    const aValF = params.aValueTotal ?? 0;
+    const lowerLimit = (estimated - aValF) * (params.lowerLimitRate / 100) + aValF;
+    const rangeHighF = (estimated - aValF) * ((params.lowerLimitRate + 0.5) / 100) + aValF;
     return {
       predictedSajungRate: fallbackRate,
       sajungRateRange: { min: 97, max: 112, p25: 101, p75: 106 },
       sampleSize: 0,
-      optimalBidPrice: Math.round(estimated * 0.9997),
-      bidPriceRangeLow: Math.round(Math.max(lowerLimit, estimated * 0.998)),
-      bidPriceRangeHigh: Math.round(estimated * 0.9997),
-      lowerLimitPrice: Math.round(lowerLimit),
+      optimalBidPrice: Math.ceil(lowerLimit),
+      bidPriceRangeLow: Math.ceil(lowerLimit),
+      bidPriceRangeHigh: Math.ceil(rangeHighF),
+      lowerLimitPrice: Math.ceil(lowerLimit),
       winProbability: 0.35,
       isFallback: true,
       confidenceLevel: "LOW" as ConfidenceLevel,
@@ -466,12 +469,13 @@ export async function predictOptimalBid(params: {
     ? Math.max(85, Math.min(115, weightedAvg + trendResult.adjustment))
     : stat.avg * 0.7 + monthAdj * 0.3;
 
-  // 6. 투찰가 역산
+  // 6. 투찰가 역산 — 표준 공식: ROUNDUP((예정가 - A) × 투찰률 + A)
   const estimated  = params.budget * (predictedRate / 100);
-  const lowerLimit = estimated * (params.lowerLimitRate / 100);
-  const optimalBid = estimated * 0.9997;
-  const rangeLow   = Math.max(lowerLimit, estimated * 0.998);
-  const rangeHigh  = optimalBid;
+  const aVal       = params.aValueTotal ?? 0;
+  const lowerLimit = (estimated - aVal) * (params.lowerLimitRate / 100) + aVal;
+  const optimalBid = lowerLimit;  // 예측 사정률 정확 시 낙찰하한가 = 최적 투찰가
+  const rangeLow   = lowerLimit;
+  const rangeHigh  = (estimated - aVal) * ((params.lowerLimitRate + 0.5) / 100) + aVal;
 
   // 7. 몬테카를로 낙찰 확률
   const winProb = monteCarloWinProb(
@@ -479,13 +483,13 @@ export async function predictOptimalBid(params: {
   );
 
   return {
-    predictedSajungRate: Math.round(predictedRate * 100) / 100,
+    predictedSajungRate: Math.round(predictedRate * 1000) / 1000,
     sajungRateRange: { min: stat.min ?? 97, max: stat.max ?? 112, p25: stat.p25 ?? 101, p75: stat.p75 ?? 106 },
     sampleSize: stat.sampleSize,
-    optimalBidPrice: Math.round(optimalBid),
-    bidPriceRangeLow: Math.round(rangeLow),
-    bidPriceRangeHigh: Math.round(rangeHigh),
-    lowerLimitPrice: Math.round(lowerLimit),
+    optimalBidPrice: Math.ceil(optimalBid),
+    bidPriceRangeLow: Math.ceil(rangeLow),
+    bidPriceRangeHigh: Math.ceil(rangeHigh),
+    lowerLimitPrice: Math.ceil(lowerLimit),
     winProbability: Math.round(winProb * 1000) / 1000,
     isFallback,
     confidenceLevel: getConfidenceLevel(
