@@ -11,8 +11,7 @@
     "apps/web/app/api/cron/sync-g2b/route.ts": { "maxDuration": 300 },
     "apps/web/app/api/cron/collect-sajung-stat/route.ts": { "maxDuration": 300 },
     "apps/web/app/api/cron/prefill-predictions/route.ts": { "maxDuration": 120 },
-    "apps/web/app/api/cron/fill-bid-results/route.ts": { "maxDuration": 120 },
-    "api/ml-predict.py": { "maxDuration": 15, "memory": 1024 }
+    "apps/web/app/api/cron/fill-bid-results/route.ts": { "maxDuration": 120 }
   },
   "crons": [
     { "path": "/api/cron/sync-g2b", "schedule": "0 0 * * *" },

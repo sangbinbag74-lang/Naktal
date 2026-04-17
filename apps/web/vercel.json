@@ -3,6 +3,9 @@
   "outputDirectory": ".next",
   "installCommand": "cd ../.. && pnpm install --no-frozen-lockfile",
   "framework": "nextjs",
+  "functions": {
+    "api/ml-predict.py": { "maxDuration": 15, "memory": 1024 }
+  },
   "crons": [
     { "path": "/api/cron/sync-g2b", "schedule": "0 0 * * *" }
   ]
