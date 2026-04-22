@@ -1,0 +1,46 @@
+name: A값 백필 (공사 BsisAmount 재파싱)
+
+on:
+  workflow_dispatch:
+    inputs:
+      from:
+        description: "시작월 (YYYYMM, 기본 200201)"
+        required: false
+        default: "200201"
+      to:
+        description: "종료월 (YYYYMM, 기본 201412)"
+        required: false
+        default: "201412"
+
+jobs:
+  avalue-backfill:
+    name: A값 backfill (CnstwkBsisAmount 재호출)
+    runs-on: ubuntu-latest
+    timeout-minutes: 355
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v3
+        with:
+          version: 9.0.0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: 의존성 설치
+        run: pnpm install --no-frozen-lockfile
+
+      - name: A값 backfill 실행
+        working-directory: apps/crawler
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          KONEPS_API_KEY: ${{ secrets.KONEPS_API_KEY }}
+          G2B_API_KEY: ${{ secrets.G2B_API_KEY }}
+        run: |
+          FROM="${{ github.event.inputs.from || '200201' }}"
+          TO="${{ github.event.inputs.to || '201412' }}"
+          echo "실행: pnpm ts-node src/bulk-avalue-backfill.ts --from=$FROM --to=$TO"
+          pnpm ts-node src/bulk-avalue-backfill.ts --from=$FROM --to=$TO

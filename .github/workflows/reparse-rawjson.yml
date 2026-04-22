@@ -1,0 +1,45 @@
+name: rawJson 7개 필드 승격 (v7, API 0회)
+
+on:
+  workflow_dispatch:
+    inputs:
+      from:
+        description: "수집 시작월 (YYYYMM, 기본 200201)"
+        required: false
+        default: "200201"
+      to:
+        description: "수집 종료월 (YYYYMM, 기본 현재월)"
+        required: false
+        default: ""
+
+jobs:
+  reparse:
+    name: reparse-rawjson v7 (월별 chunked UPDATE)
+    runs-on: ubuntu-latest
+    timeout-minutes: 355
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v3
+        with:
+          version: 9.0.0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: 의존성 설치
+        run: pnpm install --no-frozen-lockfile
+
+      - name: rawJson 재파싱 (sucsfbidLwltRate + 5개 승격 필드)
+        working-directory: apps/crawler
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: |
+          FROM="${{ github.event.inputs.from || '200201' }}"
+          TO="${{ github.event.inputs.to }}"
+          if [ -z "$TO" ]; then TO=$(date +%Y%m); fi
+          echo "실행: pnpm ts-node src/scripts/reparse-rawjson.ts --from=$FROM --to=$TO"
+          pnpm ts-node src/scripts/reparse-rawjson.ts --from=$FROM --to=$TO

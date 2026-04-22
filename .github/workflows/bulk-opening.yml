@@ -1,4 +1,4 @@
-name: G2B 보조정보 수집 v2 (업종/기초금액/A값/변경이력/외자/사전규격)
+name: G2B 개찰결과 수집 (BidOpeningDetail, CORE 2 재료)
 
 on:
   workflow_dispatch:
@@ -12,12 +12,12 @@ on:
         required: false
         default: ""
   schedule:
-    # 매일 15 UTC (한국 00시) — 신규 공고 증분 (어제 월만)
-    - cron: "0 15 * * *"
+    # 매일 16 UTC (한국 01시) — 어제 개찰결과 증분
+    - cron: "0 16 * * *"
 
 jobs:
-  bulk-extras-v2:
-    name: 보조정보 v2 bulk 수집 (13 API)
+  bulk-opening:
+    name: 개찰결과 4종 수집
     runs-on: ubuntu-latest
     timeout-minutes: 355
 
@@ -39,7 +39,7 @@ jobs:
       - name: Prisma Client 생성
         run: pnpm --filter @naktal/db exec prisma generate
 
-      - name: 보조정보 v2 수집
+      - name: 개찰결과 bulk 수집
         working-directory: apps/crawler
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
@@ -48,7 +48,6 @@ jobs:
           KONEPS_API_KEY: ${{ secrets.KONEPS_API_KEY }}
           G2B_API_KEY: ${{ secrets.G2B_API_KEY }}
         run: |
-          # 스케줄 실행(cron)이면 어제 월, 수동이면 입력 범위
           if [ "${{ github.event_name }}" = "schedule" ]; then
             FROM=$(date -d "1 day ago" +%Y%m)
             TO=$(date +%Y%m)
@@ -57,5 +56,5 @@ jobs:
             TO="${{ github.event.inputs.to }}"
             if [ -z "$TO" ]; then TO=$(date +%Y%m); fi
           fi
-          echo "실행: pnpm ts-node src/bulk-import-extras-v2.ts --from=$FROM --to=$TO"
-          pnpm ts-node src/bulk-import-extras-v2.ts --from=$FROM --to=$TO
+          echo "실행: pnpm ts-node src/bulk-opening.ts --from=$FROM --to=$TO"
+          pnpm ts-node src/bulk-opening.ts --from=$FROM --to=$TO
