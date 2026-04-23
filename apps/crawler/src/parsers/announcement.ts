@@ -8,6 +8,14 @@ export interface AnnouncementRow {
   region: string;
   rawJson: Record<string, string>;
   subCategories: string[];
+  // rawJson 승격 필드 (reparse 없이 INSERT 시 직접 채움)
+  sucsfbidLwltRate?: number;
+  bidNtceDtlUrl?: string;
+  ntceInsttOfclTelNo?: string;
+  jntcontrctDutyRgnNm?: string;
+  ciblAplYn?: string;
+  mtltyAdvcPsblYn?: string;
+  prtcptPsblRgnNm?: string;
 }
 
 /**

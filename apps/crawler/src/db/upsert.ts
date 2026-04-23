@@ -61,6 +61,13 @@ export async function upsertAnnouncement(data: AnnouncementRow): Promise<void> {
       region:        data.region,
       rawJson:       data.rawJson,
       subCategories: data.subCategories,
+      sucsfbidLwltRate:    data.sucsfbidLwltRate ?? 0,
+      bidNtceDtlUrl:       data.bidNtceDtlUrl ?? "",
+      ntceInsttOfclTelNo:  data.ntceInsttOfclTelNo ?? "",
+      jntcontrctDutyRgnNm: data.jntcontrctDutyRgnNm ?? "",
+      ciblAplYn:           data.ciblAplYn ?? "",
+      mtltyAdvcPsblYn:     data.mtltyAdvcPsblYn ?? "",
+      prtcptPsblRgnNm:     data.prtcptPsblRgnNm ?? "",
     },
     { onConflict: "konepsId" }
   );
@@ -98,6 +105,13 @@ export async function upsertAnnouncementBatch(rows: AnnouncementRow[]): Promise<
         region:        data.region,
         rawJson:       data.rawJson,
         subCategories: data.subCategories,
+        sucsfbidLwltRate:    data.sucsfbidLwltRate ?? 0,
+        bidNtceDtlUrl:       data.bidNtceDtlUrl ?? "",
+        ntceInsttOfclTelNo:  data.ntceInsttOfclTelNo ?? "",
+        jntcontrctDutyRgnNm: data.jntcontrctDutyRgnNm ?? "",
+        ciblAplYn:           data.ciblAplYn ?? "",
+        mtltyAdvcPsblYn:     data.mtltyAdvcPsblYn ?? "",
+        prtcptPsblRgnNm:     data.prtcptPsblRgnNm ?? "",
       })),
       { onConflict: "konepsId" }
     );
@@ -116,7 +130,7 @@ async function upsertAnnouncementBatchPg(rows: AnnouncementRow[]): Promise<numbe
       const chunk = rows.slice(i, i + BATCH);
       const values: unknown[] = [];
       const placeholders = chunk.map((data, j) => {
-        const base = j * 10;
+        const base = j * 17;
         values.push(
           konepsIdToUuid(data.konepsId),
           data.konepsId,
@@ -128,21 +142,35 @@ async function upsertAnnouncementBatchPg(rows: AnnouncementRow[]): Promise<numbe
           data.region,
           JSON.stringify(data.rawJson),
           data.subCategories,
+          data.sucsfbidLwltRate ?? 0,
+          data.bidNtceDtlUrl ?? "",
+          data.ntceInsttOfclTelNo ?? "",
+          data.jntcontrctDutyRgnNm ?? "",
+          data.ciblAplYn ?? "",
+          data.mtltyAdvcPsblYn ?? "",
+          data.prtcptPsblRgnNm ?? "",
         );
-        return `($${base+1},$${base+2},$${base+3},$${base+4},$${base+5},$${base+6},$${base+7},$${base+8},$${base+9}::jsonb,$${base+10})`;
+        return `($${base+1},$${base+2},$${base+3},$${base+4},$${base+5},$${base+6},$${base+7},$${base+8},$${base+9}::jsonb,$${base+10},$${base+11},$${base+12},$${base+13},$${base+14},$${base+15},$${base+16},$${base+17})`;
       }).join(",");
       await client.query(
-        `INSERT INTO "Announcement" (id,"konepsId",title,"orgName",budget,deadline,category,region,"rawJson","subCategories")
+        `INSERT INTO "Announcement" (id,"konepsId",title,"orgName",budget,deadline,category,region,"rawJson","subCategories","sucsfbidLwltRate","bidNtceDtlUrl","ntceInsttOfclTelNo","jntcontrctDutyRgnNm","ciblAplYn","mtltyAdvcPsblYn","prtcptPsblRgnNm")
          VALUES ${placeholders}
          ON CONFLICT ("konepsId") DO UPDATE SET
-           title           = EXCLUDED.title,
-           "orgName"       = EXCLUDED."orgName",
-           budget          = EXCLUDED.budget,
-           deadline        = EXCLUDED.deadline,
-           category        = EXCLUDED.category,
-           region          = EXCLUDED.region,
-           "rawJson"       = EXCLUDED."rawJson",
-           "subCategories" = EXCLUDED."subCategories"`,
+           title                 = EXCLUDED.title,
+           "orgName"             = EXCLUDED."orgName",
+           budget                = EXCLUDED.budget,
+           deadline              = EXCLUDED.deadline,
+           category              = EXCLUDED.category,
+           region                = EXCLUDED.region,
+           "rawJson"             = EXCLUDED."rawJson",
+           "subCategories"       = EXCLUDED."subCategories",
+           "sucsfbidLwltRate"    = CASE WHEN EXCLUDED."sucsfbidLwltRate" > 0 THEN EXCLUDED."sucsfbidLwltRate" ELSE "Announcement"."sucsfbidLwltRate" END,
+           "bidNtceDtlUrl"       = CASE WHEN EXCLUDED."bidNtceDtlUrl" != '' THEN EXCLUDED."bidNtceDtlUrl" ELSE "Announcement"."bidNtceDtlUrl" END,
+           "ntceInsttOfclTelNo"  = CASE WHEN EXCLUDED."ntceInsttOfclTelNo" != '' THEN EXCLUDED."ntceInsttOfclTelNo" ELSE "Announcement"."ntceInsttOfclTelNo" END,
+           "jntcontrctDutyRgnNm" = CASE WHEN EXCLUDED."jntcontrctDutyRgnNm" != '' THEN EXCLUDED."jntcontrctDutyRgnNm" ELSE "Announcement"."jntcontrctDutyRgnNm" END,
+           "ciblAplYn"           = CASE WHEN EXCLUDED."ciblAplYn" != '' THEN EXCLUDED."ciblAplYn" ELSE "Announcement"."ciblAplYn" END,
+           "mtltyAdvcPsblYn"     = CASE WHEN EXCLUDED."mtltyAdvcPsblYn" != '' THEN EXCLUDED."mtltyAdvcPsblYn" ELSE "Announcement"."mtltyAdvcPsblYn" END,
+           "prtcptPsblRgnNm"     = CASE WHEN EXCLUDED."prtcptPsblRgnNm" != '' THEN EXCLUDED."prtcptPsblRgnNm" ELSE "Announcement"."prtcptPsblRgnNm" END`,
         values,
       );
       saved += chunk.length;
