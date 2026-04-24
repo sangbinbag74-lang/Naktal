@@ -33,14 +33,29 @@ MODEL_PATH = MODEL_DIR / "sajung_lgbm_v2.pkl"
 
 CATEGORICAL_COLS = ["category", "orgName", "budgetRange", "region", "subcat_main"]
 NUMERIC_COLS = [
-    "month", "year", "budget_log", "numBidders",
+    # 기본
+    "month", "year", "weekday", "is_quarter_end", "is_year_end", "season_q",
+    "budget_log", "numBidders",
+    # SajungStat
     "stat_avg", "stat_stddev", "stat_p25", "stat_p75", "sampleSize",
-    "bidder_volatility", "is_sparse_org", "season_q",
-    # 신규
+    "bidder_volatility", "is_sparse_org",
+    # A값
     "aValueTotal_log", "aValue_ratio", "has_avalue",
+    # 기초금액
     "bsisAmt_log", "bsis_to_budget",
+    # 낙찰하한율/예가범위
     "lwltRate", "rsrvtn_bgn", "rsrvtn_end",
+    # 변경공고/사전규격
     "has_prestdrd", "chg_count",
+    # Expanding mean 24개 (Leakage-free 과거 통계)
+    "org_past_mean", "org_past_std", "org_past_cnt",
+    "cat_past_mean", "cat_past_std", "cat_past_cnt",
+    "reg_past_mean", "reg_past_std", "reg_past_cnt",
+    "bud_past_mean", "bud_past_std", "bud_past_cnt",
+    "sub_past_mean", "sub_past_std", "sub_past_cnt",
+    "orgcat_past_mean", "orgcat_past_std", "orgcat_past_cnt",
+    "catreg_past_mean", "catreg_past_std", "catreg_past_cnt",
+    "orgbud_past_mean", "orgbud_past_std", "orgbud_past_cnt",
 ]
 TARGET_COL = "sajung_rate"
 
@@ -149,9 +164,9 @@ def main():
     target_mae = 0.4
     print(f"\n목표 MAE ≤ {target_mae}% vs 실제 test MAE = {mae_test:.4f}%")
     if mae_test <= target_mae:
-        print("✅ 목표 달성")
+        print("[OK] 목표 달성")
     else:
-        print(f"⚠️ 목표 미달 — 피처 공학 추가 검토 필요")
+        print(f"[WARN] 목표 미달 - 피처 공학 추가 검토 필요")
 
     MODEL_DIR.mkdir(parents=True, exist_ok=True)
     joblib.dump({

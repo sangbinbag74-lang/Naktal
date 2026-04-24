@@ -22,6 +22,9 @@ import numpy as np
 from onnxmltools import convert_lightgbm
 from onnxmltools.convert.common.data_types import FloatTensorType
 
+# LightGBM leaf-wise tree는 depth가 깊어 ONNX 파싱 시 기본 재귀한도(1000) 초과 가능
+sys.setrecursionlimit(20000)
+
 ROOT = Path(__file__).resolve().parent
 MODEL_DIR = ROOT / "models"
 OUT_DIR = ROOT.parent / "web" / "ml"
@@ -42,7 +45,7 @@ def convert_single(model_path: Path, out_name: str, n_features: int | None = Non
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     with open(out_path, "wb") as f:
         f.write(onnx_model.SerializeToString())
-    print(f"  ✅ ONNX: {out_path} ({out_path.stat().st_size / 1024 / 1024:.2f} MB)")
+    print(f"  [OK] ONNX: {out_path} ({out_path.stat().st_size / 1024 / 1024:.2f} MB)")
 
     # 인코더 JSON 출력
     # encoders: {col: {class_name: index}} 형식 (기존 ml-predict route 호환)
@@ -60,7 +63,7 @@ def convert_single(model_path: Path, out_name: str, n_features: int | None = Non
     meta_path = OUT_DIR / f"{out_name}_meta.json"
     with open(meta_path, "w", encoding="utf-8") as f:
         json.dump(meta, f, ensure_ascii=False, indent=2)
-    print(f"  ✅ Meta: {meta_path}")
+    print(f"  [OK] Meta: {meta_path}")
 
 
 def convert_opening() -> None:
@@ -110,7 +113,7 @@ def convert_opening() -> None:
         json.dump(meta, f, ensure_ascii=False, indent=2)
 
     total_size = sum(p.stat().st_size for p in opening_dir.glob("*.onnx"))
-    print(f"  ✅ 15개 ONNX → {opening_dir} (합계 {total_size / 1024 / 1024:.2f} MB)")
+    print(f"  [OK] 15개 ONNX → {opening_dir} (합계 {total_size / 1024 / 1024:.2f} MB)")
 
 
 def main():

@@ -1,8 +1,10 @@
 /**
  * ML 사정율 예측 API (Next.js Route Handler)
  *
- * LightGBM → ONNX 변환된 모델을 onnxruntime-node로 직접 추론.
- * apps/web/ml/sajung_lgbm.onnx + sajung_encoders.json 사용.
+ * LightGBM v2 (54 피처, expanding mean 포함) → ONNX 직접 추론.
+ * apps/web/ml/sajung_lgbm_v2.onnx + sajung_lgbm_v2_meta.json 사용.
+ *
+ * 호출자가 일부 피처만 제공해도 동작 (미제공 피처는 학습 시 global default로 채움).
  *
  * 엔드포인트:
  *   GET  /api/ml-predict  → health check
@@ -18,8 +20,20 @@ export const dynamic = "force-dynamic";
 export const maxDuration = 15;
 
 const ML_DIR = path.join(process.cwd(), "ml");
-const MODEL_PATH = path.join(ML_DIR, "sajung_lgbm.onnx");
-const ENCODERS_PATH = path.join(ML_DIR, "sajung_encoders.json");
+const MODEL_PATH = path.join(ML_DIR, "sajung_lgbm_v2.onnx");
+const ENCODERS_PATH = path.join(ML_DIR, "sajung_lgbm_v2_meta.json");
+
+// 학습 시 expanding mean의 결측 → 전역 평균/표준편차로 채움 (merge_raw.py 참고)
+const GLOBAL_SAJUNG_MEAN = 99.72;
+const GLOBAL_SAJUNG_STD = 0.95;
+
+function featureDefault(col: string): number {
+  if (col.endsWith("_mean")) return GLOBAL_SAJUNG_MEAN;
+  if (col.endsWith("_std")) return GLOBAL_SAJUNG_STD;
+  if (col.endsWith("_cnt")) return 0;
+  if (col === "lwltRate") return 87.745;
+  return 0;
+}
 
 // onnxruntime-web이 WASM 파일을 찾을 위치 지정 (번들에 포함된 local 경로)
 // file:// 프로토콜로 명시해야 Node.js dynamic import가 동작
@@ -113,7 +127,7 @@ export async function POST(req: NextRequest) {
       row[i] = meta.encoders[col]?.[key] ?? -1;
     } else {
       const n = Number(raw);
-      row[i] = Number.isFinite(n) ? n : 0;
+      row[i] = Number.isFinite(n) ? n : featureDefault(col);
     }
   }
 

@@ -113,7 +113,7 @@ export function MlModelStatus() {
 
               {!ok && !loading && (
                 <div style={{ fontSize: 10, color: "#DC2626", marginTop: 4 }}>
-                  {s.error?.slice(0, 80) ?? "응답 없음"}
+                  {s?.error?.slice(0, 80) ?? "응답 없음"}
                 </div>
               )}
 

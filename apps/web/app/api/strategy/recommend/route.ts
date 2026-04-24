@@ -125,7 +125,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       mlCombo = mlPrediction.top4;
       // freqMap(통계, 번호1~15) + ML 확률 blend → 번호별 최종 선택 확률
       const blended = blendWithFrequency(mlPrediction.probs, result.combo1.freqMap, 0.6);
-      for (let i = 0; i < 15; i++) blendedFreqMap[i + 1] = Math.round(blended[i] * 10000) / 10000;
+      for (let i = 0; i < 15; i++) blendedFreqMap[i + 1] = Math.round((blended[i] ?? 0) * 10000) / 10000;
     }
   } catch (e) {
     console.error("[recommend] ML opening 실패 (통계로 폴백):", e);
