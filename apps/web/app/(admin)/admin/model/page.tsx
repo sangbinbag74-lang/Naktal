@@ -1,4 +1,5 @@
 import { createAdminClient } from "@/lib/supabase/server";
+import { MlModelStatus } from "@/components/admin/MlModelStatus";
 
 export const dynamic = "force-dynamic";
 
@@ -59,6 +60,9 @@ export default async function AdminModelPage() {
           ))}
         </div>
       </div>
+
+      {/* ── ML 모델 상태 (Model 1/2/3) ── */}
+      <MlModelStatus />
 
       {/* ── 최근 크롤링 현황 ── */}
       <div style={{ background: "#fff", borderRadius: 14, border: "1px solid #E8ECF2", padding: "20px" }}>

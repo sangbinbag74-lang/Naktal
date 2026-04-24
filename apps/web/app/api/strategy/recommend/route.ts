@@ -3,6 +3,7 @@ import { randomUUID } from "crypto";
 import { createClient, createAdminClient } from "@/lib/supabase/server";
 import { Feature, canAccess } from "@/lib/plan-guard";
 import { recommendNumbers } from "@/lib/core1/frequency-engine";
+import { predictOpeningNumbers, blendWithFrequency } from "@/lib/core2/opening-engine";
 import { rateLimit } from "@/lib/rate-limit";
 import { isMultiplePriceBid, getBudgetRange } from "@/lib/bid-utils";
 import type { Plan } from "@naktal/types";
@@ -49,7 +50,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   // 공고 조회 (UUID 또는 konepsId 모두 허용)
   const { data: ann } = await admin
     .from("Announcement")
-    .select("id,konepsId,title,orgName,budget,deadline,category,region,rawJson")
+    .select("id,konepsId,title,orgName,budget,deadline,category,region,rawJson,bsisAmt,sucsfbidLwltRate,subCategories,aValueTotal")
     .or(`id.eq.${body.annId},konepsId.eq.${body.annId}`)
     .maybeSingle();
 
@@ -92,6 +93,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   const budgetNum = Number(ann.budget);
   const budgetRange = getBudgetRange(budgetNum);
 
+  // 통계 기반 (frequency-engine) 추천 — 기존 유지
   const result = await recommendNumbers({
     annId: ann.id,
     category: ann.category,
@@ -101,6 +103,33 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL!,
     supabaseKey: process.env.SUPABASE_SERVICE_ROLE_KEY!,
   });
+
+  // ML 기반 (Model 2 opening-engine) 추천 — 병렬, 실패 시 null
+  let mlPrediction: Awaited<ReturnType<typeof predictOpeningNumbers>> = null;
+  let mlCombo: number[] = [];
+  let blendedFreqMap: Record<number, number> = {};
+  try {
+    mlPrediction = await predictOpeningNumbers({
+      category: ann.category,
+      orgName: ann.orgName,
+      region: ann.region,
+      budget: Number(ann.budget),
+      bsisAmt: Number(ann.bsisAmt ?? 0),
+      lwltRate: Number(ann.sucsfbidLwltRate ?? 87.745),
+      deadline: new Date(ann.deadline),
+      subCategories: (ann.subCategories as string[]) ?? [],
+      numBidders: body.estimatedBidders ?? 0,
+      aValueTotal: Number(ann.aValueTotal ?? 0),
+    });
+    if (mlPrediction) {
+      mlCombo = mlPrediction.top4;
+      // freqMap(통계, 번호1~15) + ML 확률 blend → 번호별 최종 선택 확률
+      const blended = blendWithFrequency(mlPrediction.probs, result.combo1.freqMap, 0.6);
+      for (let i = 0; i < 15; i++) blendedFreqMap[i + 1] = Math.round(blended[i] * 10000) / 10000;
+    }
+  } catch (e) {
+    console.error("[recommend] ML opening 실패 (통계로 폴백):", e);
+  }
 
   // 추천 이력 저장
   const { error: insertError } = await admin.from("NumberRecommendation").insert({
@@ -123,6 +152,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   if (insertError) console.error("[recommend] NumberRecommendation insert error:", insertError.message);
 
   return NextResponse.json({
+    // 통계 기반 combo (기존 호환)
     combo1: result.combo1.numbers,
     combo2: result.combo2.numbers,
     combo3: result.combo3.numbers,
@@ -135,6 +165,11 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     sampleSize: result.sampleSize,
     modelVersion: result.modelVersion,
     isEstimated: result.isEstimated,
+    // ML 기반 (Model 2) — 실패 시 빈 배열/null
+    mlCombo,
+    mlProbs: mlPrediction?.probs ?? [],
+    mlVersion: mlPrediction?.model_version ?? null,
+    blendedFreqMap,
     announcementTitle: ann.title,
     announcementBudget: ann.budget,
     announcementOrg: ann.orgName,
