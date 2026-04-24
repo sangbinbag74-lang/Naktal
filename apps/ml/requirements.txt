@@ -3,7 +3,13 @@ pandas>=2.2.3
 scikit-learn>=1.5.2
 numpy>=2.1.0
 joblib>=1.4.2
+# FastAPI (레거시, Railway 금지 — 로컬 서빙용만 남김)
 fastapi>=0.115.0
 uvicorn>=0.30.0
 python-dotenv>=1.0.1
 pydantic>=2.9.0
+# ONNX 변환 (Next.js onnxruntime-web 서빙)
+onnxmltools>=1.12.0
+skl2onnx>=1.17.0
+onnxconverter-common>=1.14.0
+onnx>=1.17.0
