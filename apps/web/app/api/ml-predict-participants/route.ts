@@ -1,5 +1,10 @@
 /**
- * Model 3 — 참여자수 예측 API
+ * ⚠️ 2026-04-24 배포 포기 — RMSE 59명, 실용 불가
+ *    memory/project_ml_model3_abandoned.md 참조
+ *    endpoint 보존 (ONNX 파일 없음 → init 실패 → 호출 시 500)
+ *    UI/엔진에서 호출 제거됨
+ *
+ * Model 3 — 참여자수 예측 API (DEPRECATED)
  *
  * POST body:
  *   category, orgName, budgetRange, region, subcat_main (categorical)

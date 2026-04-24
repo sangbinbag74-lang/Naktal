@@ -1,10 +1,14 @@
 /**
  * CORE 3 ML: 참여자수 예측 엔진
  *
- * Model 3 (LightGBM XGBoost-like, ONNX) 호출 → 예상 참여자 수
+ * ⚠️ 2026-04-24 배포 포기 — RMSE 59명, 실용 불가 판정
+ *    memory/project_ml_model3_abandoned.md 참조
+ *    현재 어떤 UI/API에서도 호출하지 않음. 코드 보존 (분류 모델 재설계 시 참고)
+ *
+ * Model 3 (LightGBM regression, ONNX) 호출 → 예상 참여자 수
  * 공고 직후부터 사용 가능 (기존 실시간 크롤링 대체/보조)
  *
- * 사용:
+ * 사용 (deprecated):
  *   const n = await predictParticipants({ annId, ... });
  *   if (n != null) { ... }
  */

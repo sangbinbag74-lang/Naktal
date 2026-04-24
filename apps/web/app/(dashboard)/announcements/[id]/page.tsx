@@ -5,7 +5,6 @@ import { isMultiplePriceBid } from "@/lib/bid-utils";
 import { AnnouncementTabs } from "@/components/naktal/AnnouncementTabs";
 import { AiAnalysisPanel } from "@/components/naktal/AiAnalysisPanel";
 import { NumberAnalysisSection } from "@/components/naktal/NumberAnalysisSection";
-import { ParticipantPrediction } from "@/components/naktal/ParticipantPrediction";
 import { SaveButton } from "@/components/naktal/SaveButton";
 import { BidRequestButton } from "@/components/naktal/BidRequestButton";
 import {
@@ -376,18 +375,6 @@ export default async function AnnouncementDetailPage({
 
         {/* 2열: AI 분석 패널 + 번호 분석 */}
         <div style={{ display: "flex", flexDirection: "column", gap: 16, minWidth: 0 }}>
-          <ParticipantPrediction
-            annId={a.konepsId}
-            category={a.category}
-            orgName={a.orgName}
-            region={a.region}
-            budget={bdgtAmt || 0}
-            bsisAmt={Number(String((a as { bsisAmt?: string }).bsisAmt ?? "0").replace(/[^0-9]/g, "")) || 0}
-            lwltRate={lowerLimitRate}
-            deadline={a.deadline}
-            subCategories={subCats}
-            aValueTotal={aValueTotal}
-          />
           <AiAnalysisPanel
             annDbId={a.id}
             budget={bdgtAmt || 0}

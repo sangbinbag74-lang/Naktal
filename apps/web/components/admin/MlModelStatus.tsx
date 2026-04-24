@@ -28,11 +28,8 @@ const MODELS: ModelCard[] = [
     endpoint: "/api/ml-predict-numbers",
     description: "CORE 2 15개 LightGBM binary, BidOpeningDetail 학습",
   },
-  {
-    name: "Model 3 · 참여자수 예측",
-    endpoint: "/api/ml-predict-participants",
-    description: "CORE 3 LightGBM regression, 공고 직후부터 예측",
-  },
+  // Model 3 (참여자수) — 배포 포기 (RMSE 59명 실용 불가, 2026-04-24)
+  //   project_ml_model3_abandoned.md 참조
 ];
 
 export function MlModelStatus() {

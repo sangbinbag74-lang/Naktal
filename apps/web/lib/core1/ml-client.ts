@@ -113,7 +113,9 @@ export async function fetchMlOpening(features: OpeningMlFeatures): Promise<Openi
   }
 }
 
-// ─── Model 3: 참여자수 예측 ───────────────────────────────────────────────────
+// ─── Model 3: 참여자수 예측 (DEPRECATED 2026-04-24) ──────────────────────────
+// RMSE 59명, 실용 불가로 배포 포기.
+// memory/project_ml_model3_abandoned.md 참조. 코드 보존, UI 미호출.
 
 export interface ParticipantsMlFeatures {
   category: string;
