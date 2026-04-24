@@ -87,6 +87,30 @@ function g2bToAnnouncement(item: G2BAnnouncement): Announcement {
   };
 }
 
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}): Promise<{ title: string; description?: string; openGraph?: Record<string, unknown> }> {
+  const { id } = await params;
+  const admin = createAdminClient();
+  const col = isUUID(id) ? "id" : "konepsId";
+  const { data } = await admin
+    .from("Announcement")
+    .select("title,orgName,budget,region,deadline")
+    .eq(col, id)
+    .maybeSingle();
+  if (!data) return { title: "공고 상세 — Naktal" };
+  const ann = data as { title: string; orgName: string; budget: string; region: string; deadline: string };
+  const desc = `${ann.orgName} · ${ann.region} · ${fmt(ann.budget)} · 마감 ${fmtDate(ann.deadline)}`;
+  const title = `${ann.title} — Naktal`;
+  return {
+    title,
+    description: desc,
+    openGraph: { title, description: desc, type: "article" },
+  };
+}
+
 export default async function AnnouncementDetailPage({
   params,
 }: {

@@ -330,6 +330,10 @@ export async function predictOptimalBid(params: {
   lowerLimitRate: number; // 낙찰하한율 % (예: 87.745)
   deadlineMonth: number;  // 1~12
   aValueTotal?: number;   // A값 합산 (원, A값 공고만. 없으면 0)
+  // v2 선택 피처 (호출자 제공 시 ML 정확도 향상)
+  deadlineDate?: string | Date;
+  bsisAmt?: number;
+  subCategories?: string[];
 }): Promise<SajungPrediction> {
   const budgetRange = classifyBudget(params.budget);
   const orgName = params.orgName;
@@ -470,17 +474,26 @@ export async function predictOptimalBid(params: {
     ? weightedAvg + trendResult.adjustment
     : stat.avg * 0.7 + monthAdj * 0.3;
 
-  // 5-b. ML 예측 (LightGBM, 통계 피처 전달). 실패 시 null.
+  // 5-b. ML 예측 (LightGBM v2, 54 피처). 실패 시 null.
   const mlStddev = stat.stddev ?? 2;
+  const month = params.deadlineMonth;
+  const deadlineDate = new Date(params.deadlineDate ?? Date.now());
+  // SajungRateStat 값을 v2 expanding mean 피처 프록시로 매핑
+  // (실시간 expanding mean 계산은 DB 부담 → 이미 집계된 stat을 재활용)
   const mlPred = await fetchMlSajung({
     category: params.category,
     orgName: params.orgName,
     budgetRange,
     region: params.region || "전국",
-    month: params.deadlineMonth,
-    year: new Date().getFullYear(),
+    subcat_main: (params.subCategories?.[0] ?? ""),
+    month,
+    year: deadlineDate.getFullYear(),
+    weekday: deadlineDate.getDay(),
+    is_quarter_end: [3, 6, 9, 12].includes(month) ? 1 : 0,
+    is_year_end: [11, 12].includes(month) ? 1 : 0,
+    season_q: Math.ceil(month / 3),
     budget_log: Math.log(Math.max(1, params.budget)),
-    numBidders: 25, // 디폴트 (competition 분석은 analyzeCompetition에서 별도 처리)
+    numBidders: 25,
     stat_avg: stat.avg,
     stat_stddev: mlStddev,
     stat_p25: stat.p25 ?? 99,
@@ -488,7 +501,23 @@ export async function predictOptimalBid(params: {
     sampleSize: stat.sampleSize,
     bidder_volatility: stat.avg > 0 ? mlStddev / stat.avg : 0,
     is_sparse_org: stat.sampleSize < 30 ? 1 : 0,
-    season_q: Math.ceil(params.deadlineMonth / 3),
+    // v2 신규 (공고 본문 피처)
+    aValueTotal_log: params.aValueTotal && params.aValueTotal > 0 ? Math.log(params.aValueTotal + 1) : 0,
+    aValue_ratio: params.aValueTotal && params.budget > 0 ? params.aValueTotal / params.budget : 0,
+    has_avalue: params.aValueTotal && params.aValueTotal > 0 ? 1 : 0,
+    bsisAmt_log: params.bsisAmt && params.bsisAmt > 0 ? Math.log(params.bsisAmt) : 0,
+    bsis_to_budget: params.bsisAmt && params.budget > 0 ? params.bsisAmt / params.budget : 0,
+    lwltRate: params.lowerLimitRate ?? 87.745,
+    // expanding mean 프록시: SajungRateStat 집계값 매핑
+    org_past_mean: stat.avg,
+    org_past_std: mlStddev,
+    org_past_cnt: stat.sampleSize,
+    orgcat_past_mean: stat.avg,
+    orgcat_past_std: mlStddev,
+    orgcat_past_cnt: stat.sampleSize,
+    orgbud_past_mean: stat.avg,
+    orgbud_past_std: mlStddev,
+    orgbud_past_cnt: stat.sampleSize,
   });
 
   // 5-c. 앙상블: ML 성공 시 0.4×stat + 0.6×ML, 실패 시 통계 단독

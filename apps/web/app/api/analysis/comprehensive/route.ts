@@ -43,7 +43,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   // ─── 공고 조회 ─────────────────────────────────────────────────────────────
   const { data: ann } = await admin
     .from("Announcement")
-    .select("id,konepsId,title,orgName,budget,deadline,category,region,rawJson,aValueYn,aValueAmt,aValueTotal")
+    .select("id,konepsId,title,orgName,budget,deadline,category,region,rawJson,aValueYn,aValueAmt,aValueTotal,bsisAmt,subCategories")
     .or(`id.eq.${body.annId},konepsId.eq.${body.annId}`)
     .maybeSingle();
 
@@ -142,6 +142,9 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       lowerLimitRate,
       deadlineMonth,
       aValueTotal,
+      deadlineDate: ann.deadline as string,
+      bsisAmt: Number(ann.bsisAmt ?? 0),
+      subCategories: (ann.subCategories as string[]) ?? [],
     }),
     analyzeCompetition({
       orgName: ann.orgName as string,

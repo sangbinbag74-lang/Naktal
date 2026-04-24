@@ -14,8 +14,13 @@ export interface MlFeatures {
   orgName: string;
   budgetRange: string;
   region: string;
+  subcat_main?: string;
   month: number;
   year: number;
+  weekday?: number;
+  is_quarter_end?: number;
+  is_year_end?: number;
+  season_q: number;
   budget_log: number;
   numBidders: number;
   stat_avg: number;
@@ -25,7 +30,42 @@ export interface MlFeatures {
   sampleSize: number;
   bidder_volatility: number;
   is_sparse_org: number;
-  season_q: number;
+  // v2 신규 (선택 — 호출자가 제공하면 정확도 향상, 미제공 시 route에서 global default)
+  aValueTotal_log?: number;
+  aValue_ratio?: number;
+  has_avalue?: number;
+  bsisAmt_log?: number;
+  bsis_to_budget?: number;
+  lwltRate?: number;
+  rsrvtn_bgn?: number;
+  rsrvtn_end?: number;
+  has_prestdrd?: number;
+  chg_count?: number;
+  // expanding mean 프록시 (SajungRateStat 값 전달 가능)
+  org_past_mean?: number;
+  org_past_std?: number;
+  org_past_cnt?: number;
+  cat_past_mean?: number;
+  cat_past_std?: number;
+  cat_past_cnt?: number;
+  reg_past_mean?: number;
+  reg_past_std?: number;
+  reg_past_cnt?: number;
+  bud_past_mean?: number;
+  bud_past_std?: number;
+  bud_past_cnt?: number;
+  sub_past_mean?: number;
+  sub_past_std?: number;
+  sub_past_cnt?: number;
+  orgcat_past_mean?: number;
+  orgcat_past_std?: number;
+  orgcat_past_cnt?: number;
+  catreg_past_mean?: number;
+  catreg_past_std?: number;
+  catreg_past_cnt?: number;
+  orgbud_past_mean?: number;
+  orgbud_past_std?: number;
+  orgbud_past_cnt?: number;
 }
 
 function getBaseUrl(): string {

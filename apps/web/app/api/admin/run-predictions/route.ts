@@ -26,7 +26,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   // 진행중 공고 조회 (마감 안 된 것)
   const { data: announcements, error } = await admin
     .from("Announcement")
-    .select("id, orgName, category, budget, region, deadline, rawJson")
+    .select("id, orgName, category, budget, region, deadline, rawJson, bsisAmt, subCategories, aValueTotal")
     .gt("deadline", now)
     .order("deadline", { ascending: true })
     .limit(BATCH_LIMIT * 3);
@@ -77,6 +77,10 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
           region: ann.region as string,
           lowerLimitRate,
           deadlineMonth,
+          aValueTotal: Number(ann.aValueTotal ?? 0),
+          deadlineDate: ann.deadline as string,
+          bsisAmt: Number(ann.bsisAmt ?? 0),
+          subCategories: (ann.subCategories as string[]) ?? [],
         }),
         analyzeCompetition({
           orgName: ann.orgName as string,
