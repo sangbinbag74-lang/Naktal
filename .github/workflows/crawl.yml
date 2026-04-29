@@ -1,10 +1,9 @@
 name: G2B 나라장터 데이터 수집
 
 on:
-  # 매일 KST 23:00 (UTC 14:00) — 보조정보 수집 전 공고 목록 먼저 갱신
-  schedule:
-    - cron: "0 14 * * *"   # KST 23:00 (bulk-extras UTC 15:00, bulk-opening UTC 16:00 전)
-  # 수동 실행 (과거 데이터 대량 수집 등)
+  # schedule 비활성화 (g2b.yml로 통합 — 2026-04-29)
+  # schedule:
+  #   - cron: "0 14 * * *"
   workflow_dispatch:
     inputs:
       type:

@@ -1,0 +1,242 @@
+name: G2B 통합 수집
+
+on:
+  workflow_dispatch:
+    inputs:
+      job:
+        description: "실행 작업"
+        required: true
+        type: choice
+        default: daily
+        options:
+          - daily          # announcement → extras → opening 순차 (cron 동일)
+          - announcement   # 공고/낙찰 신규 (crawl.yml)
+          - extras         # 보조정보 v2 (bulk-extras.yml)
+          - opening        # 개찰결과 (bulk-opening.yml)
+          - reparse        # rawJson 재파싱 (reparse-rawjson.yml)
+          - avalue         # A값 백필 (bulk-avalue-backfill.yml)
+          - import         # 전체 역대 (bulk-import.yml)
+      from:
+        description: "시작월/시작일 (YYYYMM 또는 YYYYMMDD)"
+        required: false
+        default: ""
+      to:
+        description: "종료월/종료일 (YYYYMM 또는 YYYYMMDD)"
+        required: false
+        default: ""
+  schedule:
+    - cron: "0 14 * * *"   # 매일 KST 23:00 — daily (announcement → extras → opening 순차)
+
+env:
+  NODE_VERSION: "20"
+  PNPM_VERSION: "9.0.0"
+
+jobs:
+  setup:
+    runs-on: ubuntu-latest
+    outputs:
+      job: ${{ steps.set.outputs.job }}
+      from: ${{ steps.set.outputs.from }}
+      to: ${{ steps.set.outputs.to }}
+    steps:
+      - id: set
+        run: |
+          if [ "${{ github.event_name }}" = "schedule" ]; then
+            echo "job=daily" >> $GITHUB_OUTPUT
+          else
+            echo "job=${{ github.event.inputs.job }}" >> $GITHUB_OUTPUT
+          fi
+          echo "from=${{ github.event.inputs.from }}" >> $GITHUB_OUTPUT
+          echo "to=${{ github.event.inputs.to }}" >> $GITHUB_OUTPUT
+
+  announcement:
+    needs: setup
+    if: needs.setup.outputs.job == 'announcement' || needs.setup.outputs.job == 'daily'
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v3
+        with: { version: "9.0.0" }
+      - uses: actions/setup-node@v4
+        with: { node-version: "20", cache: pnpm }
+      - run: pnpm install --no-frozen-lockfile
+      - name: 공고/낙찰 신규 수집
+        working-directory: apps/crawler
+        env:
+          G2B_API_KEY: ${{ secrets.G2B_API_KEY }}
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          FROM="${{ needs.setup.outputs.from }}"
+          if [ -z "$FROM" ]; then FROM=$(date -d '30 days ago' +%Y%m%d); fi
+          TO="${{ needs.setup.outputs.to }}"
+          CMD="pnpm ts-node src/index.ts --type announcement --pages 999 --from $FROM"
+          if [ -n "$TO" ]; then CMD="$CMD --to $TO"; fi
+          echo "실행: $CMD"
+          eval $CMD
+      - name: 부종공종 채우기
+        working-directory: apps/crawler
+        env:
+          G2B_API_KEY: ${{ secrets.G2B_API_KEY }}
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: pnpm ts-node src/index.ts --type fill-sub
+      - name: A값 채우기
+        working-directory: apps/crawler
+        env:
+          G2B_API_KEY: ${{ secrets.G2B_API_KEY }}
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: pnpm ts-node src/index.ts --type fill-avalue
+
+  extras:
+    needs: [setup, announcement]
+    if: |
+      always() &&
+      (needs.setup.outputs.job == 'extras' || needs.setup.outputs.job == 'daily') &&
+      (needs.announcement.result == 'success' || needs.announcement.result == 'skipped')
+    runs-on: ubuntu-latest
+    timeout-minutes: 355
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v3
+        with: { version: "9.0.0" }
+      - uses: actions/setup-node@v4
+        with: { node-version: "20", cache: pnpm }
+      - run: pnpm install --no-frozen-lockfile
+      - run: pnpm --filter @naktal/db exec prisma generate
+      - name: 보조정보 v2 수집
+        working-directory: apps/crawler
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          KONEPS_API_KEY: ${{ secrets.KONEPS_API_KEY }}
+          G2B_API_KEY: ${{ secrets.G2B_API_KEY }}
+        run: |
+          if [ "${{ needs.setup.outputs.job }}" = "daily" ]; then
+            FROM=$(date -d "1 day ago" +%Y%m)
+            TO=$(date +%Y%m)
+          else
+            FROM="${{ needs.setup.outputs.from }}"
+            TO="${{ needs.setup.outputs.to }}"
+            if [ -z "$FROM" ]; then FROM="200201"; fi
+            if [ -z "$TO" ]; then TO=$(date +%Y%m); fi
+          fi
+          echo "실행: pnpm ts-node src/bulk-import-extras-v2.ts --from=$FROM --to=$TO"
+          pnpm ts-node src/bulk-import-extras-v2.ts --from=$FROM --to=$TO
+
+  opening:
+    needs: [setup, extras]
+    if: |
+      always() &&
+      (needs.setup.outputs.job == 'opening' || needs.setup.outputs.job == 'daily') &&
+      (needs.extras.result == 'success' || needs.extras.result == 'skipped')
+    runs-on: ubuntu-latest
+    timeout-minutes: 355
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v3
+        with: { version: "9.0.0" }
+      - uses: actions/setup-node@v4
+        with: { node-version: "20", cache: pnpm }
+      - run: pnpm install --no-frozen-lockfile
+      - run: pnpm --filter @naktal/db exec prisma generate
+      - name: 개찰결과 bulk 수집
+        working-directory: apps/crawler
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          KONEPS_API_KEY: ${{ secrets.KONEPS_API_KEY }}
+          G2B_API_KEY: ${{ secrets.G2B_API_KEY }}
+        run: |
+          if [ "${{ needs.setup.outputs.job }}" = "daily" ]; then
+            FROM=$(date -d "1 day ago" +%Y%m)
+            TO=$(date +%Y%m)
+          else
+            FROM="${{ needs.setup.outputs.from }}"
+            TO="${{ needs.setup.outputs.to }}"
+            if [ -z "$FROM" ]; then FROM="200201"; fi
+            if [ -z "$TO" ]; then TO=$(date +%Y%m); fi
+          fi
+          echo "실행: pnpm ts-node src/bulk-opening.ts --from=$FROM --to=$TO"
+          pnpm ts-node src/bulk-opening.ts --from=$FROM --to=$TO
+
+  reparse:
+    needs: setup
+    if: needs.setup.outputs.job == 'reparse'
+    runs-on: ubuntu-latest
+    timeout-minutes: 355
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v3
+        with: { version: "9.0.0" }
+      - uses: actions/setup-node@v4
+        with: { node-version: "20", cache: pnpm }
+      - run: pnpm install --no-frozen-lockfile
+      - name: rawJson 재파싱
+        working-directory: apps/crawler
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: |
+          FROM="${{ needs.setup.outputs.from }}"
+          TO="${{ needs.setup.outputs.to }}"
+          if [ -z "$FROM" ]; then FROM="200201"; fi
+          if [ -z "$TO" ]; then TO=$(date +%Y%m); fi
+          echo "실행: pnpm ts-node src/scripts/reparse-rawjson.ts --from=$FROM --to=$TO"
+          pnpm ts-node src/scripts/reparse-rawjson.ts --from=$FROM --to=$TO
+
+  avalue:
+    needs: setup
+    if: needs.setup.outputs.job == 'avalue'
+    runs-on: ubuntu-latest
+    timeout-minutes: 355
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v3
+        with: { version: "9.0.0" }
+      - uses: actions/setup-node@v4
+        with: { node-version: "20", cache: pnpm }
+      - run: pnpm install --no-frozen-lockfile
+      - name: A값 백필
+        working-directory: apps/crawler
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          KONEPS_API_KEY: ${{ secrets.KONEPS_API_KEY }}
+          G2B_API_KEY: ${{ secrets.G2B_API_KEY }}
+        run: |
+          FROM="${{ needs.setup.outputs.from }}"
+          TO="${{ needs.setup.outputs.to }}"
+          if [ -z "$FROM" ]; then FROM="200201"; fi
+          if [ -z "$TO" ]; then TO="201412"; fi
+          echo "실행: pnpm ts-node src/bulk-avalue-backfill.ts --from=$FROM --to=$TO"
+          pnpm ts-node src/bulk-avalue-backfill.ts --from=$FROM --to=$TO
+
+  import:
+    needs: setup
+    if: needs.setup.outputs.job == 'import'
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v3
+        with: { version: "9.0.0" }
+      - uses: actions/setup-node@v4
+        with: { node-version: "20", cache: pnpm }
+      - run: pnpm install --no-frozen-lockfile
+      - name: 전체 역대 수집
+        working-directory: apps/crawler
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          G2B_API_KEY: ${{ secrets.G2B_API_KEY }}
+          G2B_ANNOUNCE_KEY: ${{ secrets.G2B_API_KEY }}
+        run: |
+          FROM="${{ needs.setup.outputs.from }}"
+          TO="${{ needs.setup.outputs.to }}"
+          if [ -z "$FROM" ]; then FROM="201201"; fi
+          if [ -z "$TO" ]; then TO=$(date +%Y%m); fi
+          echo "실행: pnpm ts-node src/bulk-import.ts --from $FROM --to $TO"
+          pnpm ts-node src/bulk-import.ts --from $FROM --to $TO
