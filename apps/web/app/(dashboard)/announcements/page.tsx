@@ -390,6 +390,7 @@ export default function AnnouncementsPage() {
   const [regions, setRegions] = useState<string[]>([]);
   const [regionPanelOpen, setRegionPanelOpen] = useState(false);
   const [openProvinces, setOpenProvinces] = useState<Set<string>>(new Set());
+  const [regionSearch, setRegionSearch] = useState<string>("");
   const [sort, setSort] = useState<string>("latest");
   const [contractMethod, setContractMethod] = useState<string>("");
   const [deadlineRange, setDeadlineRange] = useState<string>("active");
@@ -680,6 +681,23 @@ export default function AnnouncementsPage() {
                       </button>
                     )}
                   </div>
+                  {/* [G-6] 지역 검색박스 — 150개+ 지역 빠른 탐색 */}
+                  <div style={{ padding: "0 14px 8px" }}>
+                    <input
+                      type="text"
+                      value={regionSearch}
+                      onChange={(e) => setRegionSearch(e.target.value)}
+                      placeholder="지역 검색 (예: 강남, 성남)"
+                      autoComplete="off"
+                      style={{
+                        width: "100%", height: 30, fontSize: 12,
+                        border: "1px solid #E8ECF2", borderRadius: 6,
+                        padding: "0 10px", outline: "none", color: "#374151",
+                      }}
+                      onFocus={(e) => { (e.target as HTMLInputElement).style.borderColor = "#1B3A6B"; }}
+                      onBlur={(e) => { (e.target as HTMLInputElement).style.borderColor = "#E8ECF2"; }}
+                    />
+                  </div>
                   {REGION_GROUPS.map((g) => {
                     // split items into sections: each province + its following cities
                     const sections: { province: RegionItem; cities: RegionItem[] }[] = [];
@@ -692,14 +710,29 @@ export default function AnnouncementsPage() {
                         current.cities.push(item);
                       }
                     }
+                    // 검색어 필터: province 또는 cities 라벨에 매칭되는 section만 통과
+                    const q = regionSearch.trim().toLowerCase();
+                    const filteredSections = q
+                      ? sections.filter(s =>
+                          s.province.label.toLowerCase().includes(q) ||
+                          s.cities.some(c => c.label.toLowerCase().includes(q)))
+                      : sections;
+                    if (filteredSections.length === 0) return null;
                     return (
                       <div key={g.label}>
                         <div style={{ fontSize: 10, color: "#94A3B8", padding: "6px 14px 2px", fontWeight: 600, letterSpacing: "0.05em", textTransform: "uppercase" }}>
                           {g.label}
                         </div>
-                        {sections.map(({ province, cities }) => {
+                        {filteredSections.map(({ province, cities }) => {
                           const provChecked = regions.includes(province.code);
-                          const isOpen = openProvinces.has(province.code);
+                          // 검색어 있으면 자동 펼침, 없으면 사용자 토글 따름
+                          const isOpen = q ? true : openProvinces.has(province.code);
+                          // 검색어 매칭되는 city만 표시
+                          const visibleCities = q
+                            ? cities.filter(c =>
+                                province.label.toLowerCase().includes(q) ||
+                                c.label.toLowerCase().includes(q))
+                            : cities;
                           const toggleOpen = () => setOpenProvinces(prev => {
                             const next = new Set(prev);
                             if (next.has(province.code)) next.delete(province.code); else next.add(province.code);
@@ -729,7 +762,7 @@ export default function AnnouncementsPage() {
                                     {province.label}
                                   </span>
                                 </label>
-                                {cities.length > 0 && (
+                                {visibleCities.length > 0 && !q && (
                                   <button
                                     onClick={toggleOpen}
                                     style={{
@@ -744,7 +777,7 @@ export default function AnnouncementsPage() {
                                 )}
                               </div>
                               {/* City rows (collapsible) */}
-                              {isOpen && cities.map((city) => {
+                              {isOpen && visibleCities.map((city) => {
                                 const cityChecked = regions.includes(city.code);
                                 return (
                                   <label key={city.code} style={{
