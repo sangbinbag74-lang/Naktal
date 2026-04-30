@@ -252,17 +252,15 @@ async function upsertChgHst(items: ChgHstItem[], client: any): Promise<void> {
     const chgDate = it.chgNtceDt ? new Date(it.chgNtceDt.replace(" ", "T") + "+09:00") : null;
     await client.query(
       `
-      INSERT INTO "AnnouncementChgHst" (id, "annId", "chgNtceSeq", "chgRsnNm", "chgDate", "rawJson")
-      VALUES (gen_random_uuid()::text, $1, $2, $3, $4, $5::jsonb)
+      INSERT INTO "AnnouncementChgHst" (id, "annId", "chgNtceSeq", "chgDate", "rawJson")
+      VALUES (gen_random_uuid()::text, $1, $2, $3, $4::jsonb)
       ON CONFLICT ("annId", "chgNtceSeq") DO UPDATE SET
-        "chgRsnNm" = EXCLUDED."chgRsnNm",
         "chgDate"  = EXCLUDED."chgDate",
         "rawJson"  = EXCLUDED."rawJson"
       `,
       [
         it.bidNtceNo,
         seq,
-        it.chgNtceRsnNm ?? "",
         chgDate,
         JSON.stringify(it),
       ],

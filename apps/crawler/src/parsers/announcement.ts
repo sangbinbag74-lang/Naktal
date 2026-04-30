@@ -12,10 +12,8 @@ export interface AnnouncementRow {
   sucsfbidLwltRate?: number;
   bidNtceDtlUrl?: string;
   ntceInsttOfclTelNo?: string;
-  jntcontrctDutyRgnNm?: string;
   ciblAplYn?: string;
   mtltyAdvcPsblYn?: string;
-  prtcptPsblRgnNm?: string;
 }
 
 /**

@@ -78,14 +78,12 @@ function mapToRow(item: G2BAnnouncement, operation: string): AnnouncementRow | n
       ? parseSubCategories(rawJson)
       : [];
 
-    // rawJson 7개 필드 → 전용 컬럼 승격 (reparse 없이 바로 채움)
+    // rawJson → 전용 컬럼 승격 (reparse 없이 바로 채움)
     const sucsfbidLwltRate = parseFloat((item.sucsfbidLwltRate ?? "0").replace(/[^0-9.]/g, "")) || 0;
     const bidNtceDtlUrl = item.bidNtceDtlUrl ?? "";
     const ntceInsttOfclTelNo = item.ntceInsttOfclTelNo ?? "";
-    const jntcontrctDutyRgnNm = item.jntcontrctDutyRgnNm ?? "";
     const ciblAplYn = item.ciblAplYn ?? "";
     const mtltyAdvcPsblYn = item.mtltyAdvcPsblYn ?? "";
-    const prtcptPsblRgnNm = item.prtcptPsblRgnNm ?? "";
 
     return {
       konepsId,
@@ -100,10 +98,8 @@ function mapToRow(item: G2BAnnouncement, operation: string): AnnouncementRow | n
       sucsfbidLwltRate,
       bidNtceDtlUrl,
       ntceInsttOfclTelNo,
-      jntcontrctDutyRgnNm,
       ciblAplYn,
       mtltyAdvcPsblYn,
-      prtcptPsblRgnNm,
     };
   } catch {
     return null;

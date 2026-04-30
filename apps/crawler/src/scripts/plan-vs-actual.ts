@@ -31,8 +31,6 @@ async function main() {
       SELECT
         COUNT(*)::bigint AS total,
         SUM(CASE WHEN "sucsfbidLwltRate" > 0 THEN 1 ELSE 0 END)::bigint AS lwlt,
-        SUM(CASE WHEN "prtcptPsblRgnNm" != '' THEN 1 ELSE 0 END)::bigint AS prtcpt,
-        SUM(CASE WHEN "jntcontrctDutyRgnNm" != '' THEN 1 ELSE 0 END)::bigint AS jntct,
         SUM(CASE WHEN "ciblAplYn" != '' THEN 1 ELSE 0 END)::bigint AS cibl,
         SUM(CASE WHEN "mtltyAdvcPsblYn" != '' THEN 1 ELSE 0 END)::bigint AS mtlty,
         SUM(CASE WHEN "bidNtceDtlUrl" != '' THEN 1 ELSE 0 END)::bigint AS url,
@@ -51,14 +49,12 @@ async function main() {
     console.log(`=== 플랜 대비 실제 수집 현황 ===\n`);
     console.log(`Announcement 전체: ${t.toLocaleString()}\n`);
 
-    console.log(`[A. 7개 rawJson 승격 필드 (reparse v7 대상)]`);
+    console.log(`[A. rawJson 승격 필드]`);
     console.log(`  sucsfbidLwltRate     : ${pct(x.lwlt).padStart(6)}%  (${Number(x.lwlt).toLocaleString()}) ← 낙찰하한율`);
     console.log(`  bidNtceDtlUrl        : ${pct(x.url).padStart(6)}%  (${Number(x.url).toLocaleString()}) ← 상세 URL`);
     console.log(`  ntceInsttOfclTelNo   : ${pct(x.tel).padStart(6)}%  (${Number(x.tel).toLocaleString()}) ← 담당자 연락처`);
-    console.log(`  jntcontrctDutyRgnNm  : ${pct(x.jntct).padStart(6)}%  (${Number(x.jntct).toLocaleString()}) ← 공동수급 지역`);
     console.log(`  ciblAplYn            : ${pct(x.cibl).padStart(6)}%  (${Number(x.cibl).toLocaleString()}) ← 건산법 적용`);
     console.log(`  mtltyAdvcPsblYn      : ${pct(x.mtlty).padStart(6)}%  (${Number(x.mtlty).toLocaleString()}) ← 상호시장 진출`);
-    console.log(`  prtcptPsblRgnNm      : ${pct(x.prtcpt).padStart(6)}%  (${Number(x.prtcpt).toLocaleString()}) ← 참가가능지역 [실측 rawJson 0%]`);
 
     console.log(`\n[B. API로 수집 필드]`);
     console.log(`  subCategories (업종) : ${pct(x.subcat).padStart(6)}%  (${Number(x.subcat).toLocaleString()}) ← 목표 95%+, UI 업종 필터 핵심`);

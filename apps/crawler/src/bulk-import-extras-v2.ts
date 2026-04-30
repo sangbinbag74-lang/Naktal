@@ -114,12 +114,16 @@ interface LicenseLimitItem {
   bidNtceNo: string;
   lcnsLmtNm?: string;
   indstrytyMfrcFldList?: string;
+  permsnIndstrytyList?: string;  // 2026-04-24 추가 — 실측 결과 이 필드에도 업종 정보 ("[약국/5332]" 포맷)
 }
+// G2B 응답 내 업종 표기 2가지 포맷 병렬 파싱:
+//   [코드^업종명]  ← indstrytyMfrcFldList
+//   [업종명/코드]  ← permsnIndstrytyList ("[약국/5332]")
 function parseIndstrytyList(raw: string | undefined | null): string[] {
   if (!raw) return [];
-  const matches = raw.matchAll(/\[\d+\^([^\]]+)\]/g);
   const out = new Set<string>();
-  for (const m of matches) out.add(m[1].trim());
+  for (const m of raw.matchAll(/\[\d+\^([^\]]+)\]/g)) out.add(m[1].trim());   // 코드^이름
+  for (const m of raw.matchAll(/\[([^\]\/]+?)\/\d+\]/g)) out.add(m[1].trim()); // 이름/코드
   return Array.from(out);
 }
 function parseLcnsLmtNm(raw: string | undefined | null): string | null {
@@ -133,6 +137,7 @@ async function batchUpsertLicenseLimit(items: LicenseLimitItem[], client: PoolCl
     if (!it.bidNtceNo) continue;
     const set = byAnn.get(it.bidNtceNo) ?? new Set<string>();
     parseIndstrytyList(it.indstrytyMfrcFldList).forEach((x) => set.add(x));
+    parseIndstrytyList(it.permsnIndstrytyList).forEach((x) => set.add(x));
     const fromName = parseLcnsLmtNm(it.lcnsLmtNm);
     if (fromName) set.add(fromName);
     byAnn.set(it.bidNtceNo, set);
@@ -268,49 +273,74 @@ async function batchUpsertCalclA(items: CalclAItem[], client: PoolClient): Promi
 }
 
 // ─── 배치 INSERT: ChgHstry → AnnouncementChgHst ─────────────────────────────
+// 2026-04-24 수정: G2B API는 chgNtceSeq/chgNtceRsnNm/chgNtceDt 반환 안 함
+// 실제 필드: chgItemNm, bfchgVal, afchgVal, chgDt, bidNtceOrd, chgDataDivNm
 interface ChgHstItem {
   bidNtceNo: string;
-  chgNtceSeq?: string;
-  chgNtceRsnNm?: string;
-  chgNtceDt?: string;
+  bidNtceOrd?: string;
+  chgDt?: string;
+  chgItemNm?: string;
+  bfchgVal?: string;
+  afchgVal?: string;
+  chgDataDivNm?: string;
   [k: string]: unknown;
+}
+// chgNtceSeq 생성 — (bidNtceOrd, chgDt, chgItemNm) 조합 해시
+// @@unique([annId, chgNtceSeq]) 제약 유지하면서 이벤트별 고유 seq 생성
+function makeChgSeq(it: ChgHstItem): number {
+  const ord = parseInt(it.bidNtceOrd ?? "0", 10) || 0;
+  const src = `${it.chgDt ?? ""}|${it.chgItemNm ?? ""}|${it.bfchgVal ?? ""}`;
+  let h = 0;
+  for (let i = 0; i < src.length; i++) h = ((h * 31) + src.charCodeAt(i)) >>> 0;
+  return (ord * 1_000_003 + (h % 1_000_003)) & 0x7fffffff; // int4 양수 범위
 }
 async function batchInsertChgHst(items: ChgHstItem[], client: PoolClient): Promise<number> {
   if (items.length === 0) return 0;
-  // (ann_id, seq) 중복 제거 (ON CONFLICT 중복 업데이트 방지)
   const seen = new Set<string>();
   const unique = items.filter(it => {
     if (!it.bidNtceNo) return false;
-    const seq = parseInt(it.chgNtceSeq ?? "0", 10) || 0;
+    const seq = makeChgSeq(it);
     const key = `${it.bidNtceNo}:${seq}`;
     if (seen.has(key)) return false;
     seen.add(key);
     return true;
   });
-  // 해당 annId가 Announcement에 존재해야 FK 제약 OK → EXISTS 서브쿼리로 필터
   const payload = unique.map(it => ({
     ann_id: it.bidNtceNo,
-    seq: parseInt(it.chgNtceSeq ?? "0", 10) || 0,
-    reason: it.chgNtceRsnNm ?? "",
-    chg_date: it.chgNtceDt ? new Date(it.chgNtceDt.replace(" ", "T") + "+09:00").toISOString() : null,
+    seq: makeChgSeq(it),
+    item: it.chgItemNm ?? "",
+    bf: it.bfchgVal ?? "",
+    af: it.afchgVal ?? "",
+    chg_date: it.chgDt ? new Date(it.chgDt.replace(" ", "T") + "+09:00").toISOString() : null,
     raw: it,
   }));
   if (payload.length === 0) return 0;
 
-  const res = await client.query(
-    `
-    INSERT INTO "AnnouncementChgHst" (id, "annId", "chgNtceSeq", "chgRsnNm", "chgDate", "rawJson")
-    SELECT gen_random_uuid()::text, v.ann_id, v.seq, v.reason, v.chg_date, v.raw
-    FROM jsonb_to_recordset($1::jsonb) AS v(ann_id text, seq int, reason text, chg_date timestamptz, raw jsonb)
-    WHERE EXISTS (SELECT 1 FROM "Announcement" a WHERE a."konepsId" = v.ann_id)
-    ON CONFLICT ("annId", "chgNtceSeq") DO UPDATE SET
-      "chgRsnNm" = EXCLUDED."chgRsnNm",
-      "chgDate"  = EXCLUDED."chgDate",
-      "rawJson"  = EXCLUDED."rawJson"
-    `,
-    [JSON.stringify(payload)],
-  );
-  return res.rowCount ?? 0;
+  // jsonb 256MB 한도 회피: 100건씩 chunk 처리 (2016-12 stuck 후 1000→100 축소)
+  const CHUNK = 100;
+  let total = 0;
+  for (let i = 0; i < payload.length; i += CHUNK) {
+    const slice = payload.slice(i, i + CHUNK);
+    const res = await client.query(
+      `
+      INSERT INTO "AnnouncementChgHst"
+        (id, "annId", "chgNtceSeq", "chgItemNm", "bfChgVal", "afChgVal", "chgDate", "rawJson")
+      SELECT
+        gen_random_uuid()::text, v.ann_id, v.seq, v.item, v.bf, v.af, v.chg_date, v.raw
+      FROM jsonb_to_recordset($1::jsonb) AS v(ann_id text, seq int, item text, bf text, af text, chg_date timestamptz, raw jsonb)
+      WHERE EXISTS (SELECT 1 FROM "Announcement" a WHERE a."konepsId" = v.ann_id)
+      ON CONFLICT ("annId", "chgNtceSeq") DO UPDATE SET
+        "chgItemNm" = EXCLUDED."chgItemNm",
+        "bfChgVal"  = EXCLUDED."bfChgVal",
+        "afChgVal"  = EXCLUDED."afChgVal",
+        "chgDate"   = EXCLUDED."chgDate",
+        "rawJson"   = EXCLUDED."rawJson"
+      `,
+      [JSON.stringify(slice)],
+    );
+    total += res.rowCount ?? 0;
+  }
+  return total;
 }
 
 // ─── Frgcpt: 외자 공고 → Announcement upsert ────────────────────────────────
@@ -465,24 +495,24 @@ async function main() {
 
     const client = await pool.connect();
     try {
-      const lic = await fetchAll<LicenseLimitItem>("getBidPblancListInfoLicenseLimit", { inqryBgnDt: bgn, inqryEndDt: end }, apiKey, "LicenseLimit");
-      const cns = await fetchAll<BsisAmountItem>("getBidPblancListInfoCnstwkBsisAmount", { inqryBgnDt: bgn, inqryEndDt: end }, apiKey, "CnstwkBsisAmount");
-      const svc = await fetchAll<BsisAmountItem>("getBidPblancListInfoServcBsisAmount", { inqryBgnDt: bgn, inqryEndDt: end }, apiKey, "ServcBsisAmount");
-      const thn = await fetchAll<BsisAmountItem>("getBidPblancListInfoThngBsisAmount", { inqryBgnDt: bgn, inqryEndDt: end }, apiKey, "ThngBsisAmount");
-      const cal = await fetchAll<CalclAItem>("getBidPblancListBidPrceCalclAInfo", { inqryBgnDt: bgn, inqryEndDt: end }, apiKey, "CalclA");
-      const chgC = await fetchAll<ChgHstItem>("getBidPblancListInfoChgHstryCnstwk", { inqryBgnDt: bgn, inqryEndDt: end }, apiKey, "ChgHstryCnstwk");
-      const chgS = await fetchAll<ChgHstItem>("getBidPblancListInfoChgHstryServc", { inqryBgnDt: bgn, inqryEndDt: end }, apiKey, "ChgHstryServc");
-      const chgT = await fetchAll<ChgHstItem>("getBidPblancListInfoChgHstryThng", { inqryBgnDt: bgn, inqryEndDt: end }, apiKey, "ChgHstryThng");
-      const frg = await fetchAll<FrgcptItem>("getBidPblancListInfoFrgcpt", { inqryBgnDt: bgn, inqryEndDt: end }, apiKey, "Frgcpt");
-
-      // PreStdrd 4종 (HrcspSsstndrdInfoService)
-      const preAll: PreStdrdItem[] = [];
-      for (const preOp of ["getPublicPrcureThngInfoCnstwk", "getPublicPrcureThngInfoServc", "getPublicPrcureThngInfoThng", "getPublicPrcureThngInfoFrgcpt"]) {
-        try {
-          const items = await fetchAll<PreStdrdItem>(preOp, { inqryBgnDt: bgn, inqryEndDt: end }, apiKey, preOp.replace("getPublicPrcureThngInfo", "PreStdrd"), BASE_HRCSP);
-          preAll.push(...items);
-        } catch (e) {}
-      }
+      // 9 ops + 4 PreStdrd = 13 개 API 병렬 fetch (rate limit 내 동시 요청)
+      const safe = <T>(p: Promise<T[]>): Promise<T[]> => p.catch((e) => { console.error(`  ✗ ${(e as Error).message.slice(0,80)}`); return []; });
+      const [lic, cns, svc, thn, cal, chgC, chgS, chgT, frg, preC, preS, preT, preF] = await Promise.all([
+        safe(fetchAll<LicenseLimitItem>("getBidPblancListInfoLicenseLimit", { inqryBgnDt: bgn, inqryEndDt: end }, apiKey, "LicenseLimit")),
+        safe(fetchAll<BsisAmountItem>("getBidPblancListInfoCnstwkBsisAmount", { inqryBgnDt: bgn, inqryEndDt: end }, apiKey, "CnstwkBsisAmount")),
+        safe(fetchAll<BsisAmountItem>("getBidPblancListInfoServcBsisAmount", { inqryBgnDt: bgn, inqryEndDt: end }, apiKey, "ServcBsisAmount")),
+        safe(fetchAll<BsisAmountItem>("getBidPblancListInfoThngBsisAmount", { inqryBgnDt: bgn, inqryEndDt: end }, apiKey, "ThngBsisAmount")),
+        safe(fetchAll<CalclAItem>("getBidPblancListBidPrceCalclAInfo", { inqryBgnDt: bgn, inqryEndDt: end }, apiKey, "CalclA")),
+        safe(fetchAll<ChgHstItem>("getBidPblancListInfoChgHstryCnstwk", { inqryBgnDt: bgn, inqryEndDt: end }, apiKey, "ChgHstryCnstwk")),
+        safe(fetchAll<ChgHstItem>("getBidPblancListInfoChgHstryServc", { inqryBgnDt: bgn, inqryEndDt: end }, apiKey, "ChgHstryServc")),
+        safe(fetchAll<ChgHstItem>("getBidPblancListInfoChgHstryThng", { inqryBgnDt: bgn, inqryEndDt: end }, apiKey, "ChgHstryThng")),
+        safe(fetchAll<FrgcptItem>("getBidPblancListInfoFrgcpt", { inqryBgnDt: bgn, inqryEndDt: end }, apiKey, "Frgcpt")),
+        safe(fetchAll<PreStdrdItem>("getPublicPrcureThngInfoCnstwk", { inqryBgnDt: bgn, inqryEndDt: end }, apiKey, "PreStdrdCnstwk", BASE_HRCSP)),
+        safe(fetchAll<PreStdrdItem>("getPublicPrcureThngInfoServc", { inqryBgnDt: bgn, inqryEndDt: end }, apiKey, "PreStdrdServc", BASE_HRCSP)),
+        safe(fetchAll<PreStdrdItem>("getPublicPrcureThngInfoThng",  { inqryBgnDt: bgn, inqryEndDt: end }, apiKey, "PreStdrdThng",  BASE_HRCSP)),
+        safe(fetchAll<PreStdrdItem>("getPublicPrcureThngInfoFrgcpt",{ inqryBgnDt: bgn, inqryEndDt: end }, apiKey, "PreStdrdFrgcpt",BASE_HRCSP)),
+      ]);
+      const preAll: PreStdrdItem[] = [...preC, ...preS, ...preT, ...preF];
 
       // Frgcpt 먼저 upsert (Announcement 선생성 → ChgHst FK 안전)
       // 스키마 누락 필드로 실패 가능 → try-catch로 나머지 API 계속 진행

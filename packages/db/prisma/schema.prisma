@@ -73,8 +73,6 @@ model Announcement {
   rsrvtnPrceRngBgnRate Float                 @default(0)     // 예가범위 시작률 (예: -3)
   rsrvtnPrceRngEndRate Float                 @default(0)     // 예가범위 끝률 (예: +3)
   sucsfbidLwltRate     Float                 @default(0)     // 낙찰하한율 (rawJson에서 승격)
-  prtcptPsblRgnNm      String                @default("")    // 참가가능지역
-  jntcontrctDutyRgnNm  String                @default("")    // 공동수급의무지역
   ciblAplYn            String                @default("")    // 건산법 적용여부
   mtltyAdvcPsblYn      String                @default("")    // 상호시장 진출가능
   bidNtceDtlUrl        String                @default("")    // 상세 URL
@@ -111,9 +109,9 @@ model AnnouncementChgHst {
   annId        String
   announcement Announcement  @relation(fields: [annId], references: [konepsId], onDelete: Cascade)
   chgNtceSeq   Int                           // 변경 회차 (0=원본, 1+=N차 변경)
-  chgRsnNm     String        @default("")    // 변경사유명
-  chgBefore    Json?
-  chgAfter     Json?
+  chgItemNm    String        @default("")    // 변경 항목명 (예: "개찰일시", "공고규격화일")
+  bfChgVal     String        @default("")    // 변경 전 값
+  afChgVal     String        @default("")    // 변경 후 값
   chgDate      DateTime?
   rawJson      Json?
   createdAt    DateTime      @default(now())

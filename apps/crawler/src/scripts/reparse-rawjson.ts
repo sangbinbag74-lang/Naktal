@@ -69,7 +69,6 @@ async function main() {
           "sucsfbidLwltRate"    = COALESCE(NULLIF("rawJson"->>'sucsfbidLwltRate',''),'0')::float8,
           "bidNtceDtlUrl"       = COALESCE("rawJson"->>'bidNtceDtlUrl',''),
           "ntceInsttOfclTelNo"  = COALESCE("rawJson"->>'ntceInsttOfclTelNo',''),
-          "jntcontrctDutyRgnNm" = COALESCE("rawJson"->>'jntcontrctDutyRgnNm',''),
           "ciblAplYn"           = COALESCE("rawJson"->>'ciblAplYn',''),
           "mtltyAdvcPsblYn"     = COALESCE("rawJson"->>'mtltyAdvcPsblYn','')
         WHERE "deadline" >= $1::timestamptz

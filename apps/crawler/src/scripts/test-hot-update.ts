@@ -48,10 +48,8 @@ async function main() {
         AND (indexdef LIKE '%sucsfbidLwltRate%'
           OR indexdef LIKE '%bidNtceDtlUrl%'
           OR indexdef LIKE '%ntceInsttOfclTelNo%'
-          OR indexdef LIKE '%jntcontrctDutyRgnNm%'
           OR indexdef LIKE '%ciblAplYn%'
-          OR indexdef LIKE '%mtltyAdvcPsblYn%'
-          OR indexdef LIKE '%prtcptPsblRgnNm%')
+          OR indexdef LIKE '%mtltyAdvcPsblYn%')
     `);
     console.log(`신규 7 컬럼 인덱스: ${idx.rowCount}건`);
     for (const r of idx.rows) console.log(`  - ${r.indexname}: ${r.indexdef}`);
@@ -96,7 +94,6 @@ async function main() {
         "sucsfbidLwltRate"    = COALESCE(NULLIF("rawJson"->>'sucsfbidLwltRate',''),'0')::float8,
         "bidNtceDtlUrl"       = COALESCE("rawJson"->>'bidNtceDtlUrl',''),
         "ntceInsttOfclTelNo"  = COALESCE("rawJson"->>'ntceInsttOfclTelNo',''),
-        "jntcontrctDutyRgnNm" = COALESCE("rawJson"->>'jntcontrctDutyRgnNm',''),
         "ciblAplYn"           = COALESCE("rawJson"->>'ciblAplYn',''),
         "mtltyAdvcPsblYn"     = COALESCE("rawJson"->>'mtltyAdvcPsblYn','')
       WHERE "deadline" >= '2024-01-01'::timestamptz
