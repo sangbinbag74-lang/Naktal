@@ -208,9 +208,26 @@ async function fetchFromDB(opts: Record<string, string | number>): Promise<NextR
   else if (deadlineRange === "7")  { q = q.gte("deadline", nowIso).lte("deadline", new Date(Date.now() + 7*86400000).toISOString()); }
   else if (deadlineRange === "30") { q = q.gte("deadline", nowIso).lte("deadline", new Date(Date.now() + 30*86400000).toISOString()); }
 
-  q = sort === "deadline"
-    ? q.order("deadline", { ascending: true })
-    : q.order("createdAt", { ascending: false });
+  // [2026-04-30] ORDER BY trap 회피
+  //   - 다중 카테고리 IN (또는 OR subCategories @>) + ORDER BY createdAt DESC LIMIT 20
+  //     → planner가 idx_ann_createdat backward 채택 후 filter, 매치 적으면 6.6M 전수 스캔 → 20초+ TIMEOUT
+  //   - 검증: idx_ann_category_createdat 만들어도 IN 다중값엔 사용 안 됨 (BitmapOr+Sort)
+  //   - 활성 deadline 조건 하에서는 idx_ann_category_deadline / idx_ann_region_deadline 사용 (9~12ms 검증)
+  //   - 따라서: 카테고리/키워드/지역 필터 + 활성 deadline + sort=latest 조합에 한해 deadline ASC 폴백
+  //     (활성 공고 안에서는 며칠 차이라 사용자 체감 신선도 유지)
+  const isActiveDeadline =
+    deadlineRange === "active" || deadlineRange === "today" ||
+    deadlineRange === "3" || deadlineRange === "7" || deadlineRange === "30";
+  const hasMultiFilter =
+    cats.length > 0 ||
+    (regions && regions.length > 0) ||
+    (keyword && keyword.trim().length > 0);
+  const useDeadlineFallback = sort !== "deadline" && hasMultiFilter && isActiveDeadline;
+  if (sort === "deadline" || useDeadlineFallback) {
+    q = q.order("deadline", { ascending: true });
+  } else {
+    q = q.order("createdAt", { ascending: false });
+  }
   q = q.range(offset, offset + limit);
 
   const { data, error } = await q;
