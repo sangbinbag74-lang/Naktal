@@ -49,6 +49,7 @@ interface Metadata {
   feature_names: string[];
   categorical_cols: string[];
   model_version: string;
+  metrics?: Record<string, number>;
 }
 
 let session: ort.InferenceSession | null = null;
@@ -87,6 +88,7 @@ export async function GET() {
       status: "ok",
       model_version: metadata!.model_version,
       feature_count: metadata!.feature_names.length,
+      metrics: metadata!.metrics ?? {},
     });
   } catch {
     return NextResponse.json(

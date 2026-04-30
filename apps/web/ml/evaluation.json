@@ -1,0 +1,45 @@
+{
+  "generated_at": "2026-04-30T09:03:02.318067+00:00",
+  "models": {
+    "sajung_v2": {
+      "model": "sajung_v2",
+      "evaluated_at": "2026-04-30T09:03:02.318067+00:00",
+      "model_version": "sajung-lgbm-v2.0",
+      "metrics": {
+        "mae_train": 0.46365957148477865,
+        "mae_val": 0.48978264325997567,
+        "mae_test": 0.48207569222743013
+      },
+      "feature_count": 54,
+      "source": "ml\\sajung_lgbm_v2_meta.json",
+      "status": "ok"
+    },
+    "opening": {
+      "model": "opening",
+      "evaluated_at": "2026-04-30T09:03:02.318067+00:00",
+      "model_version": "opening-lgbm-v1.0",
+      "metrics": {
+        "top4_train": 0.33427119617734935,
+        "top4_val": 0.32603829356834274,
+        "top4_test": 0.32600287875047956
+      },
+      "feature_count": 14,
+      "source": "ml\\opening\\meta.json",
+      "status": "ok"
+    },
+    "participants": {
+      "model": "participants",
+      "evaluated_at": "2026-04-30T09:03:02.318067+00:00",
+      "model_version": "participants-lgbm-v1.0",
+      "metrics": {
+        "rmse_train": 40.038530862454294,
+        "rmse_val": 57.554392661672054,
+        "rmse_test": 59.38152419624866,
+        "mae_test": 29.46414427449172
+      },
+      "feature_count": 17,
+      "source": "ml\\participants_lgbm_meta.json",
+      "status": "ok"
+    }
+  }
+}

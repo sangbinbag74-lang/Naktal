@@ -74,7 +74,7 @@ try {
 }
 
 # 3. ONNX 변환
-Write-Host "`n[3/4] ONNX 변환" -ForegroundColor Yellow
+Write-Host "`n[3/5] ONNX 변환" -ForegroundColor Yellow
 Push-Location $ML
 try {
     & $VENV convert_onnx.py
@@ -83,8 +83,18 @@ try {
     Pop-Location
 }
 
-# 4. git commit & push
-Write-Host "`n[4/4] git commit + push" -ForegroundColor Yellow
+# 4. 평가 지표 집계
+Write-Host "`n[4/5] 평가 지표 집계 (evaluate_models)" -ForegroundColor Yellow
+Push-Location $ML
+try {
+    & $VENV pipelines/evaluate_models.py
+    if ($LASTEXITCODE -ne 0) { throw "evaluate_models 실패" }
+} finally {
+    Pop-Location
+}
+
+# 5. git commit & push
+Write-Host "`n[5/5] git commit + push" -ForegroundColor Yellow
 Push-Location $ROOT
 try {
     git add apps/web/ml/ apps/ml/models/
