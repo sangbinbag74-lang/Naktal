@@ -2,12 +2,17 @@
  * 카카오 알림톡 발송 헬퍼
  * 미가입 또는 동의 없으면 Resend 이메일로 fallback
  *
- * 환경변수:
+ * 환경변수 (둘 중 어느 이름으로 등록해도 인식):
  *   KAKAO_API_KEY
- *   KAKAO_TEMPLATE_ID_ALERT
- *   KAKAO_TEMPLATE_ID_OUTCOME
- *   KAKAO_TEMPLATE_ID_REMIND
+ *   KAKAO_TEMPLATE_ANN       | KAKAO_TEMPLATE_ID_ALERT     — 신규 공고 매칭
+ *   KAKAO_TEMPLATE_OUTCOME   | KAKAO_TEMPLATE_ID_OUTCOME   — 결과 입력 요청
+ *   KAKAO_TEMPLATE_DEADLINE  | KAKAO_TEMPLATE_ID_REMIND    — D-1 리마인더
  */
+
+function tplId(...candidates: (string | undefined)[]): string {
+  for (const c of candidates) if (c) return c;
+  return "";
+}
 
 const KAKAO_API_BASE = "https://kapi.kakao.com/v1/api/talk/friends/message/send";
 
@@ -55,7 +60,7 @@ export async function notifyNewAnnouncement(
   announcementTitle: string,
   deadline: string,
 ): Promise<void> {
-  const templateId = process.env.KAKAO_TEMPLATE_ID_ALERT ?? "";
+  const templateId = tplId(process.env.KAKAO_TEMPLATE_ANN, process.env.KAKAO_TEMPLATE_ID_ALERT);
   if (phone && templateId) {
     const sent = await sendKakaoAlimtalk({ templateId, receiverPhone: phone, variables: { title: announcementTitle, deadline } });
     if (sent) return;
@@ -70,7 +75,7 @@ export async function notifyOutcomeRequest(
   announcementTitle: string,
   outcomeUrl: string,
 ): Promise<void> {
-  const templateId = process.env.KAKAO_TEMPLATE_ID_OUTCOME ?? "";
+  const templateId = tplId(process.env.KAKAO_TEMPLATE_OUTCOME, process.env.KAKAO_TEMPLATE_ID_OUTCOME);
   if (phone && templateId) {
     const sent = await sendKakaoAlimtalk({ templateId, receiverPhone: phone, variables: { title: announcementTitle, url: outcomeUrl } });
     if (sent) return;
@@ -86,7 +91,7 @@ export async function notifyDeadlineReminder(
   announcementTitle: string,
   deadline: string,
 ): Promise<void> {
-  const templateId = process.env.KAKAO_TEMPLATE_ID_REMIND ?? "";
+  const templateId = tplId(process.env.KAKAO_TEMPLATE_DEADLINE, process.env.KAKAO_TEMPLATE_ID_REMIND);
   if (phone && templateId) {
     const sent = await sendKakaoAlimtalk({ templateId, receiverPhone: phone, variables: { title: announcementTitle, deadline } });
     if (sent) return;

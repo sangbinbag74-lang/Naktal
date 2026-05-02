@@ -259,6 +259,8 @@ model BidOutcome {
   actualFinalPrice BigInt?                         // 실제 낙찰금액 (원)
   actualSajungRate Decimal?      @db.Decimal(8, 4) // 실제 사정율 % — CORE 1 정확도 측정
   numBidders       Int?
+  actualBidders    Int?                             // 실제 참여자 수 — 향후 Model 3 부활 시 사용 (G-4)
+  actualOpeningIdx Int[]                            // 실제 선택된 4개 예비가 번호 — Model 2 피드백 (G-4)
   recommendHit     Boolean?
   bidAt            DateTime
   openedAt         DateTime?

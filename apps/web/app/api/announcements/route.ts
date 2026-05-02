@@ -131,12 +131,48 @@ async function fetchFromDB(opts: Record<string, string | number>): Promise<NextR
   const citiesInFilter = regionList.filter(r => !PROVINCE_CODES.includes(r));
   const hasCityFilter = citiesInFilter.length > 0;
 
-  // [2026-04-18] RPC search_announcements 경로 비활성화
-  //   - 659만 행 DB에서 9초+ 소요 (statement_timeout 유발)
-  //   - 모든 필터는 Path B 체인 쿼리 + idx_ann_deadline_createdat 인덱스로 처리 (2초 이내)
-  //   - 추후 RPC 함수 최적화 후 재활성화 가능
+  // ── G-2: search_announcements RPC 경로 (2026-05-02 재활성화) ────────────────
+  //   벤치 결과: 카테고리/지역/키워드/복합 모두 14~59ms (목표 500ms 통과)
+  //   RPC 비대상 조건: rawJson 필드 필터 (contractMethod/prtcptnLmt/rgnType/ntceKind/konepsId)
+  //                  + 시 레벨 지역 + 사용자 정의 deadline 윈도우
+  const rpcEligible =
+    !contractMethod && !prtcptnLmt && !rgnType && !ntceKind && !konepsId && !category &&
+    !hasCityFilter &&
+    (deadlineRange === "" || deadlineRange === "active");
+  if (rpcEligible) {
+    const expanded = new Set<string>(cats);
+    for (const c of cats) (SIMILAR_CATEGORIES[c] ?? []).forEach((s) => expanded.add(s));
+    const catList = expanded.size > 0 ? [...expanded] : null;
+    const regList = regionList.length > 0 ? regionList : null;
+    const sortKey = sort === "deadline" ? "deadline" : "latest";
 
-  // ── 체인 쿼리 (모든 필터 지원) ────────────────────────────────────────────
+    const { data, error } = await admin.rpc("search_announcements", {
+      p_categories:  catList,
+      p_subcats:     catList,
+      p_regions:     regList,
+      p_keyword:     keyword || null,
+      p_min_budget:  minBudget ? Number(minBudget) : null,
+      p_max_budget:  maxBudget ? Number(maxBudget) : null,
+      p_active_only: deadlineRange === "active",
+      p_deadline_to: null,
+      p_sort:        sortKey,
+      p_limit:       limit + 1,
+      p_offset:      offset,
+    });
+    if (!error) {
+      const rows = (data ?? []) as Record<string, unknown>[];
+      const hasMore = rows.length > limit;
+      return NextResponse.json({
+        data: hasMore ? rows.slice(0, limit) : rows,
+        total: offset + rows.length,
+        hasMore, page, limit,
+      });
+    }
+    console.error("[announcements RPC]", error.message);
+    // RPC 실패 시 체인 쿼리로 폴백
+  }
+
+  // ── 체인 쿼리 (rawJson 필드 필터 + 폴백) ──────────────────────────────────
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let q: any = admin.from("Announcement").select(
     "id,konepsId,title,orgName,budget,deadline,category,subCategories,region,createdAt,rawJson,aValueYn"

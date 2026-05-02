@@ -1,5 +1,10 @@
 import { createAdminClient } from "@/lib/supabase/server";
 import { MlModelStatus } from "@/components/admin/MlModelStatus";
+import { ModelEvalCards } from "@/components/admin/ModelEvalCards";
+import { ModelDriftChart } from "@/components/admin/ModelDriftChart";
+import { ProductionAccuracy } from "@/components/admin/ProductionAccuracy";
+import { loadEvaluation, loadDriftHistory } from "@/lib/admin/model-eval";
+import { SectionBoundary } from "@/components/common/SectionBoundary";
 
 export const dynamic = "force-dynamic";
 
@@ -61,8 +66,25 @@ export default async function AdminModelPage() {
         </div>
       </div>
 
-      {/* ── ML 모델 상태 (Model 1/2/3) ── */}
-      <MlModelStatus />
+      {/* ── ML 모델 상태 (ONNX endpoint health) ── */}
+      <SectionBoundary title="ML 모델 상태">
+        <MlModelStatus />
+      </SectionBoundary>
+
+      {/* ── 학습 평가 지표 ── */}
+      <SectionBoundary title="학습 평가 지표">
+        <ModelEvalCards evaluation={loadEvaluation()} />
+      </SectionBoundary>
+
+      {/* ── Production 실측 정확도 (BidOutcome 기반) ── */}
+      <SectionBoundary title="Production 정확도">
+        <ProductionAccuracy />
+      </SectionBoundary>
+
+      {/* ── 학습 지표 시계열 추이 ── */}
+      <SectionBoundary title="드리프트 추이">
+        <ModelDriftChart points={loadDriftHistory(26)} />
+      </SectionBoundary>
 
       {/* ── 최근 크롤링 현황 ── */}
       <div style={{ background: "#fff", borderRadius: 14, border: "1px solid #E8ECF2", padding: "20px" }}>

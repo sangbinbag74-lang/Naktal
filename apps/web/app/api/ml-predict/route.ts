@@ -16,6 +16,7 @@ import { NextRequest, NextResponse } from "next/server";
 import * as ort from "onnxruntime-web";
 import path from "path";
 import fs from "fs";
+import { captureError } from "@/lib/observability/sentry";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -177,6 +178,7 @@ export async function POST(req: NextRequest) {
     });
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
+    void captureError(err, { route: "/api/ml-predict", phase: "predict" });
     return NextResponse.json({ error: `predict failed: ${msg}` }, { status: 500 });
   }
 }
