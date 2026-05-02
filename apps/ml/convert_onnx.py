@@ -117,12 +117,33 @@ def convert_opening() -> None:
 
 
 def main():
-    # 1. 사정율 v2
+    # 1a. 사정율 v3 (openedAt 6 피처 추가, 60 features)
+    sajung_v3 = MODEL_DIR / "sajung_lgbm_v3.pkl"
+    if sajung_v3.exists():
+        convert_single(sajung_v3, "sajung_lgbm_v3")
+    else:
+        print(f"SKIP sajung v3: {sajung_v3} 없음")
+
+    # 1a'. 사정율 v3 tuned (앙상블/단독 비교용)
+    sajung_v3_tuned = MODEL_DIR / "sajung_lgbm_v3_tuned.pkl"
+    if sajung_v3_tuned.exists():
+        convert_single(sajung_v3_tuned, "sajung_lgbm_v3_tuned")
+    else:
+        print(f"SKIP sajung v3 tuned: {sajung_v3_tuned} 없음")
+
+    # 1b. 사정율 v2 (호환 유지)
     sajung_path = MODEL_DIR / "sajung_lgbm_v2.pkl"
     if sajung_path.exists():
         convert_single(sajung_path, "sajung_lgbm_v2")
     else:
         print(f"SKIP sajung v2: {sajung_path} 없음")
+
+    # 1c. 사정율 v4 (KoBERT 64d emb 추가, 124 features)
+    sajung_v4 = MODEL_DIR / "sajung_lgbm_v4.pkl"
+    if sajung_v4.exists():
+        convert_single(sajung_v4, "sajung_lgbm_v4")
+    else:
+        print(f"SKIP sajung v4: {sajung_v4} 없음")
 
     # 2. Opening (15 boosters)
     convert_opening()

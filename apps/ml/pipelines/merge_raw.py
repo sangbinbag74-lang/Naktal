@@ -39,8 +39,12 @@ def load_raw():
     print("=== Raw 테이블 로드 ===")
     ann = pd.read_csv(RAW_DIR / "announcement.csv", parse_dates=["deadline"])
     print(f"  Announcement: {len(ann):,} rows, {ann.memory_usage(deep=True).sum()/1e6:.0f} MB")
-    br = pd.read_csv(RAW_DIR / "bidresult.csv")
-    print(f"  BidResult   : {len(br):,}")
+    br_path = RAW_DIR / "bidresult.csv"
+    br_cols_check = pd.read_csv(br_path, nrows=0).columns.tolist()
+    has_opened = "openedAt" in br_cols_check
+    # openedAt 컬럼은 string으로 로드 (tz 변환은 join 후 297K 행에만 적용 → 메모리 절감)
+    br = pd.read_csv(br_path, dtype={"openedAt": str} if has_opened else None)
+    print(f"  BidResult   : {len(br):,} (openedAt={'O' if has_opened else 'X'})")
     sr = pd.read_csv(RAW_DIR / "sajungstat.csv")
     print(f"  SajungStat  : {len(sr):,}")
     op_path = RAW_DIR / "opening.csv"
@@ -132,6 +136,35 @@ def build_sajung_csv(ann, br, sr, chg):
     df["rsrvtn_end"] = df["rsrvtn_end"].fillna(0)
     df["has_prestdrd"] = 0
 
+    # v3 신규: openedAt 기반 6 피처 (KST = UTC+9)
+    has_opened = "openedAt" in df.columns and df["openedAt"].notna().any()
+    if has_opened:
+        # join+filter 후 297K 행에만 tz 변환 (메모리 절약)
+        opened_utc = pd.to_datetime(df["openedAt"], utc=True, errors="coerce").dt.tz_localize(None)
+        opened_kst = opened_utc + pd.Timedelta(hours=9)
+        df["opened_month"] = opened_kst.dt.month.fillna(0).astype(int)
+        df["opened_weekday"] = opened_kst.dt.weekday.fillna(0).astype(int)
+        df["opened_hour"] = opened_kst.dt.hour.fillna(0).astype(int)
+        df["opened_season_q"] = (((opened_kst.dt.month - 1) // 3) + 1).fillna(0).astype(int)
+        # deadline tz-aware 가능성 방지
+        deadline_naive = df["deadline"]
+        if hasattr(deadline_naive.dt, "tz") and deadline_naive.dt.tz is not None:
+            deadline_naive = deadline_naive.dt.tz_localize(None)
+        df["days_deadline_to_open"] = (
+            (opened_utc - deadline_naive).dt.total_seconds() / 86400
+        ).round().fillna(0).astype(int)
+        df["is_morning_open"] = (opened_kst.dt.hour < 12).fillna(False).astype(int)
+        miss = df["openedAt"].isna().sum()
+        print(f"  openedAt 6 피처 추가 (결측 {miss:,}건은 0으로)")
+    else:
+        df["opened_month"] = 0
+        df["opened_weekday"] = 0
+        df["opened_hour"] = 0
+        df["opened_season_q"] = 0
+        df["days_deadline_to_open"] = 0
+        df["is_morning_open"] = 0
+        print("  WARN: openedAt 컬럼 없음 → v3 6 피처 0으로 채움")
+
     # 핵심: Expanding mean 피처 (leakage 방지, deadline 오름차순 정렬)
     print(f"  Expanding mean 피처 계산 중...")
     df = df.sort_values("deadline", kind="mergesort").reset_index(drop=True)
@@ -182,13 +215,27 @@ def build_sajung_csv(ann, br, sr, chg):
         "orgbud_past_mean", "orgbud_past_std", "orgbud_past_cnt",
         "sajung_rate", "split",
     ]
-    out = df[out_cols]
-    out_path = OUT_DIR / "training_data_v2.csv"
-    out.to_csv(out_path, index=False)
-    train = (out["split"] == "train").sum()
-    val = (out["split"] == "val").sum()
-    test = (out["split"] == "test").sum()
-    print(f"  저장: {out_path} ({len(out):,} rows, {len(out_cols)-2} 피처, train {train:,} / val {val:,} / test {test:,})")
+    v3_cols = [
+        "opened_month", "opened_weekday", "opened_hour",
+        "opened_season_q", "days_deadline_to_open", "is_morning_open",
+    ]
+
+    # konepsId 추가 (KoBERT title 매핑용; 학습 스크립트는 무시)
+    # v2 (호환 유지)
+    out_v2 = df[["konepsId"] + out_cols]
+    out_path_v2 = OUT_DIR / "training_data_v2.csv"
+    out_v2.to_csv(out_path_v2, index=False)
+    train = (out_v2["split"] == "train").sum()
+    val = (out_v2["split"] == "val").sum()
+    test = (out_v2["split"] == "test").sum()
+    print(f"  저장(v2): {out_path_v2} ({len(out_v2):,} rows, {len(out_cols)-2} 피처, train {train:,} / val {val:,} / test {test:,})")
+
+    # v3 (openedAt 6 피처 추가)
+    out_v3_cols = out_cols[:-2] + v3_cols + ["sajung_rate", "split"]
+    out_v3 = df[["konepsId"] + out_v3_cols]
+    out_path_v3 = OUT_DIR / "training_data_v3.csv"
+    out_v3.to_csv(out_path_v3, index=False)
+    print(f"  저장(v3): {out_path_v3} ({len(out_v3):,} rows, {len(out_v3_cols)-2} 피처)")
 
 
 def build_opening_csv(ann, op):

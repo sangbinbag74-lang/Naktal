@@ -21,7 +21,7 @@ const MODELS: ModelCard[] = [
   {
     name: "Model 1 · 사정율 예측",
     endpoint: "/api/ml-predict",
-    description: "CORE 1 LightGBM, 27 피처 (A값/기초금액/사전규격 포함)",
+    description: "CORE 1 LightGBM v2 + tuned(v3 하이퍼튜닝) 앙상블 (0.9/0.1). test MAE 0.4813 (v2 단독 0.4815 대비 -0.0002p, 4-way 그리드 best)",
   },
   {
     name: "Model 2 · 복수예가 번호 선택",
