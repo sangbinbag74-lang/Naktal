@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import Link from "next/link";
+import { reportError } from "@/lib/error-report";
 
 export default function DashboardError({
   error,
@@ -11,7 +12,7 @@ export default function DashboardError({
   reset: () => void;
 }) {
   useEffect(() => {
-    console.error("[dashboard]", error);
+    reportError(error, { scope: "dashboard", digest: error.digest });
   }, [error]);
 
   return (

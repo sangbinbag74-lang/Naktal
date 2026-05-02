@@ -30,7 +30,11 @@ function mapToRow(item: G2BBidResult): BidResultRow | null {
 
     const winnerName = (item.sucsfbidCorpNm || item.bidwinnrNm || "").trim() || undefined;
 
-    return { annId, bidRate, finalPrice, numBidders, winnerName };
+    // G2B SCSBID 응답에는 opengDt가 없고 rlOpengDt(실개찰일시)만 있음.
+    // BidPublicInfoService 응답에는 opengDt가 있으므로 두 필드 모두 fallback.
+    const openedAt = parseOpengDt(item.rlOpengDt || item.opengDt);
+
+    return { annId, bidRate, finalPrice, numBidders, winnerName, openedAt };
   } catch {
     return null;
   }
@@ -38,6 +42,18 @@ function mapToRow(item: G2BBidResult): BidResultRow | null {
 
 function toG2BDate(d: Date): string {
   return d.toISOString().slice(0, 10).replace(/-/g, "");
+}
+
+function parseOpengDt(raw: string | undefined | null): string | null {
+  if (!raw || raw.length < 8) return null;
+  if (raw.includes("-")) {
+    const dt = new Date(raw.replace(" ", "T") + (raw.length <= 16 ? ":00+09:00" : "+09:00"));
+    return isNaN(dt.getTime()) ? null : dt.toISOString();
+  }
+  const y = raw.slice(0, 4), mo = raw.slice(4, 6), d = raw.slice(6, 8);
+  const hh = raw.slice(8, 10) || "00", mm = raw.slice(10, 12) || "00";
+  const dt = new Date(`${y}-${mo}-${d}T${hh}:${mm}:00+09:00`);
+  return isNaN(dt.getTime()) ? null : dt.toISOString();
 }
 
 // ─── 낙찰결과 수집 메인 ──────────────────────────────────────────────────────

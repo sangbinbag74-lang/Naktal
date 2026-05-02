@@ -1,5 +1,7 @@
-name: 나라장터 전체 역대 데이터 수집
+name: 나라장터 전체 역대 데이터 수집 (완료 — 비상시만 수동)
 
+# 2002~2026 전수 수집 완료 (2026-04-19). g2b.yml daily가 증분 처리.
+# 본 workflow는 재해복구·DB 초기화 시에만 수동 실행.
 on:
   workflow_dispatch:
     inputs:

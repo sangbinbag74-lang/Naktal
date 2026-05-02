@@ -66,6 +66,13 @@ export interface MlFeatures {
   orgbud_past_mean?: number;
   orgbud_past_std?: number;
   orgbud_past_cnt?: number;
+  // v3 신규 (선택 — openedAt 기반 시즌/요일/시간대)
+  opened_month?: number;
+  opened_weekday?: number;
+  opened_hour?: number;
+  opened_season_q?: number;
+  days_deadline_to_open?: number;
+  is_morning_open?: number;
 }
 
 function getBaseUrl(): string {

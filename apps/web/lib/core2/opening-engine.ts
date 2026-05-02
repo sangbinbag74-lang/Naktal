@@ -63,7 +63,13 @@ export async function predictOpeningNumbers(ctx: OpeningContext): Promise<Openin
 
 /**
  * ML 확률 + 기존 frequency freqMap (통계) 가중 blend
- *   mlWeight: ML 가중치 (0~1), 기본 0.6
+ *   mlWeight: ML 가중치 (0~1), 기본 0
+ *
+ * 2026-04-30: Model 2 (복수예가 번호 선택) 8개 변형 실험 결과
+ * 모두 freq baseline 0.326 천장 동일 (LGBM/CatBoost/KNN/KoBERT/recent TE).
+ * val/test (org,cat) self-oracle 천장 0.349 vs train→val 전이 = 0.326 차이
+ * = 학습 가능 신호가 train→val 전이 시 손실. 데이터 본질적 한계.
+ * → ML 가중치 기본 0, freqMap 단독 사용. mlProbs는 호출자 지정 시에만 활성.
  *
  * freqMap은 번호(1~15) → 선택 빈도 [0,1].
  * 반환: 번호(1~15) → 조합된 선택 확률.
@@ -71,7 +77,7 @@ export async function predictOpeningNumbers(ctx: OpeningContext): Promise<Openin
 export function blendWithFrequency(
   mlProbs: number[] | null,
   freqMap: Record<number, number> | null,
-  mlWeight = 0.6,
+  mlWeight = 0,
 ): number[] {
   const result = new Array(15).fill(4 / 15);
   for (let i = 0; i < 15; i++) {

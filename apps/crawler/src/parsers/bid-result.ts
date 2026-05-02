@@ -6,6 +6,7 @@ export interface BidResultRow {
   finalPrice: bigint;
   numBidders: number;
   winnerName?: string;
+  openedAt?: string | null; // ISO timestamp, G2B opengDt 파싱 결과
 }
 
 /**

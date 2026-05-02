@@ -11,11 +11,12 @@
  *   - chg_count (변경공고 횟수)
  *   - subcat_main (주력 업종 1개)
  *
- * Split 규칙:
+ * Split 규칙 (사정율 예측):
  *   train: 2015~2023
  *   val:   2024
  *   test:  2025~2026
- * (A값/PreStdrd 풍부한 2015+ 구간 중심)
+ * A값은 2020+만 풍부 → has_avalue=0 처리로 2015~2019도 학습 가능
+ * 최근 10년 데이터가 현실과 가까움
  *
  * 출력: apps/ml/data/training_data_v2.csv
  * 실행: pnpm ts-node src/scripts/export-training-data-v2.ts
@@ -42,7 +43,7 @@ function loadDatabaseUrl(): string | undefined {
 }
 
 const OUT_PATH = path.resolve(__dirname, "../../../../apps/ml/data/training_data_v2.csv");
-const CHUNK = 20000;
+const CHUNK = 5000;
 
 const HEADERS = [
   // 기존 v1 피처 (16)
@@ -119,8 +120,8 @@ async function main() {
           a."rsrvtnPrceRngBgnRate"            AS rsrvtn_bgn,
           a."rsrvtnPrceRngEndRate"            AS rsrvtn_end,
           COALESCE(a."subCategories"[1], '')  AS subcat_main,
-          EXISTS(SELECT 1 FROM "PreStdrd" p WHERE p."bfSpecRgstNm" ILIKE '%' || a.title || '%' LIMIT 1)::int AS has_prestdrd,
-          (SELECT COUNT(*) FROM "AnnouncementChgHst" c WHERE c."annId" = a."konepsId")::int AS chg_count,
+          0::int                              AS has_prestdrd,
+          0::int                              AS chg_count,
           (b."finalPrice"::numeric / (b."bidRate"::numeric / 100.0)) / a.budget::numeric * 100 AS sajung_rate
         FROM "BidResult" b
         JOIN "Announcement" a ON a."konepsId" = b."annId"

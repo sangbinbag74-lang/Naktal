@@ -36,6 +36,8 @@ const CHUNK = 20000;
 const SEL_COLS = Array.from({ length: 15 }, (_, i) => `sel_${i + 1}`);
 
 const HEADERS = [
+  "openingid",
+  "bidNtceNm",
   "category", "orgName", "budgetRange", "region",
   "budget_log", "bsisAmt_log", "lwltRate",
   "month", "season_q", "year",
@@ -76,19 +78,21 @@ async function main() {
   try {
     console.log(`출력: ${OUT_PATH}`);
 
-    let lastDeadline: Date | null = null;
-    let lastAnnId: string | null = null;
+    // BidOpeningDetail.id를 keyset 커서로 사용 (Announcement JOIN 오버헤드 없음)
+    let lastOpeningId: string | null = null;
     while (true) {
-      const hasCursor = lastDeadline !== null;
-      const keysetClause = hasCursor
-        ? 'AND (a.deadline, o."annId") > ($1::timestamp, $2::text)'
+      const hasCursor: boolean = lastOpeningId !== null;
+      const keysetClause: string = hasCursor
+        ? 'AND o.id > $1::text'
         : "";
-      const params: unknown[] = hasCursor ? [lastDeadline, lastAnnId] : [];
+      const params: unknown[] = hasCursor ? [lastOpeningId] : [];
 
-      const q = `
+      const q: string = `
         SELECT
+          o.id              AS openingid,
           o."annId"         AS annid,
           a.deadline        AS deadline,
+          a.title           AS bid_ntce_nm,
           a.category, a."orgName",
           COALESCE(NULLIF(a.region, ''), '전국') AS region,
           EXTRACT(MONTH FROM a.deadline)::int AS month,
@@ -99,20 +103,18 @@ async function main() {
           a."sucsfbidLwltRate"                AS lwlt_rate,
           a."aValueTotal"::bigint             AS avalue_total,
           COALESCE(a."subCategories"[1], '')  AS subcat_main,
-          COALESCE(o."bidCount", b."numBidders", 0) AS num_bidders,
-          o."selPrdprcIdx"                    AS sel_idx,
-          o."prdprcList"                      AS prdprc_list
+          COALESCE(o."bidCount", 0)           AS num_bidders,
+          o."selPrdprcIdx"                    AS sel_idx
         FROM "BidOpeningDetail" o
         JOIN "Announcement" a ON a."konepsId" = o."annId"
-        LEFT JOIN "BidResult" b ON b."annId" = o."annId"
-        WHERE a.budget::bigint > 0
-          AND array_length(o."selPrdprcIdx", 1) >= 4
-          AND EXTRACT(YEAR FROM a.deadline) BETWEEN 2015 AND 2026
+        WHERE array_length(o."selPrdprcIdx", 1) >= 4
+          AND a.budget::bigint > 0
+          AND EXTRACT(YEAR FROM a.deadline) <= 2027
           ${keysetClause}
-        ORDER BY a.deadline, o."annId"
+        ORDER BY o.id
         LIMIT ${CHUNK}
       `;
-      const res = await client.query(q, params);
+      const res: { rows: Record<string, unknown>[] } = await client.query(q, params);
       if (res.rows.length === 0) break;
 
       for (const r of res.rows) {
@@ -134,6 +136,8 @@ async function main() {
         }
 
         const row = [
+          csvEscape(r.openingid),
+          csvEscape(r.bid_ntce_nm ?? ""),
           csvEscape(r.category),
           csvEscape(r.orgName),
           csvEscape(budgetRange(budget)),
@@ -158,9 +162,8 @@ async function main() {
         else test++;
       }
 
-      const lastRow = res.rows[res.rows.length - 1];
-      lastDeadline = new Date(lastRow.deadline);
-      lastAnnId = String(lastRow.annid);
+      const lastRow = res.rows[res.rows.length - 1] as { openingid: string };
+      lastOpeningId = String(lastRow.openingid);
 
       console.log(`  +${res.rows.length} | 누적 ${total.toLocaleString()} (t ${train} / v ${val} / te ${test})`);
       if (res.rows.length < CHUNK) break;

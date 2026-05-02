@@ -184,6 +184,7 @@ export async function upsertBidResult(data: BidResultRow): Promise<void> {
       finalPrice: data.finalPrice.toString(),
       numBidders: data.numBidders,
       winnerName: data.winnerName ?? null,
+      openedAt:   data.openedAt ?? null,
     },
     { onConflict: "annId" }
   );
@@ -229,6 +230,7 @@ export async function upsertBidResultBatch(rows: BidResultRow[]): Promise<number
       finalPrice: data.finalPrice.toString(),
       numBidders: data.numBidders,
       winnerName: data.winnerName ?? null,
+      openedAt:   data.openedAt ?? null,
     }));
     let lastErr: string | null = null;
     for (let attempt = 0; attempt < 3; attempt++) {
@@ -254,7 +256,7 @@ async function upsertBidResultBatchPg(rows: BidResultRow[]): Promise<number> {
       // VALUES ($1,$2,...), ($n+1,...) 형태로 구성
       const values: unknown[] = [];
       const placeholders = chunk.map((data, j) => {
-        const base = j * 6;
+        const base = j * 7;
         values.push(
           randomUUID(),
           data.annId,
@@ -262,17 +264,19 @@ async function upsertBidResultBatchPg(rows: BidResultRow[]): Promise<number> {
           data.finalPrice.toString(),
           data.numBidders,
           data.winnerName ?? null,
+          data.openedAt ?? null,
         );
-        return `($${base+1},$${base+2},$${base+3},$${base+4},$${base+5},$${base+6})`;
+        return `($${base+1},$${base+2},$${base+3},$${base+4},$${base+5},$${base+6},$${base+7}::timestamptz)`;
       }).join(",");
       await client.query(
-        `INSERT INTO "BidResult" (id,"annId","bidRate","finalPrice","numBidders","winnerName")
+        `INSERT INTO "BidResult" (id,"annId","bidRate","finalPrice","numBidders","winnerName","openedAt")
          VALUES ${placeholders}
          ON CONFLICT ("annId") DO UPDATE SET
            "bidRate"    = EXCLUDED."bidRate",
            "finalPrice" = EXCLUDED."finalPrice",
            "numBidders" = EXCLUDED."numBidders",
-           "winnerName" = EXCLUDED."winnerName"`,
+           "winnerName" = EXCLUDED."winnerName",
+           "openedAt"   = COALESCE(EXCLUDED."openedAt", "BidResult"."openedAt")`,
         values,
       );
       saved += chunk.length;

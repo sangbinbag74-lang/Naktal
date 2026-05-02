@@ -71,7 +71,8 @@ const TABLES: TableSpec[] = [
           "annId",
           "bidRate",
           "finalPrice"::bigint AS final_price,
-          "numBidders"
+          "numBidders",
+          "openedAt"
         FROM "BidResult"
         WHERE "finalPrice"::bigint > 0
           AND "bidRate"::numeric > 0
@@ -116,6 +117,19 @@ const TABLES: TableSpec[] = [
           COUNT(*)::int AS chg_count
         FROM "AnnouncementChgHst"
         GROUP BY "annId"
+      ) TO STDOUT WITH CSV HEADER
+    `,
+  },
+  {
+    // KoBERT 시도용 (konepsId, title) 보조 dump — announcement.csv 본체와 분리해 작게 유지
+    name: "ann_title",
+    sql: `
+      COPY (
+        SELECT "konepsId", title
+        FROM "Announcement"
+        WHERE deadline >= '2015-01-01'::timestamptz
+          AND deadline < '2027-01-01'::timestamptz
+          AND budget::bigint > 0
       ) TO STDOUT WITH CSV HEADER
     `,
   },

@@ -77,13 +77,13 @@ async function main() {
     let lastDeadline: Date | null = null;
     let lastAnnId: string | null = null;
     while (true) {
-      const hasCursor = lastDeadline !== null;
-      const keysetClause = hasCursor
+      const hasCursor: boolean = lastDeadline !== null;
+      const keysetClause: string = hasCursor
         ? 'AND (a.deadline, b."annId") > ($1::timestamp, $2::text)'
         : "";
       const params: unknown[] = hasCursor ? [lastDeadline, lastAnnId] : [];
 
-      const q = `
+      const q: string = `
         SELECT
           b."annId"           AS annid,
           a.deadline,
@@ -108,7 +108,7 @@ async function main() {
         ORDER BY a.deadline, b."annId"
         LIMIT ${CHUNK}
       `;
-      const res = await client.query(q, params);
+      const res: { rows: Record<string, unknown>[] } = await client.query(q, params);
       if (res.rows.length === 0) break;
 
       for (const r of res.rows) {
@@ -152,7 +152,7 @@ async function main() {
         else test++;
       }
 
-      const lastRow = res.rows[res.rows.length - 1];
+      const lastRow = res.rows[res.rows.length - 1] as { deadline: string; annid: string };
       lastDeadline = new Date(lastRow.deadline);
       lastAnnId = String(lastRow.annid);
 

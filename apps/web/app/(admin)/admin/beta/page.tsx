@@ -1,3 +1,4 @@
+// TODO: 사이드바에서 제거됨 — 더 이상 사용하지 않는 페이지
 export const dynamic = "force-dynamic";
 
 import { createAdminClient } from "@/lib/supabase/server";

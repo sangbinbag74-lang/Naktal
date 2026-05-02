@@ -145,9 +145,9 @@ def main():
     target = 15
     print(f"\n목표 RMSE ≤ {target} vs 실제 test = {rmse_test:.2f}")
     if rmse_test <= target:
-        print("✅ 목표 달성")
+        print("[OK] 목표 달성")
     else:
-        print("⚠️ 목표 미달")
+        print("[WARN] 목표 미달")
 
     MODEL_DIR.mkdir(parents=True, exist_ok=True)
     joblib.dump({

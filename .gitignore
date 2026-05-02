@@ -36,3 +36,16 @@ yarn-error.log*
 # Misc
 .DS_Store
 *.pem
+
+# ML 학습 산출물 (대용량, 로컬 보관)
+apps/ml/data/
+apps/ml/models/
+apps/ml/**/*.parquet
+apps/ml/**/*.npy
+apps/ml/**/*.pkl
+apps/ml/**/*.csv
+*.log
+
+# 백업/임시
+*.bak
+*.tmp

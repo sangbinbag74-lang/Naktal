@@ -172,9 +172,9 @@ def main():
     target = 0.30
     print(f"\n목표 Top-4 Precision ≥ {target} vs 실제 test = {p4_test:.4f}")
     if p4_test >= target:
-        print("✅ 목표 달성")
+        print("[OK] 목표 달성")
     else:
-        print("⚠️ 목표 미달 — 더 많은 피처 or 모델 튜닝 필요")
+        print("[WARN] 목표 미달 - 더 많은 피처 or 모델 튜닝 필요")
 
     MODEL_DIR.mkdir(parents=True, exist_ok=True)
     joblib.dump({

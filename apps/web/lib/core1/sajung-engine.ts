@@ -518,6 +518,14 @@ export async function predictOptimalBid(params: {
     orgbud_past_mean: stat.avg,
     orgbud_past_std: mlStddev,
     orgbud_past_cnt: stat.sampleSize,
+    // v3 신규 — 공고 시점에는 실제 개찰시간 미상이므로 deadline 기준 근사
+    // (대다수 공고: deadline 익일 10시 KST 개찰)
+    opened_month: month,
+    opened_weekday: (deadlineDate.getDay() + 1) % 7,
+    opened_hour: 10,
+    opened_season_q: Math.ceil(month / 3),
+    days_deadline_to_open: 1,
+    is_morning_open: 1,
   });
 
   // 5-c. 앙상블: ML 성공 시 0.4×stat + 0.6×ML, 실패 시 통계 단독

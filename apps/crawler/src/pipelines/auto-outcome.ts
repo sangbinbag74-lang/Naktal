@@ -90,12 +90,25 @@ export async function collectAutoOutcomes(): Promise<{ updated: number; skipped:
       }
     }
 
+    // G-4 피드백 루프: 실제 선택된 4개 예비가 번호 (BidOpeningDetail 조회)
+    let actualOpeningIdx: number[] = [];
+    const { data: opening } = await db
+      .from("BidOpeningDetail")
+      .select("selPrdprcIdx")
+      .eq("annId", outcome.annId)
+      .maybeSingle();
+    if (opening?.selPrdprcIdx && Array.isArray(opening.selPrdprcIdx)) {
+      actualOpeningIdx = opening.selPrdprcIdx as number[];
+    }
+
     await db.from("BidOutcome").update({
       result,
       actualBidRate: new Decimal(actualRate).toFixed(4),
       actualFinalPrice: finalPrice > 0 ? String(finalPrice) : null,
       actualSajungRate: actualSajungRate ?? null,
       numBidders,
+      actualBidders: numBidders > 0 ? numBidders : null,
+      actualOpeningIdx,
       recommendHit,
       openedAt: new Date().toISOString(),
     }).eq("id", outcome.id);

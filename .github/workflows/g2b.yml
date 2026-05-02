@@ -9,13 +9,15 @@ on:
         type: choice
         default: daily
         options:
-          - daily          # announcement → extras → opening 순차 (cron 동일)
-          - announcement   # 공고/낙찰 신규 (crawl.yml)
-          - extras         # 보조정보 v2 (bulk-extras.yml)
-          - opening        # 개찰결과 (bulk-opening.yml)
-          - reparse        # rawJson 재파싱 (reparse-rawjson.yml)
-          - avalue         # A값 백필 (bulk-avalue-backfill.yml)
-          - import         # 전체 역대 (bulk-import.yml)
+          - daily            # announcement → extras → opening → audit 순차 (cron 동일)
+          - announcement     # 공고/낙찰 신규 (crawl.yml)
+          - extras           # 보조정보 v2 (bulk-extras.yml)
+          - opening          # 개찰결과 (bulk-opening.yml)
+          - reparse          # rawJson 재파싱 (reparse-rawjson.yml)
+          - avalue           # A값 백필 (완료, 수동만)
+          - import           # 전체 역대 (완료, 수동만)
+          - recollect-openedat  # BidResult.openedAt 결측 보강 (rlOpengDt 재수집)
+          - audit            # 데이터 품질 감사 단독 실행
       from:
         description: "시작월/시작일 (YYYYMM 또는 YYYYMMDD)"
         required: false
@@ -163,6 +165,48 @@ jobs:
           fi
           echo "실행: pnpm ts-node src/bulk-opening.ts --from=$FROM --to=$TO"
           pnpm ts-node src/bulk-opening.ts --from=$FROM --to=$TO
+
+  audit:
+    needs: [setup, opening]
+    if: |
+      always() &&
+      (needs.setup.outputs.job == 'daily' || needs.setup.outputs.job == 'audit') &&
+      (needs.opening.result == 'success' || needs.opening.result == 'skipped')
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v3
+        with: { version: "9.0.0" }
+      - uses: actions/setup-node@v4
+        with: { node-version: "20", cache: pnpm }
+      - run: pnpm install --no-frozen-lockfile
+      - run: pnpm --filter @naktal/db exec prisma generate
+      - name: 데이터 품질 감사 (채움율 + 샘플)
+        working-directory: apps/crawler
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: pnpm ts-node src/scripts/audit-data-quality.ts
+
+  recollect-openedat:
+    needs: setup
+    if: needs.setup.outputs.job == 'recollect-openedat'
+    runs-on: ubuntu-latest
+    timeout-minutes: 355
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v3
+        with: { version: "9.0.0" }
+      - uses: actions/setup-node@v4
+        with: { node-version: "20", cache: pnpm }
+      - run: pnpm install --no-frozen-lockfile
+      - name: BidResult.openedAt 결측 재수집 (SCSBID rlOpengDt)
+        working-directory: apps/crawler
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          KONEPS_API_KEY: ${{ secrets.KONEPS_API_KEY }}
+          G2B_API_KEY: ${{ secrets.G2B_API_KEY }}
+        run: pnpm ts-node src/scripts/recollect-bidresult-rlopeng.ts
 
   reparse:
     needs: setup

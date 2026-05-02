@@ -1,5 +1,7 @@
-name: A값 백필 (공사 BsisAmount 재파싱)
+name: A값 백필 (공사 BsisAmount 재파싱) — 완료, 수동만
 
+# aValueTotal 백필 완료. g2b.yml extras job이 신규분 처리.
+# 본 workflow는 결측 발견 시 부분 재실행 용도.
 on:
   workflow_dispatch:
     inputs:
