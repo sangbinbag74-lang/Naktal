@@ -434,6 +434,7 @@ export interface CrawlLogInput {
 
 export async function logCrawl(log: CrawlLogInput): Promise<void> {
   const { error } = await supabase.from("CrawlLog").insert({
+    id:     randomUUID(),
     type:   log.type,
     status: log.status,
     count:  log.count,

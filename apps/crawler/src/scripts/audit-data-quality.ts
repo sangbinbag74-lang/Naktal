@@ -8,17 +8,21 @@ import * as fs from "fs";
 
 function loadDbUrl(): string {
   const rootEnv = path.resolve(__dirname, "../../../../.env");
-  const c = fs.readFileSync(rootEnv, "utf-8");
-  for (const l of c.split("\n")) {
-    const t = l.trim();
-    if (!t || t.startsWith("#")) continue;
-    const i = t.indexOf("=");
-    if (i === -1) continue;
-    const k = t.slice(0, i).trim();
-    const v = t.slice(i + 1).trim().replace(/^["']|["']$/g, "");
-    if (k === "DATABASE_URL" && v) return v;
+  if (fs.existsSync(rootEnv)) {
+    const c = fs.readFileSync(rootEnv, "utf-8");
+    for (const l of c.split("\n")) {
+      const t = l.trim();
+      if (!t || t.startsWith("#")) continue;
+      const i = t.indexOf("=");
+      if (i === -1) continue;
+      const k = t.slice(0, i).trim();
+      const v = t.slice(i + 1).trim().replace(/^["']|["']$/g, "");
+      if (k === "DATABASE_URL" && v) return v;
+    }
   }
-  return process.env.DATABASE_URL!;
+  const env = process.env.DATABASE_URL;
+  if (!env) throw new Error("DATABASE_URL 미설정 (.env 또는 환경변수 필요)");
+  return env;
 }
 
 interface Check {

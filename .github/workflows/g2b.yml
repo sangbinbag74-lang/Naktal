@@ -66,6 +66,7 @@ jobs:
       - name: 공고/낙찰 신규 수집
         working-directory: apps/crawler
         env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
           G2B_API_KEY: ${{ secrets.G2B_API_KEY }}
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
@@ -80,6 +81,7 @@ jobs:
       - name: 부종공종 채우기
         working-directory: apps/crawler
         env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
           G2B_API_KEY: ${{ secrets.G2B_API_KEY }}
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
@@ -87,6 +89,7 @@ jobs:
       - name: A값 채우기
         working-directory: apps/crawler
         env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
           G2B_API_KEY: ${{ secrets.G2B_API_KEY }}
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
