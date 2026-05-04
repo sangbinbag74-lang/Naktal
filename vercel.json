@@ -13,13 +13,5 @@
     "apps/web/app/api/cron/prefill-predictions/route.ts": { "maxDuration": 120 },
     "apps/web/app/api/cron/fill-bid-results/route.ts": { "maxDuration": 120 }
   },
-  "crons": [
-    { "path": "/api/cron/sync-g2b", "schedule": "0 0 * * *" },
-    { "path": "/api/cron/sync-g2b", "schedule": "0 3 * * *" },
-    { "path": "/api/cron/sync-g2b", "schedule": "0 6 * * *" },
-    { "path": "/api/cron/sync-g2b", "schedule": "0 9 * * *" },
-    { "path": "/api/cron/collect-sajung-stat", "schedule": "0 19 * * *" },
-    { "path": "/api/cron/prefill-predictions", "schedule": "0 20 * * *" },
-    { "path": "/api/cron/fill-bid-results", "schedule": "0 1-9 * * 1-5" }
-  ]
+  "crons": []
 }
