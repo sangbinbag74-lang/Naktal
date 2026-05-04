@@ -1,5 +1,5 @@
 import Decimal from "decimal.js";
-import { fetchAnnouncementPage, NTCE_OPS, type G2BAnnouncement } from "./g2b-client";
+import { fetchAnnouncementPage, NTCE_OPS, G2BCode07Error, type G2BAnnouncement } from "./g2b-client";
 import type { AnnouncementRow } from "../parsers/announcement";
 import { logger } from "../utils/logger";
 import { MAIN_CNSTWK_MAP, parseSubCategories } from "../category-map";
@@ -141,14 +141,30 @@ export async function fetchAnnouncements(
   for (const operation of NTCE_OPS) {
     let page = 1;
     while (page <= maxPages) {
-      const { items, totalCount } = await fetchAnnouncementPage({
-        pageNo: page,
-        numOfRows,
-        inqryDiv: "1",
-        inqryBgnDt,
-        inqryEndDt,
-        operation,
-      });
+      let items: G2BAnnouncement[];
+      let totalCount: number;
+      try {
+        ({ items, totalCount } = await fetchAnnouncementPage({
+          pageNo: page,
+          numOfRows,
+          inqryDiv: "1",
+          inqryBgnDt,
+          inqryEndDt,
+          operation,
+        }));
+      } catch (e) {
+        if (e instanceof G2BCode07Error) {
+          // page>1 + totalCount 자연 종료 못한 경우만 도달 → 페이지 끝으로 처리
+          if (page > 1) {
+            logger.info(`  [${operation}] page=${page} resultCode=07 → 정상 페이지 끝`);
+            break;
+          }
+          // page=1 07 → 한도/장애 의심 → 호출자(bulk-import) 전파
+          logger.warn(`  [${operation}] page=1 resultCode=07 — 한도/장애 의심, 호출자 전파`);
+          throw e;
+        }
+        throw e;
+      }
 
       if (items.length === 0) break;
 

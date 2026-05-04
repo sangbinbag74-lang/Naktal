@@ -46,6 +46,21 @@ interface G2BBody<T> {
   totalCount: number;
 }
 
+/**
+ * G2B resultCode "07" (입력범위값 초과) — 다음 중 하나:
+ * 1) 진짜 페이지 끝 (정상 종료)
+ * 2) 일일 한도 초과
+ * 3) 일시 장애
+ * 호출자가 (totalCount=0 + pageNo=1) 동시일 때만 진짜 끝이라고 판단할 수 있도록
+ * pageNo와 함께 throw. fetchAnnouncements/fetchBidResults가 catch 후 분기.
+ */
+export class G2BCode07Error extends Error {
+  constructor(public readonly pageNo: number, public readonly operation: string) {
+    super(`G2B resultCode 07 (page=${pageNo}, op=${operation})`);
+    this.name = "G2BCode07Error";
+  }
+}
+
 interface G2BResponse<T> {
   response: {
     header: { resultCode: string; resultMsg: string };
@@ -113,13 +128,12 @@ export async function fetchAnnouncementPage(params: {
   const data = (await res.json()) as G2BResponse<G2BAnnouncement>;
   if (!data?.response) {
     const altErr = (data as any)?.["nkoneps.com.response.ResponseError"];
-    if (altErr?.header?.resultCode === "07") return { items: [], totalCount: 0 };
+    if (altErr?.header?.resultCode === "07") throw new G2BCode07Error(params.pageNo, op);
     throw new Error(`G2B 공고 API 비정상 응답: ${JSON.stringify(data).slice(0, 300)}`);
   }
   const { header, body } = data.response;
 
-  // 코드 07 = 입력범위값 초과 → 페이지 끝으로 처리 (더 이상 데이터 없음)
-  if (header.resultCode === "07") return { items: [], totalCount: 0 };
+  if (header.resultCode === "07") throw new G2BCode07Error(params.pageNo, op);
   if (header.resultCode !== "00")
     throw new Error(`G2B API 오류 코드: ${header.resultCode} - ${header.resultMsg}`);
 
@@ -150,13 +164,12 @@ export async function fetchBidResultPage(params: {
   const data = (await res.json()) as G2BResponse<G2BBidResult>;
   if (!data?.response) {
     const altErr = (data as any)?.["nkoneps.com.response.ResponseError"];
-    if (altErr?.header?.resultCode === "07") return { items: [], totalCount: 0 };
+    if (altErr?.header?.resultCode === "07") throw new G2BCode07Error(params.pageNo, op);
     throw new Error(`G2B 낙찰결과 API 비정상 응답: ${JSON.stringify(data).slice(0, 300)}`);
   }
   const { header, body } = data.response;
 
-  // 코드 07 = 입력범위값 초과 → 페이지 끝으로 처리
-  if (header.resultCode === "07") return { items: [], totalCount: 0 };
+  if (header.resultCode === "07") throw new G2BCode07Error(params.pageNo, op);
   if (header.resultCode !== "00")
     throw new Error(`G2B API 오류 코드: ${header.resultCode} - ${header.resultMsg}`);
 

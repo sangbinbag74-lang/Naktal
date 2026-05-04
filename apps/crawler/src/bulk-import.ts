@@ -11,7 +11,8 @@ loadEnv();
 
 import { fetchAnnouncements } from "./fetchers/g2b-announcement";
 import { fetchBidResults } from "./fetchers/g2b-bid-result";
-import { upsertAnnouncementBatch, upsertBidResultBatch } from "./db/upsert";
+import { upsertAnnouncementBatch, upsertBidResultBatch, loadBulkCursor, saveBulkCursor } from "./db/upsert";
+import { G2BCode07Error } from "./fetchers/g2b-client";
 import { logger } from "./utils/logger";
 
 function loadEnv(): void {
@@ -92,6 +93,8 @@ async function importMonth(
         logger.error(`  배치 저장 실패: ${e instanceof Error ? e.message : String(e)}`);
       }
     } catch (e) {
+      // H-2 #2: G2BCode07Error는 메인 루프가 처리하도록 전파
+      if (e instanceof G2BCode07Error) throw e;
       logger.error(`[${ym}] 공고 수집 오류`, e);
     }
     await sleep(300);
@@ -107,6 +110,7 @@ async function importMonth(
         logger.error(`  낙찰결과 배치 저장 실패: ${e instanceof Error ? e.message : String(e)}`);
       }
     } catch (e) {
+      if (e instanceof G2BCode07Error) throw e;
       logger.error(`[${ym}] 낙찰결과 수집 오류`, e);
     }
     await sleep(300);
@@ -119,17 +123,26 @@ async function importMonth(
 
 async function main(): Promise<void> {
   const { from, to, skipBid, skipAnn } = parseArgs();
+  const JOB = "bulk-import";
+
+  // H-2 #3 커서: 이전 실행이 한도/장애로 중단된 경우 그 다음 월부터 재개
+  const prevCursor = await loadBulkCursor(JOB);
+  let resumeFrom = from;
+  if (prevCursor && prevCursor.reason !== "DONE" && prevCursor.lastYm >= from && prevCursor.lastYm < to) {
+    resumeFrom = addMonths(prevCursor.lastYm, 1);
+    logger.info(`[H-2 #3] 이전 커서 복원: ${prevCursor.lastYm} (${prevCursor.reason}) → ${resumeFrom}부터 재개`);
+  }
 
   // 수집할 월 목록 생성 (오래된 순)
   const months: string[] = [];
-  let cur = from;
+  let cur = resumeFrom;
   while (cur <= to) {
     months.push(cur);
     cur = addMonths(cur, 1);
   }
 
   const mode = skipBid ? "공고만" : skipAnn ? "낙찰결과만" : "공고+낙찰결과";
-  logger.info(`=== 전체 수집 시작: ${from} ~ ${to} (총 ${months.length}개월, ${mode}, numOfRows=999) ===`);
+  logger.info(`=== 전체 수집 시작: ${resumeFrom} ~ ${to} (총 ${months.length}개월, ${mode}, numOfRows=999) ===`);
 
   let totalAnn = 0, totalBid = 0;
   const startTime = Date.now();
@@ -140,13 +153,29 @@ async function main(): Promise<void> {
     const pct = Math.round(((i + 1) / months.length) * 100);
     logger.info(`[${i + 1}/${months.length}] ${ym} 수집 중... (${pct}% / 경과 ${elapsed}초)`);
 
-    const { ann, bid } = await importMonth(ym, { skipBid, skipAnn });
-    totalAnn += ann;
-    totalBid += bid;
+    try {
+      const { ann, bid } = await importMonth(ym, { skipBid, skipAnn });
+      totalAnn += ann;
+      totalBid += bid;
 
-    logger.info(`  → 공고 ${ann}건 / 낙찰결과 ${bid}건 저장 (누적: 공고 ${totalAnn}, 낙찰 ${totalBid})`);
+      logger.info(`  → 공고 ${ann}건 / 낙찰결과 ${bid}건 저장 (누적: 공고 ${totalAnn}, 낙찰 ${totalBid})`);
+
+      // 매 월 성공 직후 커서 갱신
+      await saveBulkCursor({ job: JOB, lastYm: ym, reason: "OK" });
+    } catch (e) {
+      // H-2 #2/#1: G2B 07 (한도/장애) 받으면 즉시 중단 + 커서 저장
+      if (e instanceof G2BCode07Error) {
+        await saveBulkCursor({ job: JOB, lastYm: ym, lastOp: e.operation, reason: "CODE_07" });
+        logger.error(`[H-2] ${ym} 중단: G2BCode07Error (op=${e.operation}, page=${e.pageNo}) — 커서 저장. 한도 리셋 후 재실행하면 ${addMonths(ym, 1)}부터 재개`);
+        process.exit(2); // exit code 2 = 한도/장애로 중단 (CI에서 구분 가능)
+      }
+      // 그 외 오류는 기존대로 다음 월로
+      logger.error(`[${ym}] 예외 발생, 다음 월로 진행:`, e);
+    }
   }
 
+  // 정상 완료
+  await saveBulkCursor({ job: JOB, lastYm: to, reason: "DONE" });
   const totalSec = Math.round((Date.now() - startTime) / 1000);
   logger.info(`=== 전체 수집 완료: 공고 ${totalAnn}건 / 낙찰결과 ${totalBid}건 / 소요 ${totalSec}초 ===`);
 }

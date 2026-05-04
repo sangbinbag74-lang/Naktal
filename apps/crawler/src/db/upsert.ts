@@ -157,7 +157,7 @@ async function upsertAnnouncementBatchPg(rows: AnnouncementRow[]): Promise<numbe
            category               = EXCLUDED.category,
            region                = EXCLUDED.region,
            "rawJson"             = EXCLUDED."rawJson",
-           "subCategories"       = EXCLUDED."subCategories",
+           "subCategories"       = CASE WHEN array_length(EXCLUDED."subCategories", 1) > 0 THEN EXCLUDED."subCategories" ELSE "Announcement"."subCategories" END,
            "sucsfbidLwltRate"    = CASE WHEN EXCLUDED."sucsfbidLwltRate" > 0 THEN EXCLUDED."sucsfbidLwltRate" ELSE "Announcement"."sucsfbidLwltRate" END,
            "bidNtceDtlUrl"       = CASE WHEN EXCLUDED."bidNtceDtlUrl" != '' THEN EXCLUDED."bidNtceDtlUrl" ELSE "Announcement"."bidNtceDtlUrl" END,
            "ntceInsttOfclTelNo"  = CASE WHEN EXCLUDED."ntceInsttOfclTelNo" != '' THEN EXCLUDED."ntceInsttOfclTelNo" ELSE "Announcement"."ntceInsttOfclTelNo" END,
@@ -426,7 +426,7 @@ export async function fillBidRequestResult(
 // ─── CrawlLog ─────────────────────────────────────────────────────────────────
 
 export interface CrawlLogInput {
-  type: "ANNOUNCEMENT" | "BID_RESULT";
+  type: "ANNOUNCEMENT" | "BID_RESULT" | "HIST_CURSOR";
   status: "SUCCESS" | "PARTIAL" | "FAILED";
   count: number;
   errors?: string;
@@ -443,4 +443,42 @@ export async function logCrawl(log: CrawlLogInput): Promise<void> {
   if (error) {
     console.error(`[CrawlLog 기록 실패]: ${error.message}`);
   }
+}
+
+// ─── Bulk-import 커서 (H-2 #3) ────────────────────────────────────────────────
+// CrawlLog.type=HIST_CURSOR + errors 필드에 JSON 저장. 별도 테이블 없이 활용.
+export interface BulkImportCursor {
+  job: string;          // "bulk-import" | "bulk-import-extras-v2" 등
+  lastYm: string;       // 마지막 완료 월 YYYYMM
+  lastOp?: string;      // 마지막 완료 op
+  reason?: string;      // "CODE_07" / "DAILY_LIMIT" / "DONE"
+}
+
+/** 가장 최근 SUCCESS인 HIST_CURSOR 레코드 중 job 일치하는 첫 행 반환 */
+export async function loadBulkCursor(job: string): Promise<BulkImportCursor | null> {
+  const { data, error } = await supabase
+    .from("CrawlLog")
+    .select("errors, createdAt")
+    .eq("type", "HIST_CURSOR")
+    .eq("status", "SUCCESS")
+    .order("createdAt", { ascending: false })
+    .limit(50);
+  if (error || !data) return null;
+  for (const row of data) {
+    if (!row.errors) continue;
+    try {
+      const c = JSON.parse(row.errors as string) as BulkImportCursor;
+      if (c.job === job) return c;
+    } catch { /* ignore malformed */ }
+  }
+  return null;
+}
+
+export async function saveBulkCursor(cursor: BulkImportCursor): Promise<void> {
+  await logCrawl({
+    type: "HIST_CURSOR",
+    status: "SUCCESS",
+    count: 0,
+    errors: JSON.stringify(cursor),
+  });
 }

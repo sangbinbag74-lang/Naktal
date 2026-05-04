@@ -1,5 +1,5 @@
 import Decimal from "decimal.js";
-import { fetchBidResultPage, type G2BBidResult } from "./g2b-client";
+import { fetchBidResultPage, G2BCode07Error, type G2BBidResult } from "./g2b-client";
 
 const SCSBID_OPS = [
   "getScsbidListSttusThng",
@@ -82,9 +82,23 @@ export async function fetchBidResults(
   for (const operation of SCSBID_OPS) {
     let page = 1;
     while (page <= maxPages) {
-      const { items, totalCount } = await fetchBidResultPage({
-        pageNo: page, numOfRows, inqryBgnDt, inqryEndDt, operation,
-      });
+      let items: G2BBidResult[];
+      let totalCount: number;
+      try {
+        ({ items, totalCount } = await fetchBidResultPage({
+          pageNo: page, numOfRows, inqryBgnDt, inqryEndDt, operation,
+        }));
+      } catch (e) {
+        if (e instanceof G2BCode07Error) {
+          if (page > 1) {
+            logger.info(`  [${operation}] page=${page} resultCode=07 → 정상 페이지 끝`);
+            break;
+          }
+          logger.warn(`  [${operation}] page=1 resultCode=07 — 한도/장애 의심, 호출자 전파`);
+          throw e;
+        }
+        throw e;
+      }
 
       if (items.length === 0) break;
 
