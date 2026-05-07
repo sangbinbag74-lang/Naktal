@@ -113,17 +113,46 @@ async function fetchATotal(bidNtceNo: string, apiKey: string): Promise<bigint> {
   return BigInt(Math.round(sum));
 }
 
+/** Bulk 모드 fetch: BsisAmount 또는 CalclA 의 inqryDiv=1 (월별) 호출 — 모든 공고 응답 */
+async function fetchBulk(operation: string, ym: string, apiKey: string): Promise<Record<string, BsisAmountItem | AInfoItem>> {
+  const map: Record<string, BsisAmountItem | AInfoItem> = {};
+  const yyyy = ym.slice(0, 4);
+  const mm = ym.slice(4, 6);
+  const lastDay = new Date(parseInt(yyyy), parseInt(mm), 0).getDate();
+  const bgn = `${yyyy}${mm}010000`;
+  const end = `${yyyy}${mm}${String(lastDay).padStart(2, "0")}2359`;
+
+  let pageNo = 1;
+  while (pageNo <= 100) {
+    const url = `${BASE}/${operation}?serviceKey=${apiKey}&inqryDiv=1&inqryBgnDt=${bgn}&inqryEndDt=${end}&numOfRows=999&pageNo=${pageNo}&type=json`;
+    let text = "";
+    try { text = await httpsGet(url, 30000); } catch (e) { break; }
+    const json = safeJson<{ response?: { body?: { items?: any[]; totalCount?: number } } }>(text);
+    const items = json?.response?.body?.items;
+    if (!items || !Array.isArray(items) || items.length === 0) break;
+    for (const it of items) {
+      const key = (it.bidNtceNo ?? "") + "_" + (it.bidNtceOrd ?? "000");
+      map[key] = it;
+      if (it.bidNtceNo) map[it.bidNtceNo] = it; // ord 무시 매칭용
+    }
+    if (items.length < 999) break;
+    pageNo++;
+  }
+  return map;
+}
+
 export async function fillAValue() {
   const { apiKey, dbUrl } = loadEnv();
   if (!dbUrl) { console.error("DATABASE_URL 미설정 — fill-avalue 중단"); return; }
   const pool = new Pool({ connectionString: dbUrl, max: 2, statement_timeout: 0 });
   const now = new Date().toISOString();
 
-  // 진행중 시설공사 공고 전체 (pg 직접 연결, statement_timeout=0 으로 8s 한도 회피)
-  let all: { id: string; konepsId: string; aValueYn: string; aValueTotal: string; priceRangeRate: string }[] = [];
+  // 진행중 시설공사 (deadline 정보 포함, ym 그룹핑용)
+  let all: { id: string; konepsId: string; aValueYn: string; aValueTotal: string; priceRangeRate: string; ym: string }[] = [];
   try {
     const r = await pool.query(
-      `SELECT id, "konepsId", "aValueYn", "aValueTotal"::text AS "aValueTotal", "priceRangeRate"
+      `SELECT id, "konepsId", "aValueYn", "aValueTotal"::text AS "aValueTotal", "priceRangeRate",
+              TO_CHAR("deadline", 'YYYYMM') AS ym
        FROM "Announcement"
        WHERE "category" NOT IN ('물품','용역','기타')
          AND "deadline" >= $1::timestamptz`,
@@ -136,7 +165,6 @@ export async function fillAValue() {
     return;
   }
 
-  // 처리 대상: aValueYn 미채워진 것 + aValueYn=Y이지만 aValueTotal=0인 것 + priceRangeRate 미채워진 것
   const list = all.filter(a =>
     !a.aValueYn ||
     !a.priceRangeRate ||
@@ -144,34 +172,63 @@ export async function fillAValue() {
   );
   console.log(`진행중 공사 공고: ${all.length}건 | 처리 대상: ${list.length}건`);
 
+  // ym 그룹 (마감 기준 + 주변 월 포함, 공고일 vs 마감일 차이 보정)
+  const ymSet = new Set<string>();
+  for (const ann of list) {
+    if (!ann.ym) continue;
+    ymSet.add(ann.ym);
+    // 마감 ym 이전 1~2 개월 포함 (공고가 보통 한두 달 전 등록)
+    const y = parseInt(ann.ym.slice(0, 4));
+    const m = parseInt(ann.ym.slice(4, 6));
+    for (let off = 1; off <= 3; off++) {
+      const d = new Date(y, m - 1 - off, 1);
+      ymSet.add(`${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, "0")}`);
+    }
+  }
+  const yms = Array.from(ymSet).sort();
+  console.log(`Bulk fetch ym 수: ${yms.length}개`);
+
+  // ym 별로 BsisAmount + CalclA bulk fetch
+  const bsisMap: Record<string, BsisAmountItem> = {};
+  const calclMap: Record<string, AInfoItem> = {};
+  for (let i = 0; i < yms.length; i++) {
+    const ym = yms[i];
+    const t0 = Date.now();
+    const bsis = await fetchBulk("getBidPblancListInfoCnstwkBsisAmount", ym, apiKey);
+    const calcl = await fetchBulk("getBidPblancListBidPrceCalclAInfo", ym, apiKey);
+    Object.assign(bsisMap, bsis);
+    Object.assign(calclMap, calcl);
+    console.log(`[${i + 1}/${yms.length}] ${ym} bulk fetch (${((Date.now() - t0) / 1000).toFixed(1)}s) | bsis ${Object.keys(bsis).length} / calcl ${Object.keys(calcl).length}`);
+  }
+
+  // 각 ann 에 대해 map lookup → bulk UPDATE
   let updated = 0;
-  let failed = 0;
   let skipped = 0;
+  for (const ann of list) {
+    const bs = bsisMap[ann.konepsId] as BsisAmountItem | undefined;
+    if (!bs) { skipped++; continue; }
+    const aValueYn = bs.bidPrceCalclAYn ?? "";
+    const aValueAmt = BigInt(parseInt((bs.bssamt ?? "0").replace(/[^0-9]/g, ""), 10) || 0);
+    const bgn = parseFloat((bs.rsrvtnPrceRngBgnRate ?? "0").replace(/[^\-0-9.]/g, "")) || 0;
+    const end = parseFloat((bs.rsrvtnPrceRngEndRate ?? "0").replace(/[^\-0-9.]/g, "")) || 0;
+    const priceRangeRate = bgn !== 0 || end !== 0 ? `${bgn}~${end}` : "";
 
-  for (let i = 0; i < list.length; i++) {
-    const ann = list[i];
+    let aValueTotal = 0n;
+    if (aValueYn === "Y") {
+      const ai = calclMap[ann.konepsId] as AInfoItem | undefined;
+      if (ai) {
+        const sum =
+          Number(ai.npnInsrprm ?? 0) +
+          Number(ai.mrfnHealthInsrprm ?? 0) +
+          Number(ai.rtrfundNon ?? 0) +
+          Number(ai.odsnLngtrmrcprInsrprm ?? 0) +
+          Number(ai.sftyMngcst ?? 0) +
+          (ai.qltyMngcstAObjYn === "Y" ? Number(ai.qltyMngcst ?? 0) : 0);
+        aValueTotal = BigInt(Math.round(sum));
+      }
+    }
+
     try {
-      let aValueYn = ann.aValueYn;
-      let aValueAmt = 0n;
-      let aValueTotal = 0n;
-
-      // aValueYn 미채워진 경우 → 기초금액 API 호출
-      let priceRangeRate = ann.priceRangeRate ?? "";
-      if (!aValueYn || !priceRangeRate) {
-        const bsisResult = await fetchBsisAmount(ann.konepsId, apiKey);
-        if (!bsisResult) { skipped++; continue; }
-        aValueYn = bsisResult.aValueYn;
-        aValueAmt = bsisResult.aValueAmt;
-        priceRangeRate = bsisResult.priceRangeRate;
-      }
-
-      // A값 대상 공고 → A합산 API 추가 호출
-      if (aValueYn === "Y") {
-        aValueTotal = await fetchATotal(ann.konepsId, apiKey);
-        await new Promise(r => setTimeout(r, 120)); // 추가 딜레이
-      }
-
-      // pg 직접 UPDATE (Supabase REST 8s timeout 회피)
       await pool.query(
         `UPDATE "Announcement" SET
            "aValueYn"        = $2,
@@ -182,19 +239,12 @@ export async function fillAValue() {
         [ann.id, aValueYn, aValueAmt.toString(), aValueTotal.toString(), priceRangeRate],
       );
       updated++;
-
-      if ((i + 1) % 50 === 0) {
-        console.log(`${i + 1}/${list.length} | 업데이트: ${updated}건 | 스킵: ${skipped}건 | 실패: ${failed}건`);
-      }
-
-      await new Promise(r => setTimeout(r, 120));
     } catch (e) {
-      if (failed < 3) console.error(`[${ann.konepsId}] 오류:`, (e as Error).message);
-      failed++;
+      console.error(`[${ann.konepsId}] UPDATE 오류:`, (e as Error).message);
     }
   }
 
-  console.log(`\n완료: ${updated}건 업데이트 / ${skipped}건 스킵(데이터없음) / ${failed}건 실패`);
+  console.log(`\n완료: ${updated}건 업데이트 / ${skipped}건 스킵(bulk 응답 없음) / 총 ${list.length}건`);
   await pool.end();
 }
 
