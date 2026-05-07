@@ -1,10 +1,10 @@
-import { createClient } from "@supabase/supabase-js";
+import { Pool } from "pg";
 import * as fs from "fs";
 import * as https from "https";
 import * as path from "path";
 
 // .env 로드 (파일 없으면 process.env 폴백)
-function loadEnv(): { url: string; key: string; apiKey: string } {
+function loadEnv(): { url: string; key: string; apiKey: string; dbUrl: string } {
   let text = "";
   // tsx에서 __dirname이 "."로 나오는 이슈 → 여러 경로 순서대로 시도
   const candidates = [
@@ -32,6 +32,7 @@ function loadEnv(): { url: string; key: string; apiKey: string } {
     url: get("NEXT_PUBLIC_SUPABASE_URL"),
     key: get("SUPABASE_SERVICE_ROLE_KEY"),
     apiKey: get("KONEPS_API_KEY") || get("G2B_API_KEY"),
+    dbUrl: get("DATABASE_URL"),
   };
 }
 
@@ -113,26 +114,26 @@ async function fetchATotal(bidNtceNo: string, apiKey: string): Promise<bigint> {
 }
 
 export async function fillAValue() {
-  const { url, key, apiKey } = loadEnv();
-  const sb = createClient(url, key);
+  const { apiKey, dbUrl } = loadEnv();
+  if (!dbUrl) { console.error("DATABASE_URL 미설정 — fill-avalue 중단"); return; }
+  const pool = new Pool({ connectionString: dbUrl, max: 2, statement_timeout: 0 });
   const now = new Date().toISOString();
 
-  // 진행중 시설공사 공고 전체 페이징 조회
-  const all: { id: string; konepsId: string; aValueYn: string; aValueTotal: string; priceRangeRate: string }[] = [];
-  let page = 0;
-  const PAGE = 1000;
-  while (true) {
-    const { data, error } = await sb
-      .from("Announcement")
-      .select("id,konepsId,aValueYn,aValueTotal,priceRangeRate")
-      .not("category", "in", '("물품","용역","기타")')
-      .gte("deadline", now)
-      .range(page * PAGE, (page + 1) * PAGE - 1);
-    if (error) { console.error("조회 실패:", error.message); process.exit(1); }
-    if (!data || data.length === 0) break;
-    all.push(...data);
-    if (data.length < PAGE) break;
-    page++;
+  // 진행중 시설공사 공고 전체 (pg 직접 연결, statement_timeout=0 으로 8s 한도 회피)
+  let all: { id: string; konepsId: string; aValueYn: string; aValueTotal: string; priceRangeRate: string }[] = [];
+  try {
+    const r = await pool.query(
+      `SELECT id, "konepsId", "aValueYn", "aValueTotal"::text AS "aValueTotal", "priceRangeRate"
+       FROM "Announcement"
+       WHERE "category" NOT IN ('물품','용역','기타')
+         AND "deadline" >= $1::timestamptz`,
+      [now],
+    );
+    all = r.rows;
+  } catch (e) {
+    console.error("조회 실패:", (e as Error).message);
+    await pool.end();
+    return;
   }
 
   // 처리 대상: aValueYn 미채워진 것 + aValueYn=Y이지만 aValueTotal=0인 것 + priceRangeRate 미채워진 것
@@ -170,12 +171,16 @@ export async function fillAValue() {
         await new Promise(r => setTimeout(r, 120)); // 추가 딜레이
       }
 
-      const updatePayload: Record<string, string> = { aValueYn };
-      if (aValueAmt > 0n) updatePayload.aValueAmt = aValueAmt.toString();
-      if (aValueTotal > 0n) updatePayload.aValueTotal = aValueTotal.toString();
-      if (priceRangeRate) updatePayload.priceRangeRate = priceRangeRate;
-
-      await sb.from("Announcement").update(updatePayload).eq("id", ann.id);
+      // pg 직접 UPDATE (Supabase REST 8s timeout 회피)
+      await pool.query(
+        `UPDATE "Announcement" SET
+           "aValueYn"        = $2,
+           "aValueAmt"       = CASE WHEN $3::bigint > 0 THEN $3::bigint ELSE "aValueAmt" END,
+           "aValueTotal"     = CASE WHEN $4::bigint > 0 THEN $4::bigint ELSE "aValueTotal" END,
+           "priceRangeRate"  = CASE WHEN $5 != '' THEN $5 ELSE "priceRangeRate" END
+         WHERE id = $1`,
+        [ann.id, aValueYn, aValueAmt.toString(), aValueTotal.toString(), priceRangeRate],
+      );
       updated++;
 
       if ((i + 1) % 50 === 0) {
@@ -190,6 +195,7 @@ export async function fillAValue() {
   }
 
   console.log(`\n완료: ${updated}건 업데이트 / ${skipped}건 스킵(데이터없음) / ${failed}건 실패`);
+  await pool.end();
 }
 
 // 직접 실행 시에만 진입
