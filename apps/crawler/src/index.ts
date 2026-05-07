@@ -72,19 +72,30 @@ async function runAnnouncementCrawl(args: CliArgs): Promise<void> {
   let count = 0;
   const errorMsgs: string[] = [];
 
-  const rows = await fetchAnnouncements({
-    fromDate: args.from,
-    toDate: args.to,
-    numOfRows: 999,
-    maxPages: args.pages,
-  });
-
+  let rows: Awaited<ReturnType<typeof fetchAnnouncements>>;
   try {
-    count = await upsertAnnouncementBatch(rows);
+    rows = await fetchAnnouncements({
+      fromDate: args.from,
+      toDate: args.to,
+      numOfRows: 999,
+      maxPages: args.pages,
+    });
   } catch (err) {
+    // G2B 한도/장애 등으로 부분 실패 — 빈 배열로 진행 (workflow 실패 방지)
     const msg = err instanceof Error ? err.message : String(err);
-    logger.error(`배치 upsert 실패`, err);
-    errorMsgs.push(msg);
+    logger.warn(`공고 fetch 부분 실패 (수집 중단): ${msg}`);
+    errorMsgs.push(`fetch: ${msg}`);
+    rows = [];
+  }
+
+  if (rows.length > 0) {
+    try {
+      count = await upsertAnnouncementBatch(rows);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      logger.error(`배치 upsert 실패`, err);
+      errorMsgs.push(msg);
+    }
   }
 
   const status = errorMsgs.length === 0 ? "SUCCESS" : count > 0 ? "PARTIAL" : "FAILED";
@@ -98,12 +109,20 @@ async function runBidResultCrawl(args: CliArgs): Promise<void> {
   let count = 0;
   const errorMsgs: string[] = [];
 
-  const rows = await fetchBidResults({
-    fromDate: args.from,
-    toDate: args.to,
-    numOfRows: 999,
-    maxPages: args.pages,
-  });
+  let rows: Awaited<ReturnType<typeof fetchBidResults>>;
+  try {
+    rows = await fetchBidResults({
+      fromDate: args.from,
+      toDate: args.to,
+      numOfRows: 999,
+      maxPages: args.pages,
+    });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    logger.warn(`낙찰결과 fetch 부분 실패 (수집 중단): ${msg}`);
+    errorMsgs.push(`fetch: ${msg}`);
+    rows = [];
+  }
 
   for (const row of rows) {
     try {

@@ -17,6 +17,7 @@ on:
           - avalue           # A값 백필 (완료, 수동만)
           - import           # 전체 역대 (완료, 수동만)
           - recollect-openedat  # BidResult.openedAt 결측 보강 (rlOpengDt 재수집)
+          - recollect        # H-6 옵션 A — 매칭률 <25% 17개월 + 시범 200703 (3단계 분리 + 보조 API + reparse)
           - audit            # 데이터 품질 감사 단독 실행
       from:
         description: "시작월/시작일 (YYYYMM 또는 YYYYMMDD)"
@@ -26,6 +27,15 @@ on:
         description: "종료월/종료일 (YYYYMM 또는 YYYYMMDD)"
         required: false
         default: ""
+      months:
+        description: "recollect 대상 월 (콤마 분리 YYYYMM, 비우면 H-6 기본 18개월)"
+        required: false
+        default: ""
+      with_extras:
+        description: "recollect 후 보조 API + reparse 자동 실행"
+        required: false
+        type: boolean
+        default: true
   schedule:
     - cron: "0 14 * * *"   # 매일 KST 23:00 — daily (announcement → extras → opening 순차)
 
@@ -40,6 +50,8 @@ jobs:
       job: ${{ steps.set.outputs.job }}
       from: ${{ steps.set.outputs.from }}
       to: ${{ steps.set.outputs.to }}
+      months: ${{ steps.set.outputs.months }}
+      with_extras: ${{ steps.set.outputs.with_extras }}
     steps:
       - id: set
         run: |
@@ -50,12 +62,14 @@ jobs:
           fi
           echo "from=${{ github.event.inputs.from }}" >> $GITHUB_OUTPUT
           echo "to=${{ github.event.inputs.to }}" >> $GITHUB_OUTPUT
+          echo "months=${{ github.event.inputs.months }}" >> $GITHUB_OUTPUT
+          echo "with_extras=${{ github.event.inputs.with_extras }}" >> $GITHUB_OUTPUT
 
   announcement:
     needs: setup
     if: needs.setup.outputs.job == 'announcement' || needs.setup.outputs.job == 'daily'
     runs-on: ubuntu-latest
-    timeout-minutes: 90
+    timeout-minutes: 355
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v3
@@ -190,6 +204,47 @@ jobs:
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
         run: pnpm ts-node src/scripts/audit-data-quality.ts
+
+  recollect:
+    needs: setup
+    if: needs.setup.outputs.job == 'recollect'
+    runs-on: ubuntu-latest
+    timeout-minutes: 355
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v3
+        with: { version: "9.0.0" }
+      - uses: actions/setup-node@v4
+        with: { node-version: "20", cache: pnpm }
+      - run: pnpm install --no-frozen-lockfile
+      - run: pnpm --filter @naktal/db exec prisma generate
+      - name: H-6 재수집 (3단계 분리 — 모집 → 분석 → 적재)
+        working-directory: apps/crawler
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          KONEPS_API_KEY: ${{ secrets.KONEPS_API_KEY }}
+          G2B_API_KEY: ${{ secrets.G2B_API_KEY }}
+          MONTHS: ${{ needs.setup.outputs.months }}
+        run: pnpm ts-node src/scripts/run-all-recollect.ts
+      - name: H-6 후속 — 보조 API + reparse (with_extras=true 시)
+        if: needs.setup.outputs.with_extras != 'false'
+        working-directory: apps/crawler
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          KONEPS_API_KEY: ${{ secrets.KONEPS_API_KEY }}
+          G2B_API_KEY: ${{ secrets.G2B_API_KEY }}
+        run: pnpm ts-node src/scripts/run-extras-recollect.ts
+      - name: H-6 검증 — verify-totalcount 재실행 (재수집 월 매칭률 확인)
+        working-directory: apps/crawler
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          KONEPS_API_KEY: ${{ secrets.KONEPS_API_KEY }}
+          G2B_API_KEY: ${{ secrets.G2B_API_KEY }}
+        run: pnpm ts-node src/scripts/verify-totalcount.ts || true
 
   recollect-openedat:
     needs: setup
