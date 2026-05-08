@@ -96,21 +96,30 @@ async function fetchAll<T>(
   label: string,
   base: string = BASE,
 ): Promise<T[]> {
-  const all: T[] = [];
-  let pageNo = 1;
-  while (true) {
-    const { items, totalCount } = await fetchPage<T>(op, params, pageNo, apiKey, base);
-    all.push(...items);
-    if (pageNo === 1 && totalCount > 0) console.log(`    ${label}: ${totalCount}건`);
-    if (items.length < PAGE_SIZE) break;
-    pageNo++;
-    if (pageNo > 1000) { console.error(`    [${op}] 1000페이지 초과 중단`); break; }
+  const r1 = await fetchPage<T>(op, params, 1, apiKey, base);
+  if (r1.totalCount > 0) console.log(`    ${label}: ${r1.totalCount}건`);
+  if (r1.items.length === 0 || r1.items.length < PAGE_SIZE) return r1.items;
+
+  const all: T[] = [...r1.items];
+  const totalPages = Math.min(1000, Math.ceil(r1.totalCount / PAGE_SIZE));
+  const BATCH = 10;
+  for (let batchStart = 2; batchStart <= totalPages; batchStart += BATCH) {
+    const batchPages: number[] = [];
+    for (let p = batchStart; p < batchStart + BATCH && p <= totalPages; p++) batchPages.push(p);
+    const results = await Promise.all(batchPages.map(async (p) => {
+      try {
+        return await fetchPage<T>(op, params, p, apiKey, base);
+      } catch {
+        return { items: [] as T[], totalCount: r1.totalCount };
+      }
+    }));
+    for (const r of results) all.push(...r.items);
   }
   return all;
 }
 
 // ─── 배치 UPDATE: LicenseLimit → subCategories ─────────────────────────────
-interface LicenseLimitItem {
+export interface LicenseLimitItem {
   bidNtceNo: string;
   lcnsLmtNm?: string;
   indstrytyMfrcFldList?: string;
@@ -131,7 +140,7 @@ function parseLcnsLmtNm(raw: string | undefined | null): string | null {
   const idx = raw.indexOf("/");
   return idx > 0 ? raw.slice(0, idx).trim() : raw.trim();
 }
-async function batchUpsertLicenseLimit(items: LicenseLimitItem[], client: PoolClient): Promise<number> {
+export async function batchUpsertLicenseLimit(items: LicenseLimitItem[], client: PoolClient): Promise<number> {
   const byAnn = new Map<string, Set<string>>();
   for (const it of items) {
     if (!it.bidNtceNo) continue;
@@ -164,7 +173,7 @@ async function batchUpsertLicenseLimit(items: LicenseLimitItem[], client: PoolCl
 }
 
 // ─── 배치 UPDATE: BsisAmount → bsisAmt, priceRange, priceRangeRate ──────────
-interface BsisAmountItem {
+export interface BsisAmountItem {
   bidNtceNo: string;
   bssamt?: string;
   rsrvtnPrceRngBgnRate?: string;
@@ -180,7 +189,7 @@ interface BsisAmountItem {
   qltyMngcstAObjYn?: string;
   bidPrceCalclAYn?: string;
 }
-async function batchUpsertBsisAmount(items: BsisAmountItem[], client: PoolClient): Promise<number> {
+export async function batchUpsertBsisAmount(items: BsisAmountItem[], client: PoolClient): Promise<number> {
   if (items.length === 0) return 0;
   const toNum = (s: string | undefined) => parseInt((s ?? "0").replace(/[^0-9]/g, ""), 10) || 0;
   const payload = items.filter(it => it.bidNtceNo).map(it => {
@@ -230,7 +239,7 @@ async function batchUpsertBsisAmount(items: BsisAmountItem[], client: PoolClient
 }
 
 // ─── 배치 UPDATE: CalclA → aValueTotal + aValueDetails ──────────────────────
-interface CalclAItem {
+export interface CalclAItem {
   bidNtceNo: string;
   sftyMngcst?: string;
   sftyChckMngcst?: string;
@@ -240,7 +249,7 @@ interface CalclAItem {
   odsnLngtrmrcprInsrprm?: string;
   qltyMngcst?: string;
 }
-async function batchUpsertCalclA(items: CalclAItem[], client: PoolClient): Promise<number> {
+export async function batchUpsertCalclA(items: CalclAItem[], client: PoolClient): Promise<number> {
   if (items.length === 0) return 0;
   const toNum = (s: string | undefined) => parseInt((s ?? "0").replace(/[^0-9]/g, ""), 10) || 0;
   const payload = items.filter(it => it.bidNtceNo).map(it => {
@@ -275,7 +284,7 @@ async function batchUpsertCalclA(items: CalclAItem[], client: PoolClient): Promi
 // ─── 배치 INSERT: ChgHstry → AnnouncementChgHst ─────────────────────────────
 // 2026-04-24 수정: G2B API는 chgNtceSeq/chgNtceRsnNm/chgNtceDt 반환 안 함
 // 실제 필드: chgItemNm, bfchgVal, afchgVal, chgDt, bidNtceOrd, chgDataDivNm
-interface ChgHstItem {
+export interface ChgHstItem {
   bidNtceNo: string;
   bidNtceOrd?: string;
   chgDt?: string;
@@ -294,7 +303,7 @@ function makeChgSeq(it: ChgHstItem): number {
   for (let i = 0; i < src.length; i++) h = ((h * 31) + src.charCodeAt(i)) >>> 0;
   return (ord * 1_000_003 + (h % 1_000_003)) & 0x7fffffff; // int4 양수 범위
 }
-async function batchInsertChgHst(items: ChgHstItem[], client: PoolClient): Promise<number> {
+export async function batchInsertChgHst(items: ChgHstItem[], client: PoolClient): Promise<number> {
   if (items.length === 0) return 0;
   const seen = new Set<string>();
   const unique = items.filter(it => {
@@ -344,7 +353,7 @@ async function batchInsertChgHst(items: ChgHstItem[], client: PoolClient): Promi
 }
 
 // ─── Frgcpt: 외자 공고 → Announcement upsert ────────────────────────────────
-interface FrgcptItem {
+export interface FrgcptItem {
   bidNtceNo: string;
   bidNtceNm?: string;
   ntceInsttNm?: string;
@@ -356,7 +365,7 @@ interface FrgcptItem {
   sucsfbidLwltRate?: string;
   [k: string]: unknown;
 }
-async function batchUpsertFrgcpt(items: FrgcptItem[], client: PoolClient): Promise<number> {
+export async function batchUpsertFrgcpt(items: FrgcptItem[], client: PoolClient): Promise<number> {
   if (items.length === 0) return 0;
   // bidNtceNo 중복 제거 (ON CONFLICT 중복 업데이트 방지)
   const seen = new Set<string>();
@@ -394,14 +403,14 @@ async function batchUpsertFrgcpt(items: FrgcptItem[], client: PoolClient): Promi
 }
 
 // ─── 배치 INSERT: PreStdrd (사전규격) ────────────────────────────────────────
-interface PreStdrdItem {
+export interface PreStdrdItem {
   bfSpecRgstNo: string;
   bfSpecRgstNm?: string;
   rcptDt?: string;
   ntceInsttNm?: string;
   [k: string]: unknown;
 }
-async function ensurePreStdrdTable(client: PoolClient): Promise<void> {
+export async function ensurePreStdrdTable(client: PoolClient): Promise<void> {
   await client.query(`
     CREATE TABLE IF NOT EXISTS "PreStdrd" (
       "id"           text PRIMARY KEY DEFAULT gen_random_uuid()::text,
@@ -415,7 +424,7 @@ async function ensurePreStdrdTable(client: PoolClient): Promise<void> {
     )
   `);
 }
-async function batchInsertPreStdrd(items: PreStdrdItem[], client: PoolClient): Promise<number> {
+export async function batchInsertPreStdrd(items: PreStdrdItem[], client: PoolClient): Promise<number> {
   if (items.length === 0) return 0;
   const seen = new Set<string>();
   const unique = items.filter(it => {
@@ -552,4 +561,6 @@ async function main() {
   await pool.end();
 }
 
-main().catch((e) => { console.error(e); process.exit(1); });
+if (require.main === module) {
+  main().catch((e) => { console.error(e); process.exit(1); });
+}
