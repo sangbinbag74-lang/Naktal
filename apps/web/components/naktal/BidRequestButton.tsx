@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 
 interface Props {
   annId: string;
@@ -43,6 +44,7 @@ export function BidRequestButton({
   annId, konepsId, title, orgName, deadline,
   budget, lowerLimitRate, aValueYn, aValueTotal,
 }: Props) {
+  const router = useRouter();
   const [status, setStatus] = useState<Status>("idle");
   const [analysis, setAnalysis] = useState<AnalysisData | null>(null);
   const [agreed, setAgreed] = useState(false);
@@ -113,6 +115,8 @@ export function BidRequestButton({
         return;
       }
       setStatus("done");
+      // 계약 페이지로 이동 (의뢰 저장 후)
+      router.push(`/bid-contract/${konepsId}`);
     } catch {
       setErrorMsg("네트워크 오류가 발생했습니다.");
       setStatus("error");
