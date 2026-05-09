@@ -45,13 +45,13 @@ export default async function BidContractPage({
 
   const { data: existing } = await admin
     .from("BidRequest")
-    .select("contractAt")
+    .select("contractAt,bizRegNo,repName")
     .eq("userId", dbUser.id as string)
     .eq("annId", ann.id as string)
     .maybeSingle();
 
-  // 이미 계약됐으면 결과 페이지로 (계약서·추천가 다시 보기)
-  if (existing?.contractAt) redirect(`/bid-result/${(ann.konepsId as string) ?? (ann.id as string)}`);
+  // 계약 완료 여부 (redirect 안 함 — 계약서 본문 그대로 표시)
+  const isContractDone = !!existing?.contractAt;
 
   // BidRequest (사용자 의뢰 시 저장된 분석) 우선 조회
   const { data: bidReq } = await admin
@@ -199,28 +199,61 @@ export default async function BidContractPage({
         </div>
       </div>
 
-      {/* 서명 폼 */}
+      {/* 서명 폼 또는 완료 안내 */}
       <div style={{ background: "#fff", borderRadius: 14, border: "1px solid #E8ECF2", padding: "24px 28px" }}>
-        <div style={{ fontSize: 14, fontWeight: 700, color: "#0F172A", marginBottom: 16 }}>전자서명</div>
-        <ContractForm
-          annId={ann.id as string}
-          konepsId={ann.konepsId as string}
-          title={ann.title as string}
-          orgName={ann.orgName as string}
-          deadline={ann.deadline as string}
-          budget={budgetNum}
-          lowerLimitRate={lowerLimitRate}
-          aValueYn={aValueYn}
-          aValueTotal={aValueTotal}
-          optimalBidPrice={optimalBidPrice}
-          lowerLimitPrice={lowerLimitPrice}
-          predictedSajungRate={predictedSajungRate}
-          estimatedPrice={estimatedPrice}
-          winProbability={winProbability}
-          competitionScore={competitionScore}
-          feeRate={feeRate}
-          feeAmount={feeAmount}
-        />
+        {isContractDone ? (
+          <div style={{ textAlign: "center", padding: "20px 0" }}>
+            <div style={{ fontSize: 36, marginBottom: 8 }}>✅</div>
+            <div style={{ fontSize: 16, fontWeight: 700, color: "#059669", marginBottom: 6 }}>계약 완료</div>
+            <div style={{ fontSize: 13, color: "#64748B", marginBottom: 4 }}>
+              계약일시: {fmtDate(existing.contractAt as string)}
+            </div>
+            {existing.bizRegNo && (
+              <div style={{ fontSize: 12, color: "#94A3B8", marginBottom: 4 }}>
+                사업자등록번호: {existing.bizRegNo as string}
+              </div>
+            )}
+            {existing.repName && (
+              <div style={{ fontSize: 12, color: "#94A3B8", marginBottom: 16 }}>
+                대표자: {existing.repName as string}
+              </div>
+            )}
+            <Link
+              href={`/bid-result/${(ann.konepsId as string) ?? (ann.id as string)}`}
+              style={{
+                display: "inline-block", marginTop: 12,
+                background: "#1B3A6B", color: "#fff",
+                padding: "10px 24px", borderRadius: 8,
+                fontSize: 13, fontWeight: 600, textDecoration: "none",
+              }}
+            >
+              결과 페이지로 →
+            </Link>
+          </div>
+        ) : (
+          <>
+            <div style={{ fontSize: 14, fontWeight: 700, color: "#0F172A", marginBottom: 16 }}>전자서명</div>
+            <ContractForm
+              annId={ann.id as string}
+              konepsId={ann.konepsId as string}
+              title={ann.title as string}
+              orgName={ann.orgName as string}
+              deadline={ann.deadline as string}
+              budget={budgetNum}
+              lowerLimitRate={lowerLimitRate}
+              aValueYn={aValueYn}
+              aValueTotal={aValueTotal}
+              optimalBidPrice={optimalBidPrice}
+              lowerLimitPrice={lowerLimitPrice}
+              predictedSajungRate={predictedSajungRate}
+              estimatedPrice={estimatedPrice}
+              winProbability={winProbability}
+              competitionScore={competitionScore}
+              feeRate={feeRate}
+              feeAmount={feeAmount}
+            />
+          </>
+        )}
       </div>
     </div>
   );
