@@ -1,0 +1,21 @@
+name: AI 예측 자동 채움
+
+on:
+  schedule:
+    - cron: "0 * * * *"  # 매시간 정각 (UTC)
+  workflow_dispatch:
+
+jobs:
+  prefill:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Trigger prefill-predictions
+        run: |
+          for i in 1 2 3; do
+            echo "=== 회차 $i ==="
+            curl -X POST https://naktal.me/api/cron/prefill-predictions \
+              -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+              --max-time 120 -s -w "\nHTTP %{http_code} | %{time_total}s\n"
+            sleep 5
+          done

@@ -27,10 +27,10 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
   const admin = createAdminClient();
 
-  // 유효한 예측이 없는 진행중 공고 조회
+  // 유효한 예측이 없는 진행중 공고 조회 (AnnouncementActive MV — 14k row)
   const now = new Date().toISOString();
   const { data: announcements, error } = await admin
-    .from("Announcement")
+    .from("AnnouncementActive")
     .select("id, orgName, category, budget, region, deadline, rawJson, bsisAmt, subCategories, aValueTotal")
     .gt("deadline", now)
     .order("deadline", { ascending: true })

@@ -42,6 +42,7 @@ const MENU_SECTIONS = [
       { href: "/admin/announcements",  label: "공고 관리",  icon: "📋", adminOnly: true },
       { href: "/admin/requests",       label: "투찰 의뢰",  icon: "📬", adminOnly: true },
       { href: "/admin/outcomes",       label: "낙찰 결과",  icon: "📈", adminOnly: true },
+      { href: "/admin/predictions",    label: "예측 vs 결과", icon: "🔮", adminOnly: true },
       { href: "/admin/accuracy",       label: "AI 적중률",  icon: "🎯", adminOnly: true },
     ],
   },
