@@ -85,10 +85,12 @@ interface Props {
   isClosed: boolean;
   bidMethod?: string;
   multiplePrice?: boolean; // 예가방법 (복수예가 여부) — bidMethod(낙찰방법)와 분리
+  isContracted?: boolean;  // 계약 완료 여부 — false 면 번호 조합 블러
   defaultBidders?: number;
 }
 
-export function NumberAnalysisSection({ annId, isClosed, bidMethod, multiplePrice = false, defaultBidders }: Props) {
+export function NumberAnalysisSection({ annId, isClosed, bidMethod, multiplePrice = false, isContracted = false, defaultBidders }: Props) {
+  void bidMethod; // bidMethod 는 더 이상 차단 분기에 사용하지 않음 (multiplePrice 사용)
   const [estimatedBidders, setEstimatedBidders] = useState(
     defaultBidders ? String(defaultBidders) : ""
   );
@@ -265,6 +267,14 @@ export function NumberAnalysisSection({ annId, isClosed, bidMethod, multiplePric
             </div>
           </div>
 
+          <div style={{ position: "relative" }}>
+            <div style={{
+              display: "flex", flexDirection: "column", gap: 12,
+              filter: isContracted ? "none" : "blur(8px)",
+              userSelect: isContracted ? "auto" : "none",
+              pointerEvents: isContracted ? "auto" : "none",
+              transition: "filter 0.2s",
+            }}>
           {([
             { combo: result.combo1, hitRate: result.hitRate1, label: "조합 1", accent: "#1B3A6B", best: true },
             { combo: result.combo2, hitRate: result.hitRate2, label: "조합 2", accent: "#475569", best: false },
@@ -317,6 +327,26 @@ export function NumberAnalysisSection({ annId, isClosed, bidMethod, multiplePric
 
           <div style={{ background: "#FFF7ED", border: "1px solid #FDE68A", borderRadius: 8, padding: "10px 14px", fontSize: 12, color: "#92400E", fontWeight: 500 }}>
             ⚠ 위 번호 조합은 과거 낙찰 데이터 통계를 기반으로 한 참고 자료이며, 낙찰을 보장하지 않습니다.
+          </div>
+            </div>
+            {/* 계약 미완료 시 오버레이 */}
+            {!isContracted && (
+              <div style={{
+                position: "absolute", inset: 0,
+                background: "rgba(255,255,255,0.7)",
+                display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+                gap: 8, borderRadius: 12,
+              }}>
+                <div style={{ fontSize: 32 }}>🔒</div>
+                <div style={{ fontSize: 14, fontWeight: 700, color: "#0F172A" }}>
+                  계약 완료 후 공개됩니다
+                </div>
+                <div style={{ fontSize: 12, color: "#64748B", textAlign: "center", padding: "0 16px" }}>
+                  투찰 의뢰 + 전자서명 완료 시<br />
+                  AI 추천 번호 조합 4종 + 빈도 히트맵 공개
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}

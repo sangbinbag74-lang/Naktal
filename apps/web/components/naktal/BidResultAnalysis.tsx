@@ -110,12 +110,13 @@ export function BidResultAnalysis({ annDbId }: Props) {
         )}
       </div>
 
-      {/* 번호 추천 (복수예가 공고만) */}
+      {/* 번호 추천 (복수예가 공고만, 계약 완료 후만 공개) */}
       {bs.numberStrategy && (
         <NumberAnalysisSection
           annId={annDbId}
           isClosed={false}
           multiplePrice={true}
+          isContracted={true}
         />
       )}
     </>
