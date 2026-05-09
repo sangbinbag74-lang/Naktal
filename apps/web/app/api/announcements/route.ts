@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/server";
+import { getPgPool } from "@/lib/db/pg-pool";
 import {
   g2bFetchAnnouncementPage,
   g2bParseDate,
@@ -146,30 +147,35 @@ async function fetchFromDB(opts: Record<string, string | number>): Promise<NextR
     const regList = regionList.length > 0 ? regionList : null;
     const sortKey = sort === "deadline" ? "deadline" : "latest";
 
-    const { data, error } = await admin.rpc("search_announcements", {
-      p_categories:  catList,
-      p_subcats:     catList,
-      p_regions:     regList,
-      p_keyword:     keyword || null,
-      p_min_budget:  minBudget ? Number(minBudget) : null,
-      p_max_budget:  maxBudget ? Number(maxBudget) : null,
-      p_active_only: deadlineRange === "active",
-      p_deadline_to: null,
-      p_sort:        sortKey,
-      p_limit:       limit + 1,
-      p_offset:      offset,
-    });
-    if (!error) {
-      const rows = (data ?? []) as Record<string, unknown>[];
+    try {
+      const pool = getPgPool();
+      const r = await pool.query(
+        `SELECT * FROM search_announcements($1::text[], $2::text[], $3::text[], $4::text, $5::bigint, $6::bigint, $7::boolean, $8::timestamp, $9::text, $10::int, $11::int)`,
+        [
+          catList,
+          catList,
+          regList,
+          keyword || null,
+          minBudget ? Number(minBudget) : null,
+          maxBudget ? Number(maxBudget) : null,
+          deadlineRange === "active",
+          null,
+          sortKey,
+          limit + 1,
+          offset,
+        ]
+      );
+      const rows = r.rows as Record<string, unknown>[];
       const hasMore = rows.length > limit;
       return NextResponse.json({
         data: hasMore ? rows.slice(0, limit) : rows,
         total: offset + rows.length,
         hasMore, page, limit,
       });
+    } catch (e) {
+      console.error("[announcements RPC pg]", (e as Error).message);
+      // pg 실패 시 체인 쿼리로 폴백
     }
-    console.error("[announcements RPC]", error.message);
-    // RPC 실패 시 체인 쿼리로 폴백
   }
 
   // ── 체인 쿼리 (rawJson 필드 필터 + 폴백) ──────────────────────────────────
