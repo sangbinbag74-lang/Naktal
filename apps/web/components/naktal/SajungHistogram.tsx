@@ -153,7 +153,7 @@ export function SajungHistogram({ annId, predictedSajungRate, lowerLimitRate, pe
       {/* Stat Cards */}
       <div style={{ display: "flex", gap: 8 }}>
         <StatCard label="평균 사정율" value={formatSajung(stats.avg)} sub="기준값 (평균 대비)" color="#1B3A6B" />
-        <StatCard label="최빈 사정율" value={formatSajung(stats.mode)} sub={`평균 대비 ${modeDev}`} subColor={modeDevColor} color="#7C3AED" />
+        <StatCard label="최빈 사정율" value={`${stats.mode.toFixed(1)}%`} sub={`±0.05%p 구간 · ${modeDev}`} subColor={modeDevColor} color="#7C3AED" />
         <StatCard label="표준편차" value={`±${(stats.stddev ?? 0).toFixed(3)}%p`} />
         <StatCard label="IQR 구간" value={`${formatSajung(stats.p25)}~${formatSajung(stats.p75)}`} />
       </div>

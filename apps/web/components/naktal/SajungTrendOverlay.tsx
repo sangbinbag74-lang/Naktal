@@ -464,10 +464,9 @@ export function SajungTrendOverlay({ annId, userId, predictedSajungRate, budget,
                     fontSize: 22,
                     fontWeight: 800,
                     color: pred.deviation >= 0 ? "#1B3A6B" : "#DC2626",
-                    fontFamily: "monospace",
                     letterSpacing: "-0.5px",
                   }}>
-                    {pred.deviation >= 0 ? "+" : ""}{pred.deviation.toFixed(3)}%
+                    {pred.deviation >= 0 ? "+" : ""}{pred.deviation.toFixed(3)}%p
                   </div>
                   <div style={{ fontSize: 12, color: "#64748B", marginTop: 3 }}>
                     사정율 {pred.sajung.toFixed(3)}%
