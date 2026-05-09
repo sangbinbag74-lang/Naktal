@@ -40,12 +40,23 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ error: "annId 필수" }, { status: 400 });
   }
 
-  // ─── 공고 조회 ─────────────────────────────────────────────────────────────
-  const { data: ann } = await admin
-    .from("Announcement")
+  // ─── 공고 조회 (활성 우선, 마감 공고 폴백) ────────────────────────────────
+  // 2026-05-09: AnnouncementActive MV (14k row) 활용 — 749만 → 14k
+  let { data: ann } = await admin
+    .from("AnnouncementActive")
     .select("id,konepsId,title,orgName,budget,deadline,category,region,rawJson,aValueYn,aValueAmt,aValueTotal,bsisAmt,subCategories")
     .or(`id.eq.${body.annId},konepsId.eq.${body.annId}`)
     .maybeSingle();
+
+  if (!ann) {
+    // 마감 공고 폴백 — Announcement 본 테이블
+    const { data: archived } = await admin
+      .from("Announcement")
+      .select("id,konepsId,title,orgName,budget,deadline,category,region,rawJson,aValueYn,aValueAmt,aValueTotal,bsisAmt,subCategories")
+      .or(`id.eq.${body.annId},konepsId.eq.${body.annId}`)
+      .maybeSingle();
+    ann = archived;
+  }
 
   if (!ann) return NextResponse.json({ error: "공고 없음" }, { status: 404 });
 
