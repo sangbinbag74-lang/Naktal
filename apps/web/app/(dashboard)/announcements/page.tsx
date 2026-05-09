@@ -400,6 +400,9 @@ export default function AnnouncementsPage() {
   const [rgnType, setRgnType] = useState<string>("");
   const [ntceKind, setNtceKind] = useState<string>("");
 
+  // hydrated 플래그: localStorage 복원 완료 후에만 fetch 실행 (race condition 방지)
+  const [hydrated, setHydrated] = useState(false);
+
   // 마운트 후 localStorage에서 필터 복원 (hydration mismatch 방지)
   useEffect(() => {
     const saved = getSavedFilters();
@@ -414,6 +417,7 @@ export default function AnnouncementsPage() {
     if (typeof saved.budgetPreset === "string")    setBudgetPreset(saved.budgetPreset);
     if (typeof saved.rgnType === "string")         setRgnType(saved.rgnType);
     if (typeof saved.ntceKind === "string")        setNtceKind(saved.ntceKind);
+    setHydrated(true);
   }, []);
 
   const observerRef = useRef<IntersectionObserver | null>(null);
@@ -460,9 +464,12 @@ export default function AnnouncementsPage() {
     }, 500);
   }, [fetchData]);
 
-  // 최초 마운트 1회만 자동 조회
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => { fetchData(1, true); }, []);
+  // localStorage 복원 후 1회만 자동 조회 (hydrated 플래그로 race condition 방지)
+  useEffect(() => {
+    if (!hydrated) return;
+    fetchData(1, true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hydrated]);
 
   const handleSearch = () => {
     saveFilters({ keyword, categories, regions, sort, contractMethod, deadlineRange, minBudget, maxBudget, budgetPreset, rgnType, ntceKind });
