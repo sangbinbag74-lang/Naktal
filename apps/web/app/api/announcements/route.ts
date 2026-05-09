@@ -137,7 +137,8 @@ async function fetchFromDB(opts: Record<string, string | number>): Promise<NextR
   //   벤치 결과: 카테고리/지역/키워드/복합 모두 14~59ms (목표 500ms 통과)
   //   RPC 비대상 조건: rawJson 필드 필터 (contractMethod/prtcptnLmt/rgnType/ntceKind/konepsId)
   //                  + 시 레벨 지역 + 사용자 정의 deadline 윈도우
-  const rpcEligible =
+  // 2026-05-09: AnnouncementActive MV 도입으로 체인 쿼리 13ms 도달 → RPC 우회 (false 강제)
+  const rpcEligible = false &&
     !contractMethod && !prtcptnLmt && !rgnType && !ntceKind && !konepsId && !category &&
     !hasCityFilter &&
     (deadlineRange === "" || deadlineRange === "active");
@@ -174,9 +175,10 @@ async function fetchFromDB(opts: Record<string, string | number>): Promise<NextR
     // RPC 실패 시 체인 쿼리로 폴백
   }
 
-  // ── 체인 쿼리 (rawJson 필드 필터 + 폴백) ──────────────────────────────────
+  // ── 체인 쿼리 (활성 공고 전용 — AnnouncementActive MV) ──────────────────────
+  // 2026-05-09: 749만 → 14k row, Micro IO 에서 13ms 도달
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let q: any = admin.from("Announcement").select(
+  let q: any = admin.from("AnnouncementActive").select(
     "id,konepsId,title,orgName,budget,deadline,category,subCategories,region,createdAt,rawJson,aValueYn"
   );
 
