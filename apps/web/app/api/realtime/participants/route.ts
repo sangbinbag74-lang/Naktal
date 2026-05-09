@@ -13,12 +13,20 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
   const annId = req.nextUrl.searchParams.get("annId");
   if (!annId) return NextResponse.json({ error: "annId 필요" }, { status: 400 });
 
-  // Announcement.id (cuid) 조회
-  const { data: ann } = await supabase
-    .from("Announcement")
+  // Announcement.id (cuid) 조회 — 활성 우선 + 마감 폴백
+  let { data: ann } = await supabase
+    .from("AnnouncementActive")
     .select("id,title,deadline,budget")
     .eq("konepsId", annId)
     .maybeSingle();
+  if (!ann) {
+    const { data: archived } = await supabase
+      .from("Announcement")
+      .select("id,title,deadline,budget")
+      .eq("konepsId", annId)
+      .maybeSingle();
+    ann = archived;
+  }
   if (!ann) return NextResponse.json({ error: "공고 없음" }, { status: 404 });
 
   // 최근 24시간 스냅샷

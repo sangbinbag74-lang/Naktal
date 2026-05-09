@@ -47,12 +47,22 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     );
   }
 
-  // 공고 조회 (UUID 또는 konepsId 모두 허용)
-  const { data: ann } = await admin
-    .from("Announcement")
-    .select("id,konepsId,title,orgName,budget,deadline,category,region,rawJson,bsisAmt,sucsfbidLwltRate,subCategories,aValueTotal")
+  // 공고 조회 (UUID 또는 konepsId 모두 허용) — 활성 우선 + 마감 폴백
+  const COLS = "id,konepsId,title,orgName,budget,deadline,category,region,rawJson,bsisAmt,sucsfbidLwltRate,subCategories,aValueTotal";
+  let { data: ann } = await admin
+    .from("AnnouncementActive")
+    .select(COLS)
     .or(`id.eq.${body.annId},konepsId.eq.${body.annId}`)
     .maybeSingle();
+
+  if (!ann) {
+    const { data: archived } = await admin
+      .from("Announcement")
+      .select(COLS)
+      .or(`id.eq.${body.annId},konepsId.eq.${body.annId}`)
+      .maybeSingle();
+    ann = archived;
+  }
 
   if (!ann) {
     return NextResponse.json({ error: "ANNOUNCEMENT_NOT_FOUND", message: "공고를 찾을 수 없습니다." }, { status: 404 });
