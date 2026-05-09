@@ -53,19 +53,31 @@ export default async function BidContractPage({
   // 이미 계약됐으면 공고 상세로
   if (existing?.contractAt) redirect(`/announcements/${ann.id}`);
 
-  // BidPricePrediction 캐시 조회
-  const { data: pred } = await admin
+  // BidRequest (사용자 의뢰 시 저장된 분석) 우선 조회
+  const { data: bidReq } = await admin
+    .from("BidRequest")
+    .select("recommendedBidPrice,lowerLimitPrice,predictedSajungRate,winProbability,competitionScore")
+    .eq("userId", dbUser.id as string)
+    .eq("annId", ann.id as string)
+    .is("cancelledAt", null)
+    .maybeSingle();
+
+  // BidPricePrediction 캐시 폴백
+  const { data: pred } = bidReq ? { data: null } : await admin
     .from("BidPricePrediction")
     .select("optimalBidPrice,lowerLimitPrice,predictedSajungRate,winProbability,competitionScore")
     .eq("annId", ann.id as string)
     .gt("expiresAt", new Date().toISOString())
     .maybeSingle();
 
-  const optimalBidPrice = Number(pred?.optimalBidPrice ?? 0);
-  const lowerLimitPrice = Number(pred?.lowerLimitPrice ?? 0);
-  const predictedSajungRate = Number(pred?.predictedSajungRate ?? 103.8);
-  const winProbability = Number(pred?.winProbability ?? 0);
-  const competitionScore = Number(pred?.competitionScore ?? 0);
+  const optimalBidPrice = Number(bidReq?.recommendedBidPrice ?? pred?.optimalBidPrice ?? 0);
+  const lowerLimitPrice = Number(bidReq?.lowerLimitPrice ?? pred?.lowerLimitPrice ?? 0);
+  const predictedSajungRate = Number(bidReq?.predictedSajungRate ?? pred?.predictedSajungRate ?? 103.8);
+  // winProbability scale: BidRequest 는 0~100 정수 / BidPricePrediction 은 0~1 소수
+  const winProbability = bidReq
+    ? Number(bidReq.winProbability ?? 0) / 100
+    : Number(pred?.winProbability ?? 0);
+  const competitionScore = Number(bidReq?.competitionScore ?? pred?.competitionScore ?? 0);
   const estimatedPrice = budgetNum * (predictedSajungRate / 100);
 
   const feeRate = optimalBidPrice > 0 && optimalBidPrice < 100_000_000 ? 0.017 : 0.015;

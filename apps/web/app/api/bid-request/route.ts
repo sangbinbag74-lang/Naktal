@@ -1,6 +1,33 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient, createAdminClient } from "@/lib/supabase/server";
 
+// 의뢰 여부 확인 (BidRequestButton 마운트 시)
+export async function GET(request: NextRequest): Promise<NextResponse> {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return NextResponse.json({ exists: false }, { status: 200 });
+
+  const annId = request.nextUrl.searchParams.get("annId");
+  if (!annId) return NextResponse.json({ exists: false });
+
+  const admin = createAdminClient();
+  const { data: dbUser } = await admin.from("User").select("id").eq("supabaseId", user.id).single();
+  if (!dbUser) return NextResponse.json({ exists: false });
+
+  const { data } = await admin
+    .from("BidRequest")
+    .select("id,recommendedBidPrice,createdAt")
+    .eq("userId", (dbUser as { id: string }).id)
+    .eq("annId", annId)
+    .is("cancelledAt", null)
+    .maybeSingle();
+
+  return NextResponse.json({
+    exists: !!data,
+    data: data ?? null,
+  });
+}
+
 export async function POST(request: NextRequest): Promise<NextResponse> {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();

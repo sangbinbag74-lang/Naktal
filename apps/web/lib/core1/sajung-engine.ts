@@ -439,18 +439,22 @@ export async function predictOptimalBid(params: {
   // 4. 전체 폴백도 없으면 기본값 (DB 전체 가중평균 기준: 103.8%)
   if (!stat || stat.sampleSize < 5) {
     const fallbackRate = 103.8;
-    const estimated = params.budget * (fallbackRate / 100);
     const aValF = params.aValueTotal ?? 0;
-    const lowerLimit = (estimated - aValF) * (params.lowerLimitRate / 100) + aValF;
-    const rangeHighF = (estimated - aValF) * ((params.lowerLimitRate + 0.5) / 100) + aValF;
+    const lwltF = params.lowerLimitRate / 100;
+    const estimatedF      = params.budget * (fallbackRate / 100);
+    const estimatedFLow   = params.budget * ((fallbackRate - 0.5) / 100);
+    const estimatedFHigh  = params.budget * ((fallbackRate + 0.5) / 100);
+    const optimalBidF = (estimatedF     - aValF) * lwltF + aValF;
+    const rangeLowF   = (estimatedFLow  - aValF) * lwltF + aValF;
+    const rangeHighF  = (estimatedFHigh - aValF) * lwltF + aValF;
     return {
       predictedSajungRate: fallbackRate,
       sajungRateRange: { min: 97, max: 112, p25: 101, p75: 106 },
       sampleSize: 0,
-      optimalBidPrice: Math.ceil(lowerLimit),
-      bidPriceRangeLow: Math.ceil(lowerLimit),
+      optimalBidPrice: Math.ceil(optimalBidF),
+      bidPriceRangeLow: Math.ceil(rangeLowF),
       bidPriceRangeHigh: Math.ceil(rangeHighF),
-      lowerLimitPrice: Math.ceil(lowerLimit),
+      lowerLimitPrice: Math.ceil(optimalBidF),
       winProbability: 0.35,
       isFallback: true,
       confidenceLevel: "LOW" as ConfidenceLevel,
@@ -535,12 +539,17 @@ export async function predictOptimalBid(params: {
   const usedMl = mlPred !== null;
 
   // 6. 투찰가 역산 — 표준 공식: ROUNDUP((예정가 - A) × 투찰률 + A)
-  const estimated  = params.budget * (predictedRate / 100);
+  // optimalBid = 예측 사정율 기반 낙찰하한가 (사정율 정확 시 최적)
+  // rangeLow / rangeHigh = 예측 사정율 ±0.5%p 범위 (보수/공격 옵션)
   const aVal       = params.aValueTotal ?? 0;
-  const lowerLimit = (estimated - aVal) * (params.lowerLimitRate / 100) + aVal;
-  const optimalBid = lowerLimit;  // 예측 사정률 정확 시 낙찰하한가 = 최적 투찰가
-  const rangeLow   = lowerLimit;
-  const rangeHigh  = (estimated - aVal) * ((params.lowerLimitRate + 0.5) / 100) + aVal;
+  const lwlt       = params.lowerLimitRate / 100;
+  const estimated      = params.budget * (predictedRate / 100);
+  const estimatedLow   = params.budget * ((predictedRate - 0.5) / 100);
+  const estimatedHigh  = params.budget * ((predictedRate + 0.5) / 100);
+  const optimalBid = (estimated     - aVal) * lwlt + aVal;
+  const rangeLow   = (estimatedLow  - aVal) * lwlt + aVal;
+  const rangeHigh  = (estimatedHigh - aVal) * lwlt + aVal;
+  const lowerLimit = optimalBid; // UI 표시용 (낙찰하한가 = 추천)
 
   // 7. 몬테카를로 낙찰 확률
   const winProb = monteCarloWinProb(

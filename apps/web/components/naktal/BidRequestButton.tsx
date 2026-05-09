@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 
 interface Props {
@@ -43,6 +43,21 @@ export function BidRequestButton({
   const router = useRouter();
   const [status, setStatus] = useState<Status>("idle");
   const [errorMsg, setErrorMsg] = useState<string>("");
+  const [hasRequested, setHasRequested] = useState(false);
+
+  // 마운트 시 의뢰 여부 확인
+  useEffect(() => {
+    let aborted = false;
+    fetch(`/api/bid-request?annId=${encodeURIComponent(annId)}`)
+      .then((r) => r.json())
+      .then((j) => { if (!aborted) setHasRequested(!!j.exists); })
+      .catch(() => { /* 무시 */ });
+    return () => { aborted = true; };
+  }, [annId]);
+
+  function handleViewContract() {
+    router.push(`/bid-contract/${konepsId}`);
+  }
 
   async function handleClick() {
     setStatus("loading");
@@ -106,19 +121,19 @@ export function BidRequestButton({
   return (
     <>
       <button
-        onClick={handleClick}
+        onClick={hasRequested ? handleViewContract : handleClick}
         disabled={status === "loading"}
         style={{
           fontSize: 12, fontWeight: 700,
           color: "#fff",
-          background: status === "loading" ? "#93A8C9" : "#1B3A6B",
+          background: status === "loading" ? "#93A8C9" : (hasRequested ? "#059669" : "#1B3A6B"),
           border: "none",
           borderRadius: 8, padding: "6px 12px",
           cursor: status === "loading" ? "not-allowed" : "pointer",
           whiteSpace: "nowrap",
         }}
       >
-        {status === "loading" ? "처리 중..." : "투찰 의뢰"}
+        {status === "loading" ? "처리 중..." : (hasRequested ? "계약서 확인 / 추천가 다시보기" : "투찰 의뢰")}
       </button>
 
       {status === "error" && (
