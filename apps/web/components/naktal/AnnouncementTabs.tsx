@@ -98,20 +98,8 @@ export function AnnouncementTabs({
   const [refreshKey, setRefreshKey] = useState(0);
   const userIdRef = useRef<string | null>(null);
 
-  // ─── 분석 결과 로컬 캐시 (영구, 사용자별 분리) ───────────────────────────
-  function cacheKey(userId: string, id: string) { return `analysis_v3_${userId}_${id}`; }
-  function loadCachedAnalysis(userId: string, id: string): ComprehensiveResult | null {
-    if (typeof window === "undefined") return null;
-    try {
-      const raw = localStorage.getItem(cacheKey(userId, id));
-      if (!raw) return null;
-      return JSON.parse(raw) as ComprehensiveResult;
-    } catch { return null; }
-  }
-  function saveCachedAnalysis(userId: string, id: string, data: ComprehensiveResult): void {
-    if (typeof window === "undefined") return;
-    try { localStorage.setItem(cacheKey(userId, id), JSON.stringify(data)); } catch { /* 무시 */ }
-  }
+  // localStorage 캐시 제거 (DB BidPricePrediction 24h 캐시 단일 source of truth)
+  // 이전 영구 캐시로 인해 BidRequestButton 결과와 불일치 → 제거
 
   // ─── 방문 이력 서버 저장 ────────────────────────────────────────────────────
   function saveVisitToServer(analysisData?: ComprehensiveResult): void {
@@ -127,21 +115,12 @@ export function AnnouncementTabs({
     }).catch((e) => console.error("[history] 방문 저장 실패:", e));
   }
 
-  // 통합 분석 API 호출 (마운트 시 1회 — 사용자별 로컬 캐시 우선, 영구 보존)
+  // 통합 분석 API 호출 (마운트 시 1회 — DB 24h 캐시만 사용)
   const fetchAnalysis = useCallback(async () => {
     if (!userIdRef.current) {
       const supabase = createClient();
       const { data: { user } } = await supabase.auth.getUser();
       userIdRef.current = user?.id ?? "anon";
-    }
-    const uid = userIdRef.current;
-
-    const cached = loadCachedAnalysis(uid, annDbId);
-    if (cached) {
-      setAnalysis(cached);
-      setAnalysisLoading(false);
-      saveVisitToServer(cached);
-      return;
     }
 
     setAnalysisLoading(true);
@@ -154,7 +133,6 @@ export function AnnouncementTabs({
       if (res.ok) {
         const data = (await res.json()) as ComprehensiveResult;
         setAnalysis(data);
-        saveCachedAnalysis(uid, annDbId, data);
         saveVisitToServer(data);
       } else {
         saveVisitToServer();

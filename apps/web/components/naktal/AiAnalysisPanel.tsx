@@ -76,26 +76,14 @@ export function AiAnalysisPanel({ annDbId, budget, g2bUrl, onRefresh, isContract
   const [loading, setLoading] = useState(true);
   const userIdRef = useRef<string | null>(null);
 
-  const cacheKey = (uid: string) => `analysis_v4_${uid}_${annDbId}`;
-
   const fetchAnalysis = useCallback(async (forceRefresh = false) => {
     if (!userIdRef.current) {
       const supabase = createClient();
       const { data: { user } } = await supabase.auth.getUser();
       userIdRef.current = user?.id ?? "anon";
     }
-    const uid = userIdRef.current;
-
-    if (!forceRefresh && typeof window !== "undefined") {
-      try {
-        const raw = localStorage.getItem(cacheKey(uid));
-        if (raw) {
-          setAnalysis(JSON.parse(raw) as ComprehensiveResult);
-          setLoading(false);
-          return;
-        }
-      } catch { /* 무시 */ }
-    }
+    // localStorage 캐시 제거 — DB BidPricePrediction 24h 캐시만 사용 (단일 source of truth)
+    void forceRefresh;
 
     setLoading(true);
     try {
@@ -107,7 +95,6 @@ export function AiAnalysisPanel({ annDbId, budget, g2bUrl, onRefresh, isContract
       if (res.ok) {
         const data = (await res.json()) as ComprehensiveResult;
         setAnalysis(data);
-        try { localStorage.setItem(cacheKey(uid), JSON.stringify(data)); } catch { /* 무시 */ }
       }
     } catch { /* 무시 */ }
     setLoading(false);
@@ -117,9 +104,6 @@ export function AiAnalysisPanel({ annDbId, budget, g2bUrl, onRefresh, isContract
   useEffect(() => { void fetchAnalysis(); }, [fetchAnalysis]);
 
   const handleRefresh = async () => {
-    if (userIdRef.current && typeof window !== "undefined") {
-      try { localStorage.removeItem(cacheKey(userIdRef.current)); } catch { /* 무시 */ }
-    }
     await fetchAnalysis(true);
     onRefresh?.();
   };
