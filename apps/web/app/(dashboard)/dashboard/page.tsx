@@ -3,252 +3,291 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 
-interface UrgentAnn {
+interface MyRequest {
   id: string;
+  annId: string;
+  konepsId: string;
   title: string;
   orgName: string;
-  budget: string;
+  deadline: string;
+  recommendedBidPrice: number;
+  predictedSajungRate: number | null;
+  contractAt: string | null;
+}
+interface RecommendedAnn {
+  id: string;
+  konepsId: string;
+  title: string;
+  orgName: string;
+  category: string;
+  region: string;
+  budget: number;
+  deadline: string;
+  predictedSajungRate: number | null;
+  optimalBidPrice: number | null;
+  winProbability: number | null;
+}
+interface UrgentAnn {
+  id: string;
+  konepsId: string;
+  title: string;
+  orgName: string;
+  category: string;
+  budget: number;
   deadline: string;
 }
-
-function fmtBudget(b: string) {
-  const n = parseInt(b, 10);
-  if (isNaN(n)) return b;
-  if (n >= 100000000) return `${(n / 100000000).toFixed(1)}억원`;
-  if (n >= 10000) return `${(n / 10000).toFixed(0)}만원`;
-  return new Intl.NumberFormat("ko-KR").format(n) + "원";
+interface DashboardData {
+  myRequests: MyRequest[];
+  recommended: RecommendedAnn[];
+  urgent: UrgentAnn[];
+  metrics: {
+    myRequestsThisMonth: number;
+    totalActive: number;
+    todayNew: number;
+    plan: string;
+  };
+  accuracy: {
+    total: number;
+    hitRate: number;
+    exactRate: number;
+    avgDev: number;
+  };
+  profileSet: boolean;
 }
 
-function getDDay(deadline: string) {
+function fmtPrice(n: number): string {
+  if (!n) return "-";
+  if (n >= 100_000_000) return `${(n / 100_000_000).toFixed(2)}억`;
+  if (n >= 10_000) return `${Math.round(n / 10_000).toLocaleString()}만`;
+  return n.toLocaleString();
+}
+function fmtPct(n: number | null, d = 2): string {
+  if (n == null) return "-";
+  return `${n.toFixed(d)}%`;
+}
+function getDDay(deadline: string): { label: string; color: string } {
   const diff = Math.ceil((new Date(deadline).getTime() - Date.now()) / 86400000);
   if (diff <= 0) return { label: "마감", color: "#475569" };
   if (diff <= 2) return { label: `D-${diff}`, color: "#DC2626" };
   if (diff <= 5) return { label: `D-${diff}`, color: "#C2410C" };
-  return { label: `D-${diff}`, color: "#1E40AF" };
-}
-
-interface DashboardStats {
-  core1UsedThisMonth: number;
-  core1Limit: number;
-  eligibleAnnouncements: number;
-  urgentAnnouncements: number;
-  todayAnnouncements: number;
-}
-
-interface QualificationStatus {
-  hasProfile: boolean;
-  bizName?: string;
-  mainCategory?: string;
-  recordCount?: number;
-  creditScore?: string;
+  if (diff <= 10) return { label: `D-${diff}`, color: "#1E40AF" };
+  return { label: `D-${diff}`, color: "#475569" };
 }
 
 const cardStyle: React.CSSProperties = {
   background: "#fff",
   borderRadius: 14,
   border: "1px solid #E8ECF2",
-  padding: "18px 20px",
-};
-
-const skeletonStyle: React.CSSProperties = {
-  background: "#E8ECF2",
-  borderRadius: 4,
-  animation: "pulse 1.5s ease-in-out infinite",
+  padding: "20px 24px",
 };
 
 export default function DashboardPage() {
-  const [stats, setStats] = useState<DashboardStats | null>(null);
+  const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [urgentAnns, setUrgentAnns] = useState<UrgentAnn[]>([]);
-  const [qualStatus, setQualStatus] = useState<QualificationStatus | null>(null);
-  const [qualLoading, setQualLoading] = useState(true);
 
   useEffect(() => {
-    fetch("/api/dashboard/stats")
+    let aborted = false;
+    fetch("/api/dashboard/home")
       .then((r) => r.json())
-      .then((d) => setStats(d))
-      .catch(() => {})
-      .finally(() => setLoading(false));
-    fetch("/api/dashboard/urgent-multiple-price")
-      .then((r) => r.json())
-      .then((d) => setUrgentAnns(d.data ?? []))
-      .catch(() => {});
-    fetch("/api/dashboard/qualification-status")
-      .then((r) => r.json())
-      .then((d) => setQualStatus(d))
-      .catch(() => {})
-      .finally(() => setQualLoading(false));
+      .then((j) => {
+        if (!aborted) {
+          if (!j.error) setData(j as DashboardData);
+          setLoading(false);
+        }
+      })
+      .catch(() => { if (!aborted) setLoading(false); });
+    return () => { aborted = true; };
   }, []);
 
-  const val = (key: keyof DashboardStats) =>
-    loading ? "..." : stats ? String(stats[key]) : "-";
-
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
-      <style>{`@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.45} }`}</style>
-      {/* 헤더 */}
+    <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+      {/* 헤더 + 1줄 지표 */}
       <div>
         <h2 style={{ fontSize: 22, fontWeight: 700, color: "#0F172A", margin: 0 }}>대시보드</h2>
-        <p style={{ fontSize: 13, color: "#64748B", marginTop: 4, marginBottom: 0 }}>
-          오늘도 전략적으로 투찰하세요.
-        </p>
+        <div style={{
+          marginTop: 8, display: "flex", gap: 18, flexWrap: "wrap",
+          fontSize: 13, color: "#64748B",
+        }}>
+          {!loading && data && (
+            <>
+              <span>이번달 의뢰 <strong style={{ color: "#1B3A6B" }}>{data.metrics.myRequestsThisMonth}</strong>건</span>
+              <span>·</span>
+              <span>활성 공고 <strong style={{ color: "#1B3A6B" }}>{data.metrics.totalActive.toLocaleString()}</strong>건</span>
+              <span>·</span>
+              <span>오늘 신규 <strong style={{ color: "#1B3A6B" }}>{data.metrics.todayNew.toLocaleString()}</strong>건</span>
+              <span>·</span>
+              <span>플랜 <strong style={{ color: "#059669" }}>{data.metrics.plan?.toUpperCase() ?? "-"}</strong></span>
+            </>
+          )}
+        </div>
       </div>
 
-      {/* 지표 카드 4열 */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 14 }}>
-        {loading ? Array.from({ length: 4 }).map((_, i) => (
-          <div key={i} style={{ ...cardStyle, borderTop: i === 0 ? "3px solid #1B3A6B" : cardStyle.border }}>
-            <div style={{ ...skeletonStyle, height: 12, width: "60%", marginBottom: 14 }} />
-            <div style={{ ...skeletonStyle, height: 28, width: "40%", marginBottom: 8 }} />
-            <div style={{ ...skeletonStyle, height: 10, width: "50%" }} />
-          </div>
-        )) : [
-          {
-            title: "이번 달 번호 추천",
-            value: stats ? `${stats.core1UsedThisMonth} / ${stats.core1Limit === -1 ? "∞" : stats.core1Limit}` : "-",
-            sub: "CORE 1 사용량",
-            icon: "🎯",
-            accent: true,
-          },
-          { title: "적격 가능 공고", value: val("eligibleAnnouncements"), sub: "내 업체 기준", icon: "✅", accent: false },
-          { title: "마감 임박 공고", value: val("urgentAnnouncements"),   sub: "D-3 이내",     icon: "⏰", accent: false },
-          { title: "오늘 신규 공고", value: val("todayAnnouncements"),     sub: "오늘 등록",    icon: "≡",  accent: false },
-        ].map((card, idx) => (
-          <div key={card.title} style={{
-            ...cardStyle,
-            borderTop: idx === 0 ? "3px solid #1B3A6B" : cardStyle.border,
-          }}>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
-              <span style={{ fontSize: 12, color: "#94A3B8", fontWeight: 500 }}>{card.title}</span>
-              <span style={{ fontSize: 18 }}>{card.icon}</span>
-            </div>
-            <div style={{ fontSize: 24, fontWeight: 700, color: "#0F172A", lineHeight: 1 }}>{card.value}</div>
-            <div style={{ fontSize: 11, color: "#94A3B8", marginTop: 6 }}>{card.sub}</div>
-          </div>
-        ))}
-      </div>
-
-      {/* 번호 분석 가능한 마감 임박 공고 */}
+      {/* 1. 진행중 내 의뢰 */}
       <div style={cardStyle}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <span style={{ fontSize: 15, fontWeight: 700, color: "#0F172A" }}>번호 분석 가능한 마감 임박 공고</span>
-            <span style={{ fontSize: 10, fontWeight: 700, background: "#EEF2FF", color: "#1B3A6B", padding: "2px 7px", borderRadius: 4 }}>CORE 1 · 복수예가</span>
-          </div>
-          <Link href="/announcements?contractMethod=복수예가&sort=deadline" style={{ fontSize: 12, color: "#60A5FA", textDecoration: "none" }}>전체 보기 →</Link>
+          <span style={{ fontSize: 15, fontWeight: 700, color: "#0F172A" }}>📌 진행중 내 의뢰</span>
+          <Link href="/contracts" style={{ fontSize: 12, color: "#60A5FA", textDecoration: "none" }}>전체 보기 →</Link>
         </div>
-        {urgentAnns.length === 0 ? (
-          <div style={{ background: "#F8FAFC", borderRadius: 10, padding: "24px", textAlign: "center" }}>
-            <div style={{ fontSize: 13, color: "#94A3B8" }}>복수예가 마감 임박 공고가 없습니다.</div>
-            <Link href="/announcements" style={{ display: "inline-block", marginTop: 10, fontSize: 12, color: "#1B3A6B", fontWeight: 600, textDecoration: "none" }}>공고 목록 보기 →</Link>
+        {loading ? <div style={loadingStyle}>불러오는 중...</div>
+         : !data || data.myRequests.length === 0 ? (
+          <div style={emptyStyle}>
+            <div style={{ fontSize: 13, color: "#94A3B8", marginBottom: 8 }}>진행중인 의뢰가 없습니다.</div>
+            <Link href="/announcements" style={emptyLinkStyle}>공고 둘러보기 →</Link>
           </div>
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            {urgentAnns.map((ann) => {
-              const dday = getDDay(ann.deadline);
+            {data.myRequests.map((r) => {
+              const dday = getDDay(r.deadline);
+              const href = r.contractAt ? `/bid-result/${r.konepsId}` : `/bid-contract/${r.konepsId}`;
               return (
-                <div key={ann.id} style={{
-                  background: "#F8FAFC", borderRadius: 10, border: "1px solid #E8ECF2",
-                  padding: "12px 16px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12,
-                }}>
+                <Link key={r.id} href={href} style={rowStyle}>
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 13, fontWeight: 600, color: "#0F172A", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{ann.title}</div>
-                    <div style={{ fontSize: 11, color: "#64748B", marginTop: 2 }}>{ann.orgName} · {fmtBudget(ann.budget)}</div>
+                    <div style={titleStyle}>{r.title}</div>
+                    <div style={subStyle}>
+                      {r.orgName} · 추천 {fmtPrice(r.recommendedBidPrice)}원
+                      {r.predictedSajungRate != null && ` · 사정율 ${fmtPct(r.predictedSajungRate)}`}
+                    </div>
                   </div>
                   <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
                     <span style={{ fontSize: 11, fontWeight: 700, color: dday.color }}>{dday.label}</span>
-                    <Link href={`/announcements/${ann.id}#number-analysis`} style={{
-                      fontSize: 11, fontWeight: 600, color: "#1B3A6B", background: "#EEF2FF",
-                      padding: "5px 10px", borderRadius: 6, textDecoration: "none",
+                    <span style={{
+                      fontSize: 11, fontWeight: 600,
+                      color: r.contractAt ? "#059669" : "#1B3A6B",
+                      background: r.contractAt ? "#ECFDF5" : "#EEF2FF",
+                      padding: "4px 8px", borderRadius: 6,
                     }}>
-                      🎯 번호 분석하기
-                    </Link>
+                      {r.contractAt ? "✓ 계약 완료" : "계약 대기"}
+                    </span>
                   </div>
-                </div>
+                </Link>
               );
             })}
           </div>
         )}
       </div>
 
-      {/* 내 업체 적격심사 현황 */}
+      {/* 2. AI 추천 공고 (내 업종/지역 매칭) */}
       <div style={cardStyle}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
           <div>
-            <span style={{ fontSize: 15, fontWeight: 700, color: "#0F172A" }}>내 업체 적격심사 현황</span>
-            <span style={{ fontSize: 10, fontWeight: 700, background: "#F0FDF4", color: "#166534", padding: "2px 7px", borderRadius: 4, marginLeft: 8 }}>CORE 3</span>
+            <span style={{ fontSize: 15, fontWeight: 700, color: "#0F172A" }}>🎯 AI 추천 공고</span>
+            <span style={{ fontSize: 10, fontWeight: 700, background: "#EEF2FF", color: "#1B3A6B", padding: "2px 7px", borderRadius: 4, marginLeft: 8 }}>내 업종 매칭</span>
           </div>
-          <Link href="/profile" style={{ fontSize: 12, color: "#60A5FA", textDecoration: "none" }}>업체 정보 설정 →</Link>
+          <Link href="/announcements" style={{ fontSize: 12, color: "#60A5FA", textDecoration: "none" }}>전체 →</Link>
         </div>
-        {qualLoading ? (
-          <div style={{ background: "#F8FAFC", borderRadius: 10, border: "1px solid #E8ECF2", padding: "20px" }}>
-            <div style={{ ...skeletonStyle, height: 16, width: "40%", marginBottom: 10 }} />
-            <div style={{ ...skeletonStyle, height: 12, width: "60%" }} />
-          </div>
-        ) : qualStatus?.hasProfile ? (
-          <div style={{
-            background: "#F0F6FF", borderRadius: 10, border: "1px solid #BFDBFE",
-            padding: "16px 20px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16,
-          }}>
-            <div>
-              <div style={{ fontSize: 15, fontWeight: 700, color: "#1B3A6B", marginBottom: 4 }}>
-                {qualStatus.bizName || "업체명 미입력"}
-              </div>
-              <div style={{ fontSize: 12, color: "#475569" }}>
-                주업종: {qualStatus.mainCategory || "미입력"} · 실적 {qualStatus.recordCount ?? 0}건
-                {qualStatus.creditScore && ` · 신용등급 ${qualStatus.creditScore}`}
-              </div>
+        {!loading && data && !data.profileSet && (
+          <div style={{ ...emptyStyle, marginBottom: 12, background: "#FEF3C7", border: "1px solid #FDE68A" }}>
+            <div style={{ fontSize: 13, color: "#92400E", marginBottom: 6 }}>
+              💡 업체 정보를 등록하면 더 정확한 매칭을 받을 수 있습니다.
             </div>
-            <Link href="/qualification" style={{
-              fontSize: 12, fontWeight: 600, color: "#1B3A6B", background: "#fff",
-              border: "1px solid #BFDBFE", borderRadius: 8, padding: "7px 14px", textDecoration: "none", flexShrink: 0,
-            }}>
-              적격심사 바로가기 →
-            </Link>
+            <Link href="/profile" style={{ ...emptyLinkStyle, color: "#92400E" }}>업체 정보 등록 →</Link>
+          </div>
+        )}
+        {loading ? <div style={loadingStyle}>불러오는 중...</div>
+         : !data || data.recommended.length === 0 ? (
+          <div style={emptyStyle}>
+            <div style={{ fontSize: 13, color: "#94A3B8" }}>매칭되는 활성 공고가 없습니다.</div>
           </div>
         ) : (
-          <div style={{
-            background: "#F8FAFC", borderRadius: 10, border: "1px dashed #CBD5E1",
-            padding: "24px", textAlign: "center",
-          }}>
-            <div style={{ fontSize: 28, marginBottom: 8 }}>🏢</div>
-            <div style={{ fontSize: 14, fontWeight: 600, color: "#374151", marginBottom: 4 }}>
-              업체 정보를 등록하면 적격심사 가능 공고를 자동으로 안내해드립니다
-            </div>
-            <Link href="/profile" style={{
-              display: "inline-block", marginTop: 12, background: "#1B3A6B", color: "#fff",
-              borderRadius: 8, padding: "8px 20px", fontSize: 13, fontWeight: 600, textDecoration: "none",
-            }}>
-              업체 정보 등록하기
-            </Link>
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            {data.recommended.map((a) => {
+              const dday = getDDay(a.deadline);
+              return (
+                <Link key={a.id} href={`/announcements/${a.konepsId}`} style={rowStyle}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={titleStyle}>{a.title}</div>
+                    <div style={subStyle}>
+                      {a.orgName} · {a.category} · {a.region} · {fmtPrice(a.budget)}원
+                    </div>
+                  </div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
+                    {a.optimalBidPrice != null && (
+                      <span style={{
+                        fontSize: 11, fontWeight: 700, color: "#1B3A6B",
+                        background: "#EEF2FF", padding: "4px 8px", borderRadius: 6,
+                      }}>
+                        AI {fmtPrice(a.optimalBidPrice)}
+                      </span>
+                    )}
+                    <span style={{ fontSize: 11, fontWeight: 700, color: dday.color }}>{dday.label}</span>
+                  </div>
+                </Link>
+              );
+            })}
           </div>
         )}
       </div>
 
-      {/* 마감 임박 공고 */}
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-        <span style={{ fontSize: 15, fontWeight: 700, color: "#0F172A" }}>마감 임박 공고</span>
-        <Link href="/announcements?sort=deadline" style={{ fontSize: 12, color: "#60A5FA", textDecoration: "none" }}>전체 보기 →</Link>
-      </div>
-      <div style={{
-        background: "linear-gradient(135deg, #1B3A6B 0%, #0F1E3C 100%)",
-        borderRadius: 14,
-        padding: "20px 24px",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "space-between",
-      }}>
-        <div>
-          <div style={{ fontSize: 15, fontWeight: 700, color: "#fff", marginBottom: 4 }}>나라장터 최신 공고 확인하기</div>
-          <div style={{ fontSize: 12, color: "rgba(255,255,255,0.6)" }}>매일 자동 수집 · 번호 전략 바로 분석</div>
+      {/* 3. 마감 임박 D-3 */}
+      <div style={cardStyle}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
+          <span style={{ fontSize: 15, fontWeight: 700, color: "#0F172A" }}>⏰ 마감 임박 (D-3 이내)</span>
+          <Link href="/announcements?sort=deadline" style={{ fontSize: 12, color: "#60A5FA", textDecoration: "none" }}>전체 →</Link>
         </div>
-        <Link href="/announcements" style={{
-          background: "#fff", color: "#1B3A6B", borderRadius: 10,
-          padding: "9px 18px", fontSize: 13, fontWeight: 600, textDecoration: "none", flexShrink: 0,
-        }}>
-          공고 보기 →
-        </Link>
+        {loading ? <div style={loadingStyle}>불러오는 중...</div>
+         : !data || data.urgent.length === 0 ? (
+          <div style={emptyStyle}>
+            <div style={{ fontSize: 13, color: "#94A3B8" }}>마감 임박 공고가 없습니다.</div>
+          </div>
+        ) : (
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            {data.urgent.map((a) => {
+              const dday = getDDay(a.deadline);
+              return (
+                <Link key={a.id} href={`/announcements/${a.konepsId}`} style={rowStyle}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={titleStyle}>{a.title}</div>
+                    <div style={subStyle}>{a.orgName} · {a.category} · {fmtPrice(a.budget)}원</div>
+                  </div>
+                  <span style={{ fontSize: 11, fontWeight: 700, color: dday.color }}>{dday.label}</span>
+                </Link>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* 4. 모델 정확도 (지난 30일) */}
+      <div style={cardStyle}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
+          <span style={{ fontSize: 15, fontWeight: 700, color: "#0F172A" }}>📊 AI 정확도 (지난 30일)</span>
+          <Link href="/admin/accuracy" style={{ fontSize: 12, color: "#60A5FA", textDecoration: "none" }}>상세 →</Link>
+        </div>
+        {loading ? <div style={loadingStyle}>불러오는 중...</div>
+         : !data || data.accuracy.total === 0 ? (
+          <div style={emptyStyle}>
+            <div style={{ fontSize: 13, color: "#94A3B8" }}>아직 결과 입력된 의뢰가 없습니다.</div>
+          </div>
+        ) : (
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12 }}>
+            {[
+              { label: "검증 건수", value: `${data.accuracy.total}건` },
+              { label: "적중률 (±0.5%p)", value: `${data.accuracy.hitRate.toFixed(1)}%`, color: "#059669" },
+              { label: "정확 적중 (±0.1%p)", value: `${data.accuracy.exactRate.toFixed(1)}%`, color: "#1B3A6B" },
+              { label: "평균 편차", value: `${data.accuracy.avgDev.toFixed(2)}%p`, color: "#C2410C" },
+            ].map((m) => (
+              <div key={m.label} style={{ background: "#F8FAFC", borderRadius: 10, padding: "14px 16px" }}>
+                <div style={{ fontSize: 11, color: "#94A3B8", marginBottom: 6 }}>{m.label}</div>
+                <div style={{ fontSize: 18, fontWeight: 700, color: m.color ?? "#0F172A" }}>{m.value}</div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );
 }
+
+const loadingStyle: React.CSSProperties = { padding: "24px", textAlign: "center", color: "#94A3B8", fontSize: 13 };
+const emptyStyle: React.CSSProperties = { background: "#F8FAFC", borderRadius: 10, padding: "20px", textAlign: "center" };
+const emptyLinkStyle: React.CSSProperties = { fontSize: 12, color: "#1B3A6B", fontWeight: 600, textDecoration: "none", display: "inline-block", marginTop: 4 };
+const rowStyle: React.CSSProperties = {
+  background: "#F8FAFC", borderRadius: 10, border: "1px solid #E8ECF2",
+  padding: "12px 16px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12,
+  textDecoration: "none", color: "inherit",
+};
+const titleStyle: React.CSSProperties = {
+  fontSize: 13, fontWeight: 600, color: "#0F172A",
+  overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+};
+const subStyle: React.CSSProperties = { fontSize: 11, color: "#64748B", marginTop: 2 };
