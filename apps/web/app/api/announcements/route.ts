@@ -12,6 +12,8 @@ import {
 import { CATEGORY_GROUPS, SIMILAR_CATEGORIES, parseSubCategories } from "@/lib/category-map";
 
 export const maxDuration = 60;
+export const runtime = "nodejs";
+export const preferredRegion = ["icn1"]; // Seoul — Supabase 와 같은 region 으로 latency 최소화
 
 // ─── G2B API 직접 조회 (실시간) ───────────────────────────────────────────────
 // 최근 3일치 공고 조회 — 용역/시설공사/물품 3개 타입 모두 수집
