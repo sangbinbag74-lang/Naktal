@@ -265,15 +265,22 @@ function buildResponse(
       sampleSize: pred.sampleSize,
       optimalBidPrice: (() => {
         // 표준 공식: 낙찰하한가 = (기초금액 × 예측사정률 - A) × 낙찰하한율 + A
-        // 회사별 차별화: 낙찰하한가 + seq원 (1원, 2원... 동가 회피, 낙찰 확률 최대)
+        // 추천 = 낙찰하한가 + 동적 안전 마진 + seq원
+        // 신뢰도 기반 마진: HIGH(0.05%p) / MEDIUM(0.2%p) / LOW(0.5%p)
+        // ML MAE 0.48%p 보상 → 사정율 예측이 빗나가도 낙찰하한가 미만 위험 회피
         const budget = budgetNum ?? Number(ann.budget) ?? 0;
         const rate   = Number(pred.predictedSajungRate) || 103.8;
         const llRate = lowerLimitRate ?? 87.745;
         const aVal   = aValueTotal ?? 0;
         const estPrice = budget * (rate / 100);
         const lowerLimit = Math.ceil((estPrice - aVal) * (llRate / 100) + aVal);
+        // 신뢰도별 마진 (%p)
+        const ss = Number(pred.sampleSize ?? 0);
+        const marginPct = ss >= 30 ? 0.05 : ss >= 5 ? 0.2 : 0.5;
+        // marginPct 만큼 사정율이 더 높을 때의 lowerLimit 차이
+        const safetyMargin = Math.ceil(lowerLimit * marginPct / 100);
         const seq = (bidRequestCount ?? 0) + 1;
-        return lowerLimit + seq;
+        return lowerLimit + safetyMargin + seq;
       })(),
       bidPriceRangeLow: (() => {
         const budget = budgetNum ?? Number(ann.budget) ?? 0;
