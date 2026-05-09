@@ -119,6 +119,8 @@ export default async function ContractsPage() {
                 {/* 하단: 버튼 */}
                 <Link
                   href={`/bid-result/${c.annId as string}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
                   style={{
                     display: "block", textAlign: "center",
                     padding: "10px", background: "#1B3A6B", color: "#fff",

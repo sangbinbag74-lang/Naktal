@@ -140,7 +140,7 @@ export default function DashboardPage() {
               const dday = getDDay(r.deadline);
               const href = r.contractAt ? `/bid-result/${r.konepsId}` : `/bid-contract/${r.konepsId}`;
               return (
-                <Link key={r.id} href={href} style={rowStyle}>
+                <Link key={r.id} href={href} target="_blank" rel="noopener noreferrer" style={rowStyle}>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={titleStyle}>{r.title}</div>
                     <div style={subStyle}>
