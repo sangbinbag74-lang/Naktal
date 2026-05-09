@@ -128,7 +128,7 @@ export function SajungHistogram({ annId, predictedSajungRate, lowerLimitRate, pe
       {/* 두 봉우리 경고 배너 (전체업종 모드에서 분포 오염 가능성) */}
       {categoryFilter === "all" && stats.stddev > 3.0 && (
         <div style={{ padding: "8px 12px", background: "#FEF2F2", border: "1px solid #FECACA", borderRadius: 8, fontSize: 12, color: "#991B1B" }}>
-          ⚠️ 분포 편차가 큽니다 (σ={stats.stddev.toFixed(1)}%). 업종이 혼재되어 두 봉우리가 나타날 수 있으니 <b>동일업종</b> 필터를 우선 참고하세요.
+          ⚠️ 분포 편차가 큽니다 (σ={stats.stddev.toFixed(3)}%p). 업종이 혼재되어 두 봉우리가 나타날 수 있으니 <b>동일업종</b> 필터를 우선 참고하세요.
         </div>
       )}
 
@@ -205,7 +205,7 @@ export function SajungHistogram({ annId, predictedSajungRate, lowerLimitRate, pe
                 stroke="#7C3AED"
                 strokeWidth={1.5}
                 strokeDasharray="4 2"
-                label={{ value: `최빈 ${modeRate.toFixed(1)}%`, position: "top", fontSize: 10, fill: "#7C3AED" }}
+                label={{ value: `최빈 ${modeRate.toFixed(3)}%`, position: "top", fontSize: 10, fill: "#7C3AED" }}
               />
             )}
             {/* 낙찰하한율 */}
@@ -216,7 +216,7 @@ export function SajungHistogram({ annId, predictedSajungRate, lowerLimitRate, pe
                 stroke="#DC2626"
                 strokeWidth={1.5}
                 strokeDasharray="4 2"
-                label={{ value: `하한 ${lr.toFixed(1)}%`, position: "insideTopLeft", fontSize: 10, fill: "#DC2626" }}
+                label={{ value: `하한 ${lr.toFixed(3)}%`, position: "insideTopLeft", fontSize: 10, fill: "#DC2626" }}
               />
             )}
 
@@ -240,7 +240,7 @@ export function SajungHistogram({ annId, predictedSajungRate, lowerLimitRate, pe
 
       {/* 실제 사정율 범위 */}
       <div style={{ fontSize: 11, color: "#64748B", paddingLeft: 4 }}>
-        실제 사정율 범위: {(stats.min ?? stats.avg).toFixed(1)}% ~ {(stats.max ?? stats.avg).toFixed(1)}%
+        실제 사정율 범위: {(stats.min ?? stats.avg).toFixed(3)}% ~ {(stats.max ?? stats.avg).toFixed(3)}%
       </div>
 
       {/* 범례 */}
