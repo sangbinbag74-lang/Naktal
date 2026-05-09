@@ -115,6 +115,7 @@ export function BidResultAnalysis({ annDbId }: Props) {
         <NumberAnalysisSection
           annId={annDbId}
           isClosed={false}
+          multiplePrice={true}
         />
       )}
     </>

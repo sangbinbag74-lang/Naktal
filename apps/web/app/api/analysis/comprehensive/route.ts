@@ -265,13 +265,17 @@ function buildResponse(
       sampleSize: pred.sampleSize,
       optimalBidPrice: (() => {
         // 표준 공식: ROUNDUP((기초금액 × 예측사정률 - A) × 낙찰하한율 + A)
+        // 회사별 차별화: 같은 공고 의뢰 N번째 = -seq*100원 (동가 추첨 회피)
         const budget = budgetNum ?? Number(ann.budget) ?? 0;
         const rate   = Number(pred.predictedSajungRate) || 103.8;
         const llRate = lowerLimitRate ?? 87.745;
         const aVal   = aValueTotal ?? 0;
         const estPrice = budget * (rate / 100);
-        const bidPrice = (estPrice - aVal) * (llRate / 100) + aVal;
-        return Math.ceil(bidPrice);
+        const basePrice = (estPrice - aVal) * (llRate / 100) + aVal;
+        const lowerLimit = Math.ceil(basePrice);
+        const seq = (bidRequestCount ?? 0) + 1; // 다음 의뢰 순번
+        const personalized = Math.max(Math.ceil(estPrice) - seq * 100, lowerLimit + 1);
+        return Math.min(personalized, Math.ceil(estPrice)); // 예정가 초과 방지
       })(),
       bidPriceRangeLow: (() => {
         const budget = budgetNum ?? Number(ann.budget) ?? 0;

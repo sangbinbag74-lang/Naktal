@@ -84,10 +84,11 @@ interface Props {
   annId: string;
   isClosed: boolean;
   bidMethod?: string;
+  multiplePrice?: boolean; // 예가방법 (복수예가 여부) — bidMethod(낙찰방법)와 분리
   defaultBidders?: number;
 }
 
-export function NumberAnalysisSection({ annId, isClosed, bidMethod, defaultBidders }: Props) {
+export function NumberAnalysisSection({ annId, isClosed, bidMethod, multiplePrice = false, defaultBidders }: Props) {
   const [estimatedBidders, setEstimatedBidders] = useState(
     defaultBidders ? String(defaultBidders) : ""
   );
@@ -320,9 +321,10 @@ export function NumberAnalysisSection({ annId, isClosed, bidMethod, defaultBidde
         </div>
       )}
 
-      {bidMethod && !bidMethod.includes("복수예가") && (
+      {/* 단일예가 차단 — multiplePrice (예가방법) 으로 판정. bidMethod(낙찰방법: 등록공고 등)와 분리 */}
+      {!multiplePrice && (
         <div style={{ background: "#F8FAFC", borderRadius: 10, padding: "12px 16px", fontSize: 13, color: "#64748B" }}>
-          이 공고는 <strong>{bidMethod}</strong> 방식입니다. 번호 분석은 복수예가 방식 공고에서만 가능합니다.
+          이 공고는 <strong>단일예가</strong> 방식입니다. 번호 분석은 복수예가 방식 공고에서만 가능합니다.
         </div>
       )}
     </div>

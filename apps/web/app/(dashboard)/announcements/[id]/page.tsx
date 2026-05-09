@@ -411,6 +411,7 @@ export default async function AnnouncementDetailPage({
                 annId={a.id}
                 isClosed={isClosed}
                 bidMethod={bidMethodDisplay}
+                multiplePrice={multiplePrice}
               />
             </div>
           )}
