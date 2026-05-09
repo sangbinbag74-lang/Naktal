@@ -54,7 +54,7 @@ export default async function BidResultPage({
   // 계약 완료된 BidRequest 조회
   const { data: req } = await admin
     .from("BidRequest")
-    .select("recommendedBidPrice,lowerLimitPrice,estimatedPrice,budget,predictedSajungRate,agreedFeeRate,agreedFeeAmount,contractAt")
+    .select("recommendedBidPrice,lowerLimitPrice,estimatedPrice,budget,predictedSajungRate,agreedFeeRate,agreedFeeAmount,contractAt,winProbability,competitionScore")
     .eq("userId", dbUser.id as string)
     .eq("annId", ann.id as string)
     .not("contractAt", "is", null)
@@ -96,6 +96,11 @@ export default async function BidResultPage({
 
   const avgSajungRate = Number((statRow ?? statFallback)?.avg ?? 0);
   const sajungDeviation = avgSajungRate > 0 ? sajungRate - avgSajungRate : null;
+  const sampleSize = Number(statRow?.sampleSize ?? statFallback?.sampleSize ?? 0);
+  const winProbability = Number(req.winProbability ?? 0); // 0~100 정수
+  const competitionScore = Number(req.competitionScore ?? 0);
+  const safetyMargin = price - lowerLimit; // 추천 - 낙찰하한가 (안전 마진 + seq)
+  const confidenceLevel: "HIGH" | "MEDIUM" | "LOW" = sampleSize >= 30 ? "HIGH" : sampleSize >= 5 ? "MEDIUM" : "LOW";
 
   return (
     <div style={{ maxWidth: 560, margin: "0 auto", display: "flex", flexDirection: "column", gap: 20, paddingBottom: 40 }}>
@@ -160,6 +165,60 @@ export default async function BidResultPage({
               <span style={{ fontSize: 14, fontWeight: bold ? 800 : 600, color: bold ? "#1B3A6B" : "#0F172A" }}>{value}</span>
             </div>
           ))}
+        </div>
+      </div>
+
+      {/* AI 정밀 분석 (계약 회원 전용) */}
+      <div style={{
+        background: "#fff", borderRadius: 14,
+        border: "2px solid #1B3A6B", padding: "20px 24px",
+      }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}>
+          <span style={{ fontSize: 14, fontWeight: 800, color: "#1B3A6B" }}>🔬 AI 정밀 분석</span>
+          <span style={{
+            fontSize: 10, fontWeight: 700, background: "#EEF2FF", color: "#1B3A6B",
+            padding: "2px 7px", borderRadius: 4,
+          }}>
+            계약 회원 전용
+          </span>
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 12 }}>
+          {[
+            {
+              label: "낙찰 확률",
+              value: `${winProbability.toFixed(0)}%`,
+              sub: "몬테카를로 시뮬레이션 (N=5000)",
+              color: winProbability >= 70 ? "#059669" : winProbability >= 50 ? "#1B3A6B" : "#C2410C",
+            },
+            {
+              label: "경쟁 강도",
+              value: `${competitionScore}점`,
+              sub: competitionScore >= 70 ? "매우 치열" : competitionScore >= 50 ? "보통" : "낮음",
+              color: competitionScore >= 70 ? "#DC2626" : competitionScore >= 50 ? "#C2410C" : "#059669",
+            },
+            {
+              label: "AI 신뢰도",
+              value: confidenceLevel,
+              sub: `유사 ${sampleSize}건 기반`,
+              color: confidenceLevel === "HIGH" ? "#059669" : confidenceLevel === "MEDIUM" ? "#1B3A6B" : "#C2410C",
+            },
+            {
+              label: "안전 마진",
+              value: `+${fmtPrice(safetyMargin)}`,
+              sub: "낙찰하한가 위 (사정율 오차 보상)",
+              color: "#1B3A6B",
+            },
+          ].map((m) => (
+            <div key={m.label} style={{ background: "#F8FAFC", borderRadius: 10, padding: "12px 14px" }}>
+              <div style={{ fontSize: 11, color: "#94A3B8", marginBottom: 4 }}>{m.label}</div>
+              <div style={{ fontSize: 18, fontWeight: 800, color: m.color, marginBottom: 4 }}>{m.value}</div>
+              <div style={{ fontSize: 10, color: "#9CA3AF" }}>{m.sub}</div>
+            </div>
+          ))}
+        </div>
+        <div style={{ fontSize: 11, color: "#9CA3AF", marginTop: 12, lineHeight: 1.5 }}>
+          ※ 안전 마진 = 낙찰하한가 + 동적 마진 (HIGH 0.05%p / MEDIUM 0.2%p / LOW 0.5%p) + 회사별 seq원 (동가 회피).
+          ML 모델 사정율 예측 오차를 보상하여 낙찰 확률을 최대화합니다.
         </div>
       </div>
 
