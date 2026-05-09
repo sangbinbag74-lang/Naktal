@@ -102,17 +102,51 @@ export function NumberAnalysisSection({ annId, isClosed, bidMethod, multiplePric
 
   const cacheKey = `naktal_analysis_v2_${annId}`;
 
-  // 마운트 시 캐시된 결과 복원
+  // 마운트 시 (1) localStorage 캐시 우선, (2) 서버 NumberRecommendation 조회
   useEffect(() => {
+    let aborted = false;
+
+    // 1. localStorage 캐시 (같은 브라우저)
     try {
       const cached = localStorage.getItem(cacheKey);
       if (cached) {
         const parsed = JSON.parse(cached) as RecommendResult;
         setResult(parsed);
         setShowForm(false);
+        return;
       }
     } catch { /* 무시 */ }
-  }, [cacheKey]);
+
+    // 2. 서버 NumberRecommendation 조회 (다른 기기 / 브라우저 캐시 비움)
+    fetch(`/api/strategy/history?annId=${encodeURIComponent(annId)}`)
+      .then((r) => r.ok ? r.json() : null)
+      .then((j) => {
+        if (aborted || !j?.recommendations || j.recommendations.length === 0) return;
+        const rec = j.recommendations[0] as Record<string, unknown>;
+        // history 형식 → RecommendResult 매핑 (combo4 는 schema에 없어 combo3 복제)
+        const mapped: RecommendResult = {
+          combo1: (rec.combo1 as number[]) ?? [],
+          combo2: (rec.combo2 as number[]) ?? [],
+          combo3: (rec.combo3 as number[]) ?? [],
+          combo4: (rec.combo3 as number[]) ?? [], // schema 에 combo4 없음 — 추후 migration
+          hitRate1: Number(rec.hitRate1 ?? 0),
+          hitRate2: Number(rec.hitRate2 ?? 0),
+          hitRate3: Number(rec.hitRate3 ?? 0),
+          hitRate4: Number(rec.hitRate3 ?? 0),
+          sampleSize: Number(rec.sampleSize ?? 0),
+          modelVersion: String(rec.modelVersion ?? ""),
+          freqMap: {},
+          used: 0,
+          limit: -1,
+          isEstimated: false,
+        };
+        setResult(mapped);
+        setShowForm(false);
+      })
+      .catch(() => { /* 무시 */ });
+
+    return () => { aborted = true; };
+  }, [cacheKey, annId]);
 
   async function handleAnalyze() {
     if (loading || isClosed) return;

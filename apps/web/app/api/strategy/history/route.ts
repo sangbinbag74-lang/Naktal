@@ -1,7 +1,7 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { createClient, createAdminClient } from "@/lib/supabase/server";
 
-export async function GET(): Promise<NextResponse> {
+export async function GET(request: NextRequest): Promise<NextResponse> {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -14,20 +14,32 @@ export async function GET(): Promise<NextResponse> {
     .single();
   if (!dbUser) return NextResponse.json({ error: "User not found" }, { status: 404 });
 
-  const { data: recs, error } = await admin
+  // annId 쿼리 파라미터: 특정 공고의 분석 이력 (단일 공고용)
+  const annIdFilter = request.nextUrl.searchParams.get("annId");
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let query: any = admin
     .from("NumberRecommendation")
     .select("id,annId,category,budgetRange,region,combo1,combo2,combo3,hitRate1,hitRate2,hitRate3,sampleSize,modelVersion,createdAt")
     .eq("userId", dbUser.id)
-    .order("createdAt", { ascending: false })
-    .limit(50);
+    .order("createdAt", { ascending: false });
+
+  if (annIdFilter) {
+    query = query.eq("annId", annIdFilter).limit(1);
+  } else {
+    query = query.limit(50);
+  }
+
+  const { data: recs, error } = await query;
 
   if (error) {
     console.error("[history]", error.message);
     return NextResponse.json({ recommendations: [], total: 0 });
   }
 
-  const annIds = [...new Set((recs ?? []).map((r) => r.annId).filter(Boolean))];
-  let annMap: Record<string, { id: string; title: string; orgName: string; budget: string; deadline: string }> = {};
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const annIds = [...new Set((recs ?? []).map((r: any) => r.annId).filter(Boolean))];
+  const annMap: Record<string, { id: string; title: string; orgName: string; budget: string; deadline: string }> = {};
   if (annIds.length > 0) {
     const { data: anns } = await admin
       .from("Announcement")
@@ -44,7 +56,8 @@ export async function GET(): Promise<NextResponse> {
     return new Intl.NumberFormat("ko-KR").format(n) + "원";
   }
 
-  const enriched = (recs ?? []).map((r) => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const enriched = (recs ?? []).map((r: any) => {
     const ann = r.annId ? annMap[r.annId] : null;
     return {
       id: r.id,
