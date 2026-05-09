@@ -36,7 +36,7 @@ export function formatSajung(sajung: number): string {
 export function formatDeviation(sajung: number, orgAvg: number): string {
   const dev = sajung - orgAvg;
   const sign = dev >= 0 ? "+" : "";
-  return `${sign}${dev.toFixed(3)}%`;
+  return `${sign}${dev.toFixed(3)}%p`; // 평균 대비 %p (퍼센트 포인트)
 }
 
 /** 편차 색상: 양수(파랑) / 음수(빨강) */

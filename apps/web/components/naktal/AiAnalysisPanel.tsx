@@ -173,7 +173,8 @@ export function AiAnalysisPanel({ annDbId, budget, g2bUrl, onRefresh, isContract
               </div>
               {cl !== "LOW" && isContracted && (
                 <div style={{ fontSize: 11, color: "#64748B", marginTop: 6 }}>
-                  범위 {fmt(bs.bidPriceRangeLow)}<br />~ {fmt(bs.bidPriceRangeHigh)}
+                  안전 범위 (사정율 ±0.5%p)<br />
+                  {fmt(bs.bidPriceRangeLow)} ~ {fmt(bs.bidPriceRangeHigh)}
                 </div>
               )}
               {cl !== "LOW" && !isContracted && (

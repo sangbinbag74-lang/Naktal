@@ -141,20 +141,20 @@ export function SajungHistogram({ annId, predictedSajungRate, lowerLimitRate, pe
         }}>
           <span style={{ color: "#1B3A6B", fontWeight: 600 }}>▌ AI 추천</span>
           <span style={{ color: "#1B3A6B", fontWeight: 700 }}>{formatSajung(predictedSajungRate)}</span>
-          <span style={{ color: deviationColor(predictedSajungRate, orgAvg) }}>
-            {formatDeviation(predictedSajungRate, orgAvg)}
+          <span style={{ color: deviationColor(predictedSajungRate, orgAvg), fontSize: 11 }}>
+            평균 대비 {formatDeviation(predictedSajungRate, orgAvg)}
           </span>
           <span style={{ color: "#94A3B8", marginLeft: "auto", fontSize: 11 }}>
-            사정율 ±0.5% 구간 강조 표시
+            사정율 ±0.5%p 구간 강조 표시
           </span>
         </div>
       )}
 
       {/* Stat Cards */}
       <div style={{ display: "flex", gap: 8 }}>
-        <StatCard label="평균 사정율" value={formatSajung(stats.avg)} sub="기준값 (±0.000%)" color="#1B3A6B" />
-        <StatCard label="최빈 사정율" value={formatSajung(stats.mode)} sub={modeDev} subColor={modeDevColor} color="#7C3AED" />
-        <StatCard label="표준편차" value={`±${(stats.stddev ?? 0).toFixed(3)}%`} />
+        <StatCard label="평균 사정율" value={formatSajung(stats.avg)} sub="기준값 (평균 대비)" color="#1B3A6B" />
+        <StatCard label="최빈 사정율" value={formatSajung(stats.mode)} sub={`평균 대비 ${modeDev}`} subColor={modeDevColor} color="#7C3AED" />
+        <StatCard label="표준편차" value={`±${(stats.stddev ?? 0).toFixed(3)}%p`} />
         <StatCard label="IQR 구간" value={`${formatSajung(stats.p25)}~${formatSajung(stats.p75)}`} />
       </div>
 
