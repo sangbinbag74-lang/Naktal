@@ -50,8 +50,8 @@ export default async function BidContractPage({
     .eq("annId", ann.id as string)
     .maybeSingle();
 
-  // 이미 계약됐으면 공고 상세로
-  if (existing?.contractAt) redirect(`/announcements/${ann.id}`);
+  // 이미 계약됐으면 결과 페이지로 (계약서·추천가 다시 보기)
+  if (existing?.contractAt) redirect(`/bid-result/${(ann.konepsId as string) ?? (ann.id as string)}`);
 
   // BidRequest (사용자 의뢰 시 저장된 분석) 우선 조회
   const { data: bidReq } = await admin
