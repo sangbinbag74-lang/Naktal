@@ -81,7 +81,7 @@ export function SajungTopTen({ annId, predictedSajungRate, budget: _budget, peri
 
       {/* 헤더 정보 */}
       <div style={{ fontSize: 12, color: "#64748B" }}>
-        {data.sampleSize.toLocaleString()}건 낙찰 결과 기반 · 낙찰하한율 {data.lowerLimitRate.toFixed(3)}%
+        {data.sampleSize.toLocaleString()}건 낙찰 결과 기반 · 낙찰하한율 {data.lowerLimitRate.toFixed(3)}% · 0.1%p 단위 bucket
       </div>
 
       {/* TOP 10 테이블 */}
@@ -124,7 +124,8 @@ export function SajungTopTen({ annId, predictedSajungRate, budget: _budget, peri
                   </td>
                   {/* 사정율 구간 */}
                   <td style={{ padding: "10px", textAlign: "center" }}>
-                    <div style={{ fontWeight: 700, fontSize: 14, color: "#0F172A" }}>{formatSajung(item.bucket)}</div>
+                    <div style={{ fontWeight: 700, fontSize: 14, color: "#0F172A" }}>{item.bucket.toFixed(1)}%</div>
+                    <div style={{ fontSize: 10, color: "#94A3B8" }}>±0.05%p 구간</div>
                     <div style={{ fontSize: 11, color: deviationColor(item.bucket, orgAvg), marginTop: 2 }}>
                       {formatDeviation(item.bucket, orgAvg)}
                     </div>
