@@ -16,13 +16,23 @@ interface NumberStrategy {
 
 interface Props {
   annDbId: string;
+  stored?: unknown;
 }
 
-export function BidResultCombos({ annDbId }: Props) {
-  const [ns, setNs] = useState<NumberStrategy | null>(null);
-  const [loading, setLoading] = useState(true);
+function isValidStrategy(x: unknown): x is NumberStrategy {
+  if (!x || typeof x !== "object") return false;
+  const o = x as Record<string, unknown>;
+  return !!(o.combo1 && o.combo2 && o.combo3 && o.combo4);
+}
+
+export function BidResultCombos({ annDbId, stored }: Props) {
+  const initial = isValidStrategy(stored) ? stored : null;
+  const [ns, setNs] = useState<NumberStrategy | null>(initial);
+  const [loading, setLoading] = useState(!initial);
 
   useEffect(() => {
+    // 계약 시점에 저장된 번호 조합이 있으면 fetch 안 함 (매번 재계산 방지)
+    if (initial) return;
     fetch("/api/analysis/comprehensive", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -36,7 +46,7 @@ export function BidResultCombos({ annDbId }: Props) {
       })
       .catch(() => null)
       .finally(() => setLoading(false));
-  }, [annDbId]);
+  }, [annDbId, initial]);
 
   if (loading) {
     return (

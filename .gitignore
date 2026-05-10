@@ -49,3 +49,8 @@ apps/ml/**/*.csv
 # 백업/임시
 *.bak
 *.tmp
+
+# 크롤러 재수집 로컬 캐시 (대용량 JSONL)
+apps/crawler/.recollect-cache/
+apps/crawler/.cache/
+apps/crawler/recollect-*.log

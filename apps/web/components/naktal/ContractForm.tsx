@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
 interface Props {
@@ -41,6 +41,22 @@ export function ContractForm(props: Props) {
   const [repName, setRepName] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [numberStrategy, setNumberStrategy] = useState<unknown>(null);
+
+  // 계약 시점에 AI 추천 번호 조합을 한 번 계산해 보관 → 계약 완료 시 BidRequest 에 그대로 저장
+  useEffect(() => {
+    fetch("/api/analysis/comprehensive", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ annId }),
+    })
+      .then((r) => r.ok ? r.json() : null)
+      .then((data) => {
+        const ns = data?.bidStrategy?.numberStrategy;
+        if (ns) setNumberStrategy(ns);
+      })
+      .catch(() => null);
+  }, [annId]);
 
   const bizRegNoValid = /^\d{3}-\d{2}-\d{5}$/.test(bizRegNo);
   const canSubmit = bizRegNoValid && repName.trim().length >= 2 && !loading;
@@ -78,6 +94,7 @@ export function ContractForm(props: Props) {
           competitionScore,
           bizRegNo,
           repName: repName.trim(),
+          numberStrategy,
         }),
       });
       if (!res.ok) {

@@ -62,6 +62,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     competitionScore: number;
     bizRegNo?: string;
     repName?: string;
+    numberStrategy?: unknown;
   };
 
   const {
@@ -69,7 +70,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     lowerLimitRate, aValueYn, aValueTotal,
     recommendedBidPrice, predictedSajungRate,
     estimatedPrice, lowerLimitPrice, winProbability, competitionScore,
-    bizRegNo, repName,
+    bizRegNo, repName, numberStrategy,
   } = body;
 
   // 데이터 부족(fallback) 의뢰 차단 — BidPricePrediction 검증
@@ -165,6 +166,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         ...(bizRegNo ? { bizRegNo } : {}),
         ...(repName ? { repName } : {}),
         ...(bizRegNo ? { contractAt: new Date().toISOString(), contractIp } : {}),
+        ...(numberStrategy ? { numberStrategy } : {}),
       })
       .eq("id", existing.id)
       .select("id")
@@ -209,6 +211,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         ...(bizRegNo ? { bizRegNo } : {}),
         ...(repName ? { repName } : {}),
         ...(bizRegNo ? { contractAt: new Date().toISOString(), contractIp } : {}),
+        ...(numberStrategy ? { numberStrategy } : {}),
       })
       .select("id")
       .single();

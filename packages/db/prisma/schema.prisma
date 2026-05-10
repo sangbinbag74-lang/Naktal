@@ -516,6 +516,7 @@ model BidRequest {
   contractIp                 String?   @db.Text
   cancelledAt                DateTime?
   memo                       String?
+  numberStrategy             Json?
   createdAt                  DateTime  @default(now())
   updatedAt                  DateTime  @updatedAt
 

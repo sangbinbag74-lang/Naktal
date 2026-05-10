@@ -55,7 +55,7 @@ export default async function BidResultPage({
   // 계약 완료된 BidRequest 조회
   const { data: req } = await admin
     .from("BidRequest")
-    .select("recommendedBidPrice,lowerLimitPrice,estimatedPrice,budget,predictedSajungRate,agreedFeeRate,agreedFeeAmount,contractAt,winProbability,competitionScore,aValueYn,aValueTotal,lowerLimitRate,userBidPrice,actualFinalPrice,totalBidders,isWon,winnerName,actualSajungRate")
+    .select("recommendedBidPrice,lowerLimitPrice,estimatedPrice,budget,predictedSajungRate,agreedFeeRate,agreedFeeAmount,contractAt,winProbability,competitionScore,aValueYn,aValueTotal,lowerLimitRate,userBidPrice,actualFinalPrice,totalBidders,isWon,winnerName,actualSajungRate,numberStrategy")
     .eq("userId", dbUser.id as string)
     .eq("annId", ann.id as string)
     .not("contractAt", "is", null)
@@ -335,7 +335,7 @@ export default async function BidResultPage({
       </div>
 
       {/* AI 번호 추천 결과 (복수예가 공고만 자동 표시) */}
-      <BidResultCombos annDbId={ann.id as string} />
+      <BidResultCombos annDbId={ann.id as string} stored={req.numberStrategy ?? null} />
 
       {/* 공고 상세로 */}
       <Link
