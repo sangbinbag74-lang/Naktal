@@ -6,24 +6,37 @@ import { BidResultCombos } from "@/components/naktal/BidResultCombos";
 import { classifyCategory, DEFAULT_LWLT_BY_KIND } from "@/lib/analysis/category-config";
 import { recommendNumbers } from "@/lib/core1/frequency-engine";
 
-// 카테고리(공사/용역/물품) ALL 평균 사정율 — 1시간 캐시 (전 사용자 공통)
+// 카테고리(공사/용역/물품) 평균 사정율 — 1시간 캐시 (전 사용자 공통)
+// 1차: orgName='ALL' 집계, 0건이면 2차: 카테고리 전체 row 가중평균
 const getCategoryAllAvgSajung = unstable_cache(
   async (category: string): Promise<{ avg: number; total: number }> => {
     const admin = createAdminClient();
-    const { data } = await admin
+    const { data: allRows } = await admin
       .from("SajungRateStat")
       .select("avg,sampleSize")
       .eq("orgName", "ALL")
       .eq("category", category)
       .eq("region", "");
-    const rows = (data ?? []) as Array<{ avg: number; sampleSize: number }>;
-    const total = rows.reduce((s, r) => s + Number(r.sampleSize ?? 0), 0);
+    let rows = (allRows ?? []) as Array<{ avg: number; sampleSize: number }>;
+    let total = rows.reduce((s, r) => s + Number(r.sampleSize ?? 0), 0);
+    // 폴백 — ALL row 없으면 카테고리 전체로 가중평균 (모든 발주처 합산, sampleSize 큰 순 5000건)
+    if (total === 0) {
+      const { data: catRows } = await admin
+        .from("SajungRateStat")
+        .select("avg,sampleSize")
+        .eq("category", category)
+        .gt("sampleSize", 0)
+        .order("sampleSize", { ascending: false })
+        .limit(5000);
+      rows = (catRows ?? []) as Array<{ avg: number; sampleSize: number }>;
+      total = rows.reduce((s, r) => s + Number(r.sampleSize ?? 0), 0);
+    }
     const avg = total > 0
       ? rows.reduce((s, r) => s + Number(r.avg) * Number(r.sampleSize ?? 0), 0) / total
       : 0;
     return { avg, total };
   },
-  ["sajung-stat-all-avg"],
+  ["sajung-stat-all-avg-v2"],
   { revalidate: 3600, tags: ["sajung-stat"] },
 );
 
@@ -52,14 +65,16 @@ function fmtDeviation(dev: number) {
   return `${sign}${dev.toFixed(3)}%p`;
 }
 
+// ContractRow 의 getDDay 와 동일 (ceil 기반) — D-N 표시 일관성
 function fmtDDay(deadline: string): { label: string; sub: string; color: string } {
   const ms = new Date(deadline).getTime() - Date.now();
   if (ms <= 0) return { label: "개찰 완료", sub: "결과 확인 중", color: "#475569" };
+  const dCeil = Math.ceil(ms / 86400000);
   const totalH = Math.floor(ms / 3600000);
-  const days = Math.floor(totalH / 24);
   const hrs = totalH % 24;
-  if (days >= 1) return { label: `D-${days}`, sub: `${hrs}시간 남음`, color: days <= 2 ? "#DC2626" : days <= 5 ? "#C2410C" : "#1B3A6B" };
-  return { label: `${totalH}시간`, sub: `${Math.floor((ms % 3600000) / 60000)}분 남음`, color: "#DC2626" };
+  const color = dCeil <= 2 ? "#DC2626" : dCeil <= 5 ? "#C2410C" : "#1B3A6B";
+  if (totalH >= 24) return { label: `D-${dCeil}`, sub: `${totalH}시간 남음`, color };
+  return { label: `D-${dCeil}`, sub: `${totalH}시간 ${Math.floor((ms % 3600000) / 60000)}분 남음`, color: "#DC2626" };
 }
 
 export default async function BidResultPage({
