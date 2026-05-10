@@ -9,6 +9,7 @@ import {
   type G2BAnnouncement,
 } from "@/lib/g2b";
 import { CATEGORY_GROUPS, SIMILAR_CATEGORIES, parseSubCategories } from "@/lib/category-map";
+import { REGION_ALIASES, normalizeRegion } from "@/lib/region-alias";
 
 export const maxDuration = 60;
 export const runtime = "nodejs";
@@ -69,6 +70,8 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   const ntceKind       = searchParams.get("ntceKind") ?? "";
   const sort           = searchParams.get("sort") ?? "latest";
   const excludeNgtn    = searchParams.get("excludeNgtn") === "1"; // 수의계약 자동 제외
+  const myRegions      = (searchParams.get("myRegions") ?? "")
+                         .split(",").map(r => r.trim()).filter(Boolean).join(",");
   const page           = Math.max(1, parseInt(searchParams.get("page") ?? "1", 10));
   const limit          = Math.min(50, parseInt(searchParams.get("limit") ?? "20", 10));
 
@@ -80,7 +83,8 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   // DB에서 조회 (673K+ 데이터 활용)
   return fetchFromDB({ category, categories, region, regions, minBudget, maxBudget, keyword,
     contractMethod, deadlineRange, konepsId, prtcptnLmt, rgnType, ntceKind, sort, page, limit,
-    excludeNgtn: excludeNgtn ? "1" : "" });
+    excludeNgtn: excludeNgtn ? "1" : "",
+    myRegions });
 }
 
 // ─── G2B 아이템 DB 저장 (상세 페이지 조회용) ──────────────────────────────────
@@ -118,7 +122,7 @@ const PROVINCE_CODES = ["서울","부산","대구","인천","광주","대전","�
 
 async function fetchFromDB(opts: Record<string, string | number>): Promise<NextResponse> {
   const { category, categories, region, regions, minBudget, maxBudget, keyword, contractMethod,
-    deadlineRange, konepsId, prtcptnLmt, rgnType, ntceKind, sort, excludeNgtn } = opts as Record<string, string>;
+    deadlineRange, konepsId, prtcptnLmt, rgnType, ntceKind, sort, excludeNgtn, myRegions } = opts as Record<string, string>;
   const page  = Number(opts.page);
   const limit = Number(opts.limit);
   const offset = (page - 1) * limit;
@@ -141,7 +145,7 @@ async function fetchFromDB(opts: Record<string, string | number>): Promise<NextR
   //                  + 시 레벨 지역 + 사용자 정의 deadline 윈도우
   // 2026-05-09: AnnouncementActive MV 도입으로 체인 쿼리 13ms 도달 → RPC 우회 (false 강제)
   const rpcEligible = false &&
-    !contractMethod && !prtcptnLmt && !rgnType && !ntceKind && !konepsId && !category && !excludeNgtn &&
+    !contractMethod && !prtcptnLmt && !rgnType && !ntceKind && !konepsId && !category && !excludeNgtn && !myRegions &&
     !hasCityFilter &&
     (deadlineRange === "" || deadlineRange === "active");
   if (rpcEligible) {
@@ -245,6 +249,35 @@ async function fetchFromDB(opts: Record<string, string | number>): Promise<NextR
     q = q.filter("rawJson->>prtcptnLmtNm", "ilike", "%시%");
   }
   if (ntceKind)       q = q.filter("rawJson->>ntceKindNm", "ilike", `%${ntceKind}%`);
+
+  // 내 지역 참여 가능 필터 (정확한 매칭):
+  //   bidPrtcptLmtYn != 'Y' (제한 없음 = 전국 참여 가능) — OR —
+  //   bidPrtcptLmtYn = 'Y' AND jntcontrctDutyRgnNm{1,2,3} 중 하나가 사용자 등록 지역의 별칭과 매칭
+  if (myRegions) {
+    const userRegs = myRegions.split(",").map(r => r.trim()).filter(Boolean);
+    // 사용자 약칭 → 모든 별칭 expand
+    const allAliases = new Set<string>();
+    for (const r of userRegs) {
+      const c = normalizeRegion(r);
+      if (c && REGION_ALIASES[c]) {
+        REGION_ALIASES[c].forEach((a) => allAliases.add(a));
+      } else {
+        allAliases.add(r); // 매핑 못 찾으면 원문 그대로
+      }
+    }
+    const aliasList = [...allAliases];
+    const orParts: string[] = [
+      "rawJson->>bidPrtcptLmtYn.is.null",
+      "rawJson->>bidPrtcptLmtYn.eq.",
+      "rawJson->>bidPrtcptLmtYn.eq.N",
+      ...aliasList.flatMap((a) => [
+        `rawJson->>jntcontrctDutyRgnNm1.ilike.%${a}%`,
+        `rawJson->>jntcontrctDutyRgnNm2.ilike.%${a}%`,
+        `rawJson->>jntcontrctDutyRgnNm3.ilike.%${a}%`,
+      ]),
+    ];
+    q = q.or(orParts.join(","));
+  }
 
   if (deadlineRange === "active") {
     q = q.gte("deadline", nowIso);

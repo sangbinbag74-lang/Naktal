@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { isMultiplePriceBid } from "@/lib/bid-utils";
 import { CATEGORY_GROUPS } from "@/lib/category-map";
+import { normalizeRegion } from "@/lib/region-alias";
 
 const FOLDER_KEY = "naktal_folder";
 function getFolderIds(): string[] {
@@ -400,6 +401,8 @@ export default function AnnouncementsPage() {
   const [rgnType, setRgnType] = useState<string>("");
   const [ntceKind, setNtceKind] = useState<string>("");
   const [excludeNgtn, setExcludeNgtn] = useState<boolean>(true); // 수의계약 자동 제외 (default ON)
+  const [onlyMyRegion, setOnlyMyRegion] = useState<boolean>(true); // 내 지역 참여 가능만 (default ON)
+  const [myProfileRegions, setMyProfileRegions] = useState<string[]>([]); // CompanyProfile.regions
 
   // hydrated 플래그: localStorage 복원 완료 후에만 fetch 실행 (race condition 방지)
   const [hydrated, setHydrated] = useState(false);
@@ -419,7 +422,15 @@ export default function AnnouncementsPage() {
     if (typeof saved.rgnType === "string")         setRgnType(saved.rgnType);
     if (typeof saved.ntceKind === "string")        setNtceKind(saved.ntceKind);
     if (typeof saved.excludeNgtn === "boolean")    setExcludeNgtn(saved.excludeNgtn);
+    if (typeof saved.onlyMyRegion === "boolean")   setOnlyMyRegion(saved.onlyMyRegion);
     setHydrated(true);
+    // 사용자 등록 지역 (CompanyProfile.regions) fetch
+    fetch("/api/profile")
+      .then((r) => r.ok ? r.json() : null)
+      .then((p: { regions?: string[] } | null) => {
+        if (p && Array.isArray(p.regions)) setMyProfileRegions(p.regions);
+      })
+      .catch(() => { /* 미로그인 등 무시 */ });
   }, []);
 
   const observerRef = useRef<IntersectionObserver | null>(null);
@@ -442,6 +453,9 @@ export default function AnnouncementsPage() {
         if (rgnType)        params.set("rgnType", rgnType);
         if (ntceKind)       params.set("ntceKind", ntceKind);
         if (excludeNgtn)    params.set("excludeNgtn", "1");
+        if (onlyMyRegion && myProfileRegions.length > 0) {
+          params.set("myRegions", myProfileRegions.join(","));
+        }
         const res = await fetch(`/api/announcements?${params}`);
         const json = (await res.json()) as ApiResponse;
         const newItems: Announcement[] = json.data ?? [];
@@ -454,7 +468,7 @@ export default function AnnouncementsPage() {
         setLoading(false);
       }
     },
-    [keyword, konepsId, categories, regions, sort, contractMethod, deadlineRange, minBudget, maxBudget, rgnType, ntceKind, excludeNgtn]
+    [keyword, konepsId, categories, regions, sort, contractMethod, deadlineRange, minBudget, maxBudget, rgnType, ntceKind, excludeNgtn, onlyMyRegion, myProfileRegions]
   );
 
   const triggerDebouncedSearch = useCallback(() => {
@@ -475,7 +489,7 @@ export default function AnnouncementsPage() {
   }, [hydrated]);
 
   const handleSearch = () => {
-    saveFilters({ keyword, categories, regions, sort, contractMethod, deadlineRange, minBudget, maxBudget, budgetPreset, rgnType, ntceKind, excludeNgtn });
+    saveFilters({ keyword, categories, regions, sort, contractMethod, deadlineRange, minBudget, maxBudget, budgetPreset, rgnType, ntceKind, excludeNgtn, onlyMyRegion });
     setPage(1);
     setItems([]);
     setHasMore(true);
@@ -960,6 +974,34 @@ export default function AnnouncementsPage() {
               수의계약 제외
             </span>
           </label>
+          <label
+            style={{
+              display: "flex", alignItems: "center", gap: 6, paddingLeft: 8,
+              fontSize: 12, color: "#374151",
+              cursor: myProfileRegions.length > 0 ? "pointer" : "not-allowed",
+              userSelect: "none",
+              opacity: myProfileRegions.length > 0 ? 1 : 0.5,
+            }}
+            title={myProfileRegions.length > 0
+              ? `등록 지역: ${myProfileRegions.join(", ")} 참여 가능 공고만 (광역시·도 단위 매칭, 명칭 변경 자동 인식)`
+              : "/profile 에서 사업 가능 지역(광역시·도) 등록 시 자동 필터링"}
+          >
+            <input
+              type="checkbox"
+              checked={onlyMyRegion && myProfileRegions.length > 0}
+              disabled={myProfileRegions.length === 0}
+              onChange={(e) => setOnlyMyRegion(e.target.checked)}
+              style={{ width: 14, height: 14, accentColor: "#059669", cursor: "inherit" }}
+            />
+            <span style={{ fontWeight: onlyMyRegion ? 600 : 400, color: onlyMyRegion ? "#059669" : "#64748B" }}>
+              내 지역 참여 가능만
+              {myProfileRegions.length > 0 && (
+                <span style={{ fontSize: 10, color: "#94A3B8", marginLeft: 4 }}>
+                  ({myProfileRegions.join("/")})
+                </span>
+              )}
+            </span>
+          </label>
         </div>
 
         {/* 참가제한 */}
@@ -1088,15 +1130,29 @@ export default function AnnouncementsPage() {
                           수의계약
                         </span>
                       )}
-                      {/* 참여 가능 지역 정보 배지 (정보 표시만 — 자동 매칭은 시·군 단위 부정확하여 제거) */}
+                      {/* 참여 가능 지역 배지 — bidPrtcptLmtYn + jntcontrctDutyRgnNm 기반 정확 매칭 */}
                       {(() => {
-                        const lmt = String(ann.rawJson?.prtcptnLmtNm ?? "").trim();
-                        if (!lmt) return null;
-                        if (lmt.includes("전국")) {
+                        const limit = String(ann.rawJson?.bidPrtcptLmtYn ?? "").trim();
+                        const jnt = [
+                          String(ann.rawJson?.jntcontrctDutyRgnNm1 ?? ""),
+                          String(ann.rawJson?.jntcontrctDutyRgnNm2 ?? ""),
+                          String(ann.rawJson?.jntcontrctDutyRgnNm3 ?? ""),
+                        ].filter(Boolean);
+                        // 제한 없음 = 전국 참여
+                        if (limit !== "Y") {
                           return <span style={{ fontSize: 10, fontWeight: 600, background: "#ECFDF5", color: "#059669", padding: "2px 6px", borderRadius: 4 }}>전국 참여</span>;
                         }
-                        const trim = lmt.length > 18 ? lmt.slice(0, 18) + "…" : lmt;
-                        return <span style={{ fontSize: 10, fontWeight: 600, background: "#FFFBEB", color: "#92400E", padding: "2px 6px", borderRadius: 4 }} title={lmt}>{trim}</span>;
+                        if (jnt.length === 0) return null;
+                        // 사용자 등록 지역 별칭으로 정확 매칭
+                        const userCanon = new Set(myProfileRegions.map(r => normalizeRegion(r)).filter(Boolean) as string[]);
+                        const jntCanon = jnt.map(j => normalizeRegion(j)).filter(Boolean) as string[];
+                        const matchMy = jntCanon.some(c => userCanon.has(c));
+                        const lbl = jnt.join(", ");
+                        const trim = lbl.length > 16 ? lbl.slice(0, 16) + "…" : lbl;
+                        if (matchMy) {
+                          return <span style={{ fontSize: 10, fontWeight: 600, background: "#EFF6FF", color: "#1E40AF", padding: "2px 6px", borderRadius: 4 }} title={lbl}>{trim} ✓</span>;
+                        }
+                        return <span style={{ fontSize: 10, fontWeight: 600, background: "#FEF2F2", color: "#DC2626", padding: "2px 6px", borderRadius: 4 }} title={lbl}>{trim}</span>;
                       })()}
                       {ann.rawJson && Object.values(ann.rawJson).some((v) => typeof v === "string" && v.includes("긴급")) && (
                         <span style={{ fontSize: 10, fontWeight: 600, background: "#FEF2F2", color: "#DC2626", padding: "2px 6px", borderRadius: 4 }}>
