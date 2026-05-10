@@ -18,6 +18,7 @@ export interface OrgPoint {
   seq: number;   // 1-based ordinal (날짜순 정렬)
   date: string;  // "YYYY-MM"
   sajung: number;
+  numBidders?: number; // 참여자/사정율 상관 (F 카드)
 }
 
 /** 내 투찰 이력 */
@@ -154,13 +155,13 @@ export async function GET(req: NextRequest) {
       admin, annOrgName, categoryForFilter, annRegion, currentAnn, orgScope, annSubCats,
     );
 
-  const orgRaw: { date: string; sajung: number }[] = [];
+  const orgRaw: { date: string; sajung: number; numBidders?: number }[] = [];
   const orgByMonth = new Map<string, number[]>();
 
   if (konepsIds.length > 0) {
     const { data: bidResults } = await admin
       .from("BidResult")
-      .select("finalPrice, bidRate, annId")
+      .select("finalPrice, bidRate, annId, numBidders")
       .in("annId", konepsIds)
       .gt("bidRate", 0)
       .gt("finalPrice", 0)
@@ -176,14 +177,14 @@ export async function GET(req: NextRequest) {
       const rounded = Math.round(sajung * 100) / 100;
       if (!orgByMonth.has(date)) orgByMonth.set(date, []);
       orgByMonth.get(date)!.push(rounded);
-      orgRaw.push({ date, sajung: rounded });
+      orgRaw.push({ date, sajung: rounded, numBidders: r.numBidders ? Number(r.numBidders) : undefined });
     }
   }
 
   // 날짜순 정렬 후 seq 부여
   const orgPoints: OrgPoint[] = orgRaw
     .sort((a, b) => a.date.localeCompare(b.date))
-    .map((p, i) => ({ seq: i + 1, date: p.date, sajung: p.sajung }));
+    .map((p, i) => ({ seq: i + 1, date: p.date, sajung: p.sajung, numBidders: p.numBidders }));
 
   // ── 2. 내 투찰 이력 수집 ────────────────────────────────────────────────────
   const mineByMonth = new Map<string, number[]>();
