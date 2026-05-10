@@ -44,9 +44,18 @@ export default async function BidContractPage({
   const aValueYn = String(ann.aValueYn ?? "");
   const aValueTotal = Number(String(ann.aValueTotal ?? "0").replace(/[^0-9]/g, "")) || 0;
 
-  // 유저 DB ID + 기존 계약 여부
-  const { data: dbUser } = await admin.from("User").select("id").eq("supabaseId", user.id).single();
+  // 유저 DB ID + 기존 계약 여부 + 사업자 정보 (계약서 '을' 표시용)
+  const { data: dbUser } = await admin.from("User").select("id,bizNo,bizName,ownerName").eq("supabaseId", user.id).single();
   if (!dbUser) redirect("/login");
+  const userBizNo = String((dbUser as { bizNo?: string }).bizNo ?? "");
+  const userBizName = String((dbUser as { bizName?: string }).bizName ?? "");
+  const userOwnerName = String((dbUser as { ownerName?: string }).ownerName ?? "");
+  // 사업자번호 포맷 (000-00-00000)
+  const fmtBizNo = (b: string) => {
+    const d = b.replace(/\D/g, "");
+    if (d.length !== 10) return b;
+    return `${d.slice(0, 3)}-${d.slice(3, 5)}-${d.slice(5)}`;
+  };
 
   const { data: existing } = await admin
     .from("BidRequest")
@@ -126,14 +135,20 @@ export default async function BidContractPage({
 
         <div style={{ borderTop: "1px solid #E8ECF2", marginBottom: 16, paddingTop: 16 }}>
           <strong>계약 당사자</strong><br /><br />
-          <strong>갑 (서비스 제공자)</strong><br />
-          상호: 주식회사 호라이즌<br />
-          사업자등록번호: 398-87-03453<br />
-          대표자: (대표자 성명)<br />
-          서비스명: Naktal.ai<br /><br />
-          <strong>을 (이용자)</strong><br />
-          본 계약에 전자서명하는 사업자<br />
-          (사업자등록번호 및 대표자명은 서명란에 기재)
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+            <div style={{ background: "#F8FAFC", border: "1px solid #E2E8F0", borderRadius: 8, padding: "12px 14px" }}>
+              <strong style={{ color: "#1B3A6B" }}>갑 (서비스 제공자)</strong><br /><br />
+              상호: <strong>주식회사 호라이즌</strong><br />
+              사업자등록번호: <strong>398-87-03453</strong><br />
+              서비스명: Naktal.ai
+            </div>
+            <div style={{ background: "#EFF6FF", border: "1px solid #BFDBFE", borderRadius: 8, padding: "12px 14px" }}>
+              <strong style={{ color: "#1E40AF" }}>을 (이용자)</strong><br /><br />
+              상호: <strong>{userBizName || "(서명란에 기재)"}</strong><br />
+              사업자등록번호: <strong>{userBizNo ? fmtBizNo(userBizNo) : "(서명란에 기재)"}</strong><br />
+              대표자: <strong>{userOwnerName || "(서명란에 기재)"}</strong>
+            </div>
+          </div>
         </div>
 
         <div style={{ borderTop: "1px solid #E8ECF2", marginBottom: 16, paddingTop: 16 }}>
