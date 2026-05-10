@@ -1,9 +1,31 @@
 import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
+import { unstable_cache } from "next/cache";
 import { createAdminClient, createClient } from "@/lib/supabase/server";
 import { BidResultCombos } from "@/components/naktal/BidResultCombos";
 import { classifyCategory, DEFAULT_LWLT_BY_KIND } from "@/lib/analysis/category-config";
 import { recommendNumbers } from "@/lib/core1/frequency-engine";
+
+// 카테고리(공사/용역/물품) ALL 평균 사정율 — 1시간 캐시 (전 사용자 공통)
+const getCategoryAllAvgSajung = unstable_cache(
+  async (category: string): Promise<{ avg: number; total: number }> => {
+    const admin = createAdminClient();
+    const { data } = await admin
+      .from("SajungRateStat")
+      .select("avg,sampleSize")
+      .eq("orgName", "ALL")
+      .eq("category", category)
+      .eq("region", "");
+    const rows = (data ?? []) as Array<{ avg: number; sampleSize: number }>;
+    const total = rows.reduce((s, r) => s + Number(r.sampleSize ?? 0), 0);
+    const avg = total > 0
+      ? rows.reduce((s, r) => s + Number(r.avg) * Number(r.sampleSize ?? 0), 0) / total
+      : 0;
+    return { avg, total };
+  },
+  ["sajung-stat-all-avg"],
+  { revalidate: 3600, tags: ["sajung-stat"] },
+);
 
 function classifyBudget(budget: number): string {
   if (budget < 100_000_000)   return "1억미만";
@@ -52,15 +74,18 @@ export default async function BidResultPage({
 
   const admin = createAdminClient();
 
-  const { data: dbUser } = await admin.from("User").select("id").eq("supabaseId", user.id).single();
+  // dbUser + ann 병렬 (서로 독립)
+  const [dbUserRes, annRes] = await Promise.all([
+    admin.from("User").select("id").eq("supabaseId", user.id).single(),
+    admin
+      .from("Announcement")
+      .select("id,title,orgName,deadline,category,region,budget")
+      .or(`id.eq.${annId},konepsId.eq.${annId}`)
+      .maybeSingle(),
+  ]);
+  const dbUser = dbUserRes.data;
+  const ann = annRes.data;
   if (!dbUser) redirect("/login");
-
-  // 공고 조회 (category/region/budget 포함)
-  const { data: ann } = await admin
-    .from("Announcement")
-    .select("id,title,orgName,deadline,category,region,budget")
-    .or(`id.eq.${annId},konepsId.eq.${annId}`)
-    .maybeSingle();
   if (!ann) notFound();
 
   // 계약 완료된 BidRequest 조회
@@ -87,24 +112,27 @@ export default async function BidResultPage({
   const annBudget = Number(ann.budget ?? 0);
   const budgetRange = classifyBudget(annBudget > 0 ? annBudget : budget);
 
-  const { data: statRow } = await admin
-    .from("SajungRateStat")
-    .select("avg,sampleSize")
-    .eq("orgName", ann.orgName as string)
-    .eq("category", ann.category as string)
-    .eq("budgetRange", budgetRange)
-    .eq("region", ann.region as string)
-    .maybeSingle();
-
-  const needFallback = !statRow || (Number(statRow.sampleSize ?? 0) < 5);
-  const { data: statFallback } = needFallback
-    ? await admin.from("SajungRateStat").select("avg,sampleSize")
-        .eq("orgName", "ALL")
-        .eq("category", ann.category as string)
-        .eq("budgetRange", budgetRange)
-        .eq("region", "")
-        .maybeSingle()
-    : { data: null };
+  // statRow + statFallback 병렬 (statFallback 은 항상 호출 — 어차피 가벼우며 sequential 보다 빠름)
+  const [statRowRes, statFallbackRes] = await Promise.all([
+    admin
+      .from("SajungRateStat")
+      .select("avg,sampleSize")
+      .eq("orgName", ann.orgName as string)
+      .eq("category", ann.category as string)
+      .eq("budgetRange", budgetRange)
+      .eq("region", ann.region as string)
+      .maybeSingle(),
+    admin
+      .from("SajungRateStat")
+      .select("avg,sampleSize")
+      .eq("orgName", "ALL")
+      .eq("category", ann.category as string)
+      .eq("budgetRange", budgetRange)
+      .eq("region", "")
+      .maybeSingle(),
+  ]);
+  const statRow = statRowRes.data;
+  const statFallback = statFallbackRes.data;
 
   let avgSajungRate = Number((statRow ?? statFallback)?.avg ?? 0);
   let sampleSize = Number(statRow?.sampleSize ?? statFallback?.sampleSize ?? 0);
@@ -146,43 +174,34 @@ export default async function BidResultPage({
   const winnerNameVal = req.winnerName as string | null;
   const totalBiddersN = Number(req.totalBidders ?? 0);
 
-  // D 카드 — 이 카테고리 일반(ALL) 평균 사정율
+  // D 카드 + 번호 조합 백필 병렬
   const annKindForLabel = classifyCategory(ann.category as string);
   const kindLabel = annKindForLabel === "construction" ? "공사" : annKindForLabel === "service" ? "용역" : "물품";
-  const { data: catAllRows } = await admin
-    .from("SajungRateStat")
-    .select("avg,sampleSize")
-    .eq("orgName", "ALL")
-    .eq("category", ann.category as string)
-    .eq("region", "");
-  const catRows = (catAllRows ?? []) as Array<{ avg: number; sampleSize: number }>;
-  const catTotal = catRows.reduce((s, r) => s + Number(r.sampleSize ?? 0), 0);
-  const categoryAvgSajungRate = catTotal > 0
-    ? catRows.reduce((s, r) => s + Number(r.avg) * Number(r.sampleSize ?? 0), 0) / catTotal
-    : 0;
 
-  // 번호 조합 — BidRequest 에 저장된 값 우선, 없으면 서버사이드로 1회 계산하여 즉시 UPDATE
-  let resolvedStrategy: unknown = req.numberStrategy ?? null;
-  if (!resolvedStrategy) {
-    try {
-      const computed = await recommendNumbers({
-        annId: ann.id as string,
-        category: ann.category as string,
-        budgetRange,
-        region: ann.region as string,
-        supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        supabaseKey: process.env.SUPABASE_SERVICE_ROLE_KEY!,
-      });
-      resolvedStrategy = computed;
-      // 백필 — 다음 진입 시 즉시 표시
-      await admin
-        .from("BidRequest")
-        .update({ numberStrategy: computed, updatedAt: new Date().toISOString() })
-        .eq("userId", dbUser.id as string)
-        .eq("annId", ann.id as string);
-    } catch (e) {
-      console.error("[bid-result] numberStrategy 백필 실패:", e);
-    }
+  const needBackfill = !req.numberStrategy;
+  const [{ avg: categoryAvgSajungRate, total: catTotal }, computedStrategy] = await Promise.all([
+    getCategoryAllAvgSajung(ann.category as string),
+    needBackfill
+      ? recommendNumbers({
+          annId: ann.id as string,
+          category: ann.category as string,
+          budgetRange,
+          region: ann.region as string,
+          supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL!,
+          supabaseKey: process.env.SUPABASE_SERVICE_ROLE_KEY!,
+        }).catch((e) => { console.error("[bid-result] numberStrategy 백필 실패:", e); return null; })
+      : Promise.resolve(null),
+  ]);
+
+  let resolvedStrategy: unknown = req.numberStrategy ?? computedStrategy ?? null;
+  // DB UPDATE 는 fire-and-forget — 페이지 응답 차단하지 않음
+  if (needBackfill && computedStrategy) {
+    void admin
+      .from("BidRequest")
+      .update({ numberStrategy: computedStrategy, updatedAt: new Date().toISOString() })
+      .eq("userId", dbUser.id as string)
+      .eq("annId", ann.id as string)
+      .then(({ error }) => { if (error) console.error("[bid-result] numberStrategy UPDATE 실패:", error.message); });
   }
 
   return (

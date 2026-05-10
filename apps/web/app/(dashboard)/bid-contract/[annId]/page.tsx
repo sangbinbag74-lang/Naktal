@@ -26,12 +26,18 @@ export default async function BidContractPage({
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  // 공고 조회
-  const { data: ann } = await admin
-    .from("Announcement")
-    .select("id,konepsId,title,orgName,deadline,budget,category,rawJson,aValueYn,aValueTotal")
-    .or(`id.eq.${annId},konepsId.eq.${annId}`)
-    .maybeSingle();
+  // dbUser + ann 병렬 (서로 독립)
+  const [dbUserRes, annRes] = await Promise.all([
+    admin.from("User").select("id,bizNo,bizName,ownerName").eq("supabaseId", user.id).single(),
+    admin
+      .from("Announcement")
+      .select("id,konepsId,title,orgName,deadline,budget,category,rawJson,aValueYn,aValueTotal")
+      .or(`id.eq.${annId},konepsId.eq.${annId}`)
+      .maybeSingle(),
+  ]);
+  const dbUser = dbUserRes.data;
+  const ann = annRes.data;
+  if (!dbUser) redirect("/login");
   if (!ann) notFound();
 
   const rawJson = (ann.rawJson as Record<string, string>) ?? {};
@@ -44,9 +50,6 @@ export default async function BidContractPage({
   const aValueYn = String(ann.aValueYn ?? "");
   const aValueTotal = Number(String(ann.aValueTotal ?? "0").replace(/[^0-9]/g, "")) || 0;
 
-  // 유저 DB ID + 기존 계약 여부 + 사업자 정보 (계약서 '을' 표시용)
-  const { data: dbUser } = await admin.from("User").select("id,bizNo,bizName,ownerName").eq("supabaseId", user.id).single();
-  if (!dbUser) redirect("/login");
   const userBizNo = String((dbUser as { bizNo?: string }).bizNo ?? "");
   const userBizName = String((dbUser as { bizName?: string }).bizName ?? "");
   const userOwnerName = String((dbUser as { ownerName?: string }).ownerName ?? "");
@@ -57,32 +60,27 @@ export default async function BidContractPage({
     return `${d.slice(0, 3)}-${d.slice(3, 5)}-${d.slice(5)}`;
   };
 
-  const { data: existing } = await admin
-    .from("BidRequest")
-    .select("contractAt,bizRegNo,repName")
-    .eq("userId", dbUser.id as string)
-    .eq("annId", ann.id as string)
-    .maybeSingle();
-
-  // 계약 완료 여부 (redirect 안 함 — 계약서 본문 그대로 표시)
+  // BidRequest (existing + bidReq 합침) + BidPricePrediction 폴백 병렬
+  const [bidReqRes, predRes] = await Promise.all([
+    admin
+      .from("BidRequest")
+      .select("contractAt,bizRegNo,repName,recommendedBidPrice,lowerLimitPrice,predictedSajungRate,winProbability,competitionScore,cancelledAt")
+      .eq("userId", dbUser.id as string)
+      .eq("annId", ann.id as string)
+      .maybeSingle(),
+    admin
+      .from("BidPricePrediction")
+      .select("optimalBidPrice,lowerLimitPrice,predictedSajungRate,winProbability,competitionScore")
+      .eq("annId", ann.id as string)
+      .gt("expiresAt", new Date().toISOString())
+      .maybeSingle(),
+  ]);
+  const bidReqRow = bidReqRes.data;
+  const existing = bidReqRow; // contractAt/bizRegNo/repName 포함
   const isContractDone = !!existing?.contractAt;
-
-  // BidRequest (사용자 의뢰 시 저장된 분석) 우선 조회
-  const { data: bidReq } = await admin
-    .from("BidRequest")
-    .select("recommendedBidPrice,lowerLimitPrice,predictedSajungRate,winProbability,competitionScore")
-    .eq("userId", dbUser.id as string)
-    .eq("annId", ann.id as string)
-    .is("cancelledAt", null)
-    .maybeSingle();
-
-  // BidPricePrediction 캐시 폴백
-  const { data: pred } = bidReq ? { data: null } : await admin
-    .from("BidPricePrediction")
-    .select("optimalBidPrice,lowerLimitPrice,predictedSajungRate,winProbability,competitionScore")
-    .eq("annId", ann.id as string)
-    .gt("expiresAt", new Date().toISOString())
-    .maybeSingle();
+  // cancelledAt null 인 row 만 분석값으로 사용
+  const bidReq = bidReqRow && !bidReqRow.cancelledAt ? bidReqRow : null;
+  const pred = bidReq ? null : predRes.data;
 
   const optimalBidPrice = Number(bidReq?.recommendedBidPrice ?? pred?.optimalBidPrice ?? 0);
   const lowerLimitPrice = Number(bidReq?.lowerLimitPrice ?? pred?.lowerLimitPrice ?? 0);
