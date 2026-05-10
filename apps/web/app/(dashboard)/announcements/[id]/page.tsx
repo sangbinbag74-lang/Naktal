@@ -216,6 +216,21 @@ export default async function AnnouncementDetailPage({
         </Link>
       </div>
 
+      {/* 제한경쟁 안내 배너 — 자격요건(지역·면허·실적) 확인 필요 */}
+      {String(meta.cntrctCnclsMthdNm ?? "").includes("제한") && (
+        <div style={{
+          flexShrink: 0, marginBottom: 12,
+          background: "#FFFBEB", border: "1px solid #FCD34D", borderRadius: 10,
+          padding: "12px 16px", display: "flex", alignItems: "center", gap: 10,
+        }}>
+          <span style={{ fontSize: 16 }}>⚠️</span>
+          <div style={{ fontSize: 13, color: "#92400E", lineHeight: 1.5 }}>
+            <strong>제한경쟁 공고입니다.</strong> 본사 소재지·면허·실적 등 자격제한이 있을 수 있으니{" "}
+            <strong>나라장터 원문에서 상세 자격요건을 반드시 확인</strong>하시기 바랍니다.
+          </div>
+        </div>
+      )}
+
       {/* 공고 헤더 — 전체 너비 흰 카드 */}
       <div style={{ flexShrink: 0, marginBottom: 12 }}>
       <div style={{

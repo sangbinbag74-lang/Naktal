@@ -399,7 +399,7 @@ export default function AnnouncementsPage() {
   const [budgetPreset, setBudgetPreset] = useState<string>("");
   const [rgnType, setRgnType] = useState<string>("");
   const [ntceKind, setNtceKind] = useState<string>("");
-  const [onlyGeneral, setOnlyGeneral] = useState<boolean>(true); // 일반경쟁만 보기 (default ON) — 수의·제한·지명 일괄 제외
+  const [onlyGeneral, setOnlyGeneral] = useState<boolean>(true); // 분석 가능 공고만 (default ON) — 수의·지명 제외, 일반·제한경쟁 포함
   const [myProvince, setMyProvince] = useState<string>("");      // 내 사업장 광역 (예: "전북")
   const [myCity, setMyCity] = useState<string>("");              // 내 사업장 시·군 (예: "익산시")
   const [onlyMyRegion, setOnlyMyRegion] = useState<boolean>(false);
@@ -1025,7 +1025,7 @@ export default function AnnouncementsPage() {
             display: "flex", alignItems: "center", gap: 6,
             marginLeft: 8, paddingLeft: 10, borderLeft: "1px solid #E2E8F0",
             fontSize: 12, color: "#374151", cursor: "pointer", userSelect: "none",
-          }} title="수의계약·제한경쟁·지명경쟁 일괄 제외 (분석 신뢰도 낮음)">
+          }} title="수의계약·지명경쟁 제외 — 일반경쟁·제한경쟁만 표시 (분석 가능)">
             <input
               type="checkbox"
               checked={onlyGeneral}
@@ -1033,7 +1033,7 @@ export default function AnnouncementsPage() {
               style={{ width: 14, height: 14, accentColor: "#1B3A6B", cursor: "pointer" }}
             />
             <span style={{ fontWeight: onlyGeneral ? 600 : 400, color: onlyGeneral ? "#1B3A6B" : "#64748B" }}>
-              일반경쟁만 보기
+              분석 가능 공고만
             </span>
           </label>
         </div>

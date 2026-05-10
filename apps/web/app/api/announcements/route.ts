@@ -69,7 +69,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   const rgnType        = searchParams.get("rgnType") ?? "";
   const ntceKind       = searchParams.get("ntceKind") ?? "";
   const sort           = searchParams.get("sort") ?? "latest";
-  const onlyGeneral    = searchParams.get("onlyGeneral") === "1"; // 일반경쟁만 (수의·제한·지명 일괄 제외)
+  const onlyGeneral    = searchParams.get("onlyGeneral") === "1"; // 분석 가능 공고만 (수의·지명 제외, 일반·제한경쟁 포함)
   const myRegions      = (searchParams.get("myRegions") ?? "")
                          .split(",").map(r => r.trim()).filter(Boolean).join(",");
   const page           = Math.max(1, parseInt(searchParams.get("page") ?? "1", 10));
@@ -231,10 +231,13 @@ async function fetchFromDB(opts: Record<string, string | number>): Promise<NextR
   if (minBudget)      q = q.gte("budget", minBudget);
   if (maxBudget)      q = q.lte("budget", maxBudget);
   if (contractMethod) q = q.or(`rawJson->>bidMthdNm.ilike.%${contractMethod}%,rawJson->>cntrctMthdNm.ilike.%${contractMethod}%`);
-  // 일반경쟁만 보기 — 수의·제한·지명 일괄 제외 (분석 신뢰도 낮음)
-  // cntrctCnclsMthdNm 이 '일반경쟁' 또는 NULL 인 row 만 통과
+  // 분석 가능 공고만 — 수의·지명 제외, 일반·제한경쟁(자격제한 정상 입찰)은 포함
+  // cntrctCnclsMthdNm 가 '수의' / '지명' 포함하지 않거나 NULL 인 row 만 통과
   if (onlyGeneral) {
-    q = q.or("rawJson->>cntrctCnclsMthdNm.eq.일반경쟁,rawJson->>cntrctCnclsMthdNm.is.null");
+    q = q.or(
+      "rawJson->>cntrctCnclsMthdNm.is.null," +
+      "and(rawJson->>cntrctCnclsMthdNm.not.ilike.*수의*,rawJson->>cntrctCnclsMthdNm.not.ilike.*지명*)"
+    );
   }
   if (konepsId)       q = q.ilike("konepsId", `%${konepsId}%`);
   if (prtcptnLmt)     q = q.filter("rawJson->>prtcptnLmtNm", "ilike", `%${prtcptnLmt}%`);
