@@ -128,7 +128,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     if (!ownerOk && !bizNameOk) {
       return NextResponse.json({
         error: "NAME_MISMATCH",
-        message: `대표자명이 가입 정보와 일치하지 않습니다. (등록 대표: ${userOwner})`,
+        message: "대표자명이 가입 정보와 일치하지 않습니다.",
       }, { status: 400 });
     }
   }
