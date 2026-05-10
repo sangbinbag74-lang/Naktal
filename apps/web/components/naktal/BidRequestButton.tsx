@@ -56,7 +56,8 @@ export function BidRequestButton({
   }, [annId]);
 
   function handleViewContract() {
-    router.push(`/bid-contract/${konepsId}`);
+    // 새 탭에서 열기 — 사용자가 현재 공고 페이지를 유지할 수 있도록
+    window.open(`/bid-contract/${konepsId}`, "_blank", "noopener,noreferrer");
   }
 
   async function handleClick() {

@@ -560,7 +560,7 @@ export default function AnnouncementsPage() {
           <h2 style={{ fontSize: 20, fontWeight: 700, color: "#0F172A" }}>공고 목록</h2>
           <p style={{ fontSize: 12, color: "#94A3B8", marginTop: 2 }}>
             {total > 0 ? `${total.toLocaleString()}건 표시 중` : "나라장터 공고 목록"}
-            {" · "}매일 9·12·15·18시 동기화
+            {" · "}매일 자정 G2B 자동 동기화
           </p>
         </div>
       </div>
