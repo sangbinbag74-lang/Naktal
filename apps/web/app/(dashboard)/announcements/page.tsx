@@ -1167,30 +1167,40 @@ export default function AnnouncementsPage() {
                           지명경쟁
                         </span>
                       )}
-                      {/* 참여 가능 지역 정보 — 모든 카드에 표시 (전국참여 / 전북 / 익산 관내) */}
+                      {/* 참여 가능 지역 정보 — 정확한 필드만 신뢰 */}
                       {(() => {
-                        const limit = String(ann.rawJson?.bidPrtcptLmtYn ?? "").trim();
-                        // 제한 없음 → 전국 참여
-                        if (limit !== "Y") {
+                        const limit  = String(ann.rawJson?.bidPrtcptLmtYn ?? "").trim();
+                        const rgnDuty = String(ann.rawJson?.rgnDutyJntcontrctYn ?? "").trim();
+                        const jnt1   = String(ann.rawJson?.jntcontrctDutyRgnNm1 ?? "").trim();
+                        const jnt2   = String(ann.rawJson?.jntcontrctDutyRgnNm2 ?? "").trim();
+
+                        // 1. 명시적 지역제한 — bidPrtcptLmtYn = "Y"
+                        if (limit === "Y") {
+                          if (jnt1) {
+                            const canon = normalizeRegion(jnt1) ?? jnt1;
+                            return <span style={{ fontSize: 10, fontWeight: 600, background: "#FEF3C7", color: "#92400E", padding: "2px 6px", borderRadius: 4 }} title={[jnt1, jnt2].filter(Boolean).join(", ")}>{canon}{jnt2 ? "+" : ""} 제한</span>;
+                          }
+                          const dminstt = String(ann.rawJson?.dminsttNm ?? "");
+                          const cnstrt  = String(ann.rawJson?.cnstrtsiteRgnNm ?? "");
+                          const text = dminstt || cnstrt;
+                          const m = text.match(/(\S+?(?:시|군|구))(?:\s|$)/);
+                          if (m) return <span style={{ fontSize: 10, fontWeight: 600, background: "#FEF3C7", color: "#92400E", padding: "2px 6px", borderRadius: 4 }} title={text}>{m[1]} 제한</span>;
+                          return <span style={{ fontSize: 10, fontWeight: 600, background: "#FEF2F2", color: "#DC2626", padding: "2px 6px", borderRadius: 4 }}>지역제한</span>;
+                        }
+
+                        // 2. 지역의무공동도급 — rgnDutyJntcontrctYn = "Y"
+                        if (rgnDuty === "Y" && jnt1) {
+                          const canon = normalizeRegion(jnt1) ?? jnt1;
+                          return <span style={{ fontSize: 10, fontWeight: 600, background: "#FFFBEB", color: "#92400E", padding: "2px 6px", borderRadius: 4 }} title={[jnt1, jnt2].filter(Boolean).join(", ")}>{canon} 의무공동</span>;
+                        }
+
+                        // 3. 명시적 N (제한 없음) → 전국 참여
+                        if (limit === "N") {
                           return <span style={{ fontSize: 10, fontWeight: 600, background: "#ECFDF5", color: "#059669", padding: "2px 6px", borderRadius: 4 }}>전국 참여</span>;
                         }
-                        // 광역 (jnt 의무지역 1) 우선
-                        const jnt1 = String(ann.rawJson?.jntcontrctDutyRgnNm1 ?? "").trim();
-                        const jnt2 = String(ann.rawJson?.jntcontrctDutyRgnNm2 ?? "").trim();
-                        if (jnt1) {
-                          const canon = normalizeRegion(jnt1) ?? jnt1;
-                          const extra = jnt2 ? "+" : "";
-                          return <span style={{ fontSize: 10, fontWeight: 600, background: "#FEF3C7", color: "#92400E", padding: "2px 6px", borderRadius: 4 }} title={[jnt1, jnt2].filter(Boolean).join(", ")}>{canon}{extra}</span>;
-                        }
-                        // 시·군 단위 — dminsttNm / cnstrtsiteRgnNm 에서 시/군/구 추출
-                        const dminstt = String(ann.rawJson?.dminsttNm ?? "");
-                        const cnstrt = String(ann.rawJson?.cnstrtsiteRgnNm ?? "");
-                        const text = dminstt || cnstrt;
-                        const m = text.match(/(\S+?(?:시|군|구))(?:\s|$)/);
-                        if (m) {
-                          return <span style={{ fontSize: 10, fontWeight: 600, background: "#FEF3C7", color: "#92400E", padding: "2px 6px", borderRadius: 4 }} title={text}>{m[1]} 관내</span>;
-                        }
-                        return <span style={{ fontSize: 10, fontWeight: 600, background: "#FEF2F2", color: "#DC2626", padding: "2px 6px", borderRadius: 4 }}>지역제한</span>;
+
+                        // 4. NULL/빈 값 — 정보 없음 (배지 미표시)
+                        return null;
                       })()}
                       {ann.rawJson && Object.values(ann.rawJson).some((v) => typeof v === "string" && v.includes("긴급")) && (
                         <span style={{ fontSize: 10, fontWeight: 600, background: "#FEF2F2", color: "#DC2626", padding: "2px 6px", borderRadius: 4 }}>
