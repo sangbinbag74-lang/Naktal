@@ -164,7 +164,11 @@ export default async function AnnouncementDetailPage({
   const aValueAmtNum = Number(a.aValueAmt ?? 0);
   // 기초금액 우선순위: bsisAmt (G2B BsisAmount API) > aValueAmt > 추정가격×1.1
   const bdgtAmt = bsisAmtNum > 0 ? bsisAmtNum : aValueAmtNum > 0 ? aValueAmtNum : budgetNum * 1.1;
-  const g2bUrl = String(rawJson.ntcePbancUrl || `https://www.g2b.go.kr:8081/ep/peoplecvpl/narasVary.do?bidno=${a.konepsId}&bidseq=${String(rawJson.bidNtceSqNo ?? "00")}`);
+  // 2025년 나라장터 개편 — 옛 deep link (:8081/ep/peoplecvpl/narasVary.do) 모두 폐기됨.
+  // 메인 페이지 또는 announcement.bidNtceDtlUrl (Announcement 컬럼) 사용.
+  // bidNtceDtlUrl 도 개편 후 메인 redirect 일 가능성 있음 → 사용자가 공고번호 직접 검색 안내 필요.
+  const bidNtceDtlUrlCol = String((a as unknown as Record<string, unknown>).bidNtceDtlUrl ?? "");
+  const g2bUrl = bidNtceDtlUrlCol || String(rawJson.ntcePbancUrl ?? "") || "https://www.g2b.go.kr/";
 
   // G2B rawJson 메타데이터 추출 (입찰 일정 4단계 + 공고 메타)
   const schedule = extractBidSchedule(rawJson as Record<string, string | undefined>);
@@ -428,6 +432,7 @@ export default async function AnnouncementDetailPage({
             annDbId={a.id}
             budget={bdgtAmt || 0}
             g2bUrl={g2bUrl}
+            konepsId={a.konepsId}
             isContracted={isContracted}
             cntrctCnclsMthdNm={meta.cntrctCnclsMthdNm}
           />

@@ -8,6 +8,7 @@ interface AiAnalysisPanelProps {
   annDbId: string;
   budget: number;
   g2bUrl: string;
+  konepsId?: string; // 공고번호 — 버튼 클릭 시 클립보드 복사용
   onRefresh?: () => void;
   isContracted?: boolean;
   cntrctCnclsMthdNm?: string | null; // 협상에 의한 계약 시 winProb 숨김
@@ -72,8 +73,22 @@ function SajungDistBar({ range, predicted, avg }: {
 
 // ── 메인 컴포넌트 ─────────────────────────────────────────────────────────────
 
-export function AiAnalysisPanel({ annDbId, budget, g2bUrl, onRefresh, isContracted = false, cntrctCnclsMthdNm = null }: AiAnalysisPanelProps) {
+export function AiAnalysisPanel({ annDbId, budget, g2bUrl, konepsId, onRefresh, isContracted = false, cntrctCnclsMthdNm = null }: AiAnalysisPanelProps) {
   const isNegotiated = !!cntrctCnclsMthdNm?.includes("협상");
+
+  // 2025 나라장터 개편 — deep link 폐기. 공고번호 클립보드 복사 + 메인 새 탭.
+  function handleG2bClick(e: React.MouseEvent<HTMLAnchorElement>) {
+    if (!konepsId) return; // konepsId 없으면 기본 href 동작
+    e.preventDefault();
+    try {
+      navigator.clipboard.writeText(konepsId);
+    } catch { /* 권한 거부 등 무시 */ }
+    window.open(g2bUrl || "https://www.g2b.go.kr/", "_blank", "noopener,noreferrer");
+    // 사용자 안내 (alert 보다 toast 가 좋지만 의존성 적게)
+    setTimeout(() => {
+      alert(`공고번호 ${konepsId} 가 클립보드에 복사되었습니다.\n나라장터에서 검색창에 붙여넣기 (Ctrl+V) 하세요.\n\n※ 2025년 나라장터 개편 후 공고 직접 링크가 폐기되어 검색이 필요합니다.`);
+    }, 100);
+  }
   const [analysis, setAnalysis] = useState<ComprehensiveResult | null>(null);
   const [loading, setLoading] = useState(true);
   const userIdRef = useRef<string | null>(null);
@@ -320,9 +335,10 @@ export function AiAnalysisPanel({ annDbId, budget, g2bUrl, onRefresh, isContract
               );
             })()}
 
-            {/* ⑥ 나라장터 투찰하기 */}
+            {/* ⑥ 나라장터 투찰하기 — 공고번호 자동 클립보드 복사 + 메인 새 탭 */}
             <a
-              href={g2bUrl}
+              href={g2bUrl || "https://www.g2b.go.kr/"}
+              onClick={handleG2bClick}
               target="_blank"
               rel="noopener noreferrer"
               style={{
@@ -334,6 +350,9 @@ export function AiAnalysisPanel({ annDbId, budget, g2bUrl, onRefresh, isContract
               }}
             >
               나라장터 투찰하기 ↗
+              {konepsId && <div style={{ fontSize: 10, fontWeight: 400, marginTop: 3, color: "#BFDBFE" }}>
+                공고번호 {konepsId} 자동 복사 후 이동
+              </div>}
             </a>
 
             {/* ⑦ 면책 고지 */}
