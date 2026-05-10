@@ -231,9 +231,9 @@ async function fetchFromDB(opts: Record<string, string | number>): Promise<NextR
   if (minBudget)      q = q.gte("budget", minBudget);
   if (maxBudget)      q = q.lte("budget", maxBudget);
   if (contractMethod) q = q.or(`rawJson->>bidMthdNm.ilike.%${contractMethod}%,rawJson->>cntrctMthdNm.ilike.%${contractMethod}%`);
-  // 수의계약 자동 제외 — cntrctMthdNm 또는 cntrctCnclsMthdNm 에 '수의' 포함 row 제외 (NULL 은 포함)
+  // 수의계약 자동 제외 — cntrctCnclsMthdNm 에 '수의' 포함 row 제외 (NULL 은 포함)
+  // 단일 .or 호출로 통합 (.or 여러 번 호출 시 카테고리 .or 와 PostgREST 충돌 가능)
   if (excludeNgtn) {
-    q = q.or("rawJson->>cntrctMthdNm.is.null,rawJson->>cntrctMthdNm.not.ilike.*수의*");
     q = q.or("rawJson->>cntrctCnclsMthdNm.is.null,rawJson->>cntrctCnclsMthdNm.not.ilike.*수의*");
   }
   if (konepsId)       q = q.ilike("konepsId", `%${konepsId}%`);
