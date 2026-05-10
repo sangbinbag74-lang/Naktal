@@ -109,24 +109,10 @@ export default async function BidResultPage({
   // 예정가 = 기초금액(budget) × 예측사정율
   const estimatedPriceCalc = budget * (sajungRate / 100);
 
-  // 추정 순위 (사정율 차이 기반 선형 매핑) — 결과 입력된 row 만
-  const userPriceVal = Number(req.userBidPrice ?? req.recommendedBidPrice ?? 0);
-  const actualFinal = Number(req.actualFinalPrice ?? 0);
-  const totalBiddersN = Number(req.totalBidders ?? 0);
-  const isWonVal = req.isWon;
+  // 낙찰여부 (G2B API 자동 확인됨 — 사용자 회사명 vs 낙찰자명 매칭)
+  const isWonVal = req.isWon as boolean | null;
   const winnerNameVal = req.winnerName as string | null;
-  const estimatedRank = (() => {
-    if (!userPriceVal || !actualFinal || !totalBiddersN || !budget || !lowerLimitRateNum) return null;
-    if (isWonVal === true) return { rank: 1, total: totalBiddersN, diffPct: 0 };
-    const lwlt = lowerLimitRateNum / 100;
-    const aVal = aValueTotal;
-    const userEst   = (userPriceVal - aVal) / lwlt + aVal;
-    const actualEst = (actualFinal - aVal) / lwlt + aVal;
-    const diff = Math.abs(((userEst - actualEst) / budget) * 100);
-    const ratio = Math.min(1, diff / 3);
-    const rank = Math.max(1, Math.min(totalBiddersN, Math.ceil(1 + ratio * (totalBiddersN - 1))));
-    return { rank, total: totalBiddersN, diffPct: diff };
-  })();
+  const totalBiddersN = Number(req.totalBidders ?? 0);
 
   return (
     <div style={{ maxWidth: 560, margin: "0 auto", display: "flex", flexDirection: "column", gap: 20, paddingBottom: 40 }}>
@@ -186,45 +172,46 @@ export default async function BidResultPage({
         </div>
       )}
 
-      {/* 추정 순위 (결과 입력된 경우만) */}
-      {estimatedRank && (
+      {/* 낙찰 결과 (결과 입력된 경우만) */}
+      {(isWonVal !== null || winnerNameVal) && (
         <div style={{
-          background: estimatedRank.rank === 1 ? "linear-gradient(135deg, #ECFDF5 0%, #D1FAE5 100%)" : "#fff",
+          background: isWonVal === true ? "linear-gradient(135deg, #ECFDF5 0%, #D1FAE5 100%)" : "#fff",
           borderRadius: 14,
-          border: `1px solid ${estimatedRank.rank === 1 ? "#86EFAC" : "#E8ECF2"}`,
+          border: `1px solid ${isWonVal === true ? "#86EFAC" : "#E8ECF2"}`,
           padding: "20px 24px",
         }}>
           <div style={{ fontSize: 13, fontWeight: 700, color: "#0F172A", marginBottom: 12 }}>
-            🏆 입찰 순위 (추정)
+            🏆 낙찰 결과
           </div>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-            <div style={{ background: "#F8FAFC", borderRadius: 10, padding: "14px 16px" }}>
-              <div style={{ fontSize: 11, color: "#94A3B8", marginBottom: 4 }}>추정 순위</div>
-              <div style={{
-                fontSize: 22, fontWeight: 800,
-                color: estimatedRank.rank === 1 ? "#059669" : estimatedRank.rank <= Math.ceil(estimatedRank.total * 0.1) ? "#1B3A6B" : estimatedRank.rank <= Math.ceil(estimatedRank.total * 0.3) ? "#D97706" : "#64748B",
-              }}>
-                {estimatedRank.rank}위
-                <span style={{ fontSize: 13, color: "#94A3B8", fontWeight: 500 }}> / {estimatedRank.total}사</span>
-              </div>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+            <div>
+              <div style={{ fontSize: 11, color: "#94A3B8", marginBottom: 6 }}>본인 낙찰 여부</div>
+              {isWonVal === true ? (
+                <div style={{ fontSize: 22, fontWeight: 800, color: "#059669" }}>
+                  ✅ 낙찰 (1순위)
+                </div>
+              ) : isWonVal === false ? (
+                <div style={{ fontSize: 22, fontWeight: 800, color: "#94A3B8" }}>
+                  미낙찰
+                </div>
+              ) : (
+                <div style={{ fontSize: 18, fontWeight: 700, color: "#60A5FA" }}>
+                  결과 확인 중
+                </div>
+              )}
             </div>
-            <div style={{ background: "#F8FAFC", borderRadius: 10, padding: "14px 16px" }}>
-              <div style={{ fontSize: 11, color: "#94A3B8", marginBottom: 4 }}>낙찰자 사정율 차이</div>
-              <div style={{ fontSize: 22, fontWeight: 800, color: "#0F172A" }}>
-                ±{estimatedRank.diffPct.toFixed(2)}<span style={{ fontSize: 13, fontWeight: 500, color: "#94A3B8" }}>%p</span>
+            {totalBiddersN > 0 && (
+              <div style={{ textAlign: "right" }}>
+                <div style={{ fontSize: 11, color: "#94A3B8", marginBottom: 4 }}>참여 업체</div>
+                <div style={{ fontSize: 18, fontWeight: 700, color: "#0F172A" }}>{totalBiddersN}사</div>
               </div>
-            </div>
+            )}
           </div>
           {winnerNameVal && (
-            <div style={{ marginTop: 10, fontSize: 11, color: "#64748B" }}>
-              낙찰자: <strong style={{ color: "#0F172A" }}>{winnerNameVal}</strong>
-              {isWonVal === true && <span style={{ marginLeft: 6, color: "#059669", fontWeight: 700 }}>✓ 본인 낙찰</span>}
+            <div style={{ marginTop: 12, padding: "8px 12px", background: "#F8FAFC", borderRadius: 8, fontSize: 12, color: "#374151" }}>
+              낙찰자: <strong>{winnerNameVal}</strong>
             </div>
           )}
-          <div style={{ marginTop: 8, fontSize: 10, color: "#94A3B8", lineHeight: 1.5 }}>
-            ⚠ 추정값입니다. 사용자 투찰가와 낙찰가의 사정율 차이를 기반으로 선형 매핑.
-            G2B 개찰 상세에 따라 실제 순위와 다를 수 있습니다.
-          </div>
         </div>
       )}
 

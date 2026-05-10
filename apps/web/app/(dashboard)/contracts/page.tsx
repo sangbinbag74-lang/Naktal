@@ -23,18 +23,18 @@ function getDDay(deadline: string) {
 
 function WonBadge({ isWon }: { isWon: boolean | null }) {
   if (isWon === true) return (
-    <span style={{ fontSize: 12, fontWeight: 700, color: "#059669", background: "#ECFDF5", padding: "2px 8px", borderRadius: 5 }}>
-      ✅ 낙찰
+    <span style={{ fontSize: 12, fontWeight: 700, color: "#059669", background: "#ECFDF5", padding: "3px 10px", borderRadius: 5, border: "1px solid #86EFAC" }}>
+      ✅ 낙찰 (1순위)
     </span>
   );
   if (isWon === false) return (
-    <span style={{ fontSize: 12, fontWeight: 600, color: "#94A3B8", background: "#F1F5F9", padding: "2px 8px", borderRadius: 5 }}>
+    <span style={{ fontSize: 12, fontWeight: 600, color: "#94A3B8", background: "#F1F5F9", padding: "3px 10px", borderRadius: 5 }}>
       미낙찰
     </span>
   );
   return (
-    <span style={{ fontSize: 12, fontWeight: 600, color: "#60A5FA", background: "#EFF6FF", padding: "2px 8px", borderRadius: 5 }}>
-      확인 중
+    <span style={{ fontSize: 12, fontWeight: 600, color: "#60A5FA", background: "#EFF6FF", padding: "3px 10px", borderRadius: 5 }}>
+      결과 확인 중
     </span>
   );
 }
