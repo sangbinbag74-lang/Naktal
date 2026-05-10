@@ -127,8 +127,17 @@ export function AiAnalysisPanel({ annDbId, budget, g2bUrl, konepsId, onRefresh, 
 
   const bs = analysis?.bidStrategy;
   const comp = analysis?.competition;
+  // 신뢰도 — 사정율 히스토그램(< 30 경고)과 일관성 유지: 30건 미만은 HIGH 안 됨
   const cl = bs
-    ? (bs.confidenceLevel ?? (bs.isFallback ? "LOW" : bs.sampleSize >= 5 ? "HIGH" : bs.sampleSize > 0 ? "MEDIUM" : "LOW"))
+    ? (bs.isFallback
+        ? "LOW"
+        : bs.sampleSize >= 30
+          ? (bs.confidenceLevel ?? "HIGH")
+          : bs.sampleSize >= 10
+            ? "MEDIUM"
+            : bs.sampleSize > 0
+              ? "LOW"
+              : "LOW")
     : null;
 
   return (
@@ -293,11 +302,11 @@ export function AiAnalysisPanel({ annDbId, budget, g2bUrl, konepsId, onRefresh, 
                 {bs.simpleAvg != null && bs.weightedAvg != null && Math.abs(bs.weightedAvg - bs.simpleAvg) >= 0.05 && (
                   <div style={{ textAlign: "right", flexShrink: 0 }}>
                     <div style={{ fontSize: 10, color: "#94A3B8" }}>단순평균</div>
-                    <div style={{ fontSize: 11, color: "#94A3B8", textDecoration: "line-through" }}>
+                    <div style={{ fontSize: 11, color: "#94A3B8" }}>
                       {bs.simpleAvg.toFixed(3)}%
                     </div>
-                    <div style={{ fontSize: 10, color: "#94A3B8", marginTop: 2 }}>가중평균</div>
-                    <div style={{ fontSize: 11, color: "#1B3A6B", fontWeight: 600 }}>
+                    <div style={{ fontSize: 10, color: "#1B3A6B", marginTop: 2, fontWeight: 600 }}>가중평균 (적용)</div>
+                    <div style={{ fontSize: 11, color: "#1B3A6B", fontWeight: 700 }}>
                       {bs.weightedAvg.toFixed(3)}%
                     </div>
                   </div>
