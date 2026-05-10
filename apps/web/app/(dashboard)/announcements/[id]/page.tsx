@@ -322,7 +322,7 @@ export default async function AnnouncementDetailPage({
       <div style={{
         flex: 1,
         display: "grid",
-        gridTemplateColumns: "240px minmax(280px, 1fr) minmax(480px, 1.6fr)",
+        gridTemplateColumns: "300px minmax(320px, 1fr) minmax(480px, 1.5fr)",
         gap: 16,
         alignItems: "start",
       }}>

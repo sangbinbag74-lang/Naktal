@@ -48,11 +48,11 @@ export function OrgRecentStats({ orgName, months = 3 }: Props) {
   const peakRate = data.distribution.reduce((a, b) => (b.count > a.count ? b : a)).rate;
 
   return (
-    <div style={{ background: "#fff", borderRadius: 12, border: "1px solid #E8ECF2", padding: "20px 24px" }}>
-      <div style={{ fontSize: 14, fontWeight: 700, color: "#0F172A", marginBottom: 4 }}>
+    <div style={{ background: "#fff", borderRadius: 12, border: "1px solid #E8ECF2", padding: "16px 18px" }}>
+      <div style={{ fontSize: 13, fontWeight: 600, color: "#374151", marginBottom: 4 }}>
         발주처 최근 {months}개월 통계
       </div>
-      <div style={{ fontSize: 11, color: "#94A3B8", marginBottom: 14 }}>
+      <div style={{ fontSize: 11, color: "#94A3B8", marginBottom: 12, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
         {orgName}
       </div>
 

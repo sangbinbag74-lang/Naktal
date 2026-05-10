@@ -42,8 +42,8 @@ export function QualificationDetail({ budget, category, subCategories = [], cntr
   const expAmount = exp && exp.rate > 0 ? Math.ceil(budget * exp.rate) : 0;
 
   return (
-    <div style={{ background: "#fff", borderRadius: 12, border: "1px solid #E8ECF2", padding: "20px 24px" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
+    <div style={{ background: "#fff", borderRadius: 12, border: "1px solid #E8ECF2", padding: "16px 18px" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12, gap: 8 }}>
         <div style={{ fontSize: 13, fontWeight: 600, color: "#374151" }}>적격심사 세부정보 (추정)</div>
         {cntrctCnclsMthdNm && (
           <span style={{
@@ -102,7 +102,7 @@ export function QualificationDetail({ budget, category, subCategories = [], cntr
 
 function Row({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div style={{ display: "grid", gridTemplateColumns: "84px 1fr", gap: 8, alignItems: "start" }}>
+    <div style={{ display: "grid", gridTemplateColumns: "70px 1fr", gap: 6, alignItems: "start" }}>
       <div style={{ fontSize: 11, color: "#94A3B8", paddingTop: 1 }}>{label}</div>
       <div>{children}</div>
     </div>
