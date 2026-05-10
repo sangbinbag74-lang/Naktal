@@ -18,6 +18,12 @@ import {
 } from "@/lib/g2b";
 import { parseSubCategories, getAllCategories } from "@/lib/category-map";
 
+interface PdfRgnLimit {
+  type: "sigun" | "gwangyeok" | "national" | "unknown";
+  label: string;
+  raw?: string;
+}
+
 interface Announcement {
   id: string;
   konepsId: string;
@@ -34,6 +40,7 @@ interface Announcement {
   aValueAmt?: string | null;
   aValueTotal?: string;
   priceRangeRate?: string;
+  pdfRgnLimit?: PdfRgnLimit | null;
 }
 
 function fmt(n: string) {
@@ -215,6 +222,31 @@ export default async function AnnouncementDetailPage({
           ← 공고 목록으로
         </Link>
       </div>
+
+      {/* PDF 자격 요약 — 공고문 본문에서 추출한 자격 정보 (전국/시·군 + 자격 키워드) */}
+      {a.pdfRgnLimit && (
+        <div style={{
+          flexShrink: 0, marginBottom: 12,
+          background: a.pdfRgnLimit.type === "sigun" ? "#FEF2F2" : a.pdfRgnLimit.type === "gwangyeok" ? "#FFFBEB" : "#F0F9FF",
+          border: `1px solid ${a.pdfRgnLimit.type === "sigun" ? "#FCA5A5" : a.pdfRgnLimit.type === "gwangyeok" ? "#FCD34D" : "#93C5FD"}`,
+          borderRadius: 10, padding: "12px 16px",
+        }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 6 }}>
+            <span style={{ fontSize: 14 }}>📄</span>
+            <strong style={{ fontSize: 13, color: a.pdfRgnLimit.type === "sigun" ? "#DC2626" : a.pdfRgnLimit.type === "gwangyeok" ? "#92400E" : "#1E40AF" }}>
+              공고문 본문 자격 요약 — {a.pdfRgnLimit.label}
+            </strong>
+          </div>
+          {a.pdfRgnLimit.raw && a.pdfRgnLimit.raw !== "지역제한 키워드 없음" && a.pdfRgnLimit.raw !== "자격 섹션 미검출" && (
+            <div style={{ fontSize: 12, color: "#374151", lineHeight: 1.6, paddingLeft: 24 }}>
+              {a.pdfRgnLimit.raw.length > 220 ? a.pdfRgnLimit.raw.slice(0, 220) + "..." : a.pdfRgnLimit.raw}
+            </div>
+          )}
+          <div style={{ fontSize: 11, color: "#6B7280", paddingLeft: 24, marginTop: 4 }}>
+            ※ 정확한 자격은 나라장터 원문 PDF 를 확인하세요.
+          </div>
+        </div>
+      )}
 
       {/* 제한경쟁 안내 배너 — 자격요건(지역·면허·실적) 확인 필요 */}
       {String(meta.cntrctCnclsMthdNm ?? "").includes("제한") && (

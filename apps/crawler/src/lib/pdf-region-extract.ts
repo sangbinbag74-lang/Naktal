@@ -127,15 +127,18 @@ export async function extractRgnLimitFromPdf(
       if (m) return { type: "national", label: "전국", raw: m[0] };
     }
 
-    // 7. 자격 섹션 추출 성공 + 시·군·광역 키워드 모두 없음 → 전국 참여 (지역제한 없음)
-    //    공고문에 자격 명시는 있으나 '○○시 내', '○○도 소재' 등 지역 키워드 부재 = 전국
+    // 7. 자격 섹션 추출 성공 + 지역 키워드 부재 → 전국 + 핵심 자격 키워드 함께 추출
     if (hasJagyeok) {
-      return { type: "national", label: "전국", raw: "지역제한 키워드 없음" };
+      const tag = detectQualificationTag(target);
+      return {
+        type: "national",
+        label: tag ? `전국 (${tag})` : "전국",
+        raw: matchSnippet(target),
+      };
     }
 
-    // 8. 텍스트는 추출됐으나 자격 섹션 자체 없음 — 본문 4000자 내 검색
-    //    그래도 시·군 키워드 없으면 전국으로 안전하게
-    return { type: "national", label: "전국", raw: "자격 섹션 미검출 — 지역제한 단서 없음" };
+    // 8. 자격 섹션 미검출 — 본문 단서 없음
+    return { type: "national", label: "전국 (확인 필요)", raw: "자격 섹션 미검출" };
   } catch {
     return { type: "unknown", label: "확인 필요" };
   } finally {
@@ -156,4 +159,31 @@ function shortenGwangyeok(name: string): string {
     .replace(/특별시$/, "")
     .replace(/광역시$/, "")
     .replace(/도$/, "");
+}
+
+/** 자격 섹션에서 핵심 키워드 1개 추출 (전국 공고 분류 보조 라벨) */
+function detectQualificationTag(text: string): string | null {
+  const tags: Array<[RegExp, string]> = [
+    [/협상\s*에\s*의한\s*계약/, "협상계약"],
+    [/제한\s*경쟁/, "제한경쟁"],
+    [/일반\s*경쟁/, "일반경쟁"],
+    [/적격\s*심사/, "적격심사"],
+    [/긴급\s*입찰/, "긴급입찰"],
+    [/직접\s*생산\s*확인/, "직접생산"],
+    [/소상공인\s*확인서|중소기업\s*확인서|소기업\s*확인서/, "중소·소상공인"],
+    [/여성\s*기업|여성기업\s*확인서/, "여성기업"],
+    [/장애인\s*기업|장애인기업\s*확인서/, "장애인기업"],
+    [/사회적\s*기업/, "사회적기업"],
+    [/유자격자\s*명부/, "유자격자명부"],
+    [/(전문\s*공사|시설\s*공사)\s*면허|면허\s*소지/, "면허소지"],
+  ];
+  for (const [pat, tag] of tags) if (pat.test(text)) return tag;
+  return null;
+}
+
+/** 자격 섹션 첫 1~2 줄 발췌 (raw 표시용) */
+function matchSnippet(text: string): string {
+  const idx = text.search(/참가\s*자격|자격\s*요건|입찰\s*에\s*참가/);
+  if (idx < 0) return "";
+  return text.slice(idx, idx + 250).replace(/\s+/g, " ").trim();
 }
