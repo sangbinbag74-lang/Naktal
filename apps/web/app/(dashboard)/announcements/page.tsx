@@ -1167,7 +1167,7 @@ export default function AnnouncementsPage() {
                           지명경쟁
                         </span>
                       )}
-                      {/* 참여 조건 — G2B 공식 필드 종합 판단 */}
+                      {/* 참여 조건 — '전국 참여' 라벨 영구 제거. Y(명시적 지역제한)만 표시 */}
                       {(() => {
                         const limit       = String(ann.rawJson?.bidPrtcptLmtYn ?? "").trim();
                         const rgnDuty     = String(ann.rawJson?.rgnDutyJntcontrctYn ?? "").trim();
@@ -1176,7 +1176,7 @@ export default function AnnouncementsPage() {
                         const jnt1   = String(ann.rawJson?.jntcontrctDutyRgnNm1 ?? "").trim();
                         const jnt2   = String(ann.rawJson?.jntcontrctDutyRgnNm2 ?? "").trim();
 
-                        // 1. 명시적 지역제한 — bidPrtcptLmtYn = Y 또는 다른 지역제한 필드 Y
+                        // 명시적 지역제한
                         const hasRgnLimit = limit === "Y" || cmmnSpldmd === "Y" || rgnLmtBss === "Y";
                         if (hasRgnLimit) {
                           if (jnt1) {
@@ -1191,19 +1191,13 @@ export default function AnnouncementsPage() {
                           return <span style={{ fontSize: 10, fontWeight: 600, background: "#FEF2F2", color: "#DC2626", padding: "2px 6px", borderRadius: 4 }}>지역제한</span>;
                         }
 
-                        // 2. 지역의무공동도급
+                        // 지역의무공동도급
                         if (rgnDuty === "Y" && jnt1) {
                           const canon = normalizeRegion(jnt1) ?? jnt1;
                           return <span style={{ fontSize: 10, fontWeight: 600, background: "#FFFBEB", color: "#92400E", padding: "2px 6px", borderRadius: 4 }} title={[jnt1, jnt2].filter(Boolean).join(", ")}>{canon} 의무공동</span>;
                         }
 
-                        // 3. 모든 지역제한 필드 명시적 N → 전국 참여
-                        const allKnownN = limit === "N" && (cmmnSpldmd === "N" || cmmnSpldmd === "") && (rgnLmtBss === "N" || rgnLmtBss === "");
-                        if (allKnownN) {
-                          return <span style={{ fontSize: 10, fontWeight: 600, background: "#ECFDF5", color: "#059669", padding: "2px 6px", borderRadius: 4 }}>전국 참여</span>;
-                        }
-
-                        // 4. NULL/빈값 — 정보 없음 (배지 미표시)
+                        // 그 외 — '전국 참여' 라벨 표시 안 함 (G2B API 한계로 거짓 라벨 위험)
                         return null;
                       })()}
                       {ann.rawJson && Object.values(ann.rawJson).some((v) => typeof v === "string" && v.includes("긴급")) && (
