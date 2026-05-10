@@ -82,7 +82,7 @@ export default async function ContractsPage() {
           }}>공고 목록 보기</Link>
         </div>
       ) : (
-        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
           {contracts.map((c) => (
             <ContractRow
               key={c.id as string}

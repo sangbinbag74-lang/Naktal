@@ -35,17 +35,17 @@ function getDDay(deadline: string) {
 
 function WonBadge({ isWon }: { isWon: boolean | null }) {
   if (isWon === true) return (
-    <span style={{ fontSize: 12, fontWeight: 700, color: "#059669", background: "#ECFDF5", padding: "3px 10px", borderRadius: 5, border: "1px solid #86EFAC" }}>
+    <span style={{ fontSize: 13, fontWeight: 700, color: "#059669", background: "#ECFDF5", padding: "6px 14px", borderRadius: 7, border: "1px solid #86EFAC" }}>
       ✅ 낙찰 (1순위)
     </span>
   );
   if (isWon === false) return (
-    <span style={{ fontSize: 12, fontWeight: 600, color: "#94A3B8", background: "#F1F5F9", padding: "3px 10px", borderRadius: 5 }}>
+    <span style={{ fontSize: 13, fontWeight: 600, color: "#94A3B8", background: "#F1F5F9", padding: "6px 14px", borderRadius: 7 }}>
       미낙찰
     </span>
   );
   return (
-    <span style={{ fontSize: 12, fontWeight: 600, color: "#60A5FA", background: "#EFF6FF", padding: "3px 10px", borderRadius: 5 }}>
+    <span style={{ fontSize: 13, fontWeight: 600, color: "#60A5FA", background: "#EFF6FF", padding: "6px 14px", borderRadius: 7 }}>
       결과 확인 중
     </span>
   );
@@ -61,20 +61,21 @@ export function ContractRow({ annId, title, orgName, contractAt, recommendedBidP
       onClick={() => router.push(`/bid-result/${annId}`)}
       style={{
         background: won ? "linear-gradient(135deg, #fff 0%, #ECFDF5 100%)" : "#fff",
-        borderRadius: 12, border: `1px solid ${won ? "#86EFAC" : "#E8ECF2"}`,
-        padding: "14px 18px",
+        borderRadius: 14, border: `1px solid ${won ? "#86EFAC" : "#E8ECF2"}`,
+        padding: "22px 26px",
         cursor: "pointer",
         transition: "all 0.15s",
+        boxShadow: "0 1px 2px rgba(15,23,42,0.04)",
       }}
-      onMouseEnter={(e) => { e.currentTarget.style.boxShadow = "0 4px 12px rgba(0,0,0,0.06)"; }}
-      onMouseLeave={(e) => { e.currentTarget.style.boxShadow = "none"; }}
+      onMouseEnter={(e) => { e.currentTarget.style.boxShadow = "0 6px 18px rgba(15,23,42,0.08)"; e.currentTarget.style.transform = "translateY(-1px)"; }}
+      onMouseLeave={(e) => { e.currentTarget.style.boxShadow = "0 1px 2px rgba(15,23,42,0.04)"; e.currentTarget.style.transform = "translateY(0)"; }}
     >
-      <div style={{ display: "grid", gridTemplateColumns: "1fr auto auto auto", gap: 14, alignItems: "center" }}>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr auto auto auto", gap: 22, alignItems: "center" }}>
         <div style={{ minWidth: 0 }}>
-          <div style={{ fontSize: 14, fontWeight: 700, color: "#0F172A", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", marginBottom: 3 }}>
+          <div style={{ fontSize: 16, fontWeight: 700, color: "#0F172A", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", marginBottom: 8, letterSpacing: "-0.01em" }}>
             {title}
           </div>
-          <div style={{ fontSize: 11, color: "#64748B", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", display: "flex", alignItems: "center", gap: 10 }}>
+          <div style={{ fontSize: 12.5, color: "#64748B", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", display: "flex", alignItems: "center", gap: 12 }}>
             <span>{orgName} · 의뢰일 {fmtDate(contractAt)}</span>
             <span style={{ color: "#CBD5E1" }}>|</span>
             <Link
@@ -98,15 +99,15 @@ export function ContractRow({ annId, title, orgName, contractAt, recommendedBidP
           </div>
         </div>
         <div style={{ textAlign: "right", flexShrink: 0 }}>
-          <div style={{ fontSize: 9, color: "#94A3B8", marginBottom: 1 }}>AI 추천</div>
-          <div style={{ fontSize: 13, fontWeight: 700, color: "#1B3A6B", fontVariantNumeric: "tabular-nums" }}>
+          <div style={{ fontSize: 10.5, color: "#94A3B8", marginBottom: 3, fontWeight: 600 }}>AI 추천</div>
+          <div style={{ fontSize: 16, fontWeight: 700, color: "#1B3A6B", fontVariantNumeric: "tabular-nums", letterSpacing: "-0.01em" }}>
             {fmtPrice(recommendedBidPrice)}원
           </div>
         </div>
-        <span style={{ flexShrink: 0, fontSize: 10, fontWeight: 700, padding: "3px 8px", borderRadius: 5, background: dday.bg, color: dday.color, minWidth: 44, textAlign: "center" }}>
+        <span style={{ flexShrink: 0, fontSize: 12, fontWeight: 700, padding: "6px 12px", borderRadius: 7, background: dday.bg, color: dday.color, minWidth: 52, textAlign: "center" }}>
           {dday.label}
         </span>
-        <div style={{ flexShrink: 0, minWidth: 110, textAlign: "right" }}>
+        <div style={{ flexShrink: 0, minWidth: 120, textAlign: "right" }}>
           <WonBadge isWon={isWon} />
         </div>
       </div>
