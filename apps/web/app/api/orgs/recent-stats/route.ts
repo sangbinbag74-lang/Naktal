@@ -1,13 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient, createClient } from "@/lib/supabase/server";
-import { calcSajung, buildBudgetAndDateMap, fetchOrgKonepsIdsWithCategoryFallback, roundBucket } from "@/lib/analysis/sajung-utils";
+import { calcSajung, buildBudgetAndDateMap, fetchOrgKonepsIdsWithCategoryFallback } from "@/lib/analysis/sajung-utils";
 
 export const dynamic = "force-dynamic";
 
 export interface OrgRecentStatsResponse {
   orgName: string;
-  totalCount: number; // 최근 N개월 입찰건수
-  distribution: { rate: number; count: number }[]; // 사정율 -3 ~ +3 분포
+  totalCount: number; // 최근 N개월 입찰건수 (사정율 유효 범위)
+  distribution: { rate: number; count: number }[]; // 사정율 -3 ~ +3 분포 (0.5%p bucket)
+  outOfRangeCount: number; // -3 ~ +3 범위 밖 건수
   avg: number | null;
 }
 
@@ -33,7 +34,7 @@ export async function GET(req: NextRequest) {
   );
 
   if (konepsIds.length === 0) {
-    return NextResponse.json<OrgRecentStatsResponse>({ orgName, totalCount: 0, distribution: [], avg: null });
+    return NextResponse.json<OrgRecentStatsResponse>({ orgName, totalCount: 0, distribution: [], outOfRangeCount: 0, avg: null });
   }
 
   const { data: bidResults } = await admin
@@ -45,34 +46,36 @@ export async function GET(req: NextRequest) {
     .limit(2000);
 
   const infoMap = await buildBudgetAndDateMap(admin, konepsIds);
+  // 정수 키 (dev × 2) 로 저장하여 부동소수점 mismatch 차단
   const bucketMap = new Map<number, number>();
   let total = 0;
+  let outOfRange = 0;
   let sum = 0;
 
-  for (const r of bidResults ?? []) {
-    const info = infoMap.get(r.annId as string);
+  for (const row of bidResults ?? []) {
+    const info = infoMap.get(row.annId as string);
     if (!info || !info.deadline) continue;
     if (info.deadline.slice(0, 10) < sinceDateStr) continue;
-    const sajung = calcSajung(Number(r.finalPrice), Number(r.bidRate), info.budget);
+    const sajung = calcSajung(Number(row.finalPrice), Number(row.bidRate), info.budget);
     if (sajung < 85 || sajung > 125) continue;
-    // 사정율 → -3 ~ +3 편차 0.5%p bucket
-    const dev = sajung - 100;
-    const bucket = roundBucket(dev * 2) / 2; // 0.5 단위 bucket
-    bucketMap.set(bucket, (bucketMap.get(bucket) ?? 0) + 1);
     total++;
     sum += sajung;
+    const dev = sajung - 100;
+    // 0.5%p bucket → 정수 키 (-6 ~ +6 = -3.0 ~ +3.0)
+    const key = Math.round(dev * 2);
+    if (key < -6 || key > 6) { outOfRange++; continue; }
+    bucketMap.set(key, (bucketMap.get(key) ?? 0) + 1);
   }
 
-  // 분포 정렬 (-3 ~ +3)
+  // 분포 (-3.0 ~ +3.0, 0.5 단위 13구간)
   const distribution: { rate: number; count: number }[] = [];
-  for (let dev = -3; dev <= 3; dev += 0.5) {
-    const r = Math.round(dev * 10) / 10;
-    distribution.push({ rate: r, count: bucketMap.get(r) ?? 0 });
+  for (let key = -6; key <= 6; key++) {
+    distribution.push({ rate: key / 2, count: bucketMap.get(key) ?? 0 });
   }
 
   const avg = total > 0 ? Math.round((sum / total) * 1000) / 1000 : null;
 
   return NextResponse.json<OrgRecentStatsResponse>({
-    orgName, totalCount: total, distribution, avg,
+    orgName, totalCount: total, distribution, outOfRangeCount: outOfRange, avg,
   });
 }

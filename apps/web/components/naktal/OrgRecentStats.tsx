@@ -70,8 +70,15 @@ export function OrgRecentStats({ orgName, months = 3 }: Props) {
       </div>
 
       <div style={{ borderTop: "1px solid #F1F5F9", paddingTop: 10 }}>
-        <div style={{ fontSize: 11, color: "#64748B", marginBottom: 8, fontWeight: 600 }}>
-          사정율 편차 분포 (100% 대비 %p)
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 8 }}>
+          <div style={{ fontSize: 11, color: "#64748B", fontWeight: 600 }}>
+            사정율 편차 분포 (100% 대비 %p)
+          </div>
+          {data.outOfRangeCount > 0 && (
+            <div style={{ fontSize: 10, color: "#94A3B8" }}>
+              범위 외 {data.outOfRangeCount}건
+            </div>
+          )}
         </div>
         <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
           {data.distribution.slice().reverse().map((d) => {
