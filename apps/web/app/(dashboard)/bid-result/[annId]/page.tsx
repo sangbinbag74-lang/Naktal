@@ -30,6 +30,16 @@ function fmtDeviation(dev: number) {
   return `${sign}${dev.toFixed(3)}%p`;
 }
 
+function fmtDDay(deadline: string): { label: string; sub: string; color: string } {
+  const ms = new Date(deadline).getTime() - Date.now();
+  if (ms <= 0) return { label: "개찰 완료", sub: "결과 확인 중", color: "#475569" };
+  const totalH = Math.floor(ms / 3600000);
+  const days = Math.floor(totalH / 24);
+  const hrs = totalH % 24;
+  if (days >= 1) return { label: `D-${days}`, sub: `${hrs}시간 남음`, color: days <= 2 ? "#DC2626" : days <= 5 ? "#C2410C" : "#1B3A6B" };
+  return { label: `${totalH}시간`, sub: `${Math.floor((ms % 3600000) / 60000)}분 남음`, color: "#DC2626" };
+}
+
 export default async function BidResultPage({
   params,
 }: {
@@ -135,6 +145,21 @@ export default async function BidResultPage({
   const isWonVal = req.isWon as boolean | null;
   const winnerNameVal = req.winnerName as string | null;
   const totalBiddersN = Number(req.totalBidders ?? 0);
+
+  // D 카드 — 이 카테고리 일반(ALL) 평균 사정율
+  const annKindForLabel = classifyCategory(ann.category as string);
+  const kindLabel = annKindForLabel === "construction" ? "공사" : annKindForLabel === "service" ? "용역" : "물품";
+  const { data: catAllRows } = await admin
+    .from("SajungRateStat")
+    .select("avg,sampleSize")
+    .eq("orgName", "ALL")
+    .eq("category", ann.category as string)
+    .eq("region", "");
+  const catRows = (catAllRows ?? []) as Array<{ avg: number; sampleSize: number }>;
+  const catTotal = catRows.reduce((s, r) => s + Number(r.sampleSize ?? 0), 0);
+  const categoryAvgSajungRate = catTotal > 0
+    ? catRows.reduce((s, r) => s + Number(r.avg) * Number(r.sampleSize ?? 0), 0) / catTotal
+    : 0;
 
   // 번호 조합 — BidRequest 에 저장된 값 우선, 없으면 서버사이드로 1회 계산하여 즉시 UPDATE
   let resolvedStrategy: unknown = req.numberStrategy ?? null;
@@ -288,57 +313,60 @@ export default async function BidResultPage({
         </div>
       </div>
 
-      {/* AI 정밀 분석 (계약 회원 전용) */}
+      {/* 계약 이후 안내 (개찰 카운트다운 + 통계) */}
       <div style={{
         background: "#fff", borderRadius: 14,
         border: "2px solid #1B3A6B", padding: "20px 24px",
       }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}>
-          <span style={{ fontSize: 14, fontWeight: 800, color: "#1B3A6B" }}>🔬 AI 정밀 분석</span>
+          <span style={{ fontSize: 14, fontWeight: 800, color: "#1B3A6B" }}>📋 계약 이후 안내</span>
           <span style={{
             fontSize: 10, fontWeight: 700, background: "#EEF2FF", color: "#1B3A6B",
             padding: "2px 7px", borderRadius: 4,
           }}>
-            계약 회원 전용
+            결과 자동 추적
           </span>
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 12 }}>
-          {[
-            {
-              label: "낙찰 확률",
-              value: `${winProbability.toFixed(0)}%`,
-              sub: "몬테카를로 시뮬레이션 (N=5000)",
-              color: winProbability >= 70 ? "#059669" : winProbability >= 50 ? "#1B3A6B" : "#C2410C",
-            },
-            {
-              label: "경쟁 강도",
-              value: `${competitionScore}점`,
-              sub: competitionScore >= 70 ? "매우 치열" : competitionScore >= 50 ? "보통" : "낮음",
-              color: competitionScore >= 70 ? "#DC2626" : competitionScore >= 50 ? "#C2410C" : "#059669",
-            },
-            {
-              label: "AI 신뢰도",
-              value: confidenceLevel === "HIGH" ? "높음" : confidenceLevel === "MEDIUM" ? "보통" : "낮음",
-              sub: confidenceLevel === "HIGH" ? "분석 데이터 충분" : confidenceLevel === "MEDIUM" ? "분석 데이터 보통" : "분석 데이터 부족",
-              color: confidenceLevel === "HIGH" ? "#059669" : confidenceLevel === "MEDIUM" ? "#1B3A6B" : "#C2410C",
-            },
-            {
-              label: "안전 마진",
-              value: `+${fmtPrice(safetyMargin)}`,
-              sub: "낙찰하한가 위 (사정율 오차 보상)",
-              color: "#1B3A6B",
-            },
-          ].map((m) => (
-            <div key={m.label} style={{ background: "#F8FAFC", borderRadius: 10, padding: "12px 14px" }}>
-              <div style={{ fontSize: 11, color: "#94A3B8", marginBottom: 4 }}>{m.label}</div>
-              <div style={{ fontSize: 18, fontWeight: 800, color: m.color, marginBottom: 4 }}>{m.value}</div>
-              <div style={{ fontSize: 10, color: "#9CA3AF" }}>{m.sub}</div>
-            </div>
-          ))}
+          {(() => {
+            const dday = fmtDDay(ann.deadline as string);
+            const cards = [
+              {
+                label: "개찰까지",
+                value: dday.label,
+                sub: dday.sub,
+                color: dday.color,
+              },
+              {
+                label: "발주처 평균 사정율",
+                value: avgSajungRate > 0 ? `${avgSajungRate.toFixed(3)}%` : "데이터 부족",
+                sub: sampleSize > 0 ? `최근 ${sampleSize}건 기준` : "샘플 부족",
+                color: "#1B3A6B",
+              },
+              {
+                label: "안전 마진",
+                value: `+${fmtPrice(safetyMargin)}`,
+                sub: "낙찰하한가 위 (사정율 오차 보상)",
+                color: "#1B3A6B",
+              },
+              {
+                label: `${kindLabel} 일반 평균 사정율`,
+                value: categoryAvgSajungRate > 0 ? `${categoryAvgSajungRate.toFixed(3)}%` : "데이터 부족",
+                sub: catTotal > 0 ? `${kindLabel} 카테고리 ${catTotal.toLocaleString()}건` : "샘플 부족",
+                color: "#1B3A6B",
+              },
+            ];
+            return cards.map((m) => (
+              <div key={m.label} style={{ background: "#F8FAFC", borderRadius: 10, padding: "12px 14px" }}>
+                <div style={{ fontSize: 11, color: "#94A3B8", marginBottom: 4 }}>{m.label}</div>
+                <div style={{ fontSize: 18, fontWeight: 800, color: m.color, marginBottom: 4 }}>{m.value}</div>
+                <div style={{ fontSize: 10, color: "#9CA3AF" }}>{m.sub}</div>
+              </div>
+            ));
+          })()}
         </div>
         <div style={{ fontSize: 11, color: "#9CA3AF", marginTop: 12, lineHeight: 1.5 }}>
-          ※ 안전 마진 = 낙찰하한가 + 동적 마진 (HIGH 0.05%p / MEDIUM 0.2%p / LOW 0.5%p) + 회사별 seq원 (동가 회피).
-          ML 모델 사정율 예측 오차를 보상하여 낙찰 확률을 최대화합니다.
+          ※ 개찰 후 G2B 결과를 자동 수집하여 낙찰 여부를 페이지에 반영합니다.
         </div>
       </div>
 
