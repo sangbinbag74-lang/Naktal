@@ -22,16 +22,27 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   const guard = await requireAdmin(request);
   if (guard instanceof NextResponse) return guard;
 
+  // body 에서 카테고리 필터 파싱 (기본: 공사만)
+  const body = await request.json().catch(() => ({})) as { catFilter?: "all" | "construction" | "non-construction" };
+  const catFilter = body.catFilter ?? "construction";
+
   const admin = createAdminClient();
   const now = new Date().toISOString();
 
-  // 진행중 공고 조회 (마감 안 된 것)
-  // 공사 카테고리만 분석 (Model 1 학습 데이터가 공사 전용)
-  const { data: announcements, error } = await admin
+  // 진행중 공고 조회 — catFilter 에 따라 분기
+  let query = admin
     .from("Announcement")
     .select("id, orgName, category, budget, region, deadline, rawJson, bsisAmt, aValueAmt, subCategories, aValueTotal")
-    .gt("deadline", now)
-    .ilike("category", "%공사%")
+    .gt("deadline", now);
+
+  if (catFilter === "construction") {
+    query = query.ilike("category", "%공사%");
+  } else if (catFilter === "non-construction") {
+    query = query.not("category", "ilike", "%공사%");
+  }
+  // "all" 이면 필터 없음 (전체 카테고리 분석)
+
+  const { data: announcements, error } = await query
     .order("deadline", { ascending: true })
     .limit(BATCH_LIMIT * 3);
 

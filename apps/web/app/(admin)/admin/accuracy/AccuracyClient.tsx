@@ -81,14 +81,25 @@ export function AccuracyClient({ bppList, activeCount, predCount }: Props) {
       }
     });
 
+  // 분석 실행 시 catFilter — "all" 은 비공사 분석 시 정확도 낮을 수 있어 명시 확인
   async function handleRunAll() {
+    if (catFilter === "non-construction") {
+      const ok = window.confirm(
+        "비공사(용역·물품) 분석 시 Model 1 학습 분포(공사 전용)와 달라 정확도가 낮습니다.\n그래도 진행하시겠습니까?"
+      );
+      if (!ok) return;
+    }
     setRunning(true);
     setRunLog("분석 시작...");
     let totalFilled = 0;
     let totalSkipped = 0;
     for (let i = 0; i < 20; i++) {
       try {
-        const res = await fetch("/api/admin/run-predictions", { method: "POST" });
+        const res = await fetch("/api/admin/run-predictions", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ catFilter }),
+        });
         const result = await res.json();
         if (!result.ok) { setRunLog("오류 발생: " + (result.error ?? "알 수 없음")); break; }
         totalFilled += result.filled ?? 0;
@@ -104,6 +115,11 @@ export function AccuracyClient({ bppList, activeCount, predCount }: Props) {
     setRunning(false);
     router.refresh();
   }
+
+  const catLabel =
+    catFilter === "construction"     ? "공사" :
+    catFilter === "non-construction" ? "비공사" :
+                                        "전체";
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
@@ -157,7 +173,7 @@ export function AccuracyClient({ bppList, activeCount, predCount }: Props) {
             disabled={running}
             style={{ fontSize: 12, padding: "7px 16px", borderRadius: 8, border: "none", background: running ? "#E2E8F0" : "#1B3A6B", color: running ? "#94A3B8" : "#fff", cursor: running ? "default" : "pointer", fontWeight: 700, whiteSpace: "nowrap" }}
           >
-            {running ? "분석 중..." : `⚡ 전체 분석 실행${unpredCount > 0 ? ` (${unpredCount}건)` : ""}`}
+            {running ? "분석 중..." : `⚡ ${catLabel} 분석 실행`}
           </button>
           {runLog && (
             <div style={{ fontSize: 11, color: running ? "#D97706" : "#059669" }}>{runLog}</div>
