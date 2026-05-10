@@ -26,10 +26,12 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   const now = new Date().toISOString();
 
   // 진행중 공고 조회 (마감 안 된 것)
+  // 공사 카테고리만 분석 (Model 1 학습 데이터가 공사 전용)
   const { data: announcements, error } = await admin
     .from("Announcement")
     .select("id, orgName, category, budget, region, deadline, rawJson, bsisAmt, aValueAmt, subCategories, aValueTotal")
     .gt("deadline", now)
+    .ilike("category", "%공사%")
     .order("deadline", { ascending: true })
     .limit(BATCH_LIMIT * 3);
 

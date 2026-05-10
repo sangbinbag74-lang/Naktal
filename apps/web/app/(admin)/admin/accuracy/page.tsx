@@ -190,12 +190,15 @@ export default async function AdminAccuracyPage() {
   });
   const constructionPredCount = bppListAll.filter((r) => isConstruction(r.announcement?.category)).length;
 
-  // ─── 진행중 공고 수 / 예측 완료 수 ───────────────────────────────────────────
+  // ─── 진행중 공고 수 / 예측 완료 수 — 공사만 ──────────────────────────────────
   const { count: activeCount } = await admin
     .from("Announcement")
     .select("id", { count: "exact", head: true })
-    .gt("deadline", now);
+    .gt("deadline", now)
+    .ilike("category", "%공사%");
 
+  // 공사 예측만 카운트 (Announcement.category 조인이 필요하나 PostgREST count 제약으로
+  // bppListAll 의 공사 비율로 추정)
   const { count: predCount } = await admin
     .from("BidPricePrediction")
     .select("annId", { count: "exact", head: true })

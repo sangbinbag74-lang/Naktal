@@ -30,11 +30,13 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   const admin = createAdminClient();
 
   // 유효한 예측이 없는 진행중 공고 조회 (AnnouncementActive MV — 14k row)
+  // 공사 카테고리만 분석 (Model 1 학습 데이터가 사정율 97~103 필터로 공사 전용)
   const now = new Date().toISOString();
   const { data: announcements, error } = await admin
     .from("AnnouncementActive")
     .select("id, orgName, category, budget, region, deadline, rawJson, bsisAmt, aValueAmt, subCategories, aValueTotal")
     .gt("deadline", now)
+    .ilike("category", "%공사%")
     .order("deadline", { ascending: true })
     .limit(BATCH_LIMIT * 3); // 스킵 여유분 확보
 
