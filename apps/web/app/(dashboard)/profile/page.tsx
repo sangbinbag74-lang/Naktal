@@ -133,8 +133,17 @@ export default function ProfilePage() {
   }
 
   async function handleG2BImport() {
-    const clean = importBizNo.replace(/[^0-9]/g, "");
+    // 등록된 사업자번호 있으면 그것 사용 (입력 무시), 없으면 입력값 사용
+    const targetBizNo = profile.bizNo || importBizNo.replace(/[^0-9]/g, "");
+    const clean = targetBizNo.replace(/[^0-9]/g, "");
     if (clean.length !== 10) { setImportError("사업자번호 10자리를 입력하세요"); return; }
+
+    // 기존 등록 시: 입력 사업자번호 vs 등록 사업자번호 일치 검증 (조작 방지)
+    if (profile.bizNo && importBizNo && importBizNo.replace(/[^0-9]/g, "") !== profile.bizNo) {
+      setImportError("입력 사업자번호가 등록된 번호와 일치하지 않습니다.");
+      return;
+    }
+
     setImporting(true); setImportError(""); setImportOk(false);
     try {
       const res  = await fetch(`/api/profile/g2b-import?bizNo=${clean}`);
@@ -142,6 +151,11 @@ export default function ProfilePage() {
       if (!res.ok) { setImportError(data.error ?? "불러오기 실패"); return; }
 
       const { companyInfo, contracts } = data;
+      // G2B 응답 사업자번호가 등록 번호와 일치 확인 (이중 검증)
+      if (profile.bizNo && companyInfo.bizNo && companyInfo.bizNo !== profile.bizNo) {
+        setImportError("나라장터 응답 사업자번호가 등록 번호와 다릅니다. 관리자 문의 부탁드립니다.");
+        return;
+      }
       setProfile(p => ({
         ...p,
         bizNo:         clean,
@@ -225,6 +239,10 @@ export default function ProfilePage() {
 
   if (loading) return <div style={{ padding: "48px 0", textAlign: "center", color: "#9CA3AF" }}>불러오는 중...</div>;
 
+  // 사업자번호 한 번 등록되면 직접 수정 잠금 — 다시 불러오기로만 갱신
+  const isBizLocked = !!(profile.bizNo && profile.bizNo.length === 10);
+  const lockedInputStyle: React.CSSProperties = { ...inp, background: "#F1F5F9", color: "#64748B", cursor: "not-allowed" };
+
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
       <div>
@@ -232,27 +250,50 @@ export default function ProfilePage() {
         <p style={{ fontSize: 13, color: "#64748B", marginTop: 4, marginBottom: 0 }}>업체 실적과 업종을 등록하면 적격심사 자동 판정이 가능합니다.</p>
       </div>
 
-      {/* ── G2B 자동 불러오기 배너 ── */}
-      <div style={{ ...card, background: "#EFF6FF", border: "1px solid #BFDBFE" }}>
-        <h3 style={{ fontSize: 14, fontWeight: 700, color: "#1E40AF", margin: "0 0 4px" }}>나라장터에서 자동 불러오기</h3>
-        <p style={{ fontSize: 12, color: "#3B82F6", margin: "0 0 14px" }}>사업자번호를 입력하면 업체 기본정보·면허·시공 실적을 자동으로 채워드립니다.</p>
-        <div style={{ display: "flex", gap: 10 }}>
-          <input
-            value={importBizNo}
-            onChange={e => setImportBizNo(e.target.value)}
-            placeholder="사업자번호 10자리 (숫자만)"
-            maxLength={12}
-            style={{ ...inp, flex: 1, background: "#fff", maxWidth: 280 }}
-            onFocus={focusStyle} onBlur={blurStyle}
-          />
-          <button type="button" onClick={handleG2BImport} disabled={importing}
-            style={{ height: 44, padding: "0 20px", background: importing ? "#93C5FD" : "#1D4ED8", color: "#fff", border: "none", borderRadius: 10, fontSize: 13, fontWeight: 600, cursor: importing ? "not-allowed" : "pointer", whiteSpace: "nowrap" }}>
-            {importing ? "불러오는 중..." : "나라장터에서 불러오기"}
-          </button>
+      {/* ── G2B 자동 불러오기 배너 — 첫 등록 vs 잠금 분기 ── */}
+      {!isBizLocked ? (
+        <div style={{ ...card, background: "#EFF6FF", border: "1px solid #BFDBFE" }}>
+          <h3 style={{ fontSize: 14, fontWeight: 700, color: "#1E40AF", margin: "0 0 4px" }}>나라장터에서 자동 불러오기 (최초 1회)</h3>
+          <p style={{ fontSize: 12, color: "#3B82F6", margin: "0 0 14px" }}>
+            사업자번호를 입력하면 업체 기본정보·면허·시공 실적을 자동으로 채워드립니다. <strong>한번 등록 후엔 사업자번호 변경 불가 (불러오기 버튼만 가능)</strong>
+          </p>
+          <div style={{ display: "flex", gap: 10 }}>
+            <input
+              value={importBizNo}
+              onChange={e => setImportBizNo(e.target.value)}
+              placeholder="사업자번호 10자리 (숫자만)"
+              maxLength={12}
+              style={{ ...inp, flex: 1, background: "#fff", maxWidth: 280 }}
+              onFocus={focusStyle} onBlur={blurStyle}
+            />
+            <button type="button" onClick={handleG2BImport} disabled={importing}
+              style={{ height: 44, padding: "0 20px", background: importing ? "#93C5FD" : "#1D4ED8", color: "#fff", border: "none", borderRadius: 10, fontSize: 13, fontWeight: 600, cursor: importing ? "not-allowed" : "pointer", whiteSpace: "nowrap" }}>
+              {importing ? "불러오는 중..." : "나라장터에서 불러오기"}
+            </button>
+          </div>
+          {importError && <p style={{ fontSize: 12, color: "#DC2626", margin: "8px 0 0" }}>{importError}</p>}
+          {importOk    && <p style={{ fontSize: 12, color: "#16A34A", margin: "8px 0 0" }}>✓ 정보를 성공적으로 불러왔습니다. 확인 후 저장해주세요.</p>}
         </div>
-        {importError && <p style={{ fontSize: 12, color: "#DC2626", margin: "8px 0 0" }}>{importError}</p>}
-        {importOk    && <p style={{ fontSize: 12, color: "#16A34A", margin: "8px 0 0" }}>✓ 정보를 성공적으로 불러왔습니다. 확인 후 저장해주세요.</p>}
-      </div>
+      ) : (
+        <div style={{ ...card, background: "#F8FAFC", border: "1px solid #E2E8F0" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
+            <div>
+              <h3 style={{ fontSize: 14, fontWeight: 700, color: "#0F172A", margin: "0 0 4px" }}>
+                🔒 등록된 업체 — 사업자번호 {profile.bizNo.slice(0,3)}-{profile.bizNo.slice(3,5)}-{profile.bizNo.slice(5)}
+              </h3>
+              <p style={{ fontSize: 11, color: "#64748B", margin: 0 }}>
+                사업자번호·회사명·대표자명은 변경 불가. 정보 갱신은 다시 불러오기 버튼으로만 가능합니다.
+              </p>
+            </div>
+            <button type="button" onClick={handleG2BImport} disabled={importing}
+              style={{ height: 40, padding: "0 16px", background: importing ? "#CBD5E1" : "#1B3A6B", color: "#fff", border: "none", borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: importing ? "not-allowed" : "pointer", whiteSpace: "nowrap" }}>
+              {importing ? "불러오는 중..." : "🔄 다시 불러오기"}
+            </button>
+          </div>
+          {importError && <p style={{ fontSize: 12, color: "#DC2626", margin: "8px 0 0" }}>{importError}</p>}
+          {importOk    && <p style={{ fontSize: 12, color: "#16A34A", margin: "8px 0 0" }}>✓ 나라장터 정보 갱신 완료. 저장 부탁드립니다.</p>}
+        </div>
+      )}
 
       <form onSubmit={save} style={{ display: "flex", flexDirection: "column", gap: 20 }}>
 
@@ -261,16 +302,37 @@ export default function ProfilePage() {
           <h3 style={{ fontSize: 15, fontWeight: 700, color: "#0F172A", margin: "0 0 16px" }}>사업자 기본 정보</h3>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
             <div>
-              <label style={lbl}>업체명</label>
-              <input value={profile.bizName} onChange={e => setProfile(p => ({ ...p, bizName: e.target.value }))} placeholder="(주)홍길동건설" style={inp} onFocus={focusStyle} onBlur={blurStyle} />
+              <label style={lbl}>업체명{isBizLocked && <span style={{ color: "#94A3B8", fontWeight: 400, marginLeft: 4 }}>(잠금)</span>}</label>
+              <input
+                value={profile.bizName}
+                onChange={e => !isBizLocked && setProfile(p => ({ ...p, bizName: e.target.value }))}
+                placeholder="(주)홍길동건설"
+                readOnly={isBizLocked}
+                style={isBizLocked ? lockedInputStyle : inp}
+                onFocus={isBizLocked ? undefined : focusStyle} onBlur={isBizLocked ? undefined : blurStyle}
+              />
             </div>
             <div>
-              <label style={lbl}>사업자등록번호</label>
-              <input value={profile.bizNo} onChange={e => setProfile(p => ({ ...p, bizNo: e.target.value.replace(/[^0-9]/g, "") }))} placeholder="1234567890" maxLength={10} style={inp} onFocus={focusStyle} onBlur={blurStyle} />
+              <label style={lbl}>사업자등록번호{isBizLocked && <span style={{ color: "#94A3B8", fontWeight: 400, marginLeft: 4 }}>(잠금)</span>}</label>
+              <input
+                value={profile.bizNo}
+                onChange={e => !isBizLocked && setProfile(p => ({ ...p, bizNo: e.target.value.replace(/[^0-9]/g, "") }))}
+                placeholder="1234567890" maxLength={10}
+                readOnly={isBizLocked}
+                style={isBizLocked ? lockedInputStyle : inp}
+                onFocus={isBizLocked ? undefined : focusStyle} onBlur={isBizLocked ? undefined : blurStyle}
+              />
             </div>
             <div>
-              <label style={lbl}>대표자명</label>
-              <input value={profile.ceoName} onChange={e => setProfile(p => ({ ...p, ceoName: e.target.value }))} placeholder="홍길동" style={inp} onFocus={focusStyle} onBlur={blurStyle} />
+              <label style={lbl}>대표자명{isBizLocked && <span style={{ color: "#94A3B8", fontWeight: 400, marginLeft: 4 }}>(잠금)</span>}</label>
+              <input
+                value={profile.ceoName}
+                onChange={e => !isBizLocked && setProfile(p => ({ ...p, ceoName: e.target.value }))}
+                placeholder="홍길동"
+                readOnly={isBizLocked}
+                style={isBizLocked ? lockedInputStyle : inp}
+                onFocus={isBizLocked ? undefined : focusStyle} onBlur={isBizLocked ? undefined : blurStyle}
+              />
             </div>
             <div>
               <label style={lbl}>설립일</label>

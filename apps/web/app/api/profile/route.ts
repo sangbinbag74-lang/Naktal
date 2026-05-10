@@ -101,10 +101,24 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   // 기존 CompanyProfile id 조회 (없으면 신규 생성용 UUID 발급)
   const { data: existingProfile } = await admin
     .from("CompanyProfile")
-    .select("id")
+    .select("id, bizNo, bizName, ceoName")
     .eq("userId", result.id)
     .maybeSingle();
   const profileId = existingProfile?.id ?? crypto.randomUUID();
+
+  // 사업자번호 잠금 — 한 번 등록된 row 의 bizNo / bizName / ceoName 변경 차단
+  // 다시 불러오기 (G2B import) 후 저장 시에는 G2B 응답이 동일 bizNo 라 일치 → 통과
+  const exist = existingProfile as { bizNo?: string; bizName?: string; ceoName?: string } | null;
+  if (exist?.bizNo && exist.bizNo.length === 10) {
+    if (body.bizNo && body.bizNo !== exist.bizNo) {
+      return NextResponse.json({
+        error: "BIZNO_LOCKED",
+        message: "사업자번호는 변경할 수 없습니다. 다시 불러오기로만 갱신 가능합니다.",
+      }, { status: 400 });
+    }
+    // 입력 안 해도 되도록 기존 값 유지
+    body.bizNo = exist.bizNo;
+  }
 
   const { error } = await admin
     .from("CompanyProfile")
