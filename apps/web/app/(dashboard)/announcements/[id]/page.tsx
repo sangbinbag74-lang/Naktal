@@ -9,7 +9,6 @@ import { SaveButton } from "@/components/naktal/SaveButton";
 import { BidRequestButton } from "@/components/naktal/BidRequestButton";
 import { AnnouncementTimeline } from "@/components/naktal/AnnouncementTimeline";
 import { OrgRecentStats } from "@/components/naktal/OrgRecentStats";
-import { QualificationDetail } from "@/components/naktal/QualificationDetail";
 import { extractBidSchedule, extractMetadata, formatPrearngPrceMethod } from "@/lib/g2b-fields";
 import {
   g2bFetchAnnouncementByNo,
@@ -414,14 +413,6 @@ export default async function AnnouncementDetailPage({
               <div style={{ fontSize: 13, color: "#94A3B8" }}>참가조건 정보가 없습니다.</div>
             )}
           </div>
-
-          {/* 적격심사 세부정보 (별표4 추정) */}
-          <QualificationDetail
-            budget={budgetNum}
-            category={a.category}
-            subCategories={subCats}
-            cntrctCnclsMthdNm={meta.cntrctCnclsMthdNm}
-          />
 
           {/* 발주처 최근 3개월 통계 */}
           <OrgRecentStats orgName={a.orgName} months={3} />

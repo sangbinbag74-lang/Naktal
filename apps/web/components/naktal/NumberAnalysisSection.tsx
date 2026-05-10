@@ -104,6 +104,9 @@ export function NumberAnalysisSection({ annId, isClosed, bidMethod, multiplePric
 
   // 마운트 시 (1) localStorage 캐시 우선, (2) 서버 NumberRecommendation 조회
   useEffect(() => {
+    // 계약 미완료 — 캐시·history 모두 조회 금지 (잠금 강제)
+    if (!isContracted) return;
+
     let aborted = false;
 
     // 1. localStorage 캐시 (같은 브라우저)
@@ -146,7 +149,7 @@ export function NumberAnalysisSection({ annId, isClosed, bidMethod, multiplePric
       .catch(() => { /* 무시 */ });
 
     return () => { aborted = true; };
-  }, [cacheKey, annId]);
+  }, [cacheKey, annId, isContracted]);
 
   // 계약 완료 + 결과 없음 → 자동 분석 호출 (history 조회 결과 반영 후)
   useEffect(() => {
@@ -158,6 +161,7 @@ export function NumberAnalysisSection({ annId, isClosed, bidMethod, multiplePric
 
   async function handleAnalyze() {
     if (loading || isClosed) return;
+    if (!isContracted) return; // 계약 미완료 — 분석 호출 금지
     setLoading(true);
     setError(null);
     setUpgradeUrl(null);
@@ -213,7 +217,25 @@ export function NumberAnalysisSection({ annId, isClosed, bidMethod, multiplePric
         </div>
       )}
 
-      {!isClosed && showForm && (
+      {/* 계약 미완료 — 락 카드 단독 (fetch 자체 차단) */}
+      {!isClosed && !isContracted && (
+        <div style={{
+          background: "#F8FAFC", border: "1px solid #E2E8F0", borderRadius: 12,
+          padding: "32px 24px", display: "flex", flexDirection: "column",
+          alignItems: "center", justifyContent: "center", gap: 10,
+        }}>
+          <div style={{ fontSize: 36 }}>🔒</div>
+          <div style={{ fontSize: 15, fontWeight: 700, color: "#0F172A" }}>
+            계약 완료 후 공개됩니다
+          </div>
+          <div style={{ fontSize: 12, color: "#64748B", textAlign: "center", lineHeight: 1.5 }}>
+            투찰 의뢰 + 전자서명 완료 시<br />
+            AI 추천 번호 조합 4종 + 빈도 히트맵 공개
+          </div>
+        </div>
+      )}
+
+      {!isClosed && isContracted && showForm && (
         <div style={{ background: "#fff", borderRadius: 12, border: "1px solid #E8ECF2", padding: "18px 20px" }}>
           <div style={{ display: "flex", gap: 12, alignItems: "flex-end" }}>
             <div style={{ flex: 1 }}>
@@ -270,7 +292,7 @@ export function NumberAnalysisSection({ annId, isClosed, bidMethod, multiplePric
       )}
 
       {/* 결과 */}
-      {result && (
+      {result && isContracted && (
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
           {result.isFallback && (
             <div style={{ background: "#FFFBEB", border: "1px solid #FDE68A", borderRadius: 10, padding: "10px 14px", fontSize: 13, color: "#92400E" }}>
