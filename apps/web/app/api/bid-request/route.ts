@@ -89,6 +89,50 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     }, { status: 400 });
   }
 
+  // 전자서명 검증 — 본인 사업자번호/대표자명 일치 강제 (계약 위조 방지)
+  if (bizRegNo || repName) {
+    const { data: userInfo } = await admin
+      .from("User")
+      .select("bizNo, bizName, ownerName")
+      .eq("id", userId)
+      .single();
+    if (!userInfo) {
+      return NextResponse.json({ error: "USER_NOT_FOUND", message: "사용자 정보 없음" }, { status: 401 });
+    }
+    const userBizNo = String((userInfo as { bizNo?: string }).bizNo ?? "").replace(/\D/g, "");
+    const userOwner = String((userInfo as { ownerName?: string }).ownerName ?? "").trim();
+    const userBizName = String((userInfo as { bizName?: string }).bizName ?? "").trim();
+    const inputBizNo = String(bizRegNo ?? "").replace(/\D/g, "");
+    const inputName = String(repName ?? "").trim();
+
+    // 1. 사업자번호 10자리 + 본인 일치
+    if (inputBizNo.length !== 10) {
+      return NextResponse.json({
+        error: "INVALID_BIZNO",
+        message: "사업자등록번호는 10자리 숫자입니다.",
+      }, { status: 400 });
+    }
+    if (inputBizNo !== userBizNo) {
+      return NextResponse.json({
+        error: "BIZNO_MISMATCH",
+        message: "본인 사업자등록번호가 아닙니다. 가입 시 등록한 사업자번호로만 계약 가능합니다.",
+      }, { status: 400 });
+    }
+    // 2. 대표자명 또는 회사명 일치 (둘 중 하나라도 매칭)
+    const ownerOk = userOwner.length > 0 && (
+      userOwner === inputName || inputName.includes(userOwner) || userOwner.includes(inputName)
+    );
+    const bizNameOk = userBizName.length > 0 && (
+      userBizName === inputName || inputName.includes(userBizName) || userBizName.includes(inputName)
+    );
+    if (!ownerOk && !bizNameOk) {
+      return NextResponse.json({
+        error: "NAME_MISMATCH",
+        message: `대표자명이 가입 정보와 일치하지 않습니다. (등록 대표: ${userOwner})`,
+      }, { status: 400 });
+    }
+  }
+
   const contractIp = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
 
   // UPDATE 분기용 기본 수수료 (INSERT는 personalFeeRate/Amount로 override)

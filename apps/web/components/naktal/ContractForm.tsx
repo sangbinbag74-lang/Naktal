@@ -82,7 +82,8 @@ export function ContractForm(props: Props) {
       });
       if (!res.ok) {
         const json = await res.json().catch(() => ({}));
-        setError(json.error ?? "서명 저장에 실패했습니다.");
+        // 서버 검증 메시지 (BIZNO_MISMATCH / NAME_MISMATCH 등) 우선 표시
+        setError(json.message ?? json.error ?? "서명 저장에 실패했습니다.");
         setLoading(false);
         return;
       }
@@ -114,6 +115,9 @@ export function ContractForm(props: Props) {
 
       {/* 서명 입력 폼 */}
       <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+        <div style={{ padding: "10px 14px", background: "#FEF2F2", border: "1px solid #FECACA", borderRadius: 8, fontSize: 12, color: "#7F1D1D" }}>
+          ⚠️ <strong>본인 사업자번호 + 대표자명만</strong> 계약 가능합니다. 가입 시 등록한 정보와 일치해야 합니다.
+        </div>
         <div>
           <label style={{ fontSize: 12, fontWeight: 600, color: "#374151", display: "block", marginBottom: 6 }}>
             사업자등록번호
