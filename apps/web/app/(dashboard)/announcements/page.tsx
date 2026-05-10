@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { isMultiplePriceBid } from "@/lib/bid-utils";
 import { CATEGORY_GROUPS } from "@/lib/category-map";
 import { normalizeRegion } from "@/lib/region-alias";
+import { KOREA_REGIONS, findProvince } from "@/lib/korea-regions";
 
 const FOLDER_KEY = "naktal_folder";
 function getFolderIds(): string[] {
@@ -357,10 +358,8 @@ const REGION_GROUPS: { label: string; items: RegionItem[] }[] = [
 
 const RGN_TYPE_FILTERS = [
   { key: "", label: "전체" },
-  { key: "전국", label: "전국" },
-  { key: "도", label: "도 업체" },
-  { key: "시", label: "시 업체" },
-  { key: "관내", label: "관내" },
+  { key: "전국", label: "전국 참여" },
+  { key: "관내", label: "지역제한 있음" },
 ];
 
 const NTCE_KINDS = [
@@ -401,6 +400,9 @@ export default function AnnouncementsPage() {
   const [rgnType, setRgnType] = useState<string>("");
   const [ntceKind, setNtceKind] = useState<string>("");
   const [excludeNgtn, setExcludeNgtn] = useState<boolean>(true); // 수의계약 자동 제외 (default ON)
+  const [myProvince, setMyProvince] = useState<string>("");      // 내 사업장 광역 (예: "전북")
+  const [myCity, setMyCity] = useState<string>("");              // 내 사업장 시·군 (예: "익산시")
+  const [onlyMyRegion, setOnlyMyRegion] = useState<boolean>(false);
 
   // hydrated 플래그: localStorage 복원 완료 후에만 fetch 실행 (race condition 방지)
   const [hydrated, setHydrated] = useState(false);
@@ -420,6 +422,9 @@ export default function AnnouncementsPage() {
     if (typeof saved.rgnType === "string")         setRgnType(saved.rgnType);
     if (typeof saved.ntceKind === "string")        setNtceKind(saved.ntceKind);
     if (typeof saved.excludeNgtn === "boolean")    setExcludeNgtn(saved.excludeNgtn);
+    if (typeof saved.myProvince === "string")      setMyProvince(saved.myProvince);
+    if (typeof saved.myCity === "string")          setMyCity(saved.myCity);
+    if (typeof saved.onlyMyRegion === "boolean")   setOnlyMyRegion(saved.onlyMyRegion);
     setHydrated(true);
   }, []);
 
@@ -443,6 +448,12 @@ export default function AnnouncementsPage() {
         if (rgnType)        params.set("rgnType", rgnType);
         if (ntceKind)       params.set("ntceKind", ntceKind);
         if (excludeNgtn)    params.set("excludeNgtn", "1");
+        if (onlyMyRegion && myProvince) {
+          // 내 사업장 광역 + 시 (시는 선택사항)
+          const tokens: string[] = [myProvince];
+          if (myCity) tokens.push(myCity);
+          params.set("myRegions", tokens.join(","));
+        }
         const res = await fetch(`/api/announcements?${params}`);
         const json = (await res.json()) as ApiResponse;
         const newItems: Announcement[] = json.data ?? [];
@@ -455,7 +466,7 @@ export default function AnnouncementsPage() {
         setLoading(false);
       }
     },
-    [keyword, konepsId, categories, regions, sort, contractMethod, deadlineRange, minBudget, maxBudget, rgnType, ntceKind, excludeNgtn]
+    [keyword, konepsId, categories, regions, sort, contractMethod, deadlineRange, minBudget, maxBudget, rgnType, ntceKind, excludeNgtn, onlyMyRegion, myProvince, myCity]
   );
 
   const triggerDebouncedSearch = useCallback(() => {
@@ -476,7 +487,7 @@ export default function AnnouncementsPage() {
   }, [hydrated]);
 
   const handleSearch = () => {
-    saveFilters({ keyword, categories, regions, sort, contractMethod, deadlineRange, minBudget, maxBudget, budgetPreset, rgnType, ntceKind, excludeNgtn });
+    saveFilters({ keyword, categories, regions, sort, contractMethod, deadlineRange, minBudget, maxBudget, budgetPreset, rgnType, ntceKind, excludeNgtn, myProvince, myCity, onlyMyRegion });
     setPage(1);
     setItems([]);
     setHasMore(true);
@@ -912,7 +923,53 @@ export default function AnnouncementsPage() {
           </div>
         )}
 
-        {/* 참가 (위로 이동) */}
+        {/* 참가 — 내 사업장 위치 기반 자동 매칭 (전국+내 도+내 시 모두) */}
+        <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+          <span style={{ fontSize: 11, color: "#94A3B8", minWidth: 40 }}>내 사업장</span>
+          <select
+            value={myProvince}
+            onChange={(e) => { setMyProvince(e.target.value); setMyCity(""); }}
+            style={{ height: 28, padding: "0 10px", borderRadius: 99, fontSize: 12, border: "1px solid #E2E8F0", background: "#fff", cursor: "pointer" }}
+          >
+            <option value="">광역시·도 선택</option>
+            {KOREA_REGIONS.map((p) => (
+              <option key={p.code} value={p.code}>{p.label}</option>
+            ))}
+          </select>
+          <select
+            value={myCity}
+            onChange={(e) => setMyCity(e.target.value)}
+            disabled={!myProvince}
+            style={{ height: 28, padding: "0 10px", borderRadius: 99, fontSize: 12, border: "1px solid #E2E8F0", background: myProvince ? "#fff" : "#F8FAFC", cursor: myProvince ? "pointer" : "not-allowed", opacity: myProvince ? 1 : 0.5 }}
+          >
+            <option value="">시·군 선택 (선택사항)</option>
+            {(findProvince(myProvince)?.cities ?? []).map((c) => (
+              <option key={c} value={c}>{c}</option>
+            ))}
+          </select>
+          <label style={{
+            display: "flex", alignItems: "center", gap: 6, paddingLeft: 4,
+            fontSize: 12, color: "#374151", cursor: myProvince ? "pointer" : "not-allowed",
+            userSelect: "none", opacity: myProvince ? 1 : 0.5,
+          }}
+            title={myProvince
+              ? `${myProvince}${myCity ? " " + myCity : ""} 업체로 참여 가능한 공고만 (전국 + 같은 도 + 같은 시 매칭)`
+              : "광역시·도를 먼저 선택하세요"}
+          >
+            <input
+              type="checkbox"
+              checked={onlyMyRegion && !!myProvince}
+              disabled={!myProvince}
+              onChange={(e) => setOnlyMyRegion(e.target.checked)}
+              style={{ width: 14, height: 14, accentColor: "#059669", cursor: "inherit" }}
+            />
+            <span style={{ fontWeight: onlyMyRegion ? 600 : 400, color: onlyMyRegion ? "#059669" : "#64748B" }}>
+              내 사업장 참여 가능만
+            </span>
+          </label>
+        </div>
+
+        {/* 참가제한 종류 (전체/전국/지역제한) */}
         <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
           <span style={{ fontSize: 11, color: "#94A3B8", minWidth: 40 }}>참가</span>
           {RGN_TYPE_FILTERS.map((f) => {

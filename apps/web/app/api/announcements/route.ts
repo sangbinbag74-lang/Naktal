@@ -238,21 +238,13 @@ async function fetchFromDB(opts: Record<string, string | number>): Promise<NextR
   }
   if (konepsId)       q = q.ilike("konepsId", `%${konepsId}%`);
   if (prtcptnLmt)     q = q.filter("rawJson->>prtcptnLmtNm", "ilike", `%${prtcptnLmt}%`);
+  // 참가 필터 — 단순화 (PostgREST .or/.eq chain 충돌 회피)
+  //   전국 = bidPrtcptLmtYn 이 Y 아닌 모든 row (NULL/N/빈값)
+  //   도/시/관내 = bidPrtcptLmtYn=Y (지역제한 있음 — 세부 분류는 카드 배지로 표시)
   if (rgnType === "전국") {
-    // 전국 참여 가능 = bidPrtcptLmtYn 이 Y가 아닌 모든 row (NULL/N/빈값)
-    q = q.or("rawJson->>bidPrtcptLmtYn.is.null,rawJson->>bidPrtcptLmtYn.eq.,rawJson->>bidPrtcptLmtYn.eq.N");
-  } else if (rgnType === "관내") {
-    // 시·군 단위 제한 (dminsttNm 또는 cnstrtsiteRgnNm 에 시·군 포함된 Y row)
-    q = q.eq("rawJson->>bidPrtcptLmtYn", "Y")
-         .or("rawJson->>dminsttNm.ilike.%시%,rawJson->>dminsttNm.ilike.%군%,rawJson->>dminsttNm.ilike.%구%,rawJson->>cnstrtsiteRgnNm.ilike.%시%,rawJson->>cnstrtsiteRgnNm.ilike.%군%,rawJson->>cnstrtsiteRgnNm.ilike.%구%");
-  } else if (rgnType === "도") {
-    // 광역 단위 제한 (jntcontrctDutyRgnNm1 채워짐)
-    q = q.eq("rawJson->>bidPrtcptLmtYn", "Y")
-         .not("rawJson->>jntcontrctDutyRgnNm1", "is", null);
-  } else if (rgnType === "시") {
-    // 시 단위 제한 (광역시 이름 포함된 jnt 또는 dminsttNm)
-    q = q.eq("rawJson->>bidPrtcptLmtYn", "Y")
-         .or("rawJson->>jntcontrctDutyRgnNm1.ilike.%광역시%,rawJson->>jntcontrctDutyRgnNm1.ilike.%특별시%,rawJson->>dminsttNm.ilike.%광역시%,rawJson->>dminsttNm.ilike.%특별시%");
+    q = q.or("rawJson->>bidPrtcptLmtYn.is.null,rawJson->>bidPrtcptLmtYn.neq.Y");
+  } else if (rgnType === "관내" || rgnType === "도" || rgnType === "시") {
+    q = q.eq("rawJson->>bidPrtcptLmtYn", "Y");
   }
   if (ntceKind)       q = q.filter("rawJson->>ntceKindNm", "ilike", `%${ntceKind}%`);
 
