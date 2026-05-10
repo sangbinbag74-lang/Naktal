@@ -72,6 +72,23 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     bizRegNo, repName,
   } = body;
 
+  // 데이터 부족(fallback) 의뢰 차단 — BidPricePrediction 검증
+  // sampleSize=0 인 경우 comprehensive route 가 적재 차단했으므로 row 없음 → 거부
+  const { data: pred } = await admin
+    .from("BidPricePrediction")
+    .select("sampleSize")
+    .eq("annId", annId)
+    .gt("expiresAt", new Date().toISOString())
+    .maybeSingle();
+  const sampleSize = Number((pred as { sampleSize?: number } | null)?.sampleSize ?? 0);
+  if (!pred || sampleSize < 5) {
+    return NextResponse.json({
+      error: "INSUFFICIENT_DATA",
+      message: "발주처·업종 학습 데이터가 부족하여 의뢰를 받을 수 없습니다. 충분한 입찰 이력이 쌓인 후 재시도 부탁드립니다.",
+      sampleSize,
+    }, { status: 400 });
+  }
+
   const contractIp = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
 
   // UPDATE 분기용 기본 수수료 (INSERT는 personalFeeRate/Amount로 override)

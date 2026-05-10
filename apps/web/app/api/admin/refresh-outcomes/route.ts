@@ -1,6 +1,32 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/admin-guard";
 import { createAdminClient } from "@/lib/supabase/server";
+import { g2bFetchBidResultPage, g2bParseDate, toYMD } from "@/lib/g2b";
+
+const SCSBID_OPS = [
+  "getScsbidListSttusThng",
+  "getScsbidListSttusCnstwk",
+  "getScsbidListSttusServc",
+  "getScsbidListSttusFrgcpt",
+];
+
+// G2B 직접 조회 (BidResult 미수집 공고용 — 단건)
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function fetchFromG2B(konepsId: string, deadline: Date): Promise<any | null> {
+  const fromDate = toYMD(new Date(deadline.getTime() - 7 * 86400000)) + "0000";
+  const toDate = toYMD(new Date(deadline.getTime() + 60 * 86400000)) + "2359";
+  for (const op of SCSBID_OPS) {
+    try {
+      const { items } = await g2bFetchBidResultPage({
+        pageNo: 1, numOfRows: 100, inqryBgnDt: fromDate, inqryEndDt: toDate, operation: op,
+      });
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const m = items.find((i: any) => i.bidNtceNo?.trim() === konepsId);
+      if (m) return m;
+    } catch { /* 다음 카테고리 */ }
+  }
+  return null;
+}
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
   const guard = await requireAdmin(request);
@@ -9,13 +35,13 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   const admin = createAdminClient();
   const now = new Date().toISOString();
 
-  // 1. 마감 지났으나 결과 미입력 BidRequest 조회 (최대 200건)
+  // 1. 마감 지났으나 결과 미입력 BidRequest 조회 (최대 50건 — G2B 호출 부담)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data: pending, error: pendingErr } = await (admin.from("BidRequest") as any)
-    .select("id,userId,konepsId,budget,recommendedBidPrice,predictedSajungRate")
+    .select("id,userId,konepsId,budget,recommendedBidPrice,predictedSajungRate,deadline")
     .lt("deadline", now)
     .is("isWon", null)
-    .limit(200);
+    .limit(50);
 
   if (pendingErr) {
     return NextResponse.json({ error: pendingErr.message }, { status: 500 });
@@ -52,9 +78,32 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   // 4. 각 BidRequest 업데이트
   let updated = 0;
   let skipped = 0;
+  let g2bFetched = 0;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   for (const req of pending as any[]) {
-    const res = resultMap[req.konepsId];
+    let res = resultMap[req.konepsId];
+    // BidResult 없으면 G2B 직접 조회 (단건, 4 op 순차)
+    if (!res && req.konepsId && req.deadline) {
+      const found = await fetchFromG2B(req.konepsId, new Date(req.deadline));
+      if (found) {
+        const rateRaw = (found.sucsfbidRate || "").replace(/[^0-9.]/g, "");
+        const priceRaw = (found.sucsfbidAmt || "").replace(/[^0-9]/g, "");
+        if (rateRaw && priceRaw) {
+          res = {
+            annId: req.konepsId,
+            bidRate: parseFloat(rateRaw).toFixed(3),
+            finalPrice: String(parseInt(priceRaw, 10)),
+            numBidders: parseInt((found.prtcptCnum || found.totPrtcptCo || "0").replace(/[^0-9]/g, ""), 10),
+            winnerName: found.sucsfbidCorpNm?.trim() || found.bidwinnrNm?.trim() || null,
+            openedAt: found.opengDt ? g2bParseDate(found.opengDt) : null,
+          };
+          // BidResult 에 upsert (다음 호출부터는 캐시됨)
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          await (admin.from("BidResult") as any).upsert(res, { onConflict: "annId" });
+          g2bFetched++;
+        }
+      }
+    }
     if (!res) { skipped++; continue; }
 
     const bizName: string = userMap[req.userId] ?? "";
@@ -115,5 +164,6 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     total: pending.length,
     updated,
     skipped,
+    g2bFetched,
   });
 }

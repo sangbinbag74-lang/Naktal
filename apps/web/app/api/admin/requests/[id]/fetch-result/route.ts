@@ -38,10 +38,11 @@ export async function POST(
     return NextResponse.json({ ok: false, message: "konepsId 없음" }, { status: 400 });
   }
 
-  // 날짜 범위: deadline 기준 ±14일
+  // 날짜 범위: deadline 기준 -7일 ~ +60일
+  // (개찰 게재가 마감 후 1~6주 지연될 수 있어 충분한 범위 필요)
   const deadline = new Date(bidReq.deadline);
-  const fromDate = toYMD(new Date(deadline.getTime() - 14 * 86400000)) + "0000";
-  const toDate = toYMD(new Date(deadline.getTime() + 14 * 86400000)) + "2359";
+  const fromDate = toYMD(new Date(deadline.getTime() - 7 * 86400000)) + "0000";
+  const toDate = toYMD(new Date(deadline.getTime() + 60 * 86400000)) + "2359";
 
   // 4개 카테고리 순서대로 조회 (매칭되면 중단)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
