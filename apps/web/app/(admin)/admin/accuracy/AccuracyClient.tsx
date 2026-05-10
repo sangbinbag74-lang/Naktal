@@ -36,22 +36,50 @@ function dday(deadline: string): { label: string; color: string } {
   return { label: `D-${diff}`, color: "#475569" };
 }
 
+type CatFilter = "all" | "construction" | "non-construction";
+type SortKey = "deadline-asc" | "deadline-desc" | "bid-desc" | "rate-desc" | "winprob-desc";
+
+const isCon = (cat?: string | null) => !!cat && (cat.includes("공사") || cat === "시설공사");
+
 export function AccuracyClient({ bppList, activeCount, predCount }: Props) {
   const router = useRouter();
   const [search, setSearch] = useState("");
+  const [catFilter, setCatFilter] = useState<CatFilter>("all");
+  const [sortKey, setSortKey] = useState<SortKey>("deadline-asc");
   const [running, setRunning] = useState(false);
   const [runLog, setRunLog] = useState<string | null>(null);
 
   const unpredCount = Math.max(0, activeCount - predCount);
 
-  const filtered = bppList.filter((r) => {
-    if (!search) return true;
-    const ann = r.announcement;
-    return (
-      ann?.title?.includes(search) ||
-      ann?.orgName?.includes(search)
-    );
-  });
+  const filtered = bppList
+    .filter((r) => {
+      const ann = r.announcement;
+      // 1) 검색 — 공고명·발주처·카테고리 매칭
+      if (search) {
+        const q = search.toLowerCase();
+        const hit =
+          (ann?.title ?? "").toLowerCase().includes(q) ||
+          (ann?.orgName ?? "").toLowerCase().includes(q) ||
+          (ann?.category ?? "").toLowerCase().includes(q);
+        if (!hit) return false;
+      }
+      // 2) 카테고리 필터
+      if (catFilter === "construction" && !isCon(ann?.category)) return false;
+      if (catFilter === "non-construction" && isCon(ann?.category)) return false;
+      return true;
+    })
+    .sort((a, b) => {
+      const aa = a.announcement;
+      const bb = b.announcement;
+      switch (sortKey) {
+        case "deadline-asc":  return new Date(aa?.deadline ?? "").getTime() - new Date(bb?.deadline ?? "").getTime();
+        case "deadline-desc": return new Date(bb?.deadline ?? "").getTime() - new Date(aa?.deadline ?? "").getTime();
+        case "bid-desc":      return Number(b.optimalBidPrice ?? 0) - Number(a.optimalBidPrice ?? 0);
+        case "rate-desc":     return (b.predictedSajungRate ?? 0) - (a.predictedSajungRate ?? 0);
+        case "winprob-desc":  return (b.winProbability ?? 0) - (a.winProbability ?? 0);
+        default: return 0;
+      }
+    });
 
   async function handleRunAll() {
     setRunning(true);
@@ -97,11 +125,31 @@ export function AccuracyClient({ bppList, activeCount, predCount }: Props) {
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
         <input
           type="text"
-          placeholder="공고명 / 발주처 검색"
+          placeholder="공고명 / 발주처 / 업종 검색"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          style={{ flex: "1 1 200px", minWidth: 160, padding: "7px 11px", border: "1.5px solid #E2E8F0", borderRadius: 8, fontSize: 12.5, outline: "none" }}
+          style={{ flex: "1 1 220px", minWidth: 180, padding: "7px 11px", border: "1.5px solid #E2E8F0", borderRadius: 8, fontSize: 12.5, outline: "none" }}
         />
+        <select
+          value={catFilter}
+          onChange={(e) => setCatFilter(e.target.value as CatFilter)}
+          style={{ padding: "7px 10px", border: "1.5px solid #E2E8F0", borderRadius: 8, fontSize: 12.5, background: "#fff", cursor: "pointer" }}
+        >
+          <option value="all">전체 카테고리</option>
+          <option value="construction">공사만</option>
+          <option value="non-construction">비공사 (용역·물품)</option>
+        </select>
+        <select
+          value={sortKey}
+          onChange={(e) => setSortKey(e.target.value as SortKey)}
+          style={{ padding: "7px 10px", border: "1.5px solid #E2E8F0", borderRadius: 8, fontSize: 12.5, background: "#fff", cursor: "pointer" }}
+        >
+          <option value="deadline-asc">마감 가까운 순</option>
+          <option value="deadline-desc">마감 먼 순</option>
+          <option value="bid-desc">추천 금액 높은 순</option>
+          <option value="rate-desc">예측 사정율 높은 순</option>
+          <option value="winprob-desc">낙찰 확률 높은 순</option>
+        </select>
         <span style={{ fontSize: 12, color: "#9CA3AF", whiteSpace: "nowrap" }}>{filtered.length}건</span>
         <div style={{ marginLeft: "auto", display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 4 }}>
           <button
