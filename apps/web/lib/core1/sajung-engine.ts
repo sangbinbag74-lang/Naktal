@@ -168,6 +168,13 @@ function extractParentOrgName(orgName: string): string | null {
   return `${tokens[0]} ${tokens[1]}`;
 }
 
+/** orgName 의 첫 1 토큰 (광역시·도) — '서울특별시 중구' → '서울특별시' */
+function extractTopOrgName(orgName: string): string | null {
+  const tokens = (orgName ?? "").trim().split(/\s+/).filter(Boolean);
+  if (tokens.length < 1) return null;
+  return tokens[0] ?? null;
+}
+
 /** 부모 발주처(시·군) ILIKE 매칭 — 산하기관 합산 (가중 평균) */
 async function querySajungStatByParentOrg(
   parentOrg: string,
@@ -423,6 +430,21 @@ export async function predictOptimalBid(params: {
       if (parentStat && parentStat.sampleSize >= 5) {
         stat = parentStat;
         // 확장 매칭이지만 부모 시·군 단위 통계는 의미 있는 분석으로 간주 (isFallback=false 유지)
+      }
+    }
+  }
+
+  // 1-b. 시·군 단위도 0/sparse → 광역시·도 단위 ILIKE 확장
+  //   예: '서울특별시 중구' 0건 → '서울특별시' 산하 모든 기관 합산
+  if (!stat || stat.sampleSize < 5) {
+    const topOrg = extractTopOrgName(orgName);
+    if (topOrg) {
+      let topStat = await querySajungStatByParentOrg(topOrg, params.category, budgetRange, params.region);
+      if ((!topStat || topStat.sampleSize < 5) && params.region) {
+        topStat = await querySajungStatByParentOrg(topOrg, params.category, budgetRange, "");
+      }
+      if (topStat && topStat.sampleSize >= 5) {
+        stat = topStat;
       }
     }
   }

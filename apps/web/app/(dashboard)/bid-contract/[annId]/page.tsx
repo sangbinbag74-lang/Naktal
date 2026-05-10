@@ -142,9 +142,19 @@ export default async function BidContractPage({
             </div>
             <div style={{ background: "#EFF6FF", border: "1px solid #BFDBFE", borderRadius: 8, padding: "12px 14px" }}>
               <strong style={{ color: "#1E40AF" }}>을 (이용자)</strong><br /><br />
-              상호: <strong>{userBizName || "(서명란에 기재)"}</strong><br />
-              사업자등록번호: <strong>{userBizNo ? fmtBizNo(userBizNo) : "(서명란에 기재)"}</strong><br />
-              대표자: <strong>{userOwnerName || "(서명란에 기재)"}</strong>
+              {isContractDone ? (
+                <>
+                  상호: <strong>{userBizName || "-"}</strong><br />
+                  사업자등록번호: <strong>{userBizNo ? fmtBizNo(userBizNo) : "-"}</strong><br />
+                  대표자: <strong>{userOwnerName || "-"}</strong>
+                </>
+              ) : (
+                <>
+                  상호: <strong style={{ color: "#94A3B8" }}>전자서명 시 본인 확인</strong><br />
+                  사업자등록번호: <strong style={{ color: "#94A3B8" }}>전자서명 시 본인 확인</strong><br />
+                  대표자: <strong style={{ color: "#94A3B8" }}>전자서명 시 본인 확인</strong>
+                </>
+              )}
             </div>
           </div>
         </div>

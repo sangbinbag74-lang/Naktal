@@ -22,12 +22,22 @@ function fmtTime(d: Date | null): string {
 }
 function dDayLabel(d: Date | null): { label: string; color: string } {
   if (!d) return { label: "-", color: "#94A3B8" };
-  const diff = Math.ceil((d.getTime() - Date.now()) / 86400000);
-  if (diff < 0) return { label: "마감", color: "#94A3B8" };
-  if (diff === 0) return { label: "오늘", color: "#DC2626" };
-  if (diff <= 2) return { label: `${diff}일 남음`, color: "#DC2626" };
-  if (diff <= 5) return { label: `${diff}일 남음`, color: "#C2410C" };
-  return { label: `${diff}일 남음`, color: "#1E40AF" };
+  const ms = d.getTime() - Date.now();
+  if (ms < 0) return { label: "마감", color: "#94A3B8" };
+  const totalH = Math.floor(ms / 3600000);
+  // 24시간 미만 — 시·분 단위
+  if (totalH < 24) {
+    if (totalH < 1) {
+      const mins = Math.max(0, Math.floor(ms / 60000));
+      return { label: `${mins}분 남음`, color: "#DC2626" };
+    }
+    const mins = Math.floor((ms - totalH * 3600000) / 60000);
+    return { label: mins > 0 ? `${totalH}시간 ${mins}분 남음` : `${totalH}시간 남음`, color: "#DC2626" };
+  }
+  const days = Math.floor(totalH / 24);
+  if (days <= 2) return { label: `${days}일 남음`, color: "#DC2626" };
+  if (days <= 5) return { label: `${days}일 남음`, color: "#C2410C" };
+  return { label: `${days}일 남음`, color: "#1E40AF" };
 }
 
 export function AnnouncementTimeline({

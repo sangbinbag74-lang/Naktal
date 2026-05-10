@@ -152,15 +152,20 @@ export default async function BidResultPage({
   let avgSajungRate = Number((statRow ?? statFallback)?.avg ?? 0);
   let sampleSize = Number(statRow?.sampleSize ?? statFallback?.sampleSize ?? 0);
 
-  // 부모 시·군 확장 매칭 (orgName 첫 2 토큰 ILIKE) — '경상북도 봉화군 체육시설사업소' 0건 → '경상북도 봉화군%' 산하 합산
+  // 부모 단위 ILIKE 확장 — 시·군 → 광역시·도 순서로
+  // 예1: '경상북도 봉화군 체육시설사업소' → '경상북도 봉화군%'
+  // 예2: '서울특별시 중구' → '서울특별시%' (1차 0건 시)
   if (sampleSize < 5) {
     const orgTokens = String(ann.orgName ?? "").trim().split(/\s+/);
-    if (orgTokens.length >= 2) {
-      const parentOrg = `${orgTokens[0]} ${orgTokens[1]}`;
+    const candidates = [
+      orgTokens.length >= 2 ? `${orgTokens[0]} ${orgTokens[1]}` : null,
+      orgTokens.length >= 1 ? orgTokens[0] : null,
+    ].filter(Boolean) as string[];
+    for (const prefix of candidates) {
       const { data: parentRows } = await admin
         .from("SajungRateStat")
         .select("avg,sampleSize")
-        .ilike("orgName", `${parentOrg}%`)
+        .ilike("orgName", `${prefix}%`)
         .eq("category", ann.category as string)
         .eq("budgetRange", budgetRange)
         .eq("region", ann.region as string);
@@ -169,6 +174,7 @@ export default async function BidResultPage({
       if (total >= 5) {
         avgSajungRate = rows.reduce((s, r) => s + Number(r.avg) * Number(r.sampleSize ?? 0), 0) / total;
         sampleSize = total;
+        break;
       }
     }
   }
