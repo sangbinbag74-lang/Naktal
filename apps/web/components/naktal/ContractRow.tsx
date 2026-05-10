@@ -1,6 +1,5 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import Link from "next/link";
 
 interface Props {
@@ -52,13 +51,17 @@ function WonBadge({ isWon }: { isWon: boolean | null }) {
 }
 
 export function ContractRow({ annId, title, orgName, contractAt, recommendedBidPrice, deadline, isWon }: Props) {
-  const router = useRouter();
   const dday = getDDay(deadline);
   const won = isWon === true;
 
+  // <a> nesting 회피 — div + onClick(window.open) 으로 새 탭 열기
+  function openInNewTab(href: string) {
+    window.open(href, "_blank", "noopener,noreferrer");
+  }
+
   return (
     <div
-      onClick={() => router.push(`/bid-result/${annId}`)}
+      onClick={() => openInNewTab(`/bid-result/${annId}`)}
       style={{
         background: won ? "linear-gradient(135deg, #fff 0%, #ECFDF5 100%)" : "#fff",
         borderRadius: 14, border: `1px solid ${won ? "#86EFAC" : "#E8ECF2"}`,
@@ -80,6 +83,8 @@ export function ContractRow({ annId, title, orgName, contractAt, recommendedBidP
             <span style={{ color: "#CBD5E1" }}>|</span>
             <Link
               href={`/bid-contract/${annId}`}
+              target="_blank"
+              rel="noopener noreferrer"
               onClick={(e) => e.stopPropagation()}
               style={{ color: "#1B3A6B", textDecoration: "none", fontWeight: 600 }}
               onMouseEnter={(e) => { e.currentTarget.style.textDecoration = "underline"; }}
@@ -89,6 +94,8 @@ export function ContractRow({ annId, title, orgName, contractAt, recommendedBidP
             </Link>
             <Link
               href={`/announcements/${annId}`}
+              target="_blank"
+              rel="noopener noreferrer"
               onClick={(e) => e.stopPropagation()}
               style={{ color: "#1B3A6B", textDecoration: "none", fontWeight: 600 }}
               onMouseEnter={(e) => { e.currentTarget.style.textDecoration = "underline"; }}
