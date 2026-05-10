@@ -121,29 +121,6 @@ export function AccuracyClient({ bppList, activeCount, predCount }: Props) {
     catFilter === "non-construction" ? "비공사" :
                                         "전체";
 
-  async function handleCleanupFallback() {
-    const ok = window.confirm(
-      "잘못된 fallback 캐시·이력을 강제 정리합니다.\n\n" +
-      "▸ BidPricePrediction: sampleSize=0 또는 사정율 103.8% row 삭제\n" +
-      "▸ BidRequest: 미계약·미마감 + 사정율 103.8% row 의 분석 필드 NULL\n" +
-      "  (계약 완료된 이력은 보존)\n\n" +
-      "진행하시겠습니까?"
-    );
-    if (!ok) return;
-    setRunning(true);
-    setRunLog("강제 정리 중...");
-    try {
-      const res = await fetch("/api/admin/cleanup-fallback", { method: "POST" });
-      const result = await res.json();
-      if (!result.ok) { setRunLog("정리 실패: " + (result.error ?? "알 수 없음")); return; }
-      setRunLog(`정리 완료 — BPP 삭제 ${result.bppDeleted}건 (sampleSize=0: ${result.bppZeroDeleted} / rate=103.8: ${result.bppRate103Deleted}) · BidRequest 정리 ${result.brCleaned}건`);
-    } catch {
-      setRunLog("네트워크 오류");
-    }
-    setRunning(false);
-    router.refresh();
-  }
-
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
       {/* 현황 카드 3개 */}
@@ -197,14 +174,6 @@ export function AccuracyClient({ bppList, activeCount, predCount }: Props) {
             style={{ fontSize: 12, padding: "7px 16px", borderRadius: 8, border: "none", background: running ? "#E2E8F0" : "#1B3A6B", color: running ? "#94A3B8" : "#fff", cursor: running ? "default" : "pointer", fontWeight: 700, whiteSpace: "nowrap" }}
           >
             {running ? "분석 중..." : `⚡ ${catLabel} 분석 실행`}
-          </button>
-          <button
-            onClick={handleCleanupFallback}
-            disabled={running}
-            style={{ fontSize: 11, padding: "5px 11px", borderRadius: 6, border: "1px solid #FECACA", background: running ? "#F1F5F9" : "#FEF2F2", color: running ? "#94A3B8" : "#B91C1C", cursor: running ? "default" : "pointer", fontWeight: 600, whiteSpace: "nowrap", marginTop: 4 }}
-            title="잘못된 fallback 값 (103.8%·sampleSize=0) 일괄 삭제"
-          >
-            🧹 fallback 강제 정리
           </button>
           {runLog && (
             <div style={{ fontSize: 11, color: running ? "#D97706" : "#059669" }}>{runLog}</div>
