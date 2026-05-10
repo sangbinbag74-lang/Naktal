@@ -103,10 +103,10 @@ export default async function BidResultPage({
   if (!dbUser) redirect("/login");
   if (!ann) notFound();
 
-  // 계약 완료된 BidRequest 조회
+  // 계약 완료된 BidRequest 조회 (snapshot 컬럼 포함 — 계약 시점 값 고정)
   const { data: req } = await admin
     .from("BidRequest")
-    .select("recommendedBidPrice,lowerLimitPrice,estimatedPrice,budget,predictedSajungRate,agreedFeeRate,agreedFeeAmount,contractAt,winProbability,competitionScore,aValueYn,aValueTotal,lowerLimitRate,userBidPrice,actualFinalPrice,totalBidders,isWon,winnerName,actualSajungRate,numberStrategy")
+    .select("recommendedBidPrice,lowerLimitPrice,estimatedPrice,budget,predictedSajungRate,agreedFeeRate,agreedFeeAmount,contractAt,winProbability,competitionScore,aValueYn,aValueTotal,lowerLimitRate,userBidPrice,actualFinalPrice,totalBidders,isWon,winnerName,actualSajungRate,numberStrategy,snapshotAvgSajungRate,snapshotSampleSize,snapshotConfidence,snapshotCategoryAvg,snapshotCategoryTotal")
     .eq("userId", dbUser.id as string)
     .eq("annId", ann.id as string)
     .not("contractAt", "is", null)
@@ -127,35 +127,43 @@ export default async function BidResultPage({
   const annBudget = Number(ann.budget ?? 0);
   const budgetRange = classifyBudget(annBudget > 0 ? annBudget : budget);
 
-  // statRow + statFallback 병렬 (statFallback 은 항상 호출 — 어차피 가벼우며 sequential 보다 빠름)
-  const [statRowRes, statFallbackRes] = await Promise.all([
-    admin
-      .from("SajungRateStat")
-      .select("avg,sampleSize")
-      .eq("orgName", ann.orgName as string)
-      .eq("category", ann.category as string)
-      .eq("budgetRange", budgetRange)
-      .eq("region", ann.region as string)
-      .maybeSingle(),
-    admin
-      .from("SajungRateStat")
-      .select("avg,sampleSize")
-      .eq("orgName", "ALL")
-      .eq("category", ann.category as string)
-      .eq("budgetRange", budgetRange)
-      .eq("region", "")
-      .maybeSingle(),
-  ]);
-  const statRow = statRowRes.data;
-  const statFallback = statFallbackRes.data;
+  // 계약 시점 스냅샷 우선 (이후 변동 차단). 없으면 SajungRateStat 폴백.
+  const hasSnapshot = req.snapshotAvgSajungRate != null && req.snapshotSampleSize != null;
 
-  let avgSajungRate = Number((statRow ?? statFallback)?.avg ?? 0);
-  let sampleSize = Number(statRow?.sampleSize ?? statFallback?.sampleSize ?? 0);
+  let avgSajungRate: number;
+  let sampleSize: number;
 
-  // 부모 단위 ILIKE 확장 — 시·군 → 광역시·도 순서로
-  // 예1: '경상북도 봉화군 체육시설사업소' → '경상북도 봉화군%'
-  // 예2: '서울특별시 중구' → '서울특별시%' (1차 0건 시)
-  if (sampleSize < 5) {
+  if (hasSnapshot) {
+    avgSajungRate = Number(req.snapshotAvgSajungRate);
+    sampleSize    = Number(req.snapshotSampleSize);
+  } else {
+    // 옛 BidRequest (스냅샷 컬럼 도입 전) — SajungRateStat 직접 조회
+    const [statRowRes, statFallbackRes] = await Promise.all([
+      admin
+        .from("SajungRateStat")
+        .select("avg,sampleSize")
+        .eq("orgName", ann.orgName as string)
+        .eq("category", ann.category as string)
+        .eq("budgetRange", budgetRange)
+        .eq("region", ann.region as string)
+        .maybeSingle(),
+      admin
+        .from("SajungRateStat")
+        .select("avg,sampleSize")
+        .eq("orgName", "ALL")
+        .eq("category", ann.category as string)
+        .eq("budgetRange", budgetRange)
+        .eq("region", "")
+        .maybeSingle(),
+    ]);
+    const statRow = statRowRes.data;
+    const statFallback = statFallbackRes.data;
+    avgSajungRate = Number((statRow ?? statFallback)?.avg ?? 0);
+    sampleSize = Number(statRow?.sampleSize ?? statFallback?.sampleSize ?? 0);
+  }
+
+  // 부모 단위 ILIKE 확장 — snapshot 없을 때만 (계약 시점 값 변동 차단)
+  if (!hasSnapshot && sampleSize < 5) {
     const orgTokens = String(ann.orgName ?? "").trim().split(/\s+/);
     const candidates = [
       orgTokens.length >= 2 ? `${orgTokens[0]} ${orgTokens[1]}` : null,
@@ -182,7 +190,11 @@ export default async function BidResultPage({
   const winProbability = Number(req.winProbability ?? 0); // 0~100 정수
   const competitionScore = Number(req.competitionScore ?? 0);
   const safetyMargin = price - lowerLimit; // 추천 - 낙찰하한가 (안전 마진 + seq)
-  const confidenceLevel: "HIGH" | "MEDIUM" | "LOW" = sampleSize >= 30 ? "HIGH" : sampleSize >= 5 ? "MEDIUM" : "LOW";
+  // snapshot 신뢰도 우선 (계약 시점 고정)
+  const confidenceLevel: "HIGH" | "MEDIUM" | "LOW" =
+    (req.snapshotConfidence === "HIGH" || req.snapshotConfidence === "MEDIUM" || req.snapshotConfidence === "LOW")
+      ? req.snapshotConfidence
+      : (sampleSize >= 30 ? "HIGH" : sampleSize >= 5 ? "MEDIUM" : "LOW");
   // A값 정보
   const isAValue = String(req.aValueYn ?? "") === "Y";
   const aValueTotal = Number(req.aValueTotal ?? 0);
@@ -200,8 +212,13 @@ export default async function BidResultPage({
   const kindLabel = annKindForLabel === "construction" ? "공사" : annKindForLabel === "service" ? "용역" : "물품";
 
   const needBackfill = !req.numberStrategy;
-  const [{ avg: categoryAvgSajungRate, total: catTotal }, computedStrategy] = await Promise.all([
-    getCategoryAllAvgSajung(ann.category as string),
+  const hasCatSnapshot = req.snapshotCategoryAvg != null && req.snapshotCategoryTotal != null;
+
+  // 카테고리 평균: snapshot 우선, 없으면 unstable_cache 폴백
+  const [catSnapshot, computedStrategy] = await Promise.all([
+    hasCatSnapshot
+      ? Promise.resolve({ avg: Number(req.snapshotCategoryAvg), total: Number(req.snapshotCategoryTotal) })
+      : getCategoryAllAvgSajung(ann.category as string),
     needBackfill
       ? recommendNumbers({
           annId: ann.id as string,
@@ -213,6 +230,8 @@ export default async function BidResultPage({
         }).catch((e) => { console.error("[bid-result] numberStrategy 백필 실패:", e); return null; })
       : Promise.resolve(null),
   ]);
+  const categoryAvgSajungRate = catSnapshot.avg;
+  const catTotal = catSnapshot.total;
 
   let resolvedStrategy: unknown = req.numberStrategy ?? computedStrategy ?? null;
   // DB UPDATE 는 fire-and-forget — 페이지 응답 차단하지 않음

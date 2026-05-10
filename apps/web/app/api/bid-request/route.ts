@@ -63,6 +63,9 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     bizRegNo?: string;
     repName?: string;
     numberStrategy?: unknown;
+    snapshotAvgSajungRate?: number | null;
+    snapshotSampleSize?: number | null;
+    snapshotConfidence?: string | null;
   };
 
   const {
@@ -71,6 +74,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     recommendedBidPrice, predictedSajungRate,
     estimatedPrice, lowerLimitPrice, winProbability, competitionScore,
     bizRegNo, repName, numberStrategy,
+    snapshotAvgSajungRate, snapshotSampleSize, snapshotConfidence,
   } = body;
 
   // 데이터 부족(fallback) 의뢰 차단 — BidPricePrediction 검증
@@ -136,6 +140,31 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
   const contractIp = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
 
+  // 카테고리 일반 평균 사정율 — 계약 시점 1회 계산해 스냅샷 (이후 변동 차단)
+  let snapshotCategoryAvg: number | null = null;
+  let snapshotCategoryTotal: number | null = null;
+  try {
+    const { data: annRow } = await admin.from("Announcement").select("category").eq("id", annId).maybeSingle();
+    const cat = (annRow as { category?: string } | null)?.category ?? "";
+    if (cat) {
+      const { data: catRows } = await admin
+        .from("SajungRateStat")
+        .select("avg,sampleSize")
+        .eq("category", cat)
+        .gt("sampleSize", 0)
+        .order("sampleSize", { ascending: false })
+        .limit(5000);
+      const rows = (catRows ?? []) as Array<{ avg: number; sampleSize: number }>;
+      const total = rows.reduce((s, r) => s + Number(r.sampleSize ?? 0), 0);
+      if (total > 0) {
+        snapshotCategoryAvg = rows.reduce((s, r) => s + Number(r.avg) * Number(r.sampleSize ?? 0), 0) / total;
+        snapshotCategoryTotal = total;
+      }
+    }
+  } catch (e) {
+    console.error("[bid-request] 카테고리 평균 스냅샷 실패:", (e as Error).message);
+  }
+
   // UPDATE 분기용 기본 수수료 (INSERT는 personalFeeRate/Amount로 override)
   let feeRate = recommendedBidPrice < 100_000_000 ? 0.017 : 0.015;
   let agreedFeeAmount = Math.round(recommendedBidPrice * feeRate);
@@ -167,6 +196,11 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         ...(repName ? { repName } : {}),
         ...(bizRegNo ? { contractAt: new Date().toISOString(), contractIp } : {}),
         ...(numberStrategy ? { numberStrategy } : {}),
+        ...(snapshotAvgSajungRate != null ? { snapshotAvgSajungRate } : {}),
+        ...(snapshotSampleSize != null ? { snapshotSampleSize } : {}),
+        ...(snapshotConfidence ? { snapshotConfidence } : {}),
+        ...(snapshotCategoryAvg != null ? { snapshotCategoryAvg } : {}),
+        ...(snapshotCategoryTotal != null ? { snapshotCategoryTotal } : {}),
       })
       .eq("id", existing.id)
       .select("id")
@@ -212,6 +246,11 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         ...(repName ? { repName } : {}),
         ...(bizRegNo ? { contractAt: new Date().toISOString(), contractIp } : {}),
         ...(numberStrategy ? { numberStrategy } : {}),
+        ...(snapshotAvgSajungRate != null ? { snapshotAvgSajungRate } : {}),
+        ...(snapshotSampleSize != null ? { snapshotSampleSize } : {}),
+        ...(snapshotConfidence ? { snapshotConfidence } : {}),
+        ...(snapshotCategoryAvg != null ? { snapshotCategoryAvg } : {}),
+        ...(snapshotCategoryTotal != null ? { snapshotCategoryTotal } : {}),
       })
       .select("id")
       .single();

@@ -42,8 +42,11 @@ export function ContractForm(props: Props) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [numberStrategy, setNumberStrategy] = useState<unknown>(null);
+  const [snapshotAvgSajungRate, setSnapshotAvg] = useState<number | null>(null);
+  const [snapshotSampleSize, setSnapshotSample] = useState<number | null>(null);
+  const [snapshotConfidence, setSnapshotConf] = useState<string | null>(null);
 
-  // 계약 시점에 AI 추천 번호 조합을 한 번 계산해 보관 → 계약 완료 시 BidRequest 에 그대로 저장
+  // 계약 시점에 AI 분석 스냅샷을 보관 → 계약 완료 시 BidRequest 에 그대로 저장 (이후 변동 차단)
   useEffect(() => {
     fetch("/api/analysis/comprehensive", {
       method: "POST",
@@ -52,8 +55,12 @@ export function ContractForm(props: Props) {
     })
       .then((r) => r.ok ? r.json() : null)
       .then((data) => {
-        const ns = data?.bidStrategy?.numberStrategy;
-        if (ns) setNumberStrategy(ns);
+        const bs = data?.bidStrategy;
+        if (bs?.numberStrategy) setNumberStrategy(bs.numberStrategy);
+        const avg = bs?.weightedAvg ?? bs?.simpleAvg ?? null;
+        if (typeof avg === "number") setSnapshotAvg(avg);
+        if (typeof bs?.sampleSize === "number") setSnapshotSample(bs.sampleSize);
+        if (typeof bs?.confidenceLevel === "string") setSnapshotConf(bs.confidenceLevel);
       })
       .catch(() => null);
   }, [annId]);
@@ -95,6 +102,9 @@ export function ContractForm(props: Props) {
           bizRegNo,
           repName: repName.trim(),
           numberStrategy,
+          snapshotAvgSajungRate,
+          snapshotSampleSize,
+          snapshotConfidence,
         }),
       });
       if (!res.ok) {
