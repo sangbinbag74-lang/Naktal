@@ -3,6 +3,7 @@ import Link from "next/link";
 import { createAdminClient, createClient } from "@/lib/supabase/server";
 import { BidResultCombos } from "@/components/naktal/BidResultCombos";
 import { classifyCategory, DEFAULT_LWLT_BY_KIND } from "@/lib/analysis/category-config";
+import { recommendNumbers } from "@/lib/core1/frequency-engine";
 
 function classifyBudget(budget: number): string {
   if (budget < 100_000_000)   return "1억미만";
@@ -134,6 +135,30 @@ export default async function BidResultPage({
   const isWonVal = req.isWon as boolean | null;
   const winnerNameVal = req.winnerName as string | null;
   const totalBiddersN = Number(req.totalBidders ?? 0);
+
+  // 번호 조합 — BidRequest 에 저장된 값 우선, 없으면 서버사이드로 1회 계산하여 즉시 UPDATE
+  let resolvedStrategy: unknown = req.numberStrategy ?? null;
+  if (!resolvedStrategy) {
+    try {
+      const computed = await recommendNumbers({
+        annId: ann.id as string,
+        category: ann.category as string,
+        budgetRange,
+        region: ann.region as string,
+        supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        supabaseKey: process.env.SUPABASE_SERVICE_ROLE_KEY!,
+      });
+      resolvedStrategy = computed;
+      // 백필 — 다음 진입 시 즉시 표시
+      await admin
+        .from("BidRequest")
+        .update({ numberStrategy: computed, updatedAt: new Date().toISOString() })
+        .eq("userId", dbUser.id as string)
+        .eq("annId", ann.id as string);
+    } catch (e) {
+      console.error("[bid-result] numberStrategy 백필 실패:", e);
+    }
+  }
 
   return (
     <div style={{ maxWidth: 560, margin: "0 auto", display: "flex", flexDirection: "column", gap: 20, paddingBottom: 40 }}>
@@ -335,7 +360,7 @@ export default async function BidResultPage({
       </div>
 
       {/* AI 번호 추천 결과 (복수예가 공고만 자동 표시) */}
-      <BidResultCombos annDbId={ann.id as string} stored={req.numberStrategy ?? null} />
+      <BidResultCombos annDbId={ann.id as string} stored={resolvedStrategy} />
 
       {/* 공고 상세로 */}
       <Link
