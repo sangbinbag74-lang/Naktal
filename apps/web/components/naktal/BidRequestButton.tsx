@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 
 interface Props {
   annId: string;
@@ -39,6 +40,7 @@ export function BidRequestButton({
   annId, konepsId, title, orgName, deadline,
   budget, lowerLimitRate, aValueYn, aValueTotal,
 }: Props) {
+  const router = useRouter();
   const [status, setStatus] = useState<Status>("idle");
   const [errorMsg, setErrorMsg] = useState<string>("");
   const [hasRequested, setHasRequested] = useState(false);
@@ -54,7 +56,7 @@ export function BidRequestButton({
   }, [annId]);
 
   function handleViewContract() {
-    window.open(`/bid-contract/${konepsId}`, "_blank", "noopener,noreferrer");
+    router.push(`/bid-contract/${konepsId}`);
   }
 
   async function handleClick() {
@@ -108,10 +110,10 @@ export function BidRequestButton({
         return;
       }
 
-      // 3. 계약 페이지 새 창 열기
-      window.open(`/bid-contract/${konepsId}`, "_blank", "noopener,noreferrer");
+      // 3. 계약 페이지 같은 탭 이동 (팝업 차단 회피)
+      setHasRequested(true);
       setStatus("idle");
-      setHasRequested(true); // 다시 누르면 "계약서 확인" 으로
+      router.push(`/bid-contract/${konepsId}`);
     } catch {
       setErrorMsg("네트워크 오류가 발생했습니다.");
       setStatus("error");

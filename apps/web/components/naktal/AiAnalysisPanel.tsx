@@ -75,23 +75,23 @@ function SajungDistBar({ range, predicted, avg }: {
 
 export function AiAnalysisPanel({ annDbId, budget, g2bUrl, konepsId, onRefresh, isContracted = false, cntrctCnclsMthdNm = null }: AiAnalysisPanelProps) {
   const isNegotiated = !!cntrctCnclsMthdNm?.includes("협상");
-
-  // 2025 나라장터 개편 — deep link 폐기. 공고번호 클립보드 복사 + 메인 새 탭.
-  function handleG2bClick(e: React.MouseEvent<HTMLAnchorElement>) {
-    if (!konepsId) return; // konepsId 없으면 기본 href 동작
-    e.preventDefault();
-    try {
-      navigator.clipboard.writeText(konepsId);
-    } catch { /* 권한 거부 등 무시 */ }
-    window.open(g2bUrl || "https://www.g2b.go.kr/", "_blank", "noopener,noreferrer");
-    // 사용자 안내 (alert 보다 toast 가 좋지만 의존성 적게)
-    setTimeout(() => {
-      alert(`공고번호 ${konepsId} 가 클립보드에 복사되었습니다.\n나라장터에서 검색창에 붙여넣기 (Ctrl+V) 하세요.\n\n※ 2025년 나라장터 개편 후 공고 직접 링크가 폐기되어 검색이 필요합니다.`);
-    }, 100);
-  }
+  const [g2bToast, setG2bToast] = useState<string>(""); // 공고번호 복사 안내 (alert 대신 inline toast)
   const [analysis, setAnalysis] = useState<ComprehensiveResult | null>(null);
   const [loading, setLoading] = useState(true);
   const userIdRef = useRef<string | null>(null);
+
+  // 2025 나라장터 개편 — deep link 폐기. 클릭 즉시 동기 호출 (팝업 차단 회피)
+  function handleG2bClick(e: React.MouseEvent<HTMLAnchorElement>) {
+    if (!konepsId) return; // konepsId 없으면 기본 href 동작
+    e.preventDefault();
+    // 1. 클립보드 복사 (동기) — 즉시
+    try { navigator.clipboard.writeText(konepsId); } catch { /* 무시 */ }
+    // 2. 새 탭 — 클릭 직후 즉시 (alert/setTimeout X) → 팝업 차단 안 됨
+    window.open(g2bUrl || "https://www.g2b.go.kr/", "_blank", "noopener,noreferrer");
+    // 3. inline toast 안내 (alert 사용 X — 사용자 화면 유지)
+    setG2bToast(`공고번호 ${konepsId} 복사됨. 나라장터 검색창에 Ctrl+V`);
+    setTimeout(() => setG2bToast(""), 5000);
+  }
 
   const fetchAnalysis = useCallback(async (forceRefresh = false) => {
     if (!userIdRef.current) {
@@ -354,6 +354,16 @@ export function AiAnalysisPanel({ annDbId, budget, g2bUrl, konepsId, onRefresh, 
                 공고번호 {konepsId} 자동 복사 후 이동
               </div>}
             </a>
+            {/* 클릭 후 5초 inline toast (alert 차단 회피) */}
+            {g2bToast && (
+              <div style={{
+                background: "#ECFDF5", border: "1px solid #86EFAC",
+                color: "#065F46", borderRadius: 8, padding: "8px 12px",
+                fontSize: 12, textAlign: "center", fontWeight: 600,
+              }}>
+                ✓ {g2bToast}
+              </div>
+            )}
 
             {/* ⑦ 면책 고지 */}
             <div style={{ fontSize: 10, color: "#94A3B8", lineHeight: 1.6 }}>
