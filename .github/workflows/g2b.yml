@@ -9,10 +9,11 @@ on:
         type: choice
         default: daily
         options:
-          - daily            # announcement → extras → opening → audit 순차 (cron 동일)
+          - daily            # announcement → extras → opening → pdf-region → audit 순차 (cron 동일)
           - announcement     # 공고/낙찰 신규 (crawl.yml)
           - extras           # 보조정보 v2 (bulk-extras.yml)
           - opening          # 개찰결과 (bulk-opening.yml)
+          - pdf-region       # 활성 공고 PDF/HWP 자격 추출 (pdfRgnLimit)
           - reparse          # rawJson 재파싱 (reparse-rawjson.yml)
           - avalue           # A값 백필 (완료, 수동만)
           - import           # 전체 역대 (완료, 수동만)
@@ -182,6 +183,34 @@ jobs:
           fi
           echo "실행: pnpm ts-node src/bulk-opening.ts --from=$FROM --to=$TO"
           pnpm ts-node src/bulk-opening.ts --from=$FROM --to=$TO
+
+  pdf-region:
+    needs: [setup, announcement]
+    if: |
+      always() &&
+      (needs.setup.outputs.job == 'daily' || needs.setup.outputs.job == 'pdf-region') &&
+      (needs.announcement.result == 'success' || needs.announcement.result == 'skipped')
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v3
+        with: { version: "9.0.0" }
+      - uses: actions/setup-node@v4
+        with: { node-version: "20", cache: pnpm }
+      - name: 시스템 패키지 설치 (poppler-utils + pyhwp)
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y poppler-utils python3-pip
+          pip3 install --quiet pyhwp
+          which pdftotext && which hwp5txt
+      - run: pnpm install --no-frozen-lockfile
+      - run: pnpm --filter @naktal/db exec prisma generate
+      - name: 신규 활성 공고 PDF/HWP 자격 추출 (pdfRgnLimit)
+        working-directory: apps/crawler
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: pnpm ts-node src/scripts/backfill-pdf-region.ts --concurrency 4
 
   audit:
     needs: [setup, opening]
