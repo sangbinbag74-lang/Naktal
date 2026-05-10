@@ -399,6 +399,7 @@ export default function AnnouncementsPage() {
   const [budgetPreset, setBudgetPreset] = useState<string>("");
   const [rgnType, setRgnType] = useState<string>("");
   const [ntceKind, setNtceKind] = useState<string>("");
+  const [excludeNgtn, setExcludeNgtn] = useState<boolean>(true); // 수의계약 자동 제외 (default ON)
 
   // hydrated 플래그: localStorage 복원 완료 후에만 fetch 실행 (race condition 방지)
   const [hydrated, setHydrated] = useState(false);
@@ -417,6 +418,7 @@ export default function AnnouncementsPage() {
     if (typeof saved.budgetPreset === "string")    setBudgetPreset(saved.budgetPreset);
     if (typeof saved.rgnType === "string")         setRgnType(saved.rgnType);
     if (typeof saved.ntceKind === "string")        setNtceKind(saved.ntceKind);
+    if (typeof saved.excludeNgtn === "boolean")    setExcludeNgtn(saved.excludeNgtn);
     setHydrated(true);
   }, []);
 
@@ -439,6 +441,7 @@ export default function AnnouncementsPage() {
         if (maxBudget)      params.set("maxBudget", maxBudget);
         if (rgnType)        params.set("rgnType", rgnType);
         if (ntceKind)       params.set("ntceKind", ntceKind);
+        if (excludeNgtn)    params.set("excludeNgtn", "1");
         const res = await fetch(`/api/announcements?${params}`);
         const json = (await res.json()) as ApiResponse;
         const newItems: Announcement[] = json.data ?? [];
@@ -451,7 +454,7 @@ export default function AnnouncementsPage() {
         setLoading(false);
       }
     },
-    [keyword, konepsId, categories, regions, sort, contractMethod, deadlineRange, minBudget, maxBudget, rgnType, ntceKind]
+    [keyword, konepsId, categories, regions, sort, contractMethod, deadlineRange, minBudget, maxBudget, rgnType, ntceKind, excludeNgtn]
   );
 
   const triggerDebouncedSearch = useCallback(() => {
@@ -472,7 +475,7 @@ export default function AnnouncementsPage() {
   }, [hydrated]);
 
   const handleSearch = () => {
-    saveFilters({ keyword, categories, regions, sort, contractMethod, deadlineRange, minBudget, maxBudget, budgetPreset, rgnType, ntceKind });
+    saveFilters({ keyword, categories, regions, sort, contractMethod, deadlineRange, minBudget, maxBudget, budgetPreset, rgnType, ntceKind, excludeNgtn });
     setPage(1);
     setItems([]);
     setHasMore(true);
@@ -926,7 +929,7 @@ export default function AnnouncementsPage() {
           })}
         </div>
 
-        {/* 계약방법 */}
+        {/* 계약방법 + 수의계약 제외 체크박스 */}
         <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
           <span style={{ fontSize: 11, color: "#94A3B8", minWidth: 40 }}>계약</span>
           {CONTRACT_METHODS.map((f) => {
@@ -942,6 +945,21 @@ export default function AnnouncementsPage() {
               }}>{f.label}</button>
             );
           })}
+          <label style={{
+            display: "flex", alignItems: "center", gap: 6,
+            marginLeft: 8, paddingLeft: 10, borderLeft: "1px solid #E2E8F0",
+            fontSize: 12, color: "#374151", cursor: "pointer", userSelect: "none",
+          }}>
+            <input
+              type="checkbox"
+              checked={excludeNgtn}
+              onChange={(e) => setExcludeNgtn(e.target.checked)}
+              style={{ width: 14, height: 14, accentColor: "#1B3A6B", cursor: "pointer" }}
+            />
+            <span style={{ fontWeight: excludeNgtn ? 600 : 400, color: excludeNgtn ? "#1B3A6B" : "#64748B" }}>
+              수의계약 제외
+            </span>
+          </label>
         </div>
 
         {/* 참가제한 */}

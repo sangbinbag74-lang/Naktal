@@ -68,6 +68,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   const rgnType        = searchParams.get("rgnType") ?? "";
   const ntceKind       = searchParams.get("ntceKind") ?? "";
   const sort           = searchParams.get("sort") ?? "latest";
+  const excludeNgtn    = searchParams.get("excludeNgtn") === "1"; // 수의계약 자동 제외
   const page           = Math.max(1, parseInt(searchParams.get("page") ?? "1", 10));
   const limit          = Math.min(50, parseInt(searchParams.get("limit") ?? "20", 10));
 
@@ -78,7 +79,8 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
 
   // DB에서 조회 (673K+ 데이터 활용)
   return fetchFromDB({ category, categories, region, regions, minBudget, maxBudget, keyword,
-    contractMethod, deadlineRange, konepsId, prtcptnLmt, rgnType, ntceKind, sort, page, limit });
+    contractMethod, deadlineRange, konepsId, prtcptnLmt, rgnType, ntceKind, sort, page, limit,
+    excludeNgtn: excludeNgtn ? "1" : "" });
 }
 
 // ─── G2B 아이템 DB 저장 (상세 페이지 조회용) ──────────────────────────────────
@@ -116,7 +118,7 @@ const PROVINCE_CODES = ["서울","부산","대구","인천","광주","대전","�
 
 async function fetchFromDB(opts: Record<string, string | number>): Promise<NextResponse> {
   const { category, categories, region, regions, minBudget, maxBudget, keyword, contractMethod,
-    deadlineRange, konepsId, prtcptnLmt, rgnType, ntceKind, sort } = opts as Record<string, string>;
+    deadlineRange, konepsId, prtcptnLmt, rgnType, ntceKind, sort, excludeNgtn } = opts as Record<string, string>;
   const page  = Number(opts.page);
   const limit = Number(opts.limit);
   const offset = (page - 1) * limit;
@@ -139,7 +141,7 @@ async function fetchFromDB(opts: Record<string, string | number>): Promise<NextR
   //                  + 시 레벨 지역 + 사용자 정의 deadline 윈도우
   // 2026-05-09: AnnouncementActive MV 도입으로 체인 쿼리 13ms 도달 → RPC 우회 (false 강제)
   const rpcEligible = false &&
-    !contractMethod && !prtcptnLmt && !rgnType && !ntceKind && !konepsId && !category &&
+    !contractMethod && !prtcptnLmt && !rgnType && !ntceKind && !konepsId && !category && !excludeNgtn &&
     !hasCityFilter &&
     (deadlineRange === "" || deadlineRange === "active");
   if (rpcEligible) {
@@ -225,6 +227,11 @@ async function fetchFromDB(opts: Record<string, string | number>): Promise<NextR
   if (minBudget)      q = q.gte("budget", minBudget);
   if (maxBudget)      q = q.lte("budget", maxBudget);
   if (contractMethod) q = q.or(`rawJson->>bidMthdNm.ilike.%${contractMethod}%,rawJson->>cntrctMthdNm.ilike.%${contractMethod}%`);
+  // 수의계약 자동 제외 — cntrctMthdNm 또는 cntrctCnclsMthdNm 에 '수의' 포함 row 제외 (NULL 은 포함)
+  if (excludeNgtn) {
+    q = q.or("rawJson->>cntrctMthdNm.is.null,rawJson->>cntrctMthdNm.not.ilike.*수의*");
+    q = q.or("rawJson->>cntrctCnclsMthdNm.is.null,rawJson->>cntrctCnclsMthdNm.not.ilike.*수의*");
+  }
   if (konepsId)       q = q.ilike("konepsId", `%${konepsId}%`);
   if (prtcptnLmt)     q = q.filter("rawJson->>prtcptnLmtNm", "ilike", `%${prtcptnLmt}%`);
   if (rgnType === "전국") {
