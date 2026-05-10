@@ -242,9 +242,9 @@ export function SajungTrendOverlay({ annId, userId, predictedSajungRate, budget,
       {/* 통계 카드 */}
       <div style={{ display: "flex", gap: 8 }}>
         <StatCard
-          label="발주처 평균 사정율"
+          label="발주처 평균 사정율 (산술평균)"
           value={orgAvgStr}
-          dev="기준값 (±0.000%)"
+          dev="기준값 (평균 대비)"
           sub={`${data.orgCount}건`}
           color="#1B3A6B"
         />

@@ -22,6 +22,10 @@ export interface SajungTopTenResponse {
   sampleSize: number;
   lowerLimitRate: number;
   orgAvg: number | null;
+  mode: number | null;
+  stddev: number | null;
+  p25: number | null;
+  p75: number | null;
   autoExpanded?: boolean;
   expandedCategory?: boolean;
   usedCategories?: string[];
@@ -109,7 +113,7 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  const emptyResp: SajungTopTenResponse = { topTen: [], sampleSize: 0, lowerLimitRate, orgAvg: null };
+  const emptyResp: SajungTopTenResponse = { topTen: [], sampleSize: 0, lowerLimitRate, orgAvg: null, mode: null, stddev: null, p25: null, p75: null };
   if (bidRows.length === 0) return NextResponse.json<SajungTopTenResponse>(emptyResp);
 
   // ── 사정율 계산 ─────────────────────────────────────────────────────────────
@@ -135,11 +139,19 @@ export async function GET(req: NextRequest) {
   const sorted = [...bucketMap.entries()].sort((a, b) => b[1] - a[1]).slice(0, 10);
   const maxCount = sorted[0]?.[1] ?? 1;
 
-  // 발주처 평균 사정율 (편차 기준값)
+  // 발주처 평균 사정율 (편차 기준값) + 분포 통계 (공통 헤더용)
   const allBuckets = [...bucketMap.entries()].flatMap(([bucket, count]) => Array(count).fill(bucket));
   const orgAvg = allBuckets.length > 0
     ? Math.round((allBuckets.reduce((s: number, v: number) => s + v, 0) / allBuckets.length) * 1000) / 1000
     : null;
+  // 분포 통계
+  const mode = sorted[0]?.[0] ?? null; // TOP 1 bucket
+  const stddev = orgAvg != null && allBuckets.length > 0
+    ? Math.sqrt(allBuckets.reduce((s: number, v: number) => s + Math.pow(v - orgAvg, 2), 0) / allBuckets.length)
+    : null;
+  const sortedAsc = [...allBuckets].sort((a, b) => a - b);
+  const p25 = sortedAsc.length > 0 ? sortedAsc[Math.floor(sortedAsc.length * 0.25)] : null;
+  const p75 = sortedAsc.length > 0 ? sortedAsc[Math.floor(sortedAsc.length * 0.75)] : null;
 
   const topTen: TopTenItem[] = sorted.map(([bucket, count], i) => ({
     rank: i + 1,
@@ -152,6 +164,7 @@ export async function GET(req: NextRequest) {
 
   const result: SajungTopTenResponse = {
     topTen, sampleSize: total, lowerLimitRate, orgAvg,
+    mode, stddev: stddev != null ? Math.round(stddev * 1000) / 1000 : null, p25, p75,
     expandedCategory: expandedCategory || undefined,
     usedCategories: usedCategories.length > 0 ? usedCategories : undefined,
   };
