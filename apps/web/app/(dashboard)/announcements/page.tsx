@@ -3,7 +3,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { isMultiplePriceBid } from "@/lib/bid-utils";
 import { CATEGORY_GROUPS } from "@/lib/category-map";
-import { normalizeRegion, REGION_ALIASES } from "@/lib/region-alias";
 
 const FOLDER_KEY = "naktal_folder";
 function getFolderIds(): string[] {
@@ -401,9 +400,6 @@ export default function AnnouncementsPage() {
   const [rgnType, setRgnType] = useState<string>("");
   const [ntceKind, setNtceKind] = useState<string>("");
   const [excludeNgtn, setExcludeNgtn] = useState<boolean>(true); // 수의계약 자동 제외 (default ON)
-  const [onlyMyRegion, setOnlyMyRegion] = useState<boolean>(false); // 내 지역 참여 가능만 (지역 입력 후 ON)
-  const [myRegions, setMyRegions] = useState<string[]>([]); // 사용자가 검색 화면에서 직접 입력한 지역 (다중)
-  const [myRegionInput, setMyRegionInput] = useState<string>(""); // 입력 중인 칩 buffer
 
   // hydrated 플래그: localStorage 복원 완료 후에만 fetch 실행 (race condition 방지)
   const [hydrated, setHydrated] = useState(false);
@@ -423,8 +419,6 @@ export default function AnnouncementsPage() {
     if (typeof saved.rgnType === "string")         setRgnType(saved.rgnType);
     if (typeof saved.ntceKind === "string")        setNtceKind(saved.ntceKind);
     if (typeof saved.excludeNgtn === "boolean")    setExcludeNgtn(saved.excludeNgtn);
-    if (typeof saved.onlyMyRegion === "boolean")   setOnlyMyRegion(saved.onlyMyRegion);
-    if (Array.isArray(saved.myRegions))            setMyRegions(saved.myRegions as string[]);
     setHydrated(true);
   }, []);
 
@@ -448,9 +442,6 @@ export default function AnnouncementsPage() {
         if (rgnType)        params.set("rgnType", rgnType);
         if (ntceKind)       params.set("ntceKind", ntceKind);
         if (excludeNgtn)    params.set("excludeNgtn", "1");
-        if (onlyMyRegion && myRegions.length > 0) {
-          params.set("myRegions", myRegions.join(","));
-        }
         const res = await fetch(`/api/announcements?${params}`);
         const json = (await res.json()) as ApiResponse;
         const newItems: Announcement[] = json.data ?? [];
@@ -463,7 +454,7 @@ export default function AnnouncementsPage() {
         setLoading(false);
       }
     },
-    [keyword, konepsId, categories, regions, sort, contractMethod, deadlineRange, minBudget, maxBudget, rgnType, ntceKind, excludeNgtn, onlyMyRegion, myRegions]
+    [keyword, konepsId, categories, regions, sort, contractMethod, deadlineRange, minBudget, maxBudget, rgnType, ntceKind, excludeNgtn]
   );
 
   const triggerDebouncedSearch = useCallback(() => {
@@ -484,7 +475,7 @@ export default function AnnouncementsPage() {
   }, [hydrated]);
 
   const handleSearch = () => {
-    saveFilters({ keyword, categories, regions, sort, contractMethod, deadlineRange, minBudget, maxBudget, budgetPreset, rgnType, ntceKind, excludeNgtn, onlyMyRegion, myRegions });
+    saveFilters({ keyword, categories, regions, sort, contractMethod, deadlineRange, minBudget, maxBudget, budgetPreset, rgnType, ntceKind, excludeNgtn });
     setPage(1);
     setItems([]);
     setHasMore(true);
@@ -969,66 +960,6 @@ export default function AnnouncementsPage() {
               수의계약 제외
             </span>
           </label>
-          <label
-            style={{
-              display: "flex", alignItems: "center", gap: 6, paddingLeft: 8,
-              fontSize: 12, color: "#374151", cursor: "pointer", userSelect: "none",
-            }}
-            title="아래 칩에 사업 가능 지역(광역시·도 또는 시·군) 입력 후 활성화"
-          >
-            <input
-              type="checkbox"
-              checked={onlyMyRegion}
-              onChange={(e) => setOnlyMyRegion(e.target.checked)}
-              style={{ width: 14, height: 14, accentColor: "#059669", cursor: "pointer" }}
-            />
-            <span style={{ fontWeight: onlyMyRegion ? 600 : 400, color: onlyMyRegion ? "#059669" : "#64748B" }}>
-              내 지역 참여 가능만
-            </span>
-          </label>
-        </div>
-
-        {/* 내 사업 가능 지역 입력 (광역시·도 또는 시·군 다중 칩) */}
-        <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
-          <span style={{ fontSize: 11, color: "#94A3B8", minWidth: 40 }}>내 지역</span>
-          {myRegions.map((r) => (
-            <span key={r} style={{
-              fontSize: 12, fontWeight: 600, padding: "3px 6px 3px 10px",
-              borderRadius: 99, background: "#ECFDF5", color: "#059669",
-              border: "1px solid #86EFAC", display: "inline-flex", alignItems: "center", gap: 4,
-            }}>
-              {r}
-              <button
-                onClick={() => setMyRegions(myRegions.filter((x) => x !== r))}
-                style={{ background: "none", border: "none", color: "#059669", cursor: "pointer", fontSize: 14, padding: 0, lineHeight: 1 }}
-                aria-label={`${r} 제거`}
-              >×</button>
-            </span>
-          ))}
-          <input
-            type="text"
-            value={myRegionInput}
-            onChange={(e) => setMyRegionInput(e.target.value)}
-            onKeyDown={(e) => {
-              if ((e.key === "Enter" || e.key === ",") && myRegionInput.trim()) {
-                e.preventDefault();
-                const v = myRegionInput.trim().replace(/,$/, "");
-                if (v && !myRegions.includes(v)) setMyRegions([...myRegions, v]);
-                setMyRegionInput("");
-              }
-            }}
-            placeholder="예: 전북, 익산시 (Enter)"
-            style={{
-              height: 28, padding: "0 10px", borderRadius: 99, fontSize: 12,
-              border: "1px solid #E2E8F0", background: "#fff", outline: "none",
-              minWidth: 140,
-            }}
-          />
-          {myRegions.length === 0 && (
-            <span style={{ fontSize: 10, color: "#94A3B8" }}>
-              지역 입력 후 위의 &quot;내 지역 참여 가능만&quot; 체크
-            </span>
-          )}
         </div>
 
         {/* 참가제한 */}
@@ -1157,35 +1088,19 @@ export default function AnnouncementsPage() {
                           수의계약
                         </span>
                       )}
-                      {/* 참여 가능 지역 배지 — 광역시·도 + 시·군 단위 매칭 */}
+                      {/* 참여 가능 지역 정보 배지 (자동 매칭 X — 정보만) */}
                       {(() => {
                         const limit = String(ann.rawJson?.bidPrtcptLmtYn ?? "").trim();
                         if (limit !== "Y") {
                           return <span style={{ fontSize: 10, fontWeight: 600, background: "#ECFDF5", color: "#059669", padding: "2px 6px", borderRadius: 4 }}>전국 참여</span>;
                         }
-                        // 제한 정보 수집
                         const jnt = [
                           String(ann.rawJson?.jntcontrctDutyRgnNm1 ?? ""),
                           String(ann.rawJson?.jntcontrctDutyRgnNm2 ?? ""),
-                          String(ann.rawJson?.jntcontrctDutyRgnNm3 ?? ""),
                         ].filter(Boolean);
-                        const dminstt = String(ann.rawJson?.dminsttNm ?? "");
-                        const cnstrtsite = String(ann.rawJson?.cnstrtsiteRgnNm ?? "");
-                        const lbl = jnt[0] || cnstrtsite || dminstt || "지역제한";
-
-                        // 사용자 매칭 — 광역시·도 별칭 OR 시·군 단위 string
-                        const userCanon = new Set(myRegions.map(r => normalizeRegion(r)).filter(Boolean) as string[]);
-                        const userCities = myRegions.filter(r => !normalizeRegion(r));
-                        const jntCanon = jnt.map(j => normalizeRegion(j)).filter(Boolean) as string[];
-                        const matchProvince = jntCanon.some(c => userCanon.has(c)) ||
-                          [dminstt, cnstrtsite].some(s => [...userCanon].some(u => s && (REGION_ALIASES[u] ?? []).some(a => s.includes(a))));
-                        const matchCity = userCities.some(c => c && (dminstt.includes(c) || cnstrtsite.includes(c)));
-
-                        const trim = lbl.length > 16 ? lbl.slice(0, 16) + "…" : lbl;
-                        if (matchProvince || matchCity) {
-                          return <span style={{ fontSize: 10, fontWeight: 600, background: "#EFF6FF", color: "#1E40AF", padding: "2px 6px", borderRadius: 4 }} title={`${lbl} (참여 가능)`}>{trim} ✓</span>;
-                        }
-                        return <span style={{ fontSize: 10, fontWeight: 600, background: "#FEF2F2", color: "#DC2626", padding: "2px 6px", borderRadius: 4 }} title={lbl}>{trim}</span>;
+                        const lbl = jnt[0] || String(ann.rawJson?.cnstrtsiteRgnNm ?? "") || "지역제한";
+                        const trim = lbl.length > 18 ? lbl.slice(0, 18) + "…" : lbl;
+                        return <span style={{ fontSize: 10, fontWeight: 600, background: "#FFFBEB", color: "#92400E", padding: "2px 6px", borderRadius: 4 }} title={lbl}>{trim}</span>;
                       })()}
                       {ann.rawJson && Object.values(ann.rawJson).some((v) => typeof v === "string" && v.includes("긴급")) && (
                         <span style={{ fontSize: 10, fontWeight: 600, background: "#FEF2F2", color: "#DC2626", padding: "2px 6px", borderRadius: 4 }}>
