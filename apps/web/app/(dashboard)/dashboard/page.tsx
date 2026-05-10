@@ -46,12 +46,6 @@ interface DashboardData {
     todayNew: number;
     plan: string;
   };
-  accuracy: {
-    total: number;
-    hitRate: number;
-    exactRate: number;
-    avgDev: number;
-  };
   profileSet: boolean;
 }
 
@@ -105,21 +99,15 @@ export default function DashboardPage() {
         )}
       </div>
 
-      {/* 메트릭 4박스 — 1줄 */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12 }}>
-        <MetricBox label="이번달 의뢰"   value={loading || !data ? "-" : `${data.metrics.myRequestsThisMonth}건`} color="#1B3A6B" />
-        <MetricBox label="활성 공고"     value={loading || !data ? "-" : data.metrics.totalActive.toLocaleString()} sub="건" color="#0F172A" />
-        <MetricBox label="오늘 신규"     value={loading || !data ? "-" : data.metrics.todayNew.toLocaleString()} sub="건" color="#0F172A" />
-        <MetricBox
-          label="AI 적중률 (30일)"
-          value={loading || !data ? "-" : data.accuracy.total > 0 ? `${data.accuracy.hitRate.toFixed(1)}%` : "데이터 없음"}
-          sub={data && data.accuracy.total > 0 ? `${data.accuracy.total}건` : undefined}
-          color="#059669"
-        />
+      {/* 메트릭 3박스 — 1줄 */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12 }}>
+        <MetricBox label="이번달 의뢰" value={loading || !data ? "-" : `${data.metrics.myRequestsThisMonth}건`} color="#1B3A6B" />
+        <MetricBox label="활성 공고"   value={loading || !data ? "-" : data.metrics.totalActive.toLocaleString()} sub="건" color="#0F172A" />
+        <MetricBox label="오늘 신규"   value={loading || !data ? "-" : data.metrics.todayNew.toLocaleString()} sub="건" color="#0F172A" />
       </div>
 
-      {/* 컨텐츠 2×2 박스 그리드 */}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+      {/* 컨텐츠 3박스 — 1행 */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 16 }}>
         {/* 1. 진행중 내 의뢰 */}
         <div style={cardStyle}>
           <BoxHeader icon="📌" title="진행중 내 의뢰" href="/contracts" />
@@ -218,28 +206,6 @@ export default function DashboardPage() {
           )}
         </div>
 
-        {/* 4. AI 정확도 */}
-        <div style={cardStyle}>
-          <BoxHeader icon="📊" title="AI 정확도 (30일)" href="/admin/accuracy" />
-          {loading ? <Loading />
-           : !data || data.accuracy.total === 0 ? (
-            <Empty msg="결과 입력된 의뢰 없음" />
-          ) : (
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-              {[
-                { label: "검증 건수", value: `${data.accuracy.total}건`,             color: "#0F172A" },
-                { label: "적중 (±0.5%p)", value: `${data.accuracy.hitRate.toFixed(1)}%`,  color: "#059669" },
-                { label: "정확 (±0.1%p)", value: `${data.accuracy.exactRate.toFixed(1)}%`, color: "#1B3A6B" },
-                { label: "평균 편차",   value: `${data.accuracy.avgDev.toFixed(2)}%p`,    color: "#C2410C" },
-              ].map((m) => (
-                <div key={m.label} style={{ background: "#F8FAFC", borderRadius: 8, padding: "10px 12px" }}>
-                  <div style={{ fontSize: 10, color: "#94A3B8", marginBottom: 3 }}>{m.label}</div>
-                  <div style={{ fontSize: 15, fontWeight: 700, color: m.color }}>{m.value}</div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
       </div>
     </div>
   );

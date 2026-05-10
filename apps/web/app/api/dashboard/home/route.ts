@@ -29,13 +29,6 @@ interface BppRow {
   optimalBidPrice: string | null;
   winProbability: number | null;
 }
-interface OutcomeRow {
-  isHit: boolean | null;
-  isExact: boolean | null;
-  isNearHit: boolean | null;
-  deviationPct: number | null;
-}
-
 export async function GET(_req: NextRequest): Promise<NextResponse> {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -55,7 +48,6 @@ export async function GET(_req: NextRequest): Promise<NextResponse> {
   const now = new Date();
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
   const d3later = new Date(now.getTime() + 3 * 24 * 60 * 60 * 1000).toISOString();
-  const d30ago = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString();
 
   // 1. 진행중 내 의뢰 (BidRequest, 마감 안 된)
   const { data: myReqsRaw } = await admin
@@ -133,20 +125,6 @@ export async function GET(_req: NextRequest): Promise<NextResponse> {
       .gte("createdAt", new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString()),
   ]);
 
-  // 6. 모델 정확도 (지난 30일 BidOutcome)
-  const { data: outcomesRaw } = await admin
-    .from("BidOutcome")
-    .select("isHit,isExact,isNearHit,deviationPct,resultFilledAt")
-    .gte("resultFilledAt", d30ago)
-    .not("resultFilledAt", "is", null);
-  const outcomes = (outcomesRaw ?? []) as OutcomeRow[];
-  const outcomeTotal = outcomes.length;
-  const hitRate = outcomeTotal > 0 ? outcomes.filter((o) => o.isHit).length * 100 / outcomeTotal : 0;
-  const exactRate = outcomeTotal > 0 ? outcomes.filter((o) => o.isExact).length * 100 / outcomeTotal : 0;
-  const avgDev = outcomeTotal > 0
-    ? outcomes.reduce((s, o) => s + Math.abs(o.deviationPct ?? 0), 0) / outcomeTotal
-    : 0;
-
   return NextResponse.json({
     myRequests: myRequests.map((r) => ({
       id: r.id,
@@ -189,12 +167,6 @@ export async function GET(_req: NextRequest): Promise<NextResponse> {
       totalActive: totalActiveRes.count ?? 0,
       todayNew: todayNewRes.count ?? 0,
       plan,
-    },
-    accuracy: {
-      total: outcomeTotal,
-      hitRate: Math.round(hitRate * 10) / 10,
-      exactRate: Math.round(exactRate * 10) / 10,
-      avgDev: Math.round(avgDev * 100) / 100,
     },
     profileSet,
   });
