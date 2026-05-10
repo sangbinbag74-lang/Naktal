@@ -429,6 +429,7 @@ export default async function AnnouncementDetailPage({
             budget={bdgtAmt || 0}
             g2bUrl={g2bUrl}
             isContracted={isContracted}
+            cntrctCnclsMthdNm={meta.cntrctCnclsMthdNm}
           />
           {multiplePrice && (
             <div style={{ border: "2px solid #C7D2FE", borderRadius: 12, padding: "20px 24px", background: "#fff" }}>
@@ -438,6 +439,7 @@ export default async function AnnouncementDetailPage({
                 bidMethod={bidMethodDisplay}
                 multiplePrice={multiplePrice}
                 isContracted={isContracted}
+                category={a.category}
               />
             </div>
           )}
@@ -460,6 +462,7 @@ export default async function AnnouncementDetailPage({
             bidMethod={bidMethodDisplay}
             isContracted={isContracted}
             aValueTotal={aValueTotal}
+            cntrctCnclsMthdNm={meta.cntrctCnclsMthdNm}
           />
         </div>
 

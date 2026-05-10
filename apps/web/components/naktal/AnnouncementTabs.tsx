@@ -6,6 +6,7 @@ import { SajungTrendOverlay } from "./SajungTrendOverlay";
 import { SajungTopTen } from "./SajungTopTen";
 import { SajungPeriodSelector } from "./SajungPeriodSelector";
 import { createClient } from "@/lib/supabase/client";
+import { classifyCategory, isAnalysisSupported } from "@/lib/analysis/category-config";
 
 type SubTab = "analysis1" | "analysis2" | "analysis3";
 
@@ -82,6 +83,7 @@ export interface AnnouncementTabsProps {
   bidMethod: string;
   isContracted?: boolean;    // 계약 완료 여부 — false 면 사정율 분석 블러
   aValueTotal?: number;      // A합산 (원). A값 적용 공고만, 없으면 0
+  cntrctCnclsMthdNm?: string | null; // 계약방법 (수의/협상/일반·제한 등) — 분석 차단 판정용
 }
 
 // ─── 메인 컴포넌트 ────────────────────────────────────────────────────────────
@@ -89,6 +91,7 @@ export interface AnnouncementTabsProps {
 export function AnnouncementTabs({
   annId, annDbId, title, orgName, budget, deadline, category, region,
   lowerLimitRate, multiplePrice, isClosed, bidMethod, isContracted = false, aValueTotal = 0,
+  cntrctCnclsMthdNm = null,
 }: AnnouncementTabsProps) {
   const [analysis, setAnalysis] = useState<ComprehensiveResult | null>(null);
   const [analysisLoading, setAnalysisLoading] = useState(true);
@@ -149,6 +152,13 @@ export function AnnouncementTabs({
   const bs = analysis?.bidStrategy;
   const comp = analysis?.competition;
 
+  // 카테고리·계약방식 가드
+  const catKind = classifyCategory(category);
+  const isConstruction = catKind === "construction";
+  const analysisSupported = isAnalysisSupported(category, cntrctCnclsMthdNm, bidMethod);
+  // 협상에 의한 계약 — winProbability 의미 약함 (가격 비중 30~70%)
+  const isNegotiated = !!cntrctCnclsMthdNm?.includes("협상");
+
   return (
     <div style={{ background: "#fff", border: "1px solid #E8ECF2", borderRadius: 12, padding: "20px 24px" }}>
       {analysisLoading ? (
@@ -161,8 +171,27 @@ export function AnnouncementTabs({
         </div>
       ) : !bs ? (
         <div style={{ color: "#94A3B8", textAlign: "center", padding: "40px 0" }}>분석 데이터를 불러올 수 없습니다.</div>
+      ) : !analysisSupported ? (
+        <div style={{ padding: "40px 24px", textAlign: "center", background: "#F8FAFC", borderRadius: 12 }}>
+          <div style={{ fontSize: 32, marginBottom: 10 }}>⛔</div>
+          <div style={{ fontSize: 14, fontWeight: 700, color: "#0F172A", marginBottom: 6 }}>
+            사정율 분석을 제공하지 않는 입찰 방식입니다
+          </div>
+          <div style={{ fontSize: 12, color: "#64748B", lineHeight: 1.6 }}>
+            {cntrctCnclsMthdNm?.includes("수의") && "수의계약은 가격 미평가입니다."}
+            {cntrctCnclsMthdNm?.includes("협상") && "협상에 의한 계약은 가격이 30~70%만 반영됩니다."}
+            {bidMethod?.includes("단가") && "단가계약은 사정율 의미가 다릅니다."}
+            <br />사정율·번호 추천이 의미 없으므로 차단됩니다.
+          </div>
+        </div>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+          {/* 비공사 카테고리 안내 (사정율 분포가 다름) */}
+          {!isConstruction && (
+            <div style={{ padding: "10px 14px", background: "#FEF3C7", border: "1px solid #FDE68A", borderRadius: 10, fontSize: 12, color: "#92400E", lineHeight: 1.5 }}>
+              💡 본 공고는 <strong>{category || catKind}</strong> 카테고리입니다. 사정율 분포가 60~95% 등으로 넓어 통계 의미가 약할 수 있습니다 (공사 99~101% 대비). 참고용으로만 활용하세요.
+            </div>
+          )}
           {/* 신뢰도 경고 배너 */}
           {(() => {
             const cl = bs.confidenceLevel ?? (bs.isFallback ? "LOW" : bs.sampleSize >= 5 ? "HIGH" : bs.sampleSize > 0 ? "MEDIUM" : "LOW");

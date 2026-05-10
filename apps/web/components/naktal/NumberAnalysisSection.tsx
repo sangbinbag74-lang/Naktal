@@ -87,10 +87,13 @@ interface Props {
   multiplePrice?: boolean; // 예가방법 (복수예가 여부) — bidMethod(낙찰방법)와 분리
   isContracted?: boolean;  // 계약 완료 여부 — false 면 번호 조합 블러
   defaultBidders?: number;
+  category?: string;       // 비공사 카테고리는 번호 분포가 달라 분석 차단
 }
 
-export function NumberAnalysisSection({ annId, isClosed, bidMethod, multiplePrice = false, isContracted = false, defaultBidders }: Props) {
+export function NumberAnalysisSection({ annId, isClosed, bidMethod, multiplePrice = false, isContracted = false, defaultBidders, category }: Props) {
   void bidMethod; // bidMethod 는 더 이상 차단 분기에 사용하지 않음 (multiplePrice 사용)
+  // 공사 외 카테고리는 번호 분석 차단 (학습 데이터·분포가 공사 위주)
+  const isConstruction = !!category && category.includes("공사");
   const [estimatedBidders, setEstimatedBidders] = useState(
     defaultBidders ? String(defaultBidders) : ""
   );
@@ -217,8 +220,15 @@ export function NumberAnalysisSection({ annId, isClosed, bidMethod, multiplePric
         </div>
       )}
 
+      {/* 비공사 카테고리 차단 — 학습 분포가 공사 위주 */}
+      {!isClosed && !isConstruction && category && (
+        <div style={{ background: "#FEF3C7", border: "1px solid #FDE68A", borderRadius: 10, padding: "16px 20px", fontSize: 13, color: "#92400E", lineHeight: 1.6 }}>
+          💡 본 공고는 <strong>{category}</strong> 카테고리입니다. 번호 분석은 공사 카테고리 분포를 학습한 모델로, 용역·물품에는 적용하지 않습니다.
+        </div>
+      )}
+
       {/* 계약 미완료 — 락 카드 단독 (fetch 자체 차단) */}
-      {!isClosed && !isContracted && (
+      {!isClosed && isConstruction && !isContracted && (
         <div style={{
           background: "#F8FAFC", border: "1px solid #E2E8F0", borderRadius: 12,
           padding: "32px 24px", display: "flex", flexDirection: "column",
@@ -235,7 +245,7 @@ export function NumberAnalysisSection({ annId, isClosed, bidMethod, multiplePric
         </div>
       )}
 
-      {!isClosed && isContracted && showForm && (
+      {!isClosed && isConstruction && isContracted && showForm && (
         <div style={{ background: "#fff", borderRadius: 12, border: "1px solid #E8ECF2", padding: "18px 20px" }}>
           <div style={{ display: "flex", gap: 12, alignItems: "flex-end" }}>
             <div style={{ flex: 1 }}>
@@ -292,7 +302,7 @@ export function NumberAnalysisSection({ annId, isClosed, bidMethod, multiplePric
       )}
 
       {/* 결과 */}
-      {result && isContracted && (
+      {result && isContracted && isConstruction && (
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
           {result.isFallback && (
             <div style={{ background: "#FFFBEB", border: "1px solid #FDE68A", borderRadius: 10, padding: "10px 14px", fontSize: 13, color: "#92400E" }}>

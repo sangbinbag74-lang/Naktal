@@ -4,10 +4,18 @@ import {
   calcSajung,
   buildBudgetAndDateMap,
   fetchOrgKonepsIdsWithCategoryFallback,
-  roundBucket,
   getSajungRange,
 } from "@/lib/analysis/sajung-utils";
 import { getCachedAnalysis, setCachedAnalysis, periodToDate } from "@/lib/analysis/sajung-cache";
+import { classifyCategory, SAJUNG_FILTER_BY_KIND } from "@/lib/analysis/category-config";
+
+/** 카테고리별 bucket step — 공사 0.1%p (좁은 분포) / 용역·물품 0.5%p (넓은 분포) */
+function bucketStepByKind(category: string | null | undefined): number {
+  return classifyCategory(category) === "construction" ? 0.1 : 0.5;
+}
+function roundBucketStep(v: number, step: number): number {
+  return Math.round(v / step) * step;
+}
 
 export interface HistogramBucket {
   rate: number;
@@ -54,6 +62,7 @@ async function buildHistogramResponse(
   lowerLimitRate: number,
   filter: { min: number; max: number },
   sinceDateStr: string | null,
+  step: number,
 ): Promise<SajungHistogramResponse | null> {
   if (results.length === 0) return null;
 
@@ -66,7 +75,7 @@ async function buildHistogramResponse(
     if (!info || !info.deadline) continue;
     if (sinceDateStr && info.deadline.slice(0, 10) < sinceDateStr) continue;
     const sajung = calcSajung(Number(r.finalPrice), Number(r.bidRate), info.budget);
-    if (sajung >= filter.min && sajung <= filter.max) rates.push(roundBucket(sajung));
+    if (sajung >= filter.min && sajung <= filter.max) rates.push(roundBucketStep(sajung, step));
   }
 
   if (rates.length === 0) return null;
@@ -84,8 +93,8 @@ async function buildHistogramResponse(
   const total = rates.length;
 
   let rr = minKey;
-  while (rr <= maxKey + 0.001) {
-    const key = roundBucket(rr);
+  while (rr <= maxKey + step * 0.01) {
+    const key = roundBucketStep(rr, step);
     const count = bucketMap.get(key) ?? 0;
     cumCount += count;
     histogram.push({
@@ -94,7 +103,7 @@ async function buildHistogramResponse(
       pct: Math.round((count / total) * 1000) / 10,
       cumPct: Math.round((cumCount / total) * 1000) / 10,
     });
-    rr = roundBucket(rr + 0.1);
+    rr = roundBucketStep(rr + step, step);
   }
 
   const avg = rates.reduce((s, v) => s + v, 0) / total;
@@ -163,7 +172,14 @@ export async function GET(req: NextRequest) {
   const orgRange = getSajungRange(ann.orgName as string);
   const sinceDate = periodToDate(period);
   const sinceDateStr = sinceDate ? sinceDate.slice(0, 10) : null;
-  const sajungFilter = { min: 94, max: 106 };
+  // 카테고리별 사정율 유효 범위 (공사 좁음 / 용역·물품 넓음)
+  const annCategory = ann.category as string;
+  const kindFilter = SAJUNG_FILTER_BY_KIND[classifyCategory(annCategory)];
+  // 공사: 기존 94~106 좁은 분포 / 비공사: 카테고리별 SAJUNG_FILTER 사용
+  const sajungFilter = classifyCategory(annCategory) === "construction"
+    ? { min: 94, max: 106 }
+    : kindFilter;
+  const bucketStep = bucketStepByKind(annCategory); // 0.1 (공사) / 0.5 (용역·물품)
 
   const currentAnn = { bidMethod, budget: currentBudget };
   const categoryForFilter = categoryFilter === "all" ? null : ann.category as string;
@@ -184,7 +200,7 @@ export async function GET(req: NextRequest) {
 
   // direct path (동일 공고 직접 조회)
   if (directRows.length > 0 && categoryFilter === "same" && orgScope === "exact") {
-    result = await buildHistogramResponse(directRows, admin, lowerLimitRate, sajungFilter, sinceDateStr);
+    result = await buildHistogramResponse(directRows, admin, lowerLimitRate, sajungFilter, sinceDateStr, bucketStep);
   }
 
   // direct 결과가 없거나 10건 미만이면 발주처 전체 조회 (유사 업종 자동 확장 포함)
@@ -211,7 +227,7 @@ export async function GET(req: NextRequest) {
         .gt("bidRate", 0)
         .gt("finalPrice", 0)
         .limit(2000);
-      result = await buildHistogramResponse(fallback ?? [], admin, lowerLimitRate, sajungFilter, sinceDateStr);
+      result = await buildHistogramResponse(fallback ?? [], admin, lowerLimitRate, sajungFilter, sinceDateStr, bucketStep);
     }
   }
 

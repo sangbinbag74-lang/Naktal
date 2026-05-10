@@ -10,6 +10,7 @@ interface AiAnalysisPanelProps {
   g2bUrl: string;
   onRefresh?: () => void;
   isContracted?: boolean;
+  cntrctCnclsMthdNm?: string | null; // 협상에 의한 계약 시 winProb 숨김
 }
 
 // ── 숫자 포맷 ─────────────────────────────────────────────────────────────────
@@ -71,7 +72,8 @@ function SajungDistBar({ range, predicted, avg }: {
 
 // ── 메인 컴포넌트 ─────────────────────────────────────────────────────────────
 
-export function AiAnalysisPanel({ annDbId, budget, g2bUrl, onRefresh, isContracted = false }: AiAnalysisPanelProps) {
+export function AiAnalysisPanel({ annDbId, budget, g2bUrl, onRefresh, isContracted = false, cntrctCnclsMthdNm = null }: AiAnalysisPanelProps) {
+  const isNegotiated = !!cntrctCnclsMthdNm?.includes("협상");
   const [analysis, setAnalysis] = useState<ComprehensiveResult | null>(null);
   const [loading, setLoading] = useState(true);
   const userIdRef = useRef<string | null>(null);
@@ -199,11 +201,13 @@ export function AiAnalysisPanel({ annDbId, budget, g2bUrl, onRefresh, isContract
                 <div style={{ fontSize: 11, color: "#94A3B8", marginBottom: 4 }}>낙찰 확률</div>
                 <div style={{
                   fontSize: 18, fontWeight: 800,
-                  color: cl === "LOW" ? "#94A3B8" : bs.winProbability >= 0.6 ? "#16A34A" : bs.winProbability >= 0.35 ? "#D97706" : "#DC2626",
+                  color: isNegotiated || cl === "LOW" ? "#94A3B8" : bs.winProbability >= 0.6 ? "#16A34A" : bs.winProbability >= 0.35 ? "#D97706" : "#DC2626",
                 }}>
-                  {cl === "LOW" ? "-" : `${Math.round(bs.winProbability * 100)}%`}
+                  {isNegotiated ? "N/A" : cl === "LOW" ? "-" : `${Math.round(bs.winProbability * 100)}%`}
                 </div>
-                <div style={{ fontSize: 10, color: "#94A3B8", marginTop: 2 }}>{bs.sampleSize}건 기반</div>
+                <div style={{ fontSize: 10, color: "#94A3B8", marginTop: 2 }}>
+                  {isNegotiated ? "협상 계약 — 가격 외 평가" : `${bs.sampleSize}건 기반`}
+                </div>
               </div>
               <div style={{ background: "#F8FAFC", borderRadius: 10, padding: "12px 8px", textAlign: "center" }}>
                 <div style={{ fontSize: 11, color: "#94A3B8", marginBottom: 4 }}>경쟁 강도</div>
