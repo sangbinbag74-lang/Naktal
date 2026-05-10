@@ -2,10 +2,8 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import type { Plan } from "@naktal/types";
 
 interface SidebarProps {
-  plan?: Plan;
   isAdmin?: boolean;
 }
 
@@ -29,7 +27,6 @@ const MENU_SECTIONS = [
     label: "계정",
     items: [
       { href: "/profile",  label: "내 업체 정보", icon: "🏢" },
-      { href: "/pricing",  label: "요금제",       icon: "◇" },
       { href: "/settings", label: "설정",         icon: "⚙" },
     ],
   },
@@ -48,13 +45,7 @@ const MENU_SECTIONS = [
   },
 ];
 
-const planLabels: Record<Plan, string> = {
-  FREE: "무료",
-  STANDARD: "프로",
-  PRO: "프로",
-};
-
-export function Sidebar({ plan = "FREE", isAdmin = false }: SidebarProps) {
+export function Sidebar({ isAdmin = false }: SidebarProps) {
   const pathname = usePathname();
 
   return (
@@ -138,34 +129,6 @@ export function Sidebar({ plan = "FREE", isAdmin = false }: SidebarProps) {
         ))}
       </nav>
 
-      {/* 플랜 뱃지 */}
-      <div style={{ padding: "12px 10px", borderTop: "1px solid rgba(255,255,255,0.08)" }}>
-        <div style={{
-          background: "#1B3A6B",
-          borderRadius: 10,
-          padding: "10px 12px",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-        }}>
-          <div>
-            <div style={{ fontSize: 10, color: "#94A3B8", marginBottom: 2 }}>현재 플랜</div>
-            <div style={{ fontSize: 13, fontWeight: 600, color: "#fff" }}>{planLabels[plan]}</div>
-          </div>
-          {plan !== "PRO" && (
-            <Link href="/pricing" style={{
-              fontSize: 11, fontWeight: 600, color: "#60A5FA",
-              textDecoration: "none", background: "rgba(96,165,250,0.12)",
-              padding: "4px 8px", borderRadius: 6,
-            }}>
-              업그레이드
-            </Link>
-          )}
-          {plan === "PRO" && (
-            <span style={{ fontSize: 11, color: "#059669", fontWeight: 700 }}>PRO ✓</span>
-          )}
-        </div>
-      </div>
     </aside>
   );
 }

@@ -3,13 +3,8 @@
 import { useState } from "react";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Sidebar } from "./Sidebar";
-import type { Plan } from "@naktal/types";
 
-interface MobileSidebarProps {
-  plan?: Plan;
-}
-
-export function MobileSidebar({ plan }: MobileSidebarProps) {
+export function MobileSidebar() {
   const [open, setOpen] = useState(false);
 
   return (
@@ -34,7 +29,7 @@ export function MobileSidebar({ plan }: MobileSidebarProps) {
         </svg>
       </SheetTrigger>
       <SheetContent side="left" className="p-0 w-64">
-        <Sidebar plan={plan} />
+        <Sidebar />
       </SheetContent>
     </Sheet>
   );

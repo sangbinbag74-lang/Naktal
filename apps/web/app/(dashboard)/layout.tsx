@@ -47,13 +47,11 @@ export default async function DashboardLayout({
     }
   }
 
-  const plan = (dbUser?.plan ?? "FREE") as "FREE" | "STANDARD" | "PRO";
-
   return (
     <div style={{ display: "flex", height: "100vh", background: "#F0F2F5" }}>
       {/* 데스크톱 사이드바 */}
       <div className="hidden md:flex" style={{ flexShrink: 0 }}>
-        <Sidebar plan={plan} />
+        <Sidebar />
       </div>
 
       {/* 메인 콘텐츠 영역 */}
