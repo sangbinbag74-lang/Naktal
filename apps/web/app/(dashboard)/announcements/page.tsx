@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { isMultiplePriceBid } from "@/lib/bid-utils";
 import { CATEGORY_GROUPS } from "@/lib/category-map";
+import { normalizeRegion } from "@/lib/region-alias";
 
 const FOLDER_KEY = "naktal_folder";
 function getFolderIds(): string[] {
@@ -911,6 +912,24 @@ export default function AnnouncementsPage() {
           </div>
         )}
 
+        {/* 참가 (위로 이동) */}
+        <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
+          <span style={{ fontSize: 11, color: "#94A3B8", minWidth: 40 }}>참가</span>
+          {RGN_TYPE_FILTERS.map((f) => {
+            const isActive = rgnType === f.key;
+            return (
+              <button key={f.key} onClick={() => setRgnType(f.key)} style={{
+                height: 28, padding: "0 12px", borderRadius: 99, fontSize: 12,
+                fontWeight: isActive ? 600 : 400,
+                border: `1px solid ${isActive ? "#1B3A6B" : "#E2E8F0"}`,
+                background: isActive ? "#1B3A6B" : "#fff",
+                color: isActive ? "#fff" : "#374151",
+                cursor: "pointer",
+              }}>{f.label}</button>
+            );
+          })}
+        </div>
+
         {/* 마감일 */}
         <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
           <span style={{ fontSize: 11, color: "#94A3B8", minWidth: 40 }}>마감일</span>
@@ -960,24 +979,6 @@ export default function AnnouncementsPage() {
               수의계약 제외
             </span>
           </label>
-        </div>
-
-        {/* 참가제한 */}
-        <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
-          <span style={{ fontSize: 11, color: "#94A3B8", minWidth: 40 }}>참가</span>
-          {RGN_TYPE_FILTERS.map((f) => {
-            const isActive = rgnType === f.key;
-            return (
-              <button key={f.key} onClick={() => setRgnType(f.key)} style={{
-                height: 28, padding: "0 12px", borderRadius: 99, fontSize: 12,
-                fontWeight: isActive ? 600 : 400,
-                border: `1px solid ${isActive ? "#1B3A6B" : "#E2E8F0"}`,
-                background: isActive ? "#1B3A6B" : "#fff",
-                color: isActive ? "#fff" : "#374151",
-                cursor: "pointer",
-              }}>{f.label}</button>
-            );
-          })}
         </div>
 
         {/* 예산 */}
@@ -1088,19 +1089,30 @@ export default function AnnouncementsPage() {
                           수의계약
                         </span>
                       )}
-                      {/* 참여 가능 지역 정보 배지 (자동 매칭 X — 정보만) */}
+                      {/* 참여 가능 지역 정보 — 모든 카드에 표시 (전국참여 / 전북 / 익산 관내) */}
                       {(() => {
                         const limit = String(ann.rawJson?.bidPrtcptLmtYn ?? "").trim();
+                        // 제한 없음 → 전국 참여
                         if (limit !== "Y") {
                           return <span style={{ fontSize: 10, fontWeight: 600, background: "#ECFDF5", color: "#059669", padding: "2px 6px", borderRadius: 4 }}>전국 참여</span>;
                         }
-                        const jnt = [
-                          String(ann.rawJson?.jntcontrctDutyRgnNm1 ?? ""),
-                          String(ann.rawJson?.jntcontrctDutyRgnNm2 ?? ""),
-                        ].filter(Boolean);
-                        const lbl = jnt[0] || String(ann.rawJson?.cnstrtsiteRgnNm ?? "") || "지역제한";
-                        const trim = lbl.length > 18 ? lbl.slice(0, 18) + "…" : lbl;
-                        return <span style={{ fontSize: 10, fontWeight: 600, background: "#FFFBEB", color: "#92400E", padding: "2px 6px", borderRadius: 4 }} title={lbl}>{trim}</span>;
+                        // 광역 (jnt 의무지역 1) 우선
+                        const jnt1 = String(ann.rawJson?.jntcontrctDutyRgnNm1 ?? "").trim();
+                        const jnt2 = String(ann.rawJson?.jntcontrctDutyRgnNm2 ?? "").trim();
+                        if (jnt1) {
+                          const canon = normalizeRegion(jnt1) ?? jnt1;
+                          const extra = jnt2 ? "+" : "";
+                          return <span style={{ fontSize: 10, fontWeight: 600, background: "#FEF3C7", color: "#92400E", padding: "2px 6px", borderRadius: 4 }} title={[jnt1, jnt2].filter(Boolean).join(", ")}>{canon}{extra}</span>;
+                        }
+                        // 시·군 단위 — dminsttNm / cnstrtsiteRgnNm 에서 시/군/구 추출
+                        const dminstt = String(ann.rawJson?.dminsttNm ?? "");
+                        const cnstrt = String(ann.rawJson?.cnstrtsiteRgnNm ?? "");
+                        const text = dminstt || cnstrt;
+                        const m = text.match(/(\S+?(?:시|군|구))(?:\s|$)/);
+                        if (m) {
+                          return <span style={{ fontSize: 10, fontWeight: 600, background: "#FEF3C7", color: "#92400E", padding: "2px 6px", borderRadius: 4 }} title={text}>{m[1]} 관내</span>;
+                        }
+                        return <span style={{ fontSize: 10, fontWeight: 600, background: "#FEF2F2", color: "#DC2626", padding: "2px 6px", borderRadius: 4 }}>지역제한</span>;
                       })()}
                       {ann.rawJson && Object.values(ann.rawJson).some((v) => typeof v === "string" && v.includes("긴급")) && (
                         <span style={{ fontSize: 10, fontWeight: 600, background: "#FEF2F2", color: "#DC2626", padding: "2px 6px", borderRadius: 4 }}>
