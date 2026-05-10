@@ -1,7 +1,14 @@
 import { createAdminClient } from "@/lib/supabase/server";
+import Link from "next/link";
 import { AccuracyClient } from "./AccuracyClient";
 
 export const dynamic = "force-dynamic";
+
+/** 공사 카테고리 판정 — "시설공사", "공사" 키워드 포함 */
+function isConstruction(category: string | null | undefined): boolean {
+  if (!category) return false;
+  return category.includes("공사") || category === "시설공사";
+}
 
 type AnnInfo = { id: string; title: string; orgName: string; deadline: string; budget: string; category: string } | null;
 type BppItem = {
@@ -141,6 +148,19 @@ export default async function AdminAccuracyPage() {
   const bppZone3  = bppCalc.filter((r) => r.deviation > 2.0).length;
   const bppRecent = bppCalc.slice(0, 20);
 
+  // ─── 공사 카테고리 분리 통계 (사용자 요청 — 공사가 핵심) ─────────────────────
+  const bppConstruction = bppCalc.filter((r) => isConstruction(r.category));
+  const bppNonConstruction = bppCalc.filter((r) => !isConstruction(r.category));
+  const conTotal    = bppConstruction.length;
+  const conHitRate  = conTotal > 0 ? (bppConstruction.filter((r) => r.isHit).length  / conTotal) * 100 : 0;
+  const conNearRate = conTotal > 0 ? (bppConstruction.filter((r) => r.isNear).length / conTotal) * 100 : 0;
+  const conMAE      = conTotal > 0 ? bppConstruction.reduce((s, r) => s + r.deviation, 0) / conTotal : null;
+  const nonConTotal = bppNonConstruction.length;
+  const nonConHitRate = nonConTotal > 0 ? (bppNonConstruction.filter((r) => r.isHit).length / nonConTotal) * 100 : 0;
+  const nonConMAE    = nonConTotal > 0 ? bppNonConstruction.reduce((s, r) => s + r.deviation, 0) / nonConTotal : null;
+  // 정확도 1순위 = 편차 최소 (공사만)
+  const conTop = conTotal > 0 ? [...bppConstruction].sort((a, b) => a.deviation - b.deviation)[0] : null;
+
   // ─── BidPricePrediction 현재 유효 목록 (AccuracyClient용) ─────────────────────
   const { data: bppListRaw } = await admin
     .from("BidPricePrediction")
@@ -160,7 +180,15 @@ export default async function AdminAccuracyPage() {
     .order("createdAt", { ascending: false })
     .limit(200);
 
-  const bppList = (bppListRaw ?? []) as unknown as BppItem[];
+  const bppListAll = (bppListRaw ?? []) as unknown as BppItem[];
+  // 공사 카테고리를 상단 (사용자 요청)
+  const bppList = [...bppListAll].sort((a, b) => {
+    const ac = isConstruction(a.announcement?.category) ? 0 : 1;
+    const bc = isConstruction(b.announcement?.category) ? 0 : 1;
+    if (ac !== bc) return ac - bc;
+    return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+  });
+  const constructionPredCount = bppListAll.filter((r) => isConstruction(r.announcement?.category)).length;
 
   // ─── 진행중 공고 수 / 예측 완료 수 ───────────────────────────────────────────
   const { count: activeCount } = await admin
@@ -177,15 +205,91 @@ export default async function AdminAccuracyPage() {
     <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
       <div>
         <h2 style={{ fontSize: 22, fontWeight: 700, color: "#0F172A", margin: "0 0 4px" }}>정확도 분석</h2>
-        <p style={{ fontSize: 13, color: "#64748B", margin: 0 }}>AI 예측 공고 목록 · 사정율 적중률 · 발주처 신뢰도</p>
+        <p style={{ fontSize: 13, color: "#64748B", margin: 0 }}>공사 중심 적중률 · 신규 공사 공고 우선 분석 · 발주처 신뢰도</p>
       </div>
 
-      {/* ── AccuracyClient: 현황 카드 + 검색 + 전체분석 + 공고 목록 ── */}
-      <AccuracyClient
-        bppList={bppList}
-        activeCount={activeCount ?? 0}
-        predCount={predCount ?? 0}
-      />
+      {/* ── 공사 중심 분석 (사용자 요청 — 핵심) ─────────────────────────────── */}
+      <div style={{ background: "#fff", borderRadius: 14, border: "2px solid #1B3A6B", padding: "20px" }}>
+        <div style={{ display: "flex", alignItems: "baseline", gap: 8, marginBottom: 14 }}>
+          <span style={{ fontSize: 11, fontWeight: 700, background: "#1B3A6B", color: "#fff", padding: "3px 9px", borderRadius: 4 }}>핵심</span>
+          <span style={{ fontSize: 16, fontWeight: 800, color: "#0F172A" }}>공사 카테고리 적중률</span>
+          <span style={{ fontSize: 12, color: "#64748B" }}>(공사·시설 외 용역·물품은 평가 방식이 달라 별도 집계)</span>
+        </div>
+
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12, marginBottom: 16 }}>
+          {[
+            { label: "공사 비교 가능",  value: conTotal + "건",                                                    color: "#0F172A" },
+            { label: "적중 ±0.5%p",     value: conTotal > 0 ? `${conHitRate.toFixed(1)}%` : "-",                  color: conHitRate >= 30 ? "#059669" : conHitRate >= 15 ? "#D97706" : "#DC2626" },
+            { label: "근접 ±1.0%p",     value: conTotal > 0 ? `${conNearRate.toFixed(1)}%` : "-",                 color: conNearRate >= 50 ? "#059669" : conNearRate >= 30 ? "#D97706" : "#DC2626" },
+            { label: "평균 편차 (MAE)", value: conMAE != null ? `${conMAE.toFixed(3)}%p` : "-",                   color: conMAE == null ? "#9CA3AF" : conMAE < 0.5 ? "#059669" : conMAE < 1.0 ? "#D97706" : "#DC2626" },
+          ].map(({ label, value, color }) => (
+            <div key={label} style={{ background: "#F8FAFC", borderRadius: 10, padding: "12px 14px" }}>
+              <div style={{ fontSize: 11, color: "#64748B", marginBottom: 4 }}>{label}</div>
+              <div style={{ fontSize: 19, fontWeight: 800, color }}>{value}</div>
+            </div>
+          ))}
+        </div>
+
+        {/* 정확도 1순위 공고 (편차 최소, 공사만) */}
+        {conTop ? (
+          <div style={{ background: "linear-gradient(135deg, #EFF6FF 0%, #F0F9FF 100%)", border: "1px solid #BFDBFE", borderRadius: 10, padding: "14px 16px" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+              <span style={{ fontSize: 11, fontWeight: 700, background: "#1B3A6B", color: "#fff", padding: "2px 8px", borderRadius: 4 }}>🏆 정확도 1순위</span>
+              <span style={{ fontSize: 12, color: "#64748B" }}>편차 가장 작음</span>
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr auto auto auto", gap: 16, alignItems: "center" }}>
+              <div style={{ minWidth: 0 }}>
+                <div style={{ fontSize: 14, fontWeight: 700, color: "#0F172A", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  {conTop.orgName}
+                </div>
+                <div style={{ fontSize: 11, color: "#64748B", marginTop: 2 }}>
+                  {conTop.category} · {new Date(conTop.createdAt).toLocaleDateString("ko-KR")}
+                </div>
+              </div>
+              <div style={{ textAlign: "center" }}>
+                <div style={{ fontSize: 10, color: "#64748B" }}>예측</div>
+                <div style={{ fontSize: 13, fontWeight: 700, color: "#1B3A6B" }}>{conTop.predictedSajungRate.toFixed(2)}%</div>
+              </div>
+              <div style={{ textAlign: "center" }}>
+                <div style={{ fontSize: 10, color: "#64748B" }}>실제</div>
+                <div style={{ fontSize: 13, fontWeight: 700, color: "#0F172A" }}>{conTop.actualSajungRate.toFixed(2)}%</div>
+              </div>
+              <div style={{ textAlign: "center" }}>
+                <div style={{ fontSize: 10, color: "#64748B" }}>편차</div>
+                <div style={{ fontSize: 13, fontWeight: 800, color: "#059669" }}>±{conTop.deviation.toFixed(3)}%p</div>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div style={{ background: "#F8FAFC", borderRadius: 10, padding: "14px 16px", color: "#94A3B8", fontSize: 12, textAlign: "center" }}>
+            공사 카테고리 결과 데이터 없음 — BidResult 매칭 후 표시
+          </div>
+        )}
+
+        {/* 비공사 비교용 */}
+        {nonConTotal > 0 && (
+          <div style={{ marginTop: 12, padding: "10px 14px", background: "#FFFBEB", border: "1px solid #FDE68A", borderRadius: 8 }}>
+            <div style={{ fontSize: 11, color: "#92400E", marginBottom: 4 }}>참고 — 용역/물품 (저가 경쟁 영향, 별도 집계)</div>
+            <div style={{ display: "flex", gap: 16, fontSize: 12, color: "#374151" }}>
+              <span>{nonConTotal}건</span>
+              <span>· 적중 {nonConHitRate.toFixed(1)}%</span>
+              <span>· MAE {nonConMAE != null ? nonConMAE.toFixed(3) + "%p" : "-"}</span>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* ── AccuracyClient: 신규 공고 — 공사 우선 정렬 ── */}
+      <div>
+        <div style={{ fontSize: 14, fontWeight: 700, color: "#374151", marginBottom: 8 }}>
+          신규 분석 공고 <span style={{ fontSize: 11, color: "#9CA3AF", fontWeight: 400, marginLeft: 6 }}>· 공사 {constructionPredCount}건이 상단에 자동 정렬</span>
+        </div>
+        <AccuracyClient
+          bppList={bppList}
+          activeCount={activeCount ?? 0}
+          predCount={predCount ?? 0}
+        />
+      </div>
 
       {/* ── AIPrediction 적중률 6카드 ── */}
       {aiTotal > 0 && (

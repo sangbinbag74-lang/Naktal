@@ -134,7 +134,7 @@ export function AccuracyClient({ bppList, activeCount, predCount }: Props) {
             <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12.5 }}>
               <thead>
                 <tr style={{ background: "#F8FAFC" }}>
-                  {["공고명", "발주처", "마감일", "예산", "AI 추천금액", "예측사정율", "낙찰확률", "샘플수"].map((h) => (
+                  {["구분", "공고명", "발주처", "마감일", "예산", "AI 추천금액", "예측사정율", "낙찰확률", "샘플수"].map((h) => (
                     <th key={h} style={{ padding: "9px 12px", textAlign: "left", color: "#374151", fontWeight: 600, borderBottom: "2px solid #E8ECF2", whiteSpace: "nowrap" }}>{h}</th>
                   ))}
                 </tr>
@@ -148,9 +148,18 @@ export function AccuracyClient({ bppList, activeCount, predCount }: Props) {
                     : null;
                   const winProb = r.winProbability != null ? (r.winProbability * 100).toFixed(1) : null;
                   const probColor = winProb == null ? "#9CA3AF" : Number(winProb) >= 30 ? "#059669" : Number(winProb) >= 10 ? "#D97706" : "#DC2626";
+                  const isCon = !!ann?.category && (ann.category.includes("공사") || ann.category === "시설공사");
 
                   return (
-                    <tr key={r.annId ?? i} style={{ borderBottom: "1px solid #F1F5F9" }}>
+                    <tr key={r.annId ?? i} style={{ borderBottom: "1px solid #F1F5F9", background: isCon ? "#F8FAFC" : "transparent" }}>
+                      {/* 구분 (공사 여부) */}
+                      <td style={{ padding: "8px 12px", whiteSpace: "nowrap" }}>
+                        {isCon ? (
+                          <span style={{ fontSize: 10, fontWeight: 700, background: "#EEF2FF", color: "#1B3A6B", padding: "2px 7px", borderRadius: 4 }}>공사</span>
+                        ) : (
+                          <span style={{ fontSize: 10, fontWeight: 600, color: "#94A3B8" }}>{ann?.category ?? "-"}</span>
+                        )}
+                      </td>
                       {/* 공고명 */}
                       <td style={{ padding: "8px 12px", maxWidth: 200, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={ann?.title ?? ""}>
                         {ann?.id ? (
