@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { createAdminClient, createClient } from "@/lib/supabase/server";
+import { ContractRow } from "@/components/naktal/ContractRow";
 
 export const dynamic = "force-dynamic";
 
@@ -82,81 +83,18 @@ export default async function ContractsPage() {
         </div>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-          {contracts.map((c) => {
-            const dday = getDDay(c.deadline as string);
-            const won = c.isWon as boolean | null;
-            return (
-              <div
-                key={c.id as string}
-                style={{
-                  background: won === true ? "linear-gradient(135deg, #fff 0%, #ECFDF5 100%)" : "#fff",
-                  borderRadius: 12, border: `1px solid ${won === true ? "#86EFAC" : "#E8ECF2"}`,
-                  padding: "14px 18px", display: "flex", flexDirection: "column", gap: 10,
-                }}
-              >
-                {/* 1행: 제목/발주처 + 추천금액 + D-day + 낙찰결과 */}
-                <div style={{ display: "grid", gridTemplateColumns: "1fr auto auto auto", gap: 14, alignItems: "center" }}>
-                  <div style={{ minWidth: 0 }}>
-                    <div style={{ fontSize: 14, fontWeight: 700, color: "#0F172A", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", marginBottom: 3 }}>
-                      {c.title as string}
-                    </div>
-                    <div style={{ fontSize: 11, color: "#64748B", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                      {c.orgName as string} · 의뢰일 {fmtDate(c.contractAt as string)}
-                    </div>
-                  </div>
-                  <div style={{ textAlign: "right", flexShrink: 0 }}>
-                    <div style={{ fontSize: 9, color: "#94A3B8", marginBottom: 1 }}>AI 추천</div>
-                    <div style={{ fontSize: 13, fontWeight: 700, color: "#1B3A6B", fontVariantNumeric: "tabular-nums" }}>
-                      {fmtPrice(Number(c.recommendedBidPrice ?? 0))}
-                    </div>
-                  </div>
-                  <span style={{ flexShrink: 0, fontSize: 10, fontWeight: 700, padding: "3px 8px", borderRadius: 5, background: dday.bg, color: dday.color, minWidth: 44, textAlign: "center" }}>
-                    {dday.label}
-                  </span>
-                  <div style={{ flexShrink: 0, minWidth: 110, textAlign: "right" }}>
-                    <WonBadge isWon={won} />
-                  </div>
-                </div>
-
-                {/* 2행: 버튼 3개 (계약서 보기 / 공고 보기 / 결과 보기) */}
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 6 }}>
-                  <Link
-                    href={`/bid-contract/${c.annId as string}`}
-                    style={{
-                      textAlign: "center", padding: "8px 10px",
-                      background: "#fff", color: "#1B3A6B",
-                      border: "1px solid #C7D2FE", borderRadius: 8,
-                      fontSize: 12, fontWeight: 600, textDecoration: "none",
-                    }}
-                  >
-                    📄 계약서 보기
-                  </Link>
-                  <Link
-                    href={`/announcements/${c.annId as string}`}
-                    style={{
-                      textAlign: "center", padding: "8px 10px",
-                      background: "#fff", color: "#374151",
-                      border: "1px solid #E2E8F0", borderRadius: 8,
-                      fontSize: 12, fontWeight: 600, textDecoration: "none",
-                    }}
-                  >
-                    📋 공고 보기
-                  </Link>
-                  <Link
-                    href={`/bid-result/${c.annId as string}`}
-                    style={{
-                      textAlign: "center", padding: "8px 10px",
-                      background: "#1B3A6B", color: "#fff",
-                      borderRadius: 8,
-                      fontSize: 12, fontWeight: 700, textDecoration: "none",
-                    }}
-                  >
-                    🏆 결과 보기
-                  </Link>
-                </div>
-              </div>
-            );
-          })}
+          {contracts.map((c) => (
+            <ContractRow
+              key={c.id as string}
+              annId={c.annId as string}
+              title={c.title as string}
+              orgName={c.orgName as string}
+              contractAt={c.contractAt as string}
+              recommendedBidPrice={Number(c.recommendedBidPrice ?? 0)}
+              deadline={c.deadline as string}
+              isWon={c.isWon as boolean | null}
+            />
+          ))}
         </div>
       )}
     </div>
