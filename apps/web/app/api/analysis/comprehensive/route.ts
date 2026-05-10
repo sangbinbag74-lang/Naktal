@@ -12,6 +12,7 @@ import {
 } from "@/lib/core1/sajung-engine";
 import { recommendNumbers } from "@/lib/core1/frequency-engine";
 import { isMultiplePriceBid } from "@/lib/bid-utils";
+import { calcBaseBudget } from "@/lib/analysis/sajung-utils";
 
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24시간
 
@@ -65,7 +66,8 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   // A값 파싱 (낙찰하한가 계산용 — estimatedPriceByA는 sajung 계산 후 설정)
   const aValueYn = String(ann.aValueYn ?? "");
   const aValueAmt = Number(ann.aValueAmt ?? 0);
-  const budgetNum = aValueAmt > 0 ? aValueAmt : Number(ann.budget) * 1.1;
+  // 기초금액 우선순위: bsisAmt > aValueAmt > 추정가격×1.1 (page.tsx·sajung-utils 통일)
+  const budgetNum = calcBaseBudget(ann as { budget: number; aValueAmt: number; bsisAmt: bigint | number });
   const budgetRange = classifyBudget(budgetNum);
   const aValueTotal = Number(ann.aValueTotal ?? 0);
   const isAValue = aValueYn === "Y" && aValueAmt > 0;

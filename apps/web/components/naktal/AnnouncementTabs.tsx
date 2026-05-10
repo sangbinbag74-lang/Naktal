@@ -81,13 +81,14 @@ export interface AnnouncementTabsProps {
   isClosed: boolean;
   bidMethod: string;
   isContracted?: boolean;    // 계약 완료 여부 — false 면 사정율 분석 블러
+  aValueTotal?: number;      // A합산 (원). A값 적용 공고만, 없으면 0
 }
 
 // ─── 메인 컴포넌트 ────────────────────────────────────────────────────────────
 
 export function AnnouncementTabs({
   annId, annDbId, title, orgName, budget, deadline, category, region,
-  lowerLimitRate, multiplePrice, isClosed, bidMethod, isContracted = false,
+  lowerLimitRate, multiplePrice, isClosed, bidMethod, isContracted = false, aValueTotal = 0,
 }: AnnouncementTabsProps) {
   const [analysis, setAnalysis] = useState<ComprehensiveResult | null>(null);
   const [analysisLoading, setAnalysisLoading] = useState(true);
@@ -314,6 +315,7 @@ export function AnnouncementTabs({
                 predictedSajungRate={bs?.predictedSajungRate}
                 budget={budget}
                 lowerLimitRate={lowerLimitRate}
+                aValueTotal={aValueTotal}
                 period={period}
                 categoryFilter={categoryFilter}
                 orgScope={orgScope}

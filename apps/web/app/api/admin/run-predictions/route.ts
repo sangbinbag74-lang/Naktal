@@ -12,6 +12,7 @@ import {
   analyzeCompetition,
   classifyBudget,
 } from "@/lib/core1/sajung-engine";
+import { calcBaseBudget } from "@/lib/analysis/sajung-utils";
 
 const BATCH_LIMIT = 50;
 const DEFAULT_LOWER_LIMIT_RATE = 87.745;
@@ -26,7 +27,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   // 진행중 공고 조회 (마감 안 된 것)
   const { data: announcements, error } = await admin
     .from("Announcement")
-    .select("id, orgName, category, budget, region, deadline, rawJson, bsisAmt, subCategories, aValueTotal")
+    .select("id, orgName, category, budget, region, deadline, rawJson, bsisAmt, aValueAmt, subCategories, aValueTotal")
     .gt("deadline", now)
     .order("deadline", { ascending: true })
     .limit(BATCH_LIMIT * 3);
@@ -55,8 +56,10 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   let skipped = 0;
 
   for (const ann of targets) {
-    const budget = Number(ann.budget ?? 0);
-    if (budget <= 0) { skipped++; continue; }
+    const rawBudget = Number(ann.budget ?? 0);
+    if (rawBudget <= 0) { skipped++; continue; }
+    // engine 의 estimated = budget × sajung 공식 정합성을 위해 기초금액(부가세 포함) 사용
+    const budget = calcBaseBudget(ann as { budget: number; aValueAmt: number; bsisAmt: bigint | number });
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const rawJson = (ann.rawJson ?? {}) as Record<string, string>;

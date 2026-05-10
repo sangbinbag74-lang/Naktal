@@ -22,6 +22,7 @@ interface SajungTrendOverlayProps {
   predictedSajungRate?: number;
   budget?: number;
   lowerLimitRate?: number;
+  aValueTotal?: number;
   period?: string;
   categoryFilter?: "same" | "all";
   orgScope?: "exact" | "expand";
@@ -74,7 +75,7 @@ function AiLabel({ viewBox, rate, orgAvg }: { viewBox?: { x: number; y: number; 
 
 // ── 메인 컴포넌트 ─────────────────────────────────────────────────────────────
 
-export function SajungTrendOverlay({ annId, userId, predictedSajungRate, budget, lowerLimitRate, period = "3y", categoryFilter = "same", orgScope = "expand", onLoad }: SajungTrendOverlayProps) {
+export function SajungTrendOverlay({ annId, userId, predictedSajungRate, budget, lowerLimitRate, aValueTotal = 0, period = "3y", categoryFilter = "same", orgScope = "expand", onLoad }: SajungTrendOverlayProps) {
   const [data, setData] = useState<SajungTrendResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [brushRange, setBrushRange] = useState<{ startIndex: number; endIndex: number } | null>(null);
@@ -237,8 +238,9 @@ export function SajungTrendOverlay({ annId, userId, predictedSajungRate, budget,
               { pred: data.predictions.upper,  icon: "📍", highlight: false },
               { pred: data.predictions.lower,  icon: "📍", highlight: false },
             ].map(({ pred, icon, highlight }, i) => {
+              // 표준 공식: (기초금액 × 사정율 − A값) × 낙찰하한율 + A값
               const bidPrice = budget && lowerLimitRate
-                ? Math.round(budget * (pred.sajung / 100) * (lowerLimitRate / 100))
+                ? Math.round((budget * (pred.sajung / 100) - aValueTotal) * (lowerLimitRate / 100) + aValueTotal)
                 : null;
               return (
                 <div key={pred.label} style={{

@@ -1,6 +1,37 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { SIMILAR_CATEGORIES } from "@/lib/category-map";
 
+/**
+ * 공고의 "기초금액" (부가세 포함) 통일 계산.
+ * 우선순위: bsisAmt (G2B BsisAmount API) > aValueAmt > 추정가격 × 1.1
+ * 모든 투찰가·낙찰하한가 계산은 이 값을 분모로 사용해야 함.
+ */
+export function calcBaseBudget(ann: {
+  budget?: string | number | null;
+  aValueAmt?: string | number | null;
+  bsisAmt?: string | number | bigint | null;
+}): number {
+  const bsis = Number(ann.bsisAmt ?? 0);
+  const aValueAmt = Number(ann.aValueAmt ?? 0);
+  const budget = Number(ann.budget ?? 0);
+  return bsis > 0 ? bsis : aValueAmt > 0 ? aValueAmt : budget * 1.1;
+}
+
+/**
+ * 표준 투찰가/낙찰하한가 공식.
+ * (기초금액 × 사정율 − A값) × 낙찰하한율 + A값
+ */
+export function calcBidPrice(params: {
+  baseBudget: number;
+  sajungPct: number;       // 99~103 등
+  lowerLimitRate: number;  // 87.745 등
+  aValueTotal?: number;    // 0이면 A값 미적용
+}): number {
+  const aVal = params.aValueTotal ?? 0;
+  const estimatedPrice = params.baseBudget * (params.sajungPct / 100);
+  return Math.round((estimatedPrice - aVal) * (params.lowerLimitRate / 100) + aVal);
+}
+
 /** 사정율 계산: 낙찰금액 + 낙찰률 + 기초금액 → 사정율(%) */
 export function calcSajung(
   finalPrice: number,

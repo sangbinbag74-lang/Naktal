@@ -6,6 +6,7 @@ import {
   analyzeCompetition,
   classifyBudget,
 } from "@/lib/core1/sajung-engine";
+import { calcBaseBudget } from "@/lib/analysis/sajung-utils";
 
 export const dynamic = "force-dynamic";
 
@@ -31,7 +32,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   const now = new Date().toISOString();
   const { data: announcements, error } = await admin
     .from("AnnouncementActive")
-    .select("id, orgName, category, budget, region, deadline, rawJson, bsisAmt, subCategories, aValueTotal")
+    .select("id, orgName, category, budget, region, deadline, rawJson, bsisAmt, aValueAmt, subCategories, aValueTotal")
     .gt("deadline", now)
     .order("deadline", { ascending: true })
     .limit(BATCH_LIMIT * 3); // 스킵 여유분 확보
@@ -59,8 +60,12 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   let skipped = 0;
 
   for (const ann of targets) {
-    const budget = Number(ann.budget ?? 0);
-    if (budget <= 0) { skipped++; continue; }
+    const rawBudget = Number(ann.budget ?? 0);
+    if (rawBudget <= 0) { skipped++; continue; }
+
+    // engine 의 estimated = budget × sajung 공식이 정확하려면
+    // budget = 기초금액 (부가세 포함) 이어야 함. ann.budget 은 추정가격(부가세 별도)이라 ×1.1 보정.
+    const budget = calcBaseBudget(ann as { budget: number; aValueAmt: number; bsisAmt: bigint | number });
 
     const rawJson = (ann.rawJson ?? {}) as Record<string, string>;
     const lowerLimitRate = rawJson.sucsfbidLwltRate

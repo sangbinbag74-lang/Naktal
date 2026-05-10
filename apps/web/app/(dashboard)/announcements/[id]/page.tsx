@@ -459,6 +459,7 @@ export default async function AnnouncementDetailPage({
             isClosed={isClosed}
             bidMethod={bidMethodDisplay}
             isContracted={isContracted}
+            aValueTotal={aValueTotal}
           />
         </div>
 
