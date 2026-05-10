@@ -185,7 +185,7 @@ async function fetchFromDB(opts: Record<string, string | number>): Promise<NextR
   // 2026-05-09: 749만 → 14k row, Micro IO 에서 13ms 도달
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let q: any = admin.from("AnnouncementActive").select(
-    "id,konepsId,title,orgName,budget,deadline,category,subCategories,region,createdAt,rawJson,aValueYn"
+    "id,konepsId,title,orgName,budget,deadline,category,subCategories,region,createdAt,rawJson,aValueYn,pdfRgnLimit"
   );
 
   // 다중 카테고리: category(주종) OR subCategories(부종) OR 유사 업종 확장

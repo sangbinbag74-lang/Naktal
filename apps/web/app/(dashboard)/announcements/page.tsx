@@ -27,6 +27,12 @@ function saveFilters(filters: Record<string, unknown>) {
   try { localStorage.setItem(FILTERS_KEY, JSON.stringify(filters)); } catch { /* 무시 */ }
 }
 
+interface PdfRgnLimit {
+  type: "sigun" | "gwangyeok" | "national" | "unknown";
+  label: string;
+  raw?: string;
+}
+
 interface Announcement {
   id: string;
   konepsId: string;
@@ -39,6 +45,7 @@ interface Announcement {
   createdAt: string;
   rawJson?: Record<string, string> | null;
   aValueYn?: string | null;
+  pdfRgnLimit?: PdfRgnLimit | null;
 }
 
 interface ApiResponse {
@@ -1167,8 +1174,23 @@ export default function AnnouncementsPage() {
                           지명경쟁
                         </span>
                       )}
-                      {/* 참여 조건 — '전국 참여' 라벨 영구 제거. Y(명시적 지역제한)만 표시 */}
+                      {/* 참여 조건 — pdfRgnLimit (PDF 본문 추출 자격) 우선, 없으면 G2B API 필드 */}
                       {(() => {
+                        // 1. PDF 본문 추출 결과 우선 (가장 정확)
+                        const pdf = ann.pdfRgnLimit;
+                        if (pdf && pdf.type !== "unknown") {
+                          if (pdf.type === "sigun") {
+                            return <span style={{ fontSize: 10, fontWeight: 600, background: "#FEF2F2", color: "#DC2626", padding: "2px 6px", borderRadius: 4 }} title={pdf.raw ?? `PDF: ${pdf.label}내 업체`}>📄 {pdf.label} 관내</span>;
+                          }
+                          if (pdf.type === "gwangyeok") {
+                            return <span style={{ fontSize: 10, fontWeight: 600, background: "#FEF3C7", color: "#92400E", padding: "2px 6px", borderRadius: 4 }} title={pdf.raw ?? `PDF: ${pdf.label} 업체`}>📄 {pdf.label}</span>;
+                          }
+                          if (pdf.type === "national") {
+                            return <span style={{ fontSize: 10, fontWeight: 600, background: "#ECFDF5", color: "#059669", padding: "2px 6px", borderRadius: 4 }} title={pdf.raw}>📄 전국 참여</span>;
+                          }
+                        }
+
+                        // 2. PDF 미파싱 또는 unknown — G2B 명시 필드만
                         const limit       = String(ann.rawJson?.bidPrtcptLmtYn ?? "").trim();
                         const rgnDuty     = String(ann.rawJson?.rgnDutyJntcontrctYn ?? "").trim();
                         const cmmnSpldmd  = String(ann.rawJson?.cmmnSpldmdCorpRgnLmtYn ?? "").trim();
@@ -1176,29 +1198,21 @@ export default function AnnouncementsPage() {
                         const jnt1   = String(ann.rawJson?.jntcontrctDutyRgnNm1 ?? "").trim();
                         const jnt2   = String(ann.rawJson?.jntcontrctDutyRgnNm2 ?? "").trim();
 
-                        // 명시적 지역제한
                         const hasRgnLimit = limit === "Y" || cmmnSpldmd === "Y" || rgnLmtBss === "Y";
                         if (hasRgnLimit) {
                           if (jnt1) {
                             const canon = normalizeRegion(jnt1) ?? jnt1;
                             return <span style={{ fontSize: 10, fontWeight: 600, background: "#FEF2F2", color: "#DC2626", padding: "2px 6px", borderRadius: 4 }} title={[jnt1, jnt2].filter(Boolean).join(", ")}>{canon}{jnt2 ? "+" : ""} 제한</span>;
                           }
-                          const dminstt = String(ann.rawJson?.dminsttNm ?? "");
-                          const cnstrt  = String(ann.rawJson?.cnstrtsiteRgnNm ?? "");
-                          const text = dminstt || cnstrt;
-                          const m = text.match(/(\S+?(?:시|군|구))(?:\s|$)/);
-                          if (m) return <span style={{ fontSize: 10, fontWeight: 600, background: "#FEF2F2", color: "#DC2626", padding: "2px 6px", borderRadius: 4 }} title={text}>{m[1]} 제한</span>;
                           return <span style={{ fontSize: 10, fontWeight: 600, background: "#FEF2F2", color: "#DC2626", padding: "2px 6px", borderRadius: 4 }}>지역제한</span>;
                         }
-
-                        // 지역의무공동도급
                         if (rgnDuty === "Y" && jnt1) {
                           const canon = normalizeRegion(jnt1) ?? jnt1;
                           return <span style={{ fontSize: 10, fontWeight: 600, background: "#FFFBEB", color: "#92400E", padding: "2px 6px", borderRadius: 4 }} title={[jnt1, jnt2].filter(Boolean).join(", ")}>{canon} 의무공동</span>;
                         }
 
-                        // 그 외 — '전국 참여' 라벨 표시 안 함 (G2B API 한계로 거짓 라벨 위험)
-                        return null;
+                        // 3. PDF 미파싱 + G2B 명시 제한 없음 → 보수적 안내
+                        return <span style={{ fontSize: 10, fontWeight: 600, background: "#F1F5F9", color: "#94A3B8", padding: "2px 6px", borderRadius: 4 }} title="공고 PDF 본문 자격 확인 필수">📄 자격 확인</span>;
                       })()}
                       {ann.rawJson && Object.values(ann.rawJson).some((v) => typeof v === "string" && v.includes("긴급")) && (
                         <span style={{ fontSize: 10, fontWeight: 600, background: "#FEF2F2", color: "#DC2626", padding: "2px 6px", borderRadius: 4 }}>
