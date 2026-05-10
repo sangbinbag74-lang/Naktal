@@ -1167,15 +1167,18 @@ export default function AnnouncementsPage() {
                           지명경쟁
                         </span>
                       )}
-                      {/* 참여 조건 — '전국 참여' 라벨은 의미 없음 (거의 모든 공고가 N) → 현장/제한만 표시 */}
+                      {/* 참여 조건 — G2B 공식 필드 종합 판단 */}
                       {(() => {
-                        const limit  = String(ann.rawJson?.bidPrtcptLmtYn ?? "").trim();
-                        const rgnDuty = String(ann.rawJson?.rgnDutyJntcontrctYn ?? "").trim();
+                        const limit       = String(ann.rawJson?.bidPrtcptLmtYn ?? "").trim();
+                        const rgnDuty     = String(ann.rawJson?.rgnDutyJntcontrctYn ?? "").trim();
+                        const cmmnSpldmd  = String(ann.rawJson?.cmmnSpldmdCorpRgnLmtYn ?? "").trim();
+                        const rgnLmtBss   = String(ann.rawJson?.rgnLmtBidLocplcJdgmBssCd ?? "").trim();
                         const jnt1   = String(ann.rawJson?.jntcontrctDutyRgnNm1 ?? "").trim();
                         const jnt2   = String(ann.rawJson?.jntcontrctDutyRgnNm2 ?? "").trim();
 
-                        // 1. 명시적 지역제한 — bidPrtcptLmtYn = "Y"
-                        if (limit === "Y") {
+                        // 1. 명시적 지역제한 — bidPrtcptLmtYn = Y 또는 다른 지역제한 필드 Y
+                        const hasRgnLimit = limit === "Y" || cmmnSpldmd === "Y" || rgnLmtBss === "Y";
+                        if (hasRgnLimit) {
                           if (jnt1) {
                             const canon = normalizeRegion(jnt1) ?? jnt1;
                             return <span style={{ fontSize: 10, fontWeight: 600, background: "#FEF2F2", color: "#DC2626", padding: "2px 6px", borderRadius: 4 }} title={[jnt1, jnt2].filter(Boolean).join(", ")}>{canon}{jnt2 ? "+" : ""} 제한</span>;
@@ -1188,20 +1191,19 @@ export default function AnnouncementsPage() {
                           return <span style={{ fontSize: 10, fontWeight: 600, background: "#FEF2F2", color: "#DC2626", padding: "2px 6px", borderRadius: 4 }}>지역제한</span>;
                         }
 
-                        // 2. 지역의무공동도급 — rgnDutyJntcontrctYn = "Y"
+                        // 2. 지역의무공동도급
                         if (rgnDuty === "Y" && jnt1) {
                           const canon = normalizeRegion(jnt1) ?? jnt1;
                           return <span style={{ fontSize: 10, fontWeight: 600, background: "#FFFBEB", color: "#92400E", padding: "2px 6px", borderRadius: 4 }} title={[jnt1, jnt2].filter(Boolean).join(", ")}>{canon} 의무공동</span>;
                         }
 
-                        // 3. 제한 없음 → 현장 위치(공사현장 또는 발주처) 시·군 표시
-                        const cnstrt  = String(ann.rawJson?.cnstrtsiteRgnNm ?? "");
-                        const dminstt = String(ann.rawJson?.dminsttNm ?? "");
-                        const text = cnstrt || dminstt;
-                        const m = text.match(/(\S+?(?:시|군|구))(?:\s|$)/);
-                        if (m) {
-                          return <span style={{ fontSize: 10, fontWeight: 600, background: "#F1F5F9", color: "#475569", padding: "2px 6px", borderRadius: 4 }} title={`현장: ${text}`}>📍 {m[1]}</span>;
+                        // 3. 모든 지역제한 필드 명시적 N → 전국 참여
+                        const allKnownN = limit === "N" && (cmmnSpldmd === "N" || cmmnSpldmd === "") && (rgnLmtBss === "N" || rgnLmtBss === "");
+                        if (allKnownN) {
+                          return <span style={{ fontSize: 10, fontWeight: 600, background: "#ECFDF5", color: "#059669", padding: "2px 6px", borderRadius: 4 }}>전국 참여</span>;
                         }
+
+                        // 4. NULL/빈값 — 정보 없음 (배지 미표시)
                         return null;
                       })()}
                       {ann.rawJson && Object.values(ann.rawJson).some((v) => typeof v === "string" && v.includes("긴급")) && (
