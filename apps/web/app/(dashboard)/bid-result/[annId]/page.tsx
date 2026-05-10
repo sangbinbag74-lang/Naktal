@@ -95,9 +95,30 @@ export default async function BidResultPage({
         .maybeSingle()
     : { data: null };
 
-  const avgSajungRate = Number((statRow ?? statFallback)?.avg ?? 0);
+  let avgSajungRate = Number((statRow ?? statFallback)?.avg ?? 0);
+  let sampleSize = Number(statRow?.sampleSize ?? statFallback?.sampleSize ?? 0);
+
+  // 부모 시·군 확장 매칭 (orgName 첫 2 토큰 ILIKE) — '경상북도 봉화군 체육시설사업소' 0건 → '경상북도 봉화군%' 산하 합산
+  if (sampleSize < 5) {
+    const orgTokens = String(ann.orgName ?? "").trim().split(/\s+/);
+    if (orgTokens.length >= 2) {
+      const parentOrg = `${orgTokens[0]} ${orgTokens[1]}`;
+      const { data: parentRows } = await admin
+        .from("SajungRateStat")
+        .select("avg,sampleSize")
+        .ilike("orgName", `${parentOrg}%`)
+        .eq("category", ann.category as string)
+        .eq("budgetRange", budgetRange)
+        .eq("region", ann.region as string);
+      const rows = (parentRows ?? []) as Array<{ avg: number; sampleSize: number }>;
+      const total = rows.reduce((s, r) => s + Number(r.sampleSize ?? 0), 0);
+      if (total >= 5) {
+        avgSajungRate = rows.reduce((s, r) => s + Number(r.avg) * Number(r.sampleSize ?? 0), 0) / total;
+        sampleSize = total;
+      }
+    }
+  }
   const sajungDeviation = avgSajungRate > 0 ? sajungRate - avgSajungRate : null;
-  const sampleSize = Number(statRow?.sampleSize ?? statFallback?.sampleSize ?? 0);
   const winProbability = Number(req.winProbability ?? 0); // 0~100 정수
   const competitionScore = Number(req.competitionScore ?? 0);
   const safetyMargin = price - lowerLimit; // 추천 - 낙찰하한가 (안전 마진 + seq)
@@ -272,8 +293,8 @@ export default async function BidResultPage({
             },
             {
               label: "AI 신뢰도",
-              value: confidenceLevel,
-              sub: `유사 ${sampleSize}건 기반`,
+              value: confidenceLevel === "HIGH" ? "높음" : confidenceLevel === "MEDIUM" ? "보통" : "낮음",
+              sub: confidenceLevel === "HIGH" ? "분석 데이터 충분" : confidenceLevel === "MEDIUM" ? "분석 데이터 보통" : "분석 데이터 부족",
               color: confidenceLevel === "HIGH" ? "#059669" : confidenceLevel === "MEDIUM" ? "#1B3A6B" : "#C2410C",
             },
             {
