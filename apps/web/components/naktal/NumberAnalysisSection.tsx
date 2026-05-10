@@ -375,15 +375,17 @@ export function NumberAnalysisSection({ annId, isClosed, bidMethod, multiplePric
             {!isContracted && (
               <div style={{
                 position: "absolute", inset: 0,
-                background: "rgba(255,255,255,0.7)",
+                background: "rgba(248,250,252,0.92)",
+                backdropFilter: "blur(18px)",
+                WebkitBackdropFilter: "blur(18px)",
                 display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
-                gap: 8, borderRadius: 12,
+                gap: 10, borderRadius: 12,
               }}>
-                <div style={{ fontSize: 32 }}>🔒</div>
-                <div style={{ fontSize: 14, fontWeight: 700, color: "#0F172A" }}>
+                <div style={{ fontSize: 36 }}>🔒</div>
+                <div style={{ fontSize: 15, fontWeight: 700, color: "#0F172A" }}>
                   계약 완료 후 공개됩니다
                 </div>
-                <div style={{ fontSize: 12, color: "#64748B", textAlign: "center", padding: "0 16px" }}>
+                <div style={{ fontSize: 12, color: "#64748B", textAlign: "center", padding: "0 16px", lineHeight: 1.5 }}>
                   투찰 의뢰 + 전자서명 완료 시<br />
                   AI 추천 번호 조합 4종 + 빈도 히트맵 공개
                 </div>
