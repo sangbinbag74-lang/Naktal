@@ -148,6 +148,14 @@ export function NumberAnalysisSection({ annId, isClosed, bidMethod, multiplePric
     return () => { aborted = true; };
   }, [cacheKey, annId]);
 
+  // 계약 완료 + 결과 없음 → 자동 분석 호출 (history 조회 결과 반영 후)
+  useEffect(() => {
+    if (!isContracted || result || loading || isClosed) return;
+    const t = setTimeout(() => { void handleAnalyze(); }, 500); // history fetch 완료 대기
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isContracted, result, isClosed]);
+
   async function handleAnalyze() {
     if (loading || isClosed) return;
     setLoading(true);

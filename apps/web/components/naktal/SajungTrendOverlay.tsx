@@ -412,16 +412,18 @@ export function SajungTrendOverlay({ annId, userId, predictedSajungRate, budget,
           <div style={{
             padding: "10px 16px",
             borderBottom: "1px solid #E2E8F0",
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
           }}>
-            <span style={{ fontSize: 12, fontWeight: 600, color: "#374151" }}>
-              다음 공고 예상 사정율
-            </span>
-            <span style={{ fontSize: 11, color: "#94A3B8" }}>
-              {data.predictions.basis}
-            </span>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <span style={{ fontSize: 12, fontWeight: 600, color: "#374151" }}>
+                다음 공고 예상 사정율 시나리오
+              </span>
+              <span style={{ fontSize: 11, color: "#94A3B8" }}>
+                {data.predictions.basis}
+              </span>
+            </div>
+            <div style={{ fontSize: 10, color: "#94A3B8", marginTop: 4 }}>
+              ※ 정규분포 ±1σ 기반 3가지 시나리오 (중앙=가장 유력 / 상단·하단=경계)
+            </div>
           </div>
 
           {/* 카드 3개 */}

@@ -105,23 +105,22 @@ export function SajungTopTen({ annId, predictedSajungRate, budget: _budget, peri
             {data.topTen.map((item) => {
               const isAiMatch = predictedSajungRate != null
                 && Math.abs(item.bucket - predictedSajungRate) <= 0.15;
-              const isFirst = item.rank === 1;
               return (
                 <tr
                   key={item.bucket}
                   style={{
                     borderBottom: "1px solid #F1F5F9",
-                    background: isFirst ? "#EFF6FF" : isAiMatch ? "#F5F3FF" : "transparent",
+                    background: isAiMatch ? "#F5F3FF" : "transparent",
                   }}
                 >
-                  {/* 순위 */}
+                  {/* 순위 (단순 빈도 순위, 1위 강조 제거 — 100% 가 항상 1위 nature) */}
                   <td style={{ padding: "10px", textAlign: "center" }}>
                     <span style={{
                       display: "inline-block",
                       width: 24, height: 24, lineHeight: "24px",
                       borderRadius: "50%",
-                      background: isFirst ? "#1B3A6B" : "#E2E8F0",
-                      color: isFirst ? "#fff" : "#64748B",
+                      background: isAiMatch ? "#7C3AED" : "#E2E8F0",
+                      color: isAiMatch ? "#fff" : "#64748B",
                       fontSize: 12, fontWeight: 700, textAlign: "center",
                     }}>
                       {item.rank}
@@ -152,7 +151,7 @@ export function SajungTopTen({ annId, predictedSajungRate, budget: _budget, peri
                         <div style={{
                           height: "100%",
                           width: `${item.attractiveness}%`,
-                          background: isFirst ? "#1B3A6B" : "#60A5FA",
+                          background: isAiMatch ? "#7C3AED" : "#60A5FA",
                           borderRadius: 4,
                         }} />
                       </div>

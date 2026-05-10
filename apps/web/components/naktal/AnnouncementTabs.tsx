@@ -80,13 +80,14 @@ export interface AnnouncementTabsProps {
   multiplePrice: boolean;
   isClosed: boolean;
   bidMethod: string;
+  isContracted?: boolean;    // 계약 완료 여부 — false 면 사정율 분석 블러
 }
 
 // ─── 메인 컴포넌트 ────────────────────────────────────────────────────────────
 
 export function AnnouncementTabs({
   annId, annDbId, title, orgName, budget, deadline, category, region,
-  lowerLimitRate, multiplePrice, isClosed, bidMethod,
+  lowerLimitRate, multiplePrice, isClosed, bidMethod, isContracted = false,
 }: AnnouncementTabsProps) {
   const [analysis, setAnalysis] = useState<ComprehensiveResult | null>(null);
   const [analysisLoading, setAnalysisLoading] = useState(true);
@@ -178,11 +179,33 @@ export function AnnouncementTabs({
             return null;
           })()}
 
-          {/* 사정율 분석 (서브탭 3개) */}
-          <div style={{ background: "#fff", border: "1px solid #E8ECF2", borderRadius: 10, padding: "16px 18px" }}>
+          {/* 사정율 분석 (서브탭 3개) — 계약 완료 후 공개 */}
+          <div style={{ background: "#fff", border: "1px solid #E8ECF2", borderRadius: 10, padding: "16px 18px", position: "relative" }}>
             <div style={{ fontSize: 13, fontWeight: 700, color: "#0F172A", marginBottom: 12 }}>
               사정율 분석
+              {!isContracted && (
+                <span style={{ fontSize: 10, fontWeight: 700, background: "#FEF3C7", color: "#92400E", padding: "2px 7px", borderRadius: 4, marginLeft: 8 }}>
+                  🔒 계약 회원
+                </span>
+              )}
             </div>
+            {!isContracted && (
+              <div style={{
+                position: "absolute", top: 50, left: 0, right: 0, bottom: 0,
+                background: "rgba(255,255,255,0.85)",
+                display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+                gap: 8, borderRadius: 10, zIndex: 10,
+              }}>
+                <div style={{ fontSize: 32 }}>🔒</div>
+                <div style={{ fontSize: 14, fontWeight: 700, color: "#0F172A" }}>
+                  계약 완료 후 공개됩니다
+                </div>
+                <div style={{ fontSize: 12, color: "#64748B", textAlign: "center", padding: "0 16px" }}>
+                  투찰 의뢰 + 전자서명 완료 시<br />
+                  사정율 분포·흐름·구간추천 3종 모두 공개
+                </div>
+              </div>
+            )}
             {/* 서브탭 네비게이션 */}
             <div style={{ display: "flex", gap: 4, marginBottom: 16, padding: 4, background: "#F8FAFC", borderRadius: 10 }}>
               {([
