@@ -14,7 +14,7 @@ import {
   Brush,
 } from "recharts";
 import type { OrgPoint, SajungPredictions, SajungTrendResponse } from "@/app/api/analysis/sajung-trend/route";
-import { formatDeviation, formatSajung, deviationColor } from "@/lib/format";
+import { formatDeviation, formatSajung } from "@/lib/format";
 
 interface SajungTrendOverlayProps {
   annId: string;
@@ -26,21 +26,6 @@ interface SajungTrendOverlayProps {
   categoryFilter?: "same" | "all";
   orgScope?: "exact" | "expand";
   onLoad?: (sampleSize: number, fromCache: boolean) => void;
-}
-
-// ── 통계 카드 ──────────────────────────────────────────────────────────────────
-
-function StatCard({ label, value, dev, devColor, sub, color = "#0F172A" }: {
-  label: string; value: string; dev?: string; devColor?: string; sub?: string; color?: string;
-}) {
-  return (
-    <div style={{ background: "#F8FAFC", borderRadius: 8, padding: "10px 14px", textAlign: "center", flex: 1 }}>
-      <div style={{ fontSize: 11, color: "#94A3B8", marginBottom: 3 }}>{label}</div>
-      <div style={{ fontSize: 15, fontWeight: 700, color }}>{value}</div>
-      {dev && <div style={{ fontSize: 11, color: devColor ?? "#94A3B8", marginTop: 2 }}>{dev}</div>}
-      {sub && <div style={{ fontSize: 11, color: "#94A3B8", marginTop: 2 }}>{sub}</div>}
-    </div>
-  );
 }
 
 // ── 커스텀 툴팁 ───────────────────────────────────────────────────────────────
@@ -192,21 +177,7 @@ export function SajungTrendOverlay({ annId, userId, predictedSajungRate, budget,
     );
   }
 
-  // 통계 카드 값
   const baseAvg = data.orgAvg ?? 100; // 편차 기준값
-  const orgAvgStr = data.orgAvg != null ? formatSajung(data.orgAvg) : "-";
-
-  const mineAvgStr = data.mineAvg != null
-    ? formatSajung(data.mineAvg)
-    : data.mineCount === 0 ? "이력 없음" : "-";
-  const mineDev = data.mineAvg != null ? formatDeviation(data.mineAvg, baseAvg) : undefined;
-  const mineDevColor = data.mineAvg != null ? deviationColor(data.mineAvg, baseAvg) : undefined;
-
-  const gap = data.mineAvg != null && data.orgAvg != null ? data.mineAvg - data.orgAvg : null;
-  const gapStr = gap != null
-    ? `${gap >= 0 ? "+" : ""}${gap.toFixed(3)}%`
-    : "-";
-  const gapColor = gap === null ? "#64748B" : gap > 0 ? "#DC2626" : "#16A34A";
 
   const handleBrushChange = (range: { startIndex?: number; endIndex?: number }) => {
     if (
@@ -239,29 +210,67 @@ export function SajungTrendOverlay({ annId, userId, predictedSajungRate, budget,
         </div>
       )}
 
-      {/* 통계 카드 (롤백) */}
-      <div style={{ display: "flex", gap: 8 }}>
-        <StatCard
-          label="발주처 평균 사정율 (산술평균)"
-          value={orgAvgStr}
-          dev="기준값 (평균 대비)"
-          sub={`${data.orgCount}건`}
-          color="#1B3A6B"
-        />
-        <StatCard
-          label="내 평균 사정율"
-          value={mineAvgStr}
-          dev={data.mineCount > 0 ? mineDev : undefined}
-          devColor={mineDevColor}
-          color="#F59E0B"
-        />
-        <StatCard label="차이" value={gapStr} color={gapColor} />
-      </div>
-
-      {/* 투찰 이력 없음 안내 */}
-      {data.mineCount === 0 && (
-        <div style={{ padding: "10px 14px", background: "#F8FAFC", border: "1px solid #E8ECF2", borderRadius: 8, fontSize: 12, color: "#64748B" }}>
-          💡 투찰 후 결과를 입력하면 내 사정율을 발주처 흐름과 비교할 수 있습니다.
+      {/* 다음 공고 예상 사정율 시나리오 (위로 이동) */}
+      {data.predictions && (
+        <div style={{
+          background: "#F8FAFC",
+          borderRadius: 12,
+          border: "1px solid #E2E8F0",
+          overflow: "hidden",
+        }}>
+          <div style={{ padding: "10px 16px", borderBottom: "1px solid #E2E8F0" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <span style={{ fontSize: 12, fontWeight: 600, color: "#374151" }}>
+                다음 공고 예상 사정율 시나리오
+              </span>
+              <span style={{ fontSize: 11, color: "#94A3B8" }}>
+                {data.predictions.basis}
+              </span>
+            </div>
+            <div style={{ fontSize: 10, color: "#94A3B8", marginTop: 4 }}>
+              ※ 정규분포 ±1σ 기반 3가지 시나리오 (중앙=가장 유력 / 상단·하단=경계)
+            </div>
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr" }}>
+            {[
+              { pred: data.predictions.center, icon: "🎯", highlight: true  },
+              { pred: data.predictions.upper,  icon: "📍", highlight: false },
+              { pred: data.predictions.lower,  icon: "📍", highlight: false },
+            ].map(({ pred, icon, highlight }, i) => {
+              const bidPrice = budget && lowerLimitRate
+                ? Math.round(budget * (pred.sajung / 100) * (lowerLimitRate / 100))
+                : null;
+              return (
+                <div key={pred.label} style={{
+                  padding: "14px 16px",
+                  borderRight: i < 2 ? "1px solid #E2E8F0" : "none",
+                  background: highlight ? "#EFF6FF" : "transparent",
+                }}>
+                  <div style={{ fontSize: 11, color: "#64748B", marginBottom: 6 }}>
+                    {icon} {pred.label}
+                  </div>
+                  <div style={{
+                    fontSize: 22, fontWeight: 800,
+                    color: pred.deviation >= 0 ? "#1B3A6B" : "#DC2626",
+                    letterSpacing: "-0.5px",
+                  }}>
+                    {pred.deviation >= 0 ? "+" : ""}{pred.deviation.toFixed(3)}%p
+                  </div>
+                  <div style={{ fontSize: 12, color: "#64748B", marginTop: 3 }}>
+                    사정율 {pred.sajung.toFixed(3)}%
+                  </div>
+                  {bidPrice && (
+                    <div style={{ fontSize: 11, color: "#94A3B8", marginTop: 4 }}>
+                      참고 {Math.round(bidPrice / 10000).toLocaleString()}만원
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+          <div style={{ padding: "8px 16px", borderTop: "1px solid #E2E8F0", fontSize: 11, color: "#94A3B8" }}>
+            ※ 발주처 평균 {data.orgAvg?.toFixed(3)}% 기준 편차 · 통계적 참고자료, 낙찰 보장 없음
+          </div>
         </div>
       )}
 
@@ -415,86 +424,6 @@ export function SajungTrendOverlay({ annId, userId, predictedSajungRate, budget,
           하단 막대를 드래그해서 기간을 확대할 수 있습니다
         </div>
       </div>
-
-      {/* 예측 카드 */}
-      {data.predictions && (
-        <div style={{
-          marginTop: 16,
-          background: "#F8FAFC",
-          borderRadius: 12,
-          border: "1px solid #E2E8F0",
-          overflow: "hidden",
-        }}>
-          {/* 헤더 */}
-          <div style={{
-            padding: "10px 16px",
-            borderBottom: "1px solid #E2E8F0",
-          }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <span style={{ fontSize: 12, fontWeight: 600, color: "#374151" }}>
-                다음 공고 예상 사정율 시나리오
-              </span>
-              <span style={{ fontSize: 11, color: "#94A3B8" }}>
-                {data.predictions.basis}
-              </span>
-            </div>
-            <div style={{ fontSize: 10, color: "#94A3B8", marginTop: 4 }}>
-              ※ 정규분포 ±1σ 기반 3가지 시나리오 (중앙=가장 유력 / 상단·하단=경계)
-            </div>
-          </div>
-
-          {/* 카드 3개 */}
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr" }}>
-            {[
-              { pred: data.predictions.center, icon: "🎯", highlight: true  },
-              { pred: data.predictions.upper,  icon: "📍", highlight: false },
-              { pred: data.predictions.lower,  icon: "📍", highlight: false },
-            ].map(({ pred, icon, highlight }, i) => {
-              const bidPrice = budget && lowerLimitRate
-                ? Math.round(budget * (pred.sajung / 100) * (lowerLimitRate / 100))
-                : null;
-              return (
-                <div key={pred.label} style={{
-                  padding: "14px 16px",
-                  borderRight: i < 2 ? "1px solid #E2E8F0" : "none",
-                  background: highlight ? "#EFF6FF" : "transparent",
-                }}>
-                  <div style={{ fontSize: 11, color: "#64748B", marginBottom: 6 }}>
-                    {icon} {pred.label}
-                  </div>
-                  <div style={{
-                    fontSize: 22,
-                    fontWeight: 800,
-                    color: pred.deviation >= 0 ? "#1B3A6B" : "#DC2626",
-                    letterSpacing: "-0.5px",
-                  }}>
-                    {pred.deviation >= 0 ? "+" : ""}{pred.deviation.toFixed(3)}%p
-                  </div>
-                  <div style={{ fontSize: 12, color: "#64748B", marginTop: 3 }}>
-                    사정율 {pred.sajung.toFixed(3)}%
-                  </div>
-                  {bidPrice && (
-                    <div style={{ fontSize: 11, color: "#94A3B8", marginTop: 4 }}>
-                      참고 {Math.round(bidPrice / 10000).toLocaleString()}만원
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-
-          {/* 하단 기준 안내 */}
-          <div style={{
-            padding: "8px 16px",
-            borderTop: "1px solid #E2E8F0",
-            fontSize: 11,
-            color: "#94A3B8",
-          }}>
-            ※ 발주처 평균 {data.orgAvg?.toFixed(3)}% 기준 편차
-            · 통계적 참고자료, 낙찰 보장 없음
-          </div>
-        </div>
-      )}
     </div>
   );
 }
