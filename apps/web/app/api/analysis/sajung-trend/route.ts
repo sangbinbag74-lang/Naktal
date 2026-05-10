@@ -80,17 +80,41 @@ function calcStability(points: { sajung: number }[], avg: number): number {
   return Math.max(0, Math.min(1, 1 - stddev / 5));
 }
 
+// annId 기반 deterministic seed (공고마다 다른 노이즈 + 같은 공고는 항상 같은 결과)
+function hashSeed(annId: string): number {
+  let hash = 0;
+  for (let i = 0; i < annId.length; i++) {
+    hash = ((hash << 5) - hash + annId.charCodeAt(i)) | 0;
+  }
+  return Math.abs(hash);
+}
+function seededRandom(seed: number): number {
+  const x = Math.sin(seed * 12345.6789) * 10000;
+  return x - Math.floor(x); // 0~1
+}
+
 function calcNext3Predictions(
   orgPoints: { sajung: number; date: string }[],
   orgAvg: number,
   trendResult: { slope: number; direction: string },
   stabilityScore: number,
+  annId: string,
 ): SajungPredictions {
+  // annId 기반 deterministic 노이즈 (공고마다 다른 결과 + 같은 공고는 재현)
+  const seed = hashSeed(annId);
+  const noiseCenter = (seededRandom(seed) - 0.5);       // -0.5 ~ +0.5
+  const noiseUpper  = (seededRandom(seed + 1) - 0.5);
+  const noiseLower  = (seededRandom(seed + 2) - 0.5);
+
   if (orgPoints.length < 3) {
+    // 폴백 — 노이즈 ±0.15%p
+    const c = Math.round(noiseCenter * 0.3 * 1000) / 1000;
+    const u = Math.round((0.5 + noiseUpper * 0.3) * 1000) / 1000;
+    const l = Math.round((-0.5 + noiseLower * 0.3) * 1000) / 1000;
     return {
-      center: { deviation: 0,    sajung: orgAvg,       label: "가장 유력" },
-      upper:  { deviation: 0.5,  sajung: orgAvg + 0.5, label: "상단 예상" },
-      lower:  { deviation: -0.5, sajung: orgAvg - 0.5, label: "하단 예상" },
+      center: { deviation: c,  sajung: Math.round((orgAvg + c) * 1000) / 1000, label: "가장 유력" },
+      upper:  { deviation: u,  sajung: Math.round((orgAvg + u) * 1000) / 1000, label: "상단 예상" },
+      lower:  { deviation: l,  sajung: Math.round((orgAvg + l) * 1000) / 1000, label: "하단 예상" },
       basis: "데이터 부족 — 발주처 평균 기준",
     };
   }
@@ -98,15 +122,17 @@ function calcNext3Predictions(
   const deviations = recent.map(p => p.sajung - orgAvg);
   const meanDev = deviations.reduce((s, d) => s + d, 0) / deviations.length;
   const stddev = Math.sqrt(deviations.reduce((s, d) => s + (d - meanDev) ** 2, 0) / deviations.length);
-  const centerDev = Math.round((meanDev + trendResult.slope) * 1000) / 1000;
+  // 노이즈 = stddev × ±0.3 (정규분포 안 ±0.3σ 범위)
+  const noise = stddev * 0.3;
+  const centerDev = Math.round((meanDev + trendResult.slope + (noiseCenter * noise)) * 1000) / 1000;
   const spread = stddev * (1 + (1 - stabilityScore) * 0.5);
-  const upperDev = Math.round((centerDev + spread * 0.67) * 1000) / 1000;
-  const lowerDev = Math.round((centerDev - spread * 0.67) * 1000) / 1000;
+  const upperDev = Math.round((centerDev + spread * 0.67 + (noiseUpper * noise * 0.5)) * 1000) / 1000;
+  const lowerDev = Math.round((centerDev - spread * 0.67 + (noiseLower * noise * 0.5)) * 1000) / 1000;
   return {
     center: { deviation: centerDev, sajung: Math.round((orgAvg + centerDev) * 1000) / 1000, label: "가장 유력" },
     upper:  { deviation: upperDev,  sajung: Math.round((orgAvg + upperDev) * 1000) / 1000,  label: "상단 예상" },
     lower:  { deviation: lowerDev,  sajung: Math.round((orgAvg + lowerDev) * 1000) / 1000,  label: "하단 예상" },
-    basis: `최근 ${recent.length}건 · ${trendResult.direction !== "stable" ? (trendResult.direction === "up" ? "상승" : "하락") + "추세" : "추세 안정"} · ±${stddev.toFixed(3)}%`,
+    basis: `최근 ${recent.length}건 · ${trendResult.direction !== "stable" ? (trendResult.direction === "up" ? "상승" : "하락") + "추세" : "추세 안정"} · ±${stddev.toFixed(3)}%p`,
   };
 }
 
@@ -230,7 +256,7 @@ export async function GET(req: NextRequest) {
   if (orgAvg !== null && orgPoints.length >= 3) {
     const trendResult = calcTrendSlope(orgPoints);
     const stabilityScore = calcStability(orgPoints, orgAvg);
-    predictions = calcNext3Predictions(orgPoints, orgAvg, trendResult, stabilityScore);
+    predictions = calcNext3Predictions(orgPoints, orgAvg, trendResult, stabilityScore, annId);
   }
 
   const result: SajungTrendResponse = {
