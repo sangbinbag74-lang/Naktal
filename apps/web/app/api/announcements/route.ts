@@ -250,30 +250,48 @@ async function fetchFromDB(opts: Record<string, string | number>): Promise<NextR
   }
   if (ntceKind)       q = q.filter("rawJson->>ntceKindNm", "ilike", `%${ntceKind}%`);
 
-  // 내 지역 참여 가능 필터 (정확한 매칭):
-  //   bidPrtcptLmtYn != 'Y' (제한 없음 = 전국 참여 가능) — OR —
-  //   bidPrtcptLmtYn = 'Y' AND jntcontrctDutyRgnNm{1,2,3} 중 하나가 사용자 등록 지역의 별칭과 매칭
+  // 내 지역 참여 가능 필터 (광역시·도 + 시·군 단위 정확 매칭):
+  //   ① bidPrtcptLmtYn != 'Y' → 전국 참여 가능 (OR 통과)
+  //   ② 광역시·도: jntcontrctDutyRgnNm{1,2,3} 에 사용자 별칭 매칭
+  //   ③ 시·군 단위: dminsttNm (수요기관) 또는 cnstrtsiteRgnNm (공사현장) 에 사용자 등록 string 매칭
   if (myRegions) {
     const userRegs = myRegions.split(",").map(r => r.trim()).filter(Boolean);
-    // 사용자 약칭 → 모든 별칭 expand
+    // 광역시·도 별칭 expand (전북 → 전라북도·전북특별자치도)
     const allAliases = new Set<string>();
+    // 시·군 단위 원문 (사용자가 "익산시" 등록하면 "익산시" 그대로)
+    const cityKeys = new Set<string>();
     for (const r of userRegs) {
       const c = normalizeRegion(r);
       if (c && REGION_ALIASES[c]) {
         REGION_ALIASES[c].forEach((a) => allAliases.add(a));
       } else {
-        allAliases.add(r); // 매핑 못 찾으면 원문 그대로
+        // 광역시·도 매핑 안 됨 = 시·군 단위로 간주 (예: "익산시", "전주시", "강남구")
+        cityKeys.add(r);
       }
     }
     const aliasList = [...allAliases];
+    const cityList  = [...cityKeys];
     const orParts: string[] = [
+      // 제한 없음
       "rawJson->>bidPrtcptLmtYn.is.null",
       "rawJson->>bidPrtcptLmtYn.eq.",
       "rawJson->>bidPrtcptLmtYn.eq.N",
+      // 광역시·도 매칭 (jnt 의무지역 1/2/3)
       ...aliasList.flatMap((a) => [
         `rawJson->>jntcontrctDutyRgnNm1.ilike.%${a}%`,
         `rawJson->>jntcontrctDutyRgnNm2.ilike.%${a}%`,
         `rawJson->>jntcontrctDutyRgnNm3.ilike.%${a}%`,
+      ]),
+      // 광역시·도 → dminsttNm/cnstrtsiteRgnNm 도 광역 string 포함 케이스 (예: "전북특별자치도 군산시")
+      ...aliasList.flatMap((a) => [
+        `rawJson->>dminsttNm.ilike.%${a}%`,
+        `rawJson->>cnstrtsiteRgnNm.ilike.%${a}%`,
+      ]),
+      // 시·군 단위 매칭 (dminsttNm·cnstrtsiteRgnNm·bidNtceNm)
+      ...cityList.flatMap((c) => [
+        `rawJson->>dminsttNm.ilike.%${c}%`,
+        `rawJson->>cnstrtsiteRgnNm.ilike.%${c}%`,
+        `rawJson->>bidNtceNm.ilike.%${c}%`,
       ]),
     ];
     q = q.or(orParts.join(","));

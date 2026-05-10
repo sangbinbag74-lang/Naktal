@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { isMultiplePriceBid } from "@/lib/bid-utils";
 import { CATEGORY_GROUPS } from "@/lib/category-map";
-import { normalizeRegion } from "@/lib/region-alias";
+import { normalizeRegion, REGION_ALIASES } from "@/lib/region-alias";
 
 const FOLDER_KEY = "naktal_folder";
 function getFolderIds(): string[] {
@@ -1130,27 +1130,33 @@ export default function AnnouncementsPage() {
                           수의계약
                         </span>
                       )}
-                      {/* 참여 가능 지역 배지 — bidPrtcptLmtYn + jntcontrctDutyRgnNm 기반 정확 매칭 */}
+                      {/* 참여 가능 지역 배지 — 광역시·도 + 시·군 단위 매칭 */}
                       {(() => {
                         const limit = String(ann.rawJson?.bidPrtcptLmtYn ?? "").trim();
+                        if (limit !== "Y") {
+                          return <span style={{ fontSize: 10, fontWeight: 600, background: "#ECFDF5", color: "#059669", padding: "2px 6px", borderRadius: 4 }}>전국 참여</span>;
+                        }
+                        // 제한 정보 수집
                         const jnt = [
                           String(ann.rawJson?.jntcontrctDutyRgnNm1 ?? ""),
                           String(ann.rawJson?.jntcontrctDutyRgnNm2 ?? ""),
                           String(ann.rawJson?.jntcontrctDutyRgnNm3 ?? ""),
                         ].filter(Boolean);
-                        // 제한 없음 = 전국 참여
-                        if (limit !== "Y") {
-                          return <span style={{ fontSize: 10, fontWeight: 600, background: "#ECFDF5", color: "#059669", padding: "2px 6px", borderRadius: 4 }}>전국 참여</span>;
-                        }
-                        if (jnt.length === 0) return null;
-                        // 사용자 등록 지역 별칭으로 정확 매칭
+                        const dminstt = String(ann.rawJson?.dminsttNm ?? "");
+                        const cnstrtsite = String(ann.rawJson?.cnstrtsiteRgnNm ?? "");
+                        const lbl = jnt[0] || cnstrtsite || dminstt || "지역제한";
+
+                        // 사용자 매칭 — 광역시·도 별칭 OR 시·군 단위 string
                         const userCanon = new Set(myProfileRegions.map(r => normalizeRegion(r)).filter(Boolean) as string[]);
+                        const userCities = myProfileRegions.filter(r => !normalizeRegion(r));
                         const jntCanon = jnt.map(j => normalizeRegion(j)).filter(Boolean) as string[];
-                        const matchMy = jntCanon.some(c => userCanon.has(c));
-                        const lbl = jnt.join(", ");
+                        const matchProvince = jntCanon.some(c => userCanon.has(c)) ||
+                          [dminstt, cnstrtsite].some(s => [...userCanon].some(u => s && (REGION_ALIASES[u] ?? []).some(a => s.includes(a))));
+                        const matchCity = userCities.some(c => c && (dminstt.includes(c) || cnstrtsite.includes(c)));
+
                         const trim = lbl.length > 16 ? lbl.slice(0, 16) + "…" : lbl;
-                        if (matchMy) {
-                          return <span style={{ fontSize: 10, fontWeight: 600, background: "#EFF6FF", color: "#1E40AF", padding: "2px 6px", borderRadius: 4 }} title={lbl}>{trim} ✓</span>;
+                        if (matchProvince || matchCity) {
+                          return <span style={{ fontSize: 10, fontWeight: 600, background: "#EFF6FF", color: "#1E40AF", padding: "2px 6px", borderRadius: 4 }} title={`${lbl} (참여 가능)`}>{trim} ✓</span>;
                         }
                         return <span style={{ fontSize: 10, fontWeight: 600, background: "#FEF2F2", color: "#DC2626", padding: "2px 6px", borderRadius: 4 }} title={lbl}>{trim}</span>;
                       })()}
