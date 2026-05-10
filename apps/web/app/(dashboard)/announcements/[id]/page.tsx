@@ -7,6 +7,8 @@ import { AiAnalysisPanel } from "@/components/naktal/AiAnalysisPanel";
 import { NumberAnalysisSection } from "@/components/naktal/NumberAnalysisSection";
 import { SaveButton } from "@/components/naktal/SaveButton";
 import { BidRequestButton } from "@/components/naktal/BidRequestButton";
+import { AnnouncementTimeline } from "@/components/naktal/AnnouncementTimeline";
+import { extractBidSchedule, extractMetadata, formatPrearngPrceMethod } from "@/lib/g2b-fields";
 import {
   g2bFetchAnnouncementByNo,
   g2bParseDate,
@@ -163,6 +165,11 @@ export default async function AnnouncementDetailPage({
   const bdgtAmt = bsisAmtNum > 0 ? bsisAmtNum : aValueAmtNum > 0 ? aValueAmtNum : budgetNum * 1.1;
   const g2bUrl = String(rawJson.ntcePbancUrl || `https://www.g2b.go.kr:8081/ep/peoplecvpl/narasVary.do?bidno=${a.konepsId}&bidseq=${String(rawJson.bidNtceSqNo ?? "00")}`);
 
+  // G2B rawJson 메타데이터 추출 (입찰 일정 4단계 + 공고 메타)
+  const schedule = extractBidSchedule(rawJson as Record<string, string | undefined>);
+  const meta = extractMetadata(rawJson as Record<string, string | undefined>);
+  const prearngMethod = formatPrearngPrceMethod(rawJson as Record<string, string | undefined>);
+
   // 유저 세션 + 계약 여부 확인
   let isContracted = false;
   try {
@@ -283,13 +290,14 @@ export default async function AnnouncementDetailPage({
           </div>
         </div>
 
-        {/* 핵심 숫자 3개 */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 24, background: "#F8FAFC", borderRadius: 10, padding: "16px 20px", marginTop: 16 }}>
+        {/* 핵심 숫자 4개 (기초/추정/순공사/낙찰하한율) */}
+        <div style={{ display: "grid", gridTemplateColumns: meta.pureWorkCnstcAmt ? "repeat(4, 1fr)" : "repeat(3, 1fr)", gap: 24, background: "#F8FAFC", borderRadius: 10, padding: "16px 20px", marginTop: 16 }}>
           {[
             { label: "기초금액",   value: bdgtAmt ? new Intl.NumberFormat("ko-KR").format(bdgtAmt) + "원" : "-",  sub: "부가가치세 포함" },
-            { label: "추정가격",   value: fmt(a.budget),                                                                      sub: "부가가치세 별도" },
-            { label: "낙찰하한율", value: sucsfbidLwltRate ? `${sucsfbidLwltRate}%` : "89.745%",                             sub: "낙찰하한율 기준" },
-          ].map((item) => (
+            { label: "추정가격",   value: fmt(a.budget),                                                          sub: "부가가치세 별도" },
+            meta.pureWorkCnstcAmt ? { label: "순공사원가", value: new Intl.NumberFormat("ko-KR").format(meta.pureWorkCnstcAmt) + "원", sub: "노무비+재료비+경비" } : null,
+            { label: "낙찰하한율", value: sucsfbidLwltRate ? `${sucsfbidLwltRate}%` : "89.745%",                  sub: "낙찰하한율 기준" },
+          ].filter((x): x is { label: string; value: string; sub: string } => x !== null).map((item) => (
             <div key={item.label}>
               <div style={{ fontSize: 11, color: "#94A3B8", marginBottom: 6 }}>{item.label}</div>
               <div style={{ fontSize: 16, fontWeight: 700, color: "#0F172A", whiteSpace: "nowrap" }}>{item.value}</div>
@@ -299,6 +307,14 @@ export default async function AnnouncementDetailPage({
         </div>
       </div>
       </div>
+
+      {/* 진행 타임라인 4단계 */}
+      <AnnouncementTimeline
+        rcptBgnDt={schedule.rcptBgnDt}
+        bidPrtcptQlfctRgstDdln={schedule.bidPrtcptQlfctRgstDdln}
+        bidClseDt={schedule.bidClseDt}
+        opengDt={schedule.opengDt}
+      />
 
       {/* 3열 그리드 — 고정 px, 작은 화면 가로 스크롤 */}
       <div style={{
@@ -318,14 +334,17 @@ export default async function AnnouncementDetailPage({
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px 24px" }}>
               {[
                 { label: "발주기관",      value: a.orgName },
+                meta.dmndInsttNm && meta.dmndInsttNm !== a.orgName ? { label: "수요기관", value: meta.dmndInsttNm } : null,
                 { label: "공고번호",      value: a.konepsId },
                 { label: "업종/공사구분", value: a.category || "-" },
+                meta.indstrytyNm ? { label: "상세업종", value: meta.indstrytyCd ? `(${meta.indstrytyCd}) ${meta.indstrytyNm}` : meta.indstrytyNm } : null,
                 { label: "지역",          value: a.region || "-" },
                 { label: "낙찰방법",      value: bidMethodDisplay || "-" },
+                meta.cntrctCnclsMthdNm ? { label: "계약방법", value: meta.cntrctCnclsMthdNm } : null,
                 { label: "낙찰하한율",    value: sucsfbidLwltRate ? `${sucsfbidLwltRate}%` : "-" },
-                { label: "예가방법",      value: multiplePrice ? (priceRangeRate ? `복수예가 (${priceRangeRate}%)` : "복수예가") : "단일예가" },
+                { label: "예가방법",      value: multiplePrice ? (priceRangeRate ? `${prearngMethod} (${priceRangeRate}%)` : prearngMethod) : "단일예가" },
                 { label: "재입찰여부",    value: String(rawJson.rbidPermsnYn ?? "") === "Y" ? "재공고" : "일반" },
-              ].map((row) => (
+              ].filter((x): x is { label: string; value: string } => x !== null).map((row) => (
                 <div key={row.label}>
                   <div style={{ fontSize: 11, color: "#94A3B8", marginBottom: 4 }}>{row.label}</div>
                   <div style={{ fontSize: 13, fontWeight: 500, color: row.label === "낙찰하한율" ? "#DC2626" : "#0F172A" }}>
