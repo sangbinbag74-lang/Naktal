@@ -65,12 +65,11 @@ export function isAnalysisSupported(
   cntrctCnclsMthdNm?: string | null,
   bidMethod?: string | null,
 ): boolean {
-  // 수의계약 / 단가계약 — 사정율 의미 없음
-  if (cntrctCnclsMthdNm?.includes("수의")) return false;
-  if (cntrctCnclsMthdNm?.includes("협상")) return false;
+  // 단가계약 — 사정율 의미 없음 (가격 산정 방식 자체가 다름)
   if (bidMethod?.includes("단가")) return false;
-  // 그 외 입찰 방식은 카테고리 무관 분석 시도 (부정확하더라도 표시)
+  // 수의계약·제한경쟁·협상도 통합 계산으로 표본 합산 → 분석 시도 (정확도 낮을 수 있음)
   void category;
+  void cntrctCnclsMthdNm;
   return true;
 }
 
