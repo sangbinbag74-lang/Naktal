@@ -13,6 +13,7 @@ interface Props {
   requests: Request[];
   userMap: Record<string, UserInfo>;
   bidResultMap: Record<string, BidResultInfo>;
+  annOpengMap?: Record<string, string | null>; // 공고 rawJson.opengDt fallback
 }
 
 const feeStatusOptions = [
@@ -48,7 +49,7 @@ function calcFee(isWon: string, actualFinalPrice: string, recommendedBidPrice: s
 }
 
 
-export function RequestsTable({ requests, userMap, bidResultMap }: Props) {
+export function RequestsTable({ requests, userMap, bidResultMap, annOpengMap = {} }: Props) {
   const router = useRouter();
   const [editingRow, setEditingRow] = useState<Request | null>(null);
   const [saving, setSaving] = useState(false);
@@ -362,21 +363,38 @@ export function RequestsTable({ requests, userMap, bidResultMap }: Props) {
                         ? <span style={{ color: "#374151" }}>{fmtPrice(r.userBidPrice)}</span>
                         : <span style={{ color: "#D1D5DB" }}>미입력</span>}
                     </td>
-                    {/* 개찰일 */}
+                    {/* 개찰일 — 결과 입력값 우선, 없으면 공고 rawJson.opengDt fallback */}
                     <td style={{ padding: "8px 12px", color: "#6B7280", whiteSpace: "nowrap" }}>
-                      {r.openingDt
-                        ? new Date(r.openingDt).toLocaleDateString("ko-KR")
-                        : noResult
-                          ? (
-                            <button
-                              onClick={() => handleFetchResult(r)}
-                              disabled={fetchingId === r.id}
-                              style={{ fontSize: 10, padding: "3px 7px", borderRadius: 5, border: "1px solid #CBD5E1", background: fetchingId === r.id ? "#F1F5F9" : "#fff", cursor: "pointer", color: "#1B3A6B", fontWeight: 600, opacity: fetchingId === r.id ? 0.7 : 1 }}
-                            >
-                              {fetchingId === r.id ? "조회중..." : "G2B 조회"}
-                            </button>
-                          )
-                          : <span style={{ color: "#D1D5DB" }}>-</span>}
+                      {(() => {
+                        const actualDt = r.openingDt;
+                        const planDt = annOpengMap[r.annId];
+                        if (actualDt) {
+                          // 실제 개찰 결과 입력됨
+                          return <span style={{ color: "#374151", fontWeight: 500 }}>{new Date(actualDt).toLocaleDateString("ko-KR")}</span>;
+                        }
+                        if (planDt) {
+                          // 예정 개찰일시 (공고 rawJson) — 회색 + 표시
+                          const d = new Date(String(planDt).replace(" ", "T"));
+                          if (!isNaN(d.getTime())) {
+                            const past = d.getTime() < Date.now();
+                            return (
+                              <div style={{ fontSize: 11, color: past ? "#D97706" : "#94A3B8" }}>
+                                <div>{d.toLocaleDateString("ko-KR")}</div>
+                                <div style={{ fontSize: 9 }}>{past ? "예정 (지남)" : "예정"}</div>
+                              </div>
+                            );
+                          }
+                        }
+                        return noResult ? (
+                          <button
+                            onClick={() => handleFetchResult(r)}
+                            disabled={fetchingId === r.id}
+                            style={{ fontSize: 10, padding: "3px 7px", borderRadius: 5, border: "1px solid #CBD5E1", background: fetchingId === r.id ? "#F1F5F9" : "#fff", cursor: "pointer", color: "#1B3A6B", fontWeight: 600, opacity: fetchingId === r.id ? 0.7 : 1 }}
+                          >
+                            {fetchingId === r.id ? "조회중..." : "G2B 조회"}
+                          </button>
+                        ) : <span style={{ color: "#D1D5DB" }}>-</span>;
+                      })()}
                     </td>
                     {/* 낙찰 결과 (G2B 자동 확인) */}
                     <td style={{ padding: "8px 12px", minWidth: 110 }}>

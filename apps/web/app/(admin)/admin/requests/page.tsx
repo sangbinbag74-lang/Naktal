@@ -25,6 +25,8 @@ export default async function AdminRequestsPage() {
   let userMap: Record<string, any> = {};
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let bidResultMap: Record<string, any> = {};
+  // 공고 rawJson.opengDt fallback (BidRequest.openingDt 비어있을 때)
+  let annOpengMap: Record<string, string | null> = {};
 
   try {
     const [
@@ -111,6 +113,18 @@ export default async function AdminRequestsPage() {
           .in("annId", annIds);
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         bidResultMap = Object.fromEntries((bidResults ?? []).map((b: any) => [b.annId, b]));
+
+        // Announcement.rawJson.opengDt fallback
+        const { data: anns } = await admin
+          .from("Announcement")
+          .select("id, rawJson")
+          .in("id", annIds);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        annOpengMap = Object.fromEntries((anns ?? []).map((a: any) => {
+          const raw = a.rawJson ?? {};
+          const dt = raw.opengDt ?? raw.rlOpengDt ?? null;
+          return [a.id, dt];
+        }));
       }
     }
   } catch {
@@ -184,7 +198,7 @@ export default async function AdminRequestsPage() {
       {/* ── 의뢰 목록 테이블 ── */}
       <div style={{ background: "#fff", borderRadius: 14, border: "1px solid #E8ECF2", padding: "20px" }}>
         <div style={{ fontSize: 14, fontWeight: 700, color: "#0F172A", marginBottom: 14 }}>의뢰 목록 (최근 50건)</div>
-        <RequestsTable requests={requests} userMap={userMap} bidResultMap={bidResultMap} />
+        <RequestsTable requests={requests} userMap={userMap} bidResultMap={bidResultMap} annOpengMap={annOpengMap} />
       </div>
     </div>
   );

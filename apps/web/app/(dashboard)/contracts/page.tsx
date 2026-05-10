@@ -81,56 +81,51 @@ export default async function ContractsPage() {
           }}>공고 목록 보기</Link>
         </div>
       ) : (
-        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           {contracts.map((c) => {
             const dday = getDDay(c.deadline as string);
+            const won = c.isWon as boolean | null;
             return (
-              <div key={c.id as string} style={{
-                background: "#fff", borderRadius: 14, border: "1px solid #E8ECF2",
-                padding: "18px 22px", display: "flex", flexDirection: "column", gap: 12,
-              }}>
-                {/* 상단: 제목 + D-day */}
-                <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12 }}>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 14, fontWeight: 700, color: "#0F172A", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", marginBottom: 4 }}>
-                      {c.title as string}
-                    </div>
-                    <div style={{ fontSize: 12, color: "#64748B" }}>
-                      {c.orgName as string} · 의뢰일 {fmtDate(c.contractAt as string)}
-                    </div>
+              <Link
+                key={c.id as string}
+                href={`/bid-result/${c.annId as string}`}
+                style={{
+                  background: "#fff", borderRadius: 12, border: `1px solid ${won === true ? "#86EFAC" : "#E8ECF2"}`,
+                  padding: "14px 18px", display: "grid",
+                  gridTemplateColumns: "1fr auto auto auto", gap: 14, alignItems: "center",
+                  textDecoration: "none", color: "inherit",
+                  transition: "all 0.15s",
+                  ...(won === true ? { background: "linear-gradient(135deg, #fff 0%, #ECFDF5 100%)" } : {}),
+                }}
+              >
+                {/* 1. 제목 + 발주처 */}
+                <div style={{ minWidth: 0 }}>
+                  <div style={{ fontSize: 14, fontWeight: 700, color: "#0F172A", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", marginBottom: 3 }}>
+                    {c.title as string}
                   </div>
-                  <span style={{ flexShrink: 0, fontSize: 11, fontWeight: 700, padding: "3px 8px", borderRadius: 5, background: dday.bg, color: dday.color }}>
-                    {dday.label}
-                  </span>
-                </div>
-
-                {/* 중단: 투찰금액 + 낙찰 결과 */}
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "#F8FAFC", borderRadius: 10, padding: "10px 14px" }}>
-                  <div>
-                    <div style={{ fontSize: 10, color: "#94A3B8", marginBottom: 2 }}>AI 추천 투찰금액</div>
-                    <div style={{ fontSize: 15, fontWeight: 800, color: "#1B3A6B" }}>{fmtPrice(Number(c.recommendedBidPrice ?? 0))}</div>
-                  </div>
-                  <div style={{ textAlign: "right" }}>
-                    <div style={{ fontSize: 10, color: "#94A3B8", marginBottom: 4 }}>낙찰 결과</div>
-                    <WonBadge isWon={c.isWon as boolean | null} />
+                  <div style={{ fontSize: 11, color: "#64748B", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    {c.orgName as string} · 의뢰일 {fmtDate(c.contractAt as string)}
                   </div>
                 </div>
 
-                {/* 하단: 버튼 */}
-                <Link
-                  href={`/bid-result/${c.annId as string}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  style={{
-                    display: "block", textAlign: "center",
-                    padding: "10px", background: "#1B3A6B", color: "#fff",
-                    borderRadius: 10, fontSize: 13, fontWeight: 700,
-                    textDecoration: "none",
-                  }}
-                >
-                  상세 보기
-                </Link>
-              </div>
+                {/* 2. AI 추천 투찰금액 */}
+                <div style={{ textAlign: "right", flexShrink: 0 }}>
+                  <div style={{ fontSize: 9, color: "#94A3B8", marginBottom: 1 }}>AI 추천</div>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: "#1B3A6B", fontVariantNumeric: "tabular-nums" }}>
+                    {fmtPrice(Number(c.recommendedBidPrice ?? 0))}
+                  </div>
+                </div>
+
+                {/* 3. D-day */}
+                <span style={{ flexShrink: 0, fontSize: 10, fontWeight: 700, padding: "3px 8px", borderRadius: 5, background: dday.bg, color: dday.color, minWidth: 44, textAlign: "center" }}>
+                  {dday.label}
+                </span>
+
+                {/* 4. 낙찰 결과 */}
+                <div style={{ flexShrink: 0, minWidth: 110, textAlign: "right" }}>
+                  <WonBadge isWon={won} />
+                </div>
+              </Link>
             );
           })}
         </div>
