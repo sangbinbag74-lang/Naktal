@@ -70,6 +70,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   const ntceKind       = searchParams.get("ntceKind") ?? "";
   const sort           = searchParams.get("sort") ?? "latest";
   const onlyGeneral    = searchParams.get("onlyGeneral") === "1"; // 분석 가능 공고만 (수의·지명 제외, 일반·제한경쟁 포함)
+  const cnclsType      = searchParams.get("cnclsType") ?? "";       // 계약체결방법 세분 (일반경쟁/제한경쟁/수의계약/기타)
   const myRegions      = (searchParams.get("myRegions") ?? "")
                          .split(",").map(r => r.trim()).filter(Boolean).join(",");
   const page           = Math.max(1, parseInt(searchParams.get("page") ?? "1", 10));
@@ -84,6 +85,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   return fetchFromDB({ category, categories, region, regions, minBudget, maxBudget, keyword,
     contractMethod, deadlineRange, konepsId, prtcptnLmt, rgnType, ntceKind, sort, page, limit,
     onlyGeneral: onlyGeneral ? "1" : "",
+    cnclsType,
     myRegions });
 }
 
@@ -122,7 +124,7 @@ const PROVINCE_CODES = ["서울","부산","대구","인천","광주","대전","�
 
 async function fetchFromDB(opts: Record<string, string | number>): Promise<NextResponse> {
   const { category, categories, region, regions, minBudget, maxBudget, keyword, contractMethod,
-    deadlineRange, konepsId, prtcptnLmt, rgnType, ntceKind, sort, onlyGeneral, myRegions } = opts as Record<string, string>;
+    deadlineRange, konepsId, prtcptnLmt, rgnType, ntceKind, sort, onlyGeneral, cnclsType, myRegions } = opts as Record<string, string>;
   const page  = Number(opts.page);
   const limit = Number(opts.limit);
   const offset = (page - 1) * limit;
@@ -145,7 +147,7 @@ async function fetchFromDB(opts: Record<string, string | number>): Promise<NextR
   //                  + 시 레벨 지역 + 사용자 정의 deadline 윈도우
   // 2026-05-09: AnnouncementActive MV 도입으로 체인 쿼리 13ms 도달 → RPC 우회 (false 강제)
   const rpcEligible = false &&
-    !contractMethod && !prtcptnLmt && !rgnType && !ntceKind && !konepsId && !category && !onlyGeneral && !myRegions &&
+    !contractMethod && !prtcptnLmt && !rgnType && !ntceKind && !konepsId && !category && !onlyGeneral && !cnclsType && !myRegions &&
     !hasCityFilter &&
     (deadlineRange === "" || deadlineRange === "active");
   if (rpcEligible) {
@@ -231,9 +233,23 @@ async function fetchFromDB(opts: Record<string, string | number>): Promise<NextR
   if (minBudget)      q = q.gte("budget", minBudget);
   if (maxBudget)      q = q.lte("budget", maxBudget);
   if (contractMethod) q = q.or(`rawJson->>bidMthdNm.ilike.%${contractMethod}%,rawJson->>cntrctMthdNm.ilike.%${contractMethod}%`);
-  // 분석 가능 공고만 — 수의·지명 제외, 일반·제한경쟁(자격제한 정상 입찰)은 포함
-  // cntrctCnclsMthdNm 가 '수의' / '지명' 포함하지 않거나 NULL 인 row 만 통과
-  if (onlyGeneral) {
+  // 계약체결방법 (cntrctCnclsMthdNm) 필터
+  // 우선순위: cnclsType (세분 칩) > onlyGeneral (토글)
+  if (cnclsType === "일반경쟁") {
+    q = q.eq("rawJson->>cntrctCnclsMthdNm", "일반경쟁");
+  } else if (cnclsType === "제한경쟁") {
+    q = q.ilike("rawJson->>cntrctCnclsMthdNm", "%제한%");
+  } else if (cnclsType === "수의계약") {
+    q = q.ilike("rawJson->>cntrctCnclsMthdNm", "%수의%");
+  } else if (cnclsType === "기타") {
+    // 일반/제한/수의 어디에도 속하지 않는 것 (지명경쟁 등)
+    q = q.or(
+      "and(rawJson->>cntrctCnclsMthdNm.neq.일반경쟁," +
+      "rawJson->>cntrctCnclsMthdNm.not.ilike.*제한*," +
+      "rawJson->>cntrctCnclsMthdNm.not.ilike.*수의*)"
+    );
+  } else if (onlyGeneral) {
+    // 분석 가능 공고만 — 수의·지명 제외 (일반·제한경쟁은 포함)
     q = q.or(
       "rawJson->>cntrctCnclsMthdNm.is.null," +
       "and(rawJson->>cntrctCnclsMthdNm.not.ilike.*수의*,rawJson->>cntrctCnclsMthdNm.not.ilike.*지명*)"
