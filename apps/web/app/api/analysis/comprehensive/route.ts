@@ -13,6 +13,7 @@ import {
 import { recommendNumbers } from "@/lib/core1/frequency-engine";
 import { isMultiplePriceBid } from "@/lib/bid-utils";
 import { calcBaseBudget } from "@/lib/analysis/sajung-utils";
+import { classifyCategory, DEFAULT_SAJUNG_BY_KIND, DEFAULT_LWLT_BY_KIND } from "@/lib/analysis/category-config";
 
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24시간
 
@@ -79,9 +80,14 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     .eq("annId", annId)
     .is("cancelledAt", null);
 
-  // ─── 낙찰하한율 파싱 (캐시·분석 공통) ────────────────────────────────────
+  // ─── 낙찰하한율 파싱 (캐시·분석 공통) — 카테고리별 fallback ────────────────
   const rawJsonEarly = (ann.rawJson as Record<string, string>) ?? {};
-  const lowerLimitRateEarly = parseFloat((rawJsonEarly.sucsfbidLwltRate ?? "87.745").replace(/[^0-9.]/g, "")) || 87.745;
+  const annCategory = ann.category as string;
+  const annKind = classifyCategory(annCategory);
+  const defaultLwlt = DEFAULT_LWLT_BY_KIND[annKind];
+  const defaultSajung = DEFAULT_SAJUNG_BY_KIND[annKind];
+  const lwltRaw = rawJsonEarly.sucsfbidLwltRate ?? "";
+  const lowerLimitRateEarly = parseFloat(lwltRaw.replace(/[^0-9.]/g, "")) || defaultLwlt;
 
   // ─── 24시간 캐시 확인 ──────────────────────────────────────────────────────
   const { data: cached } = await admin
@@ -130,15 +136,15 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       ).length,
     };
     const estimatedPriceByACached = isAValue
-      ? budgetNum * ((Number(cached.predictedSajungRate) || 103.8) / 100)
+      ? budgetNum * ((Number(cached.predictedSajungRate) || defaultSajung.center) / 100)
       : null;
-    return NextResponse.json(buildResponse(ann, cached, numberStrategyCached, trendMeta, estimatedPriceByACached, aValueTotal, lowerLimitRateEarly, budgetNum, bidRequestCount ?? 0));
+    return NextResponse.json(buildResponse(ann, cached, numberStrategyCached, trendMeta, estimatedPriceByACached, aValueTotal, lowerLimitRateEarly, budgetNum, bidRequestCount ?? 0, annKind));
   }
 
   // ─── 공고 메타 파싱 ────────────────────────────────────────────────────────
   const rawJson = (ann.rawJson as Record<string, string>) ?? {};
-  const lowerLimitRateRaw = rawJson.sucsfbidLwltRate ?? "87.745";
-  const lowerLimitRate = parseFloat(lowerLimitRateRaw.replace(/[^0-9.]/g, "")) || 87.745;
+  const lowerLimitRateRaw = rawJson.sucsfbidLwltRate ?? "";
+  const lowerLimitRate = parseFloat(lowerLimitRateRaw.replace(/[^0-9.]/g, "")) || defaultLwlt;
 
   const deadline = new Date(ann.deadline as string);
   const deadlineMonth = deadline.getMonth() + 1;
@@ -236,7 +242,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     recentSampleSize: sajung.recentSampleSize,
   };
 
-  return NextResponse.json(buildResponse(ann, predRecord, numberStrategy, trendMeta, estimatedPriceByA, aValueTotal, lowerLimitRate, budgetNum, bidRequestCount ?? 0));
+  return NextResponse.json(buildResponse(ann, predRecord, numberStrategy, trendMeta, estimatedPriceByA, aValueTotal, lowerLimitRate, budgetNum, bidRequestCount ?? 0, annKind));
 }
 
 // ─── 응답 빌더 ───────────────────────────────────────────────────────────────
@@ -250,8 +256,14 @@ function buildResponse(
   aValueTotal?: number,
   lowerLimitRate?: number,
   budgetNum?: number,
-  bidRequestCount?: number
+  bidRequestCount?: number,
+  kind?: ReturnType<typeof classifyCategory>,
 ) {
+  // 카테고리별 default (호출자 미전달 시 ann.category 로 추정)
+  const annKind = kind ?? classifyCategory(ann.category as string);
+  const sd = DEFAULT_SAJUNG_BY_KIND[annKind];
+  const dl = DEFAULT_LWLT_BY_KIND[annKind];
+
   // A값 공고: 낙찰하한가 + 1원 = (예정가 - A합산) × 낙찰하한율 + A합산 + 1
   const aLowerLimit = (estimatedPriceByA != null && aValueTotal != null && lowerLimitRate != null)
     ? Math.round((estimatedPriceByA - aValueTotal) * (lowerLimitRate / 100) + aValueTotal)
@@ -259,10 +271,10 @@ function buildResponse(
 
   return {
     bidStrategy: {
-      predictedSajungRate: Number(pred.predictedSajungRate) || 103.8,
+      predictedSajungRate: Number(pred.predictedSajungRate) || sd.center,
       sajungRateRange: (() => {
         const r = pred.sajungRateRange as { min?: number | null; max?: number | null; p25?: number | null; p75?: number | null } | null | undefined;
-        return { min: r?.min ?? 97, max: r?.max ?? 112, p25: r?.p25 ?? 101, p75: r?.p75 ?? 106 };
+        return { min: r?.min ?? sd.min, max: r?.max ?? sd.max, p25: r?.p25 ?? sd.p25, p75: r?.p75 ?? sd.p75 };
       })(),
       sampleSize: pred.sampleSize,
       optimalBidPrice: (() => {
@@ -271,8 +283,8 @@ function buildResponse(
         // 신뢰도 기반 마진: HIGH(0.05%p) / MEDIUM(0.2%p) / LOW(0.5%p)
         // ML MAE 0.48%p 보상 → 사정율 예측이 빗나가도 낙찰하한가 미만 위험 회피
         const budget = budgetNum ?? Number(ann.budget) ?? 0;
-        const rate   = Number(pred.predictedSajungRate) || 103.8;
-        const llRate = lowerLimitRate ?? 87.745;
+        const rate   = Number(pred.predictedSajungRate) || sd.center;
+        const llRate = lowerLimitRate ?? dl;
         const aVal   = aValueTotal ?? 0;
         const estPrice = budget * (rate / 100);
         const lowerLimit = Math.ceil((estPrice - aVal) * (llRate / 100) + aVal);
@@ -288,8 +300,8 @@ function buildResponse(
         // IQR 하단 (p25, 분포 25% 분위) — 실제 데이터 분포 반영
         const budget = budgetNum ?? Number(ann.budget) ?? 0;
         const rng    = pred.sajungRateRange as { p25?: number; p75?: number; min?: number; max?: number } | null | undefined;
-        const rate   = rng?.p25 ?? (Number(pred.predictedSajungRate) || 99);
-        const llRate = lowerLimitRate ?? 87.745;
+        const rate   = rng?.p25 ?? (Number(pred.predictedSajungRate) || sd.p25);
+        const llRate = lowerLimitRate ?? dl;
         const aVal   = aValueTotal ?? 0;
         const estPrice = budget * (rate / 100);
         return Math.ceil((estPrice - aVal) * (llRate / 100) + aVal);
@@ -298,8 +310,8 @@ function buildResponse(
         // IQR 상단 (p75, 분포 75% 분위) — 실제 데이터 분포 반영
         const budget = budgetNum ?? Number(ann.budget) ?? 0;
         const rng    = pred.sajungRateRange as { p25?: number; p75?: number; min?: number; max?: number } | null | undefined;
-        const rate   = rng?.p75 ?? (Number(pred.predictedSajungRate) || 101);
-        const llRate = lowerLimitRate ?? 87.745;
+        const rate   = rng?.p75 ?? (Number(pred.predictedSajungRate) || sd.p75);
+        const llRate = lowerLimitRate ?? dl;
         const aVal   = aValueTotal ?? 0;
         const estPrice = budget * (rate / 100);
         return Math.ceil((estPrice - aVal) * (llRate / 100) + aVal);

@@ -13,6 +13,7 @@ import {
   classifyBudget,
 } from "@/lib/core1/sajung-engine";
 import { calcBaseBudget } from "@/lib/analysis/sajung-utils";
+import { classifyCategory, DEFAULT_LWLT_BY_KIND } from "@/lib/analysis/category-config";
 
 const BATCH_LIMIT = 50;
 const DEFAULT_LOWER_LIMIT_RATE = 87.745;
@@ -63,9 +64,11 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const rawJson = (ann.rawJson ?? {}) as Record<string, string>;
+    // 카테고리별 낙찰하한율 default
+    const lwltDefault = DEFAULT_LWLT_BY_KIND[classifyCategory(ann.category as string)] ?? DEFAULT_LOWER_LIMIT_RATE;
     const lowerLimitRate = rawJson.sucsfbidLwltRate
       ? Number(rawJson.sucsfbidLwltRate)
-      : DEFAULT_LOWER_LIMIT_RATE;
+      : lwltDefault;
 
     const deadlineMonth = new Date(ann.deadline as string).getMonth() + 1;
     // classifyBudget은 sajung-engine에서 사용하지만 여기서도 필요할 경우 대비

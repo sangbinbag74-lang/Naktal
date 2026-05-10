@@ -7,6 +7,7 @@ import {
   roundBucket,
 } from "@/lib/analysis/sajung-utils";
 import { getCachedAnalysis, setCachedAnalysis, periodToDate } from "@/lib/analysis/sajung-cache";
+import { classifyCategory, SAJUNG_FILTER_BY_KIND, DEFAULT_LWLT_BY_KIND } from "@/lib/analysis/category-config";
 
 export interface TopTenItem {
   rank: number;
@@ -44,7 +45,7 @@ export async function GET(req: NextRequest) {
   if (!annId) return NextResponse.json({ error: "annId required" }, { status: 400 });
 
   // ── 캐시 확인 ──────────────────────────────────────────────────────────────
-  const cacheType = `topten_v4${categoryFilter === "all" ? "_all" : ""}${orgScope === "expand" ? "_expand" : ""}`;
+  const cacheType = `topten_v5${categoryFilter === "all" ? "_all" : ""}${orgScope === "expand" ? "_expand" : ""}`;
   const cached = await getCachedAnalysis(annId, period, cacheType);
   if (cached) return NextResponse.json({ ...cached, fromCache: true });
 
@@ -60,7 +61,9 @@ export async function GET(req: NextRequest) {
 
   const rawJson = (ann.rawJson ?? {}) as Record<string, string>;
   const lwltStr = rawJson.sucsfbidLwltRate ?? "";
-  const lowerLimitRate = parseFloat(lwltStr.replace(/[^0-9.]/g, "")) || 87.745;
+  // 카테고리별 낙찰하한율 default
+  const lwltDefault = DEFAULT_LWLT_BY_KIND[classifyCategory(ann.category as string)];
+  const lowerLimitRate = parseFloat(lwltStr.replace(/[^0-9.]/g, "")) || lwltDefault;
   const currentBudget = Number(ann.budget);
   const bidMethod = rawJson.bidMthdNm ?? rawJson.cntrctMthdNm ?? "";
 
@@ -128,13 +131,15 @@ export async function GET(req: NextRequest) {
 
   const bucketMap = new Map<number, number>();
   let total = 0;
+  // 카테고리별 사정율 유효 범위
+  const filterRange = SAJUNG_FILTER_BY_KIND[classifyCategory(ann.category as string)];
 
   for (const r of bidRows) {
     const info = infoMap.get(r.annId);
     if (!info || !info.deadline) continue;
     if (sinceDateStr && info.deadline.slice(0, 10) < sinceDateStr) continue;
     const sajung = calcSajung(Number(r.finalPrice), Number(r.bidRate), info.budget);
-    if (sajung < 85 || sajung > 125) continue;
+    if (sajung < filterRange.min || sajung > filterRange.max) continue;
     const bucket = roundBucket(sajung);
     bucketMap.set(bucket, (bucketMap.get(bucket) ?? 0) + 1);
     total++;

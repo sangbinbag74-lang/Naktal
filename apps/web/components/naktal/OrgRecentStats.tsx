@@ -6,9 +6,10 @@ import type { OrgRecentStatsResponse } from "@/app/api/orgs/recent-stats/route";
 interface Props {
   orgName: string;
   months?: number;
+  category?: string;
 }
 
-export function OrgRecentStats({ orgName, months = 3 }: Props) {
+export function OrgRecentStats({ orgName, months = 3, category }: Props) {
   const [data, setData] = useState<OrgRecentStatsResponse | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -16,13 +17,15 @@ export function OrgRecentStats({ orgName, months = 3 }: Props) {
     if (!orgName) return;
     let cancelled = false;
     setLoading(true);
-    fetch(`/api/orgs/recent-stats?orgName=${encodeURIComponent(orgName)}&months=${months}`)
+    const qs = new URLSearchParams({ orgName, months: String(months) });
+    if (category) qs.set("category", category);
+    fetch(`/api/orgs/recent-stats?${qs}`)
       .then((r) => r.json())
       .then((j: OrgRecentStatsResponse) => { if (!cancelled) setData(j); })
       .catch(() => { if (!cancelled) setData(null); })
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
-  }, [orgName, months]);
+  }, [orgName, months, category]);
 
   if (loading) {
     return (

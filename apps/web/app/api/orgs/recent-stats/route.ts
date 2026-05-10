@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient, createClient } from "@/lib/supabase/server";
 import { calcSajung, buildBudgetAndDateMap, fetchOrgKonepsIdsWithCategoryFallback } from "@/lib/analysis/sajung-utils";
+import { classifyCategory, SAJUNG_FILTER_BY_KIND } from "@/lib/analysis/category-config";
 
 export const dynamic = "force-dynamic";
 
@@ -20,7 +21,10 @@ export async function GET(req: NextRequest) {
 
   const orgName = req.nextUrl.searchParams.get("orgName");
   const months = Number(req.nextUrl.searchParams.get("months") ?? "3");
+  const category = req.nextUrl.searchParams.get("category"); // 카테고리별 사정율 범위 분기용
   if (!orgName) return NextResponse.json({ error: "orgName required" }, { status: 400 });
+  // 카테고리별 사정율 유효 범위 (인자 누락 시 보수적 50~125)
+  const filterRange = SAJUNG_FILTER_BY_KIND[classifyCategory(category)];
 
   const admin = createAdminClient();
 
@@ -57,7 +61,7 @@ export async function GET(req: NextRequest) {
     if (!info || !info.deadline) continue;
     if (info.deadline.slice(0, 10) < sinceDateStr) continue;
     const sajung = calcSajung(Number(row.finalPrice), Number(row.bidRate), info.budget);
-    if (sajung < 85 || sajung > 125) continue;
+    if (sajung < filterRange.min || sajung > filterRange.max) continue;
     total++;
     sum += sajung;
     const dev = sajung - 100;

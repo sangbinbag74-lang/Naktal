@@ -7,6 +7,7 @@ import {
   classifyBudget,
 } from "@/lib/core1/sajung-engine";
 import { calcBaseBudget } from "@/lib/analysis/sajung-utils";
+import { classifyCategory, DEFAULT_LWLT_BY_KIND } from "@/lib/analysis/category-config";
 
 export const dynamic = "force-dynamic";
 
@@ -68,9 +69,11 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     const budget = calcBaseBudget(ann as { budget: number; aValueAmt: number; bsisAmt: bigint | number });
 
     const rawJson = (ann.rawJson ?? {}) as Record<string, string>;
+    // 카테고리별 낙찰하한율 default (공사 87.745 / 용역·물품 80)
+    const lwltDefault = DEFAULT_LWLT_BY_KIND[classifyCategory(ann.category as string)] ?? DEFAULT_LOWER_LIMIT_RATE;
     const lowerLimitRate = rawJson.sucsfbidLwltRate
       ? Number(rawJson.sucsfbidLwltRate)
-      : DEFAULT_LOWER_LIMIT_RATE;
+      : lwltDefault;
 
     const deadlineMonth = new Date(ann.deadline as string).getMonth() + 1;
     const budgetRange = classifyBudget(budget);

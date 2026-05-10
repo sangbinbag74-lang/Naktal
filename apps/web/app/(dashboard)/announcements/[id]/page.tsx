@@ -415,7 +415,7 @@ export default async function AnnouncementDetailPage({
           </div>
 
           {/* 발주처 최근 3개월 통계 */}
-          <OrgRecentStats orgName={a.orgName} months={3} />
+          <OrgRecentStats orgName={a.orgName} months={3} category={a.category} />
 
           <div style={{ fontSize: 11, color: "#94A3B8", paddingLeft: 4 }}>
             ⚠ AI 분석 결과는 통계적 참고 자료입니다. 낙찰을 보장하지 않습니다.

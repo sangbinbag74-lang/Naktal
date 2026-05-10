@@ -10,6 +10,12 @@ import { createAdminClient } from "@/lib/supabase/server";
 import { extractCoreOrgName } from "@/lib/analysis/sajung-utils";
 import { SIMILAR_CATEGORIES } from "@/lib/category-map";
 import { fetchMlSajung } from "./ml-client";
+import {
+  classifyCategory,
+  SAJUNG_FILTER_BY_KIND,
+  DEFAULT_SAJUNG_BY_KIND,
+  DEFAULT_LWLT_BY_KIND,
+} from "@/lib/analysis/category-config";
 
 // ─── 타입 ─────────────────────────────────────────────────────────────────────
 
@@ -284,6 +290,8 @@ async function _fetchPoints(
 
   const annMap = new Map(filtered.map(a => [a.konepsId as string, a]));
   const points: { sajung: number; deadline: string }[] = [];
+  // 카테고리별 사정율 유효 범위 (cats 의 첫번째 사용 — 단일 카테고리 호출 가정)
+  const filterRange = SAJUNG_FILTER_BY_KIND[classifyCategory(cats[0])];
 
   for (const bid of (bids ?? [])) {
     const ann = annMap.get(bid.annId as string);
@@ -294,7 +302,7 @@ async function _fetchPoints(
     const budget     = aValueAmtE > 0 ? aValueAmtE : Number(ann.budget) * 1.1;
     if (!bidRate || !finalPrice || !budget) continue;
     const sajung = (finalPrice / (bidRate / 100)) / budget * 100;
-    if (sajung < 85 || sajung > 125) continue;
+    if (sajung < filterRange.min || sajung > filterRange.max) continue;
     points.push({ sajung, deadline: ann.deadline as string });
   }
   return points;
@@ -523,7 +531,7 @@ export async function predictOptimalBid(params: {
     has_avalue: params.aValueTotal && params.aValueTotal > 0 ? 1 : 0,
     bsisAmt_log: params.bsisAmt && params.bsisAmt > 0 ? Math.log(params.bsisAmt) : 0,
     bsis_to_budget: params.bsisAmt && params.budget > 0 ? params.bsisAmt / params.budget : 0,
-    lwltRate: params.lowerLimitRate ?? 87.745,
+    lwltRate: params.lowerLimitRate ?? DEFAULT_LWLT_BY_KIND[classifyCategory(params.category)],
     // expanding mean 프록시: SajungRateStat 집계값 매핑
     org_past_mean: stat.avg,
     org_past_std: mlStddev,
@@ -569,9 +577,16 @@ export async function predictOptimalBid(params: {
     optimalBid, params.budget, predictedRate, stat.stddev, params.lowerLimitRate, 30
   );
 
+  // 카테고리별 사정율 default (공사 99~101 / 용역 80~95 / 물품 70~92)
+  const sajungDef = DEFAULT_SAJUNG_BY_KIND[classifyCategory(params.category)];
   return {
     predictedSajungRate: Math.round(predictedRate * 1000) / 1000,
-    sajungRateRange: { min: stat.min ?? 97, max: stat.max ?? 112, p25: stat.p25 ?? 101, p75: stat.p75 ?? 106 },
+    sajungRateRange: {
+      min: stat.min ?? sajungDef.min,
+      max: stat.max ?? sajungDef.max,
+      p25: stat.p25 ?? sajungDef.p25,
+      p75: stat.p75 ?? sajungDef.p75,
+    },
     sampleSize: stat.sampleSize,
     optimalBidPrice: Math.ceil(optimalBid),
     bidPriceRangeLow: Math.ceil(rangeLow),

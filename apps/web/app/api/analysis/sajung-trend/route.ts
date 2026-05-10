@@ -6,6 +6,7 @@ import {
   fetchOrgKonepsIdsWithCategoryFallback,
 } from "@/lib/analysis/sajung-utils";
 import { getCachedAnalysis, setCachedAnalysis, periodToDate } from "@/lib/analysis/sajung-cache";
+import { classifyCategory, SAJUNG_FILTER_BY_KIND } from "@/lib/analysis/category-config";
 
 export interface TrendPoint {
   date: string;
@@ -193,12 +194,14 @@ export async function GET(req: NextRequest) {
       .gt("finalPrice", 0)
       .limit(2000);
     const infoMap = await buildBudgetAndDateMap(admin, konepsIds);
+    // 카테고리별 사정율 유효 범위 (공사 85~125 / 용역 50~110 / 물품 30~110)
+    const filterRange = SAJUNG_FILTER_BY_KIND[classifyCategory(ann.category as string)];
     for (const r of bidResults ?? []) {
       const info = infoMap.get(r.annId as string);
       if (!info || !info.deadline) continue;
       if (sinceDateStr && info.deadline.slice(0, 10) < sinceDateStr) continue;
       const sajung = calcSajung(Number(r.finalPrice), Number(r.bidRate), info.budget);
-      if (sajung < 85 || sajung > 125) continue;
+      if (sajung < filterRange.min || sajung > filterRange.max) continue;
       const date = info.deadline.slice(0, 7);
       const rounded = Math.round(sajung * 100) / 100;
       if (!orgByMonth.has(date)) orgByMonth.set(date, []);
@@ -227,9 +230,11 @@ export async function GET(req: NextRequest) {
     if (sinceDate) q = q.gte("bidAt", sinceDate);
 
     const { data: outcomes } = await q;
+    // 내 투찰 이력도 동일한 카테고리 범위로 필터
+    const mineFilterRange = SAJUNG_FILTER_BY_KIND[classifyCategory(ann.category as string)];
     for (const o of outcomes ?? []) {
       const sajung = Number(o.actualSajungRate);
-      if (!sajung || sajung < 85 || sajung > 125) continue;
+      if (!sajung || sajung < mineFilterRange.min || sajung > mineFilterRange.max) continue;
       const date = (o.bidAt as string).slice(0, 7);
       const rounded = Math.round(sajung * 100) / 100;
       if (!mineByMonth.has(date)) mineByMonth.set(date, []);
