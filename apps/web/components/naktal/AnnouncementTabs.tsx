@@ -197,7 +197,7 @@ export function AnnouncementTabs({
             const cl = bs.confidenceLevel ?? (bs.isFallback ? "LOW" : bs.sampleSize >= 5 ? "HIGH" : bs.sampleSize > 0 ? "MEDIUM" : "LOW");
             if (cl === "MEDIUM") return (
               <div style={{ padding: "10px 14px", background: "#FFFBEB", border: "1px solid #FCD34D", borderRadius: 10, fontSize: 13, color: "#92400E" }}>
-                ⚠️ 데이터가 충분하지 않아 예측 정확도가 낮을 수 있습니다. ({bs.sampleSize}건 기준)
+                ⚠️ 데이터가 충분하지 않아 예측 정확도가 낮을 수 있습니다.
               </div>
             );
             if (cl === "LOW") return (

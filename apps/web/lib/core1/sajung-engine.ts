@@ -161,6 +161,46 @@ async function querySajungStat(
   return data as SajungStatRow | null;
 }
 
+/** orgName 의 첫 2 토큰 (도 + 시·군) — '경상북도 봉화군 체육시설사업소' → '경상북도 봉화군' */
+function extractParentOrgName(orgName: string): string | null {
+  const tokens = (orgName ?? "").trim().split(/\s+/);
+  if (tokens.length < 2) return null;
+  return `${tokens[0]} ${tokens[1]}`;
+}
+
+/** 부모 발주처(시·군) ILIKE 매칭 — 산하기관 합산 (가중 평균) */
+async function querySajungStatByParentOrg(
+  parentOrg: string,
+  category: string,
+  budgetRange: string,
+  region: string
+): Promise<SajungStatRow | null> {
+  const supabase = createAdminClient();
+  const { data } = await supabase
+    .from("SajungRateStat")
+    .select("avg,stddev,p25,p50,p75,min,max,mode,monthlyAvg,sampleSize")
+    .ilike("orgName", `${parentOrg}%`)
+    .eq("category", category)
+    .eq("budgetRange", budgetRange)
+    .eq("region", region);
+  if (!data || data.length === 0) return null;
+  const rows = data as SajungStatRow[];
+  const total = rows.reduce((s, r) => s + (r.sampleSize ?? 0), 0);
+  if (total === 0) return null;
+  return {
+    avg:        rows.reduce((s, r) => s + r.avg * (r.sampleSize ?? 0), 0) / total,
+    stddev:     rows.reduce((s, r) => s + (r.stddev ?? 2) * (r.sampleSize ?? 0), 0) / total,
+    p25:        rows.reduce((s, r) => s + (r.p25 ?? 99)  * (r.sampleSize ?? 0), 0) / total,
+    p50:        rows.reduce((s, r) => s + (r.p50 ?? 100) * (r.sampleSize ?? 0), 0) / total,
+    p75:        rows.reduce((s, r) => s + (r.p75 ?? 101) * (r.sampleSize ?? 0), 0) / total,
+    min:        Math.min(...rows.map(r => r.min ?? 97)),
+    max:        Math.max(...rows.map(r => r.max ?? 103)),
+    mode:       rows[0]?.mode ?? 100,
+    monthlyAvg: rows[0]?.monthlyAvg ?? {},
+    sampleSize: total,
+  } as SajungStatRow;
+}
+
 // ─── 시계열 가중치 ─────────────────────────────────────────────────────────────
 
 export function getTimeWeight(deadlineDate: Date): number {
@@ -371,7 +411,23 @@ export async function predictOptimalBid(params: {
     stat = await querySajungStat(orgName, params.category, budgetRange, "");
   }
 
-  // 2. sampleSize < 10 → ALL 카테고리 폴백 (region 일치 → region= 폴백)
+  // 1-a. 발주처 정확 매칭 0/sparse → 부모 발주처(시·군) ILIKE 확장
+  //   예: '경상북도 봉화군 체육시설사업소' 0건 → '경상북도 봉화군' 산하 모든 기관 합산
+  if (!stat || stat.sampleSize < 5) {
+    const parentOrg = extractParentOrgName(orgName);
+    if (parentOrg) {
+      let parentStat = await querySajungStatByParentOrg(parentOrg, params.category, budgetRange, params.region);
+      if ((!parentStat || parentStat.sampleSize < 5) && params.region) {
+        parentStat = await querySajungStatByParentOrg(parentOrg, params.category, budgetRange, "");
+      }
+      if (parentStat && parentStat.sampleSize >= 5) {
+        stat = parentStat;
+        // 확장 매칭이지만 부모 시·군 단위 통계는 의미 있는 분석으로 간주 (isFallback=false 유지)
+      }
+    }
+  }
+
+  // 2. 위 단계도 sparse → ALL 카테고리 폴백 (region 일치 → region= 폴백)
   if (!stat || stat.sampleSize < 10) {
     stat = await querySajungStat("ALL", params.category, budgetRange, params.region);
     if ((!stat || stat.sampleSize < 5) && params.region) {
