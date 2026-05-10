@@ -446,9 +446,10 @@ export async function predictOptimalBid(params: {
 
   // 시계열 메타 계산 (raw 데이터 기반)
   const hasRaw = rawPoints.length >= 5;
+  const _sd = DEFAULT_SAJUNG_BY_KIND[classifyCategory(params.category)];
   const simpleAvg = hasRaw
     ? rawPoints.reduce((s, p) => s + p.sajung, 0) / rawPoints.length
-    : (stat?.avg ?? 103.8);
+    : (stat?.avg ?? _sd.center);
   const weightedAvg  = hasRaw ? calcWeightedAvgSajung(rawPoints) : simpleAvg;
   const trendResult  = calcTrend(rawPoints);
   const stabilityScore = calcStabilityScore(rawPoints);
@@ -456,26 +457,28 @@ export async function predictOptimalBid(params: {
     p => Date.now() - new Date(p.deadline).getTime() < 365 * 24 * 60 * 60 * 1000
   );
 
-  // 4. 전체 폴백도 없으면 기본값 (DB 전체 가중평균 기준: 103.8%)
+  // 4. 전체 폴백도 없으면 카테고리별 기본값 사용
+  //    (공사 100 / 용역 87 / 물품 80 — DEFAULT_SAJUNG_BY_KIND)
   if (!stat || stat.sampleSize < 5) {
-    const fallbackRate = 103.8;
+    const sd = DEFAULT_SAJUNG_BY_KIND[classifyCategory(params.category)];
+    const fallbackRate = sd.center;
     const aValF = params.aValueTotal ?? 0;
     const lwltF = params.lowerLimitRate / 100;
     const estimatedF      = params.budget * (fallbackRate / 100);
-    const estimatedFLow   = params.budget * ((fallbackRate - 0.5) / 100);
-    const estimatedFHigh  = params.budget * ((fallbackRate + 0.5) / 100);
+    const estimatedFLow   = params.budget * (sd.p25 / 100);
+    const estimatedFHigh  = params.budget * (sd.p75 / 100);
     const optimalBidF = (estimatedF     - aValF) * lwltF + aValF;
     const rangeLowF   = (estimatedFLow  - aValF) * lwltF + aValF;
     const rangeHighF  = (estimatedFHigh - aValF) * lwltF + aValF;
     return {
       predictedSajungRate: fallbackRate,
-      sajungRateRange: { min: 97, max: 112, p25: 101, p75: 106 },
+      sajungRateRange: { min: sd.min, max: sd.max, p25: sd.p25, p75: sd.p75 },
       sampleSize: 0,
       optimalBidPrice: Math.ceil(optimalBidF),
       bidPriceRangeLow: Math.ceil(rangeLowF),
       bidPriceRangeHigh: Math.ceil(rangeHighF),
       lowerLimitPrice: Math.ceil(optimalBidF),
-      winProbability: 0.35,
+      winProbability: 0, // 0 = 데이터 부족 (UI 에서 "-" 표시)
       isFallback: true,
       confidenceLevel: "LOW" as ConfidenceLevel,
       modelVersion: "sajung-v1.0-default",

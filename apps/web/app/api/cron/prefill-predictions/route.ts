@@ -29,6 +29,9 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
   const admin = createAdminClient();
 
+  // 기존 fallback 캐시(sampleSize=0) 자동 정리 — 매 cron 실행 시 의미 없는 row 삭제
+  await admin.from("BidPricePrediction").delete().eq("sampleSize", 0);
+
   // 유효한 예측이 없는 진행중 공고 조회 (AnnouncementActive MV — 14k row)
   // 공사 카테고리만 분석 (Model 1 학습 데이터가 사정율 97~103 필터로 공사 전용)
   const now = new Date().toISOString();
@@ -103,8 +106,8 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         }),
       ]);
 
-      // 데이터 부족 공고는 저장하지 않음
-      if (sajung.optimalBidPrice === 0) {
+      // 데이터 부족 공고는 저장하지 않음 (sampleSize=0 + isFallback 시 fallback 값 의미 없음)
+      if (sajung.optimalBidPrice === 0 || sajung.sampleSize === 0 || sajung.isFallback) {
         skipped++;
         continue;
       }

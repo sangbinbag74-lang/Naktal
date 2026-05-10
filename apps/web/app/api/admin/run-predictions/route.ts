@@ -29,6 +29,10 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   const admin = createAdminClient();
   const now = new Date().toISOString();
 
+  // 기존 잘못된 fallback 캐시(sampleSize=0) 정리 — 재분석 가능하도록
+  // 이번 fix 이전에 저장된 의미 없는 103.8%/0.35 winProb row 일괄 삭제
+  await admin.from("BidPricePrediction").delete().eq("sampleSize", 0);
+
   // 진행중 공고 조회 — catFilter 에 따라 분기
   let query = admin
     .from("Announcement")
@@ -110,7 +114,11 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         }),
       ]);
 
-      if (sajung.optimalBidPrice === 0) { skipped++; continue; }
+      // 데이터 부족 (sampleSize=0 + isFallback=true) 시 저장 차단
+      // 의미 없는 fallback 값(공사 100% / 용역 87% 등)을 BidPricePrediction 에 적재하지 않음
+      if (sajung.optimalBidPrice === 0 || sajung.sampleSize === 0 || sajung.isFallback) {
+        skipped++; continue;
+      }
 
       const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
       const { error: upsertErr } = await admin
