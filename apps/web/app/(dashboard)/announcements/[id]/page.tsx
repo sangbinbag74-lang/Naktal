@@ -156,9 +156,11 @@ export default async function AnnouncementDetailPage({
     ? a.subCategories
     : parseSubCategories(a.rawJson as Record<string, string> | null);
   const allLicenses = getAllCategories(a.category, subCats);
-  const budgetNum = parseInt(a.budget, 10); // presmptPrce (추정가격)
+  const budgetNum = parseInt(a.budget, 10); // presmptPrce (추정가격, 부가세 별도)
+  const bsisAmtNum = Number((a as unknown as Record<string, unknown>).bsisAmt ?? 0); // 기초금액 (BsisAmount API, 부가세 포함)
   const aValueAmtNum = Number(a.aValueAmt ?? 0);
-  const bdgtAmt = aValueAmtNum > 0 ? aValueAmtNum : budgetNum * 1.1; // 기초금액: aValueAmt > budget*1.1
+  // 기초금액 우선순위: bsisAmt (G2B BsisAmount API) > aValueAmt > 추정가격×1.1
+  const bdgtAmt = bsisAmtNum > 0 ? bsisAmtNum : aValueAmtNum > 0 ? aValueAmtNum : budgetNum * 1.1;
   const g2bUrl = String(rawJson.ntcePbancUrl || `https://www.g2b.go.kr:8081/ep/peoplecvpl/narasVary.do?bidno=${a.konepsId}&bidseq=${String(rawJson.bidNtceSqNo ?? "00")}`);
 
   // 유저 세션 + 계약 여부 확인

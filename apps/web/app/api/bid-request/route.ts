@@ -114,18 +114,9 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     }
     resultId = (updated as { id: string }).id;
   } else {
-    // 순번 기반 개인화: 같은 공고를 분석한 회사 수 조회
-    const { count: priorCount } = await admin
-      .from("BidRequest")
-      .select("id", { count: "exact", head: true })
-      .eq("annId", annId)
-      .is("cancelledAt", null);
-
-    const seq = (priorCount ?? 0) + 1;
-    const personalBidPrice = Math.max(
-      Math.round(estimatedPrice) - seq * 100,
-      Math.round(lowerLimitPrice) + 1
-    );
+    // 클라이언트(comprehensive) 가 이미 동적 마진 + seq 적용한 추천가 그대로 사용
+    // → comprehensive 와 BidRequest 저장값 일치 보장 (Footnote 와 실제 일치)
+    const personalBidPrice = Math.round(recommendedBidPrice);
     feeRate = personalBidPrice < 100_000_000 ? 0.017 : 0.015;
     agreedFeeAmount = Math.round(personalBidPrice * feeRate);
 

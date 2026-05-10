@@ -111,16 +111,28 @@ function monteCarloWinProb(
   sajungMean: number,
   sajungStd: number,
   lowerLimitRate: number,
+  numBidders = 30, // 예상 참여자 수 (기본 30명)
   n = 5000
 ): number {
-  let wins = 0;
+  let totalWinProb = 0;
   for (let i = 0; i < n; i++) {
     const simSajung = normalRandom(sajungMean, sajungStd);
     const simPrice  = budget * (simSajung / 100);
     const simLower  = simPrice * (lowerLimitRate / 100);
-    if (myBid >= simLower && myBid <= simPrice) wins++;
+
+    // 1. 사용자 투찰가가 낙찰하한가 미만 = 무효
+    if (myBid < simLower) continue;
+
+    // 2. 다른 회사 (numBidders-1 명) 가 더 낮은 투찰가일 확률 (균등분포 가정)
+    //    — 다른 회사들도 낙찰하한가 ~ 예정가 사이에 균등 분포
+    //    - p = (myBid - simLower) / (simPrice - simLower) — 한 명이 사용자보다 낮을 확률
+    //    - 사용자가 가장 낮음 = (1-p)^(numBidders-1)
+    const range = simPrice - simLower;
+    const p = range > 0 ? Math.min(1, Math.max(0, (myBid - simLower) / range)) : 0;
+    const myWinProb = Math.pow(1 - p, Math.max(0, numBidders - 1));
+    totalWinProb += myWinProb;
   }
-  return wins / n;
+  return totalWinProb / n;
 }
 
 // ─── SajungRateStat 조회 ──────────────────────────────────────────────────────
@@ -551,9 +563,10 @@ export async function predictOptimalBid(params: {
   const rangeHigh  = (estimatedHigh - aVal) * lwlt + aVal;
   const lowerLimit = optimalBid; // UI 표시용 (낙찰하한가 = 추천)
 
-  // 7. 몬테카를로 낙찰 확률
+  // 7. 몬테카를로 낙찰 확률 (다른 회사 분포 포함)
+  // numBidders 가 인자에 없으면 30명 기본 (한국 공공조달 평균)
   const winProb = monteCarloWinProb(
-    optimalBid, params.budget, predictedRate, stat.stddev, params.lowerLimitRate
+    optimalBid, params.budget, predictedRate, stat.stddev, params.lowerLimitRate, 30
   );
 
   return {
