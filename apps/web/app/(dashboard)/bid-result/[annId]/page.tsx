@@ -54,7 +54,7 @@ export default async function BidResultPage({
   // 계약 완료된 BidRequest 조회
   const { data: req } = await admin
     .from("BidRequest")
-    .select("recommendedBidPrice,lowerLimitPrice,estimatedPrice,budget,predictedSajungRate,agreedFeeRate,agreedFeeAmount,contractAt,winProbability,competitionScore")
+    .select("recommendedBidPrice,lowerLimitPrice,estimatedPrice,budget,predictedSajungRate,agreedFeeRate,agreedFeeAmount,contractAt,winProbability,competitionScore,aValueYn,aValueTotal,lowerLimitRate")
     .eq("userId", dbUser.id as string)
     .eq("annId", ann.id as string)
     .not("contractAt", "is", null)
@@ -101,6 +101,12 @@ export default async function BidResultPage({
   const competitionScore = Number(req.competitionScore ?? 0);
   const safetyMargin = price - lowerLimit; // 추천 - 낙찰하한가 (안전 마진 + seq)
   const confidenceLevel: "HIGH" | "MEDIUM" | "LOW" = sampleSize >= 30 ? "HIGH" : sampleSize >= 5 ? "MEDIUM" : "LOW";
+  // A값 정보
+  const isAValue = String(req.aValueYn ?? "") === "Y";
+  const aValueTotal = Number(req.aValueTotal ?? 0);
+  const lowerLimitRateNum = Number(req.lowerLimitRate ?? 87.745);
+  // 예정가 = 기초금액(budget) × 예측사정율
+  const estimatedPriceCalc = budget * (sajungRate / 100);
 
   return (
     <div style={{ maxWidth: 560, margin: "0 auto", display: "flex", flexDirection: "column", gap: 20, paddingBottom: 40 }}>
@@ -145,14 +151,33 @@ export default async function BidResultPage({
         </div>
       </div>
 
+      {/* A값 적용 공고 정보 */}
+      {isAValue && aValueTotal > 0 && (
+        <div style={{ background: "#FFFBEB", borderRadius: 14, border: "1px solid #FDE68A", padding: "16px 20px" }}>
+          <div style={{ fontSize: 13, fontWeight: 700, color: "#92400E", marginBottom: 10 }}>
+            🅰 A값 적용 공고
+          </div>
+          <div style={{ fontSize: 13, color: "#78350F", marginBottom: 6 }}>
+            A값: <strong>{fmtPrice(aValueTotal)}</strong>
+          </div>
+          <div style={{ fontSize: 11, color: "#B45309", lineHeight: 1.6 }}>
+            투찰가 공식: (예정가 - A값) × 낙찰하한율 + A값
+          </div>
+        </div>
+      )}
+
       {/* 상세 정보 */}
       <div style={{ background: "#fff", borderRadius: 14, border: "1px solid #E8ECF2", padding: "20px 24px" }}>
         <div style={{ fontSize: 13, fontWeight: 700, color: "#0F172A", marginBottom: 16 }}>투찰 참고 정보</div>
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
           {[
             { label: "AI 추천 투찰금액", value: fmtPrice(price), bold: true },
-            bidRate != null ? { label: "투찰률 (기초금액 대비)", value: `${bidRate.toFixed(4)}%` } : null,
+            { label: "기초금액", value: fmtPrice(budget) + " (부가세 포함)" },
+            { label: "예정가 (예측)", value: fmtPrice(estimatedPriceCalc) },
+            isAValue && aValueTotal > 0 ? { label: "A값", value: fmtPrice(aValueTotal) } : null,
+            { label: "낙찰하한율", value: `${lowerLimitRateNum.toFixed(3)}%` },
             { label: "낙찰하한가", value: fmtPrice(lowerLimit) },
+            bidRate != null ? { label: "투찰률 (기초금액 대비)", value: `${bidRate.toFixed(4)}%` } : null,
             {
               label: "예측 사정율",
               value: sajungDeviation !== null
