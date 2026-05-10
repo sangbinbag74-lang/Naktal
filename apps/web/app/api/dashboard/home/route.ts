@@ -69,13 +69,16 @@ export async function GET(_req: NextRequest): Promise<NextResponse> {
   const myRequests = (myReqsRaw ?? []) as (BidReqRow & { konepsId?: string })[];
 
   // 2. 사용자 업체 정보 (CompanyProfile)
-  const { data: profile } = await admin
+  const { data: profile, error: profileErr } = await admin
     .from("CompanyProfile")
-    .select("mainCategory,subCategories,regions")
+    .select("id,mainCategory,subCategories,regions")
     .eq("userId", userId)
     .maybeSingle();
+  if (profileErr) console.error("[dashboard.home] CompanyProfile select error:", profileErr);
   const myCats = profile?.subCategories ?? (profile?.mainCategory ? [profile.mainCategory] : []);
   const myRegions = profile?.regions ?? [];
+  // row 가 존재하면 등록된 것으로 간주 (mainCategory/subCategories/regions 비어 있어도 row 있으면 OK)
+  const profileSet = !!profile?.id;
 
   // 3. AI 추천 공고 (활성 + 사용자 매칭, 없으면 mostRecent)
   let recommendedQuery = admin
@@ -193,6 +196,6 @@ export async function GET(_req: NextRequest): Promise<NextResponse> {
       exactRate: Math.round(exactRate * 10) / 10,
       avgDev: Math.round(avgDev * 100) / 100,
     },
-    profileSet: !!profile,
+    profileSet,
   });
 }
