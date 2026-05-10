@@ -1079,6 +1079,15 @@ export default function AnnouncementsPage() {
                           A값 적용
                         </span>
                       )}
+                      {ann.rawJson && (() => {
+                        const cm = String(ann.rawJson.cntrctMthdNm ?? "");
+                        const cc = String(ann.rawJson.cntrctCnclsMthdNm ?? "");
+                        return cm.includes("수의") || cc.includes("수의");
+                      })() && (
+                        <span style={{ fontSize: 10, fontWeight: 600, background: "#FEF3C7", color: "#92400E", padding: "2px 6px", borderRadius: 4 }}>
+                          수의계약
+                        </span>
+                      )}
                       {ann.rawJson && Object.values(ann.rawJson).some((v) => typeof v === "string" && v.includes("긴급")) && (
                         <span style={{ fontSize: 10, fontWeight: 600, background: "#FEF2F2", color: "#DC2626", padding: "2px 6px", borderRadius: 4 }}>
                           긴급
