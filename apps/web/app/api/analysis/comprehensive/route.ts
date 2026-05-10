@@ -210,8 +210,15 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     expiresAt: new Date(Date.now() + CACHE_TTL_MS).toISOString(),
   };
 
-  const { error: upsertErr } = await admin.from("BidPricePrediction").upsert(predRecord, { onConflict: "annId" });
-  if (upsertErr) console.error("[BidPricePrediction] upsert 실패:", upsertErr.message);
+  // 데이터 부족 (sampleSize=0 + isFallback) 시 BidPricePrediction 적재 차단
+  // 의미 없는 fallback 값 (공사 100% 등) 캐시되어 다른 사용자에게 노출되는 것 방지
+  const isUnreliable = sajung.sampleSize === 0 || sajung.isFallback;
+  if (!isUnreliable) {
+    const { error: upsertErr } = await admin.from("BidPricePrediction").upsert(predRecord, { onConflict: "annId" });
+    if (upsertErr) console.error("[BidPricePrediction] upsert 실패:", upsertErr.message);
+  } else {
+    console.warn("[comprehensive] 데이터 부족으로 BidPricePrediction 미저장:", { annId, sampleSize: sajung.sampleSize, isFallback: sajung.isFallback });
+  }
 
   // ─── AIPrediction 영구 저장 (캐시 만료 후에도 예측 이력 보존) ─────────────
   try {

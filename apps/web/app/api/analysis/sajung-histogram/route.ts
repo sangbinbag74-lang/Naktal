@@ -7,7 +7,7 @@ import {
   getSajungRange,
 } from "@/lib/analysis/sajung-utils";
 import { getCachedAnalysis, setCachedAnalysis, periodToDate } from "@/lib/analysis/sajung-cache";
-import { classifyCategory, SAJUNG_FILTER_BY_KIND } from "@/lib/analysis/category-config";
+import { classifyCategory, SAJUNG_FILTER_BY_KIND, DEFAULT_SAJUNG_BY_KIND } from "@/lib/analysis/category-config";
 
 /** 카테고리별 bucket step — 공사 0.1%p (좁은 분포) / 용역·물품 0.5%p (넓은 분포) */
 function bucketStepByKind(category: string | null | undefined): number {
@@ -47,11 +47,13 @@ export interface SajungHistogramResponse {
   fromCache?: boolean;
 }
 
-function emptyResponse(lowerLimitRate: number): NextResponse {
+function emptyResponse(lowerLimitRate: number, category?: string | null): NextResponse {
+  // 카테고리별 default — 공사 100/97~103/p25 99/p75 101 / 용역 87/70~100/80~95 / 물품 80/60~100/70~92
+  const sd = DEFAULT_SAJUNG_BY_KIND[classifyCategory(category)];
   return NextResponse.json<SajungHistogramResponse>({
     histogram: [],
     sampleSize: 0,
-    stats: { avg: 103.8, mode: 103.8, p25: 101, p50: 103, p75: 106, stddev: 1.5, min: 103.8, max: 103.8 },
+    stats: { avg: sd.center, mode: sd.center, p25: sd.p25, p50: sd.center, p75: sd.p75, stddev: 1.5, min: sd.min, max: sd.max },
     lowerLimitRate,
   });
 }
@@ -231,7 +233,7 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  if (!result) return emptyResponse(lowerLimitRate);
+  if (!result) return emptyResponse(lowerLimitRate, annCategory);
 
   const finalResult: SajungHistogramResponse = {
     ...result,

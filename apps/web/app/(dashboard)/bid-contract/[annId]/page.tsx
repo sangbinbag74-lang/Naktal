@@ -3,6 +3,7 @@ import Link from "next/link";
 import { createAdminClient, createClient } from "@/lib/supabase/server";
 import { ContractForm } from "@/components/naktal/ContractForm";
 import { AutoAnalysisTrigger } from "@/components/naktal/AutoAnalysisTrigger";
+import { classifyCategory, DEFAULT_LWLT_BY_KIND, DEFAULT_SAJUNG_BY_KIND } from "@/lib/analysis/category-config";
 
 export const dynamic = "force-dynamic";
 
@@ -28,14 +29,18 @@ export default async function BidContractPage({
   // 공고 조회
   const { data: ann } = await admin
     .from("Announcement")
-    .select("id,konepsId,title,orgName,deadline,budget,rawJson,aValueYn,aValueTotal")
+    .select("id,konepsId,title,orgName,deadline,budget,category,rawJson,aValueYn,aValueTotal")
     .or(`id.eq.${annId},konepsId.eq.${annId}`)
     .maybeSingle();
   if (!ann) notFound();
 
   const rawJson = (ann.rawJson as Record<string, string>) ?? {};
   const budgetNum = Number(rawJson.bdgtAmt) || Number(ann.budget);
-  const lowerLimitRate = parseFloat((rawJson.sucsfbidLwltRate ?? "87.745").replace(/[^0-9.]/g, "")) || 87.745;
+  const annCategory = String(ann.category ?? "");
+  const annKind = classifyCategory(annCategory);
+  const defaultLwlt = DEFAULT_LWLT_BY_KIND[annKind];
+  const defaultSajung = DEFAULT_SAJUNG_BY_KIND[annKind];
+  const lowerLimitRate = parseFloat((rawJson.sucsfbidLwltRate ?? "").replace(/[^0-9.]/g, "")) || defaultLwlt;
   const aValueYn = String(ann.aValueYn ?? "");
   const aValueTotal = Number(String(ann.aValueTotal ?? "0").replace(/[^0-9]/g, "")) || 0;
 
@@ -72,7 +77,8 @@ export default async function BidContractPage({
 
   const optimalBidPrice = Number(bidReq?.recommendedBidPrice ?? pred?.optimalBidPrice ?? 0);
   const lowerLimitPrice = Number(bidReq?.lowerLimitPrice ?? pred?.lowerLimitPrice ?? 0);
-  const predictedSajungRate = Number(bidReq?.predictedSajungRate ?? pred?.predictedSajungRate ?? 103.8);
+  // 사정율 fallback — 카테고리별 (공사 100 / 용역 87 / 물품 80)
+  const predictedSajungRate = Number(bidReq?.predictedSajungRate ?? pred?.predictedSajungRate ?? defaultSajung.center);
   // winProbability scale: BidRequest 는 0~100 정수 / BidPricePrediction 은 0~1 소수
   const winProbability = bidReq
     ? Number(bidReq.winProbability ?? 0) / 100
