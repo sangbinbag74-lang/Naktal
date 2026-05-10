@@ -8,6 +8,7 @@ import { NumberAnalysisSection } from "@/components/naktal/NumberAnalysisSection
 import { SaveButton } from "@/components/naktal/SaveButton";
 import { BidRequestButton } from "@/components/naktal/BidRequestButton";
 import { AnnouncementTimeline } from "@/components/naktal/AnnouncementTimeline";
+import { OrgRecentStats } from "@/components/naktal/OrgRecentStats";
 import { extractBidSchedule, extractMetadata, formatPrearngPrceMethod } from "@/lib/g2b-fields";
 import {
   g2bFetchAnnouncementByNo,
@@ -412,6 +413,9 @@ export default async function AnnouncementDetailPage({
               <div style={{ fontSize: 13, color: "#94A3B8" }}>참가조건 정보가 없습니다.</div>
             )}
           </div>
+
+          {/* 발주처 최근 3개월 통계 */}
+          <OrgRecentStats orgName={a.orgName} months={3} />
 
           <div style={{ fontSize: 11, color: "#94A3B8", paddingLeft: 4 }}>
             ⚠ AI 분석 결과는 통계적 참고 자료입니다. 낙찰을 보장하지 않습니다.
