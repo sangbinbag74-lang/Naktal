@@ -283,18 +283,21 @@ function buildResponse(
         return lowerLimit + safetyMargin + seq;
       })(),
       bidPriceRangeLow: (() => {
+        // IQR 하단 (p25, 분포 25% 분위) — 실제 데이터 분포 반영
         const budget = budgetNum ?? Number(ann.budget) ?? 0;
-        const rate   = Number(pred.predictedSajungRate) || 103.8;
+        const rng    = pred.sajungRateRange as { p25?: number; p75?: number; min?: number; max?: number } | null | undefined;
+        const rate   = rng?.p25 ?? (Number(pred.predictedSajungRate) || 99);
         const llRate = lowerLimitRate ?? 87.745;
         const aVal   = aValueTotal ?? 0;
         const estPrice = budget * (rate / 100);
         return Math.ceil((estPrice - aVal) * (llRate / 100) + aVal);
       })(),
       bidPriceRangeHigh: (() => {
-        // 안전 버퍼: 낙찰하한율 +0.5%p
+        // IQR 상단 (p75, 분포 75% 분위) — 실제 데이터 분포 반영
         const budget = budgetNum ?? Number(ann.budget) ?? 0;
-        const rate   = Number(pred.predictedSajungRate) || 103.8;
-        const llRate = (lowerLimitRate ?? 87.745) + 0.5;
+        const rng    = pred.sajungRateRange as { p25?: number; p75?: number; min?: number; max?: number } | null | undefined;
+        const rate   = rng?.p75 ?? (Number(pred.predictedSajungRate) || 101);
+        const llRate = lowerLimitRate ?? 87.745;
         const aVal   = aValueTotal ?? 0;
         const estPrice = budget * (rate / 100);
         return Math.ceil((estPrice - aVal) * (llRate / 100) + aVal);
