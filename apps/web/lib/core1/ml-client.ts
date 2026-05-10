@@ -87,9 +87,17 @@ const ML_ENABLED = process.env.ML_ENABLED !== "false"; // 기본 활성, false�
 /**
  * ML 서버에 사정율 예측 요청. 실패 시 null 반환.
  * v1 (16 피처) → v2 (27 피처) 점진 전환은 route.ts 측에서 처리.
+ *
+ * ⚠️ Model 1 학습 데이터는 sajung_rate 97~103% 로 필터링 (apps/ml/pipelines/merge_raw.py:86)
+ *    즉 사실상 공사 전용. 용역·물품 카테고리에 사용하면 잘못된 추론 발생.
+ *    → 비공사 카테고리는 ML 호출 차단, 통계 fallback 만 사용.
  */
 export async function fetchMlSajung(features: MlFeatures): Promise<number | null> {
   if (!ML_ENABLED) return null;
+  // 카테고리 가드 — 학습 데이터가 공사 분포에만 맞춰져 있음
+  const cat = (features.category ?? "").trim();
+  const isConstruction = cat.includes("공사");
+  if (!isConstruction) return null;
 
   const url = `${getBaseUrl()}/api/ml-predict`;
 
