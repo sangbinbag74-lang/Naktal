@@ -173,7 +173,7 @@ export function SajungTopTen({ annId, predictedSajungRate, budget: _budget, peri
 
       {/* 면책 고지 */}
       <div style={{ fontSize: 11, color: "#94A3B8", lineHeight: 1.6 }}>
-        ¹ 참고 투찰가 = 기초금액 × 사정율 구간 × 낙찰하한율. 통계적 참고 자료이며 낙찰을 보장하지 않습니다.
+        ¹ 참고 투찰가 = (기초금액 × 사정율 − A값) × 낙찰하한율 + A값. 발주처·업종 단위 분포라 동일 발주처 공고 간 결과가 비슷할 수 있습니다 (통계 정상). 낙찰을 보장하지 않습니다.
       </div>
     </div>
   );

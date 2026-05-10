@@ -44,7 +44,7 @@ export async function GET(req: NextRequest) {
   if (!annId) return NextResponse.json({ error: "annId required" }, { status: 400 });
 
   // ── 캐시 확인 ──────────────────────────────────────────────────────────────
-  const cacheType = `topten_v3${categoryFilter === "all" ? "_all" : ""}${orgScope === "expand" ? "_expand" : ""}`;
+  const cacheType = `topten_v4${categoryFilter === "all" ? "_all" : ""}${orgScope === "expand" ? "_expand" : ""}`;
   const cached = await getCachedAnalysis(annId, period, cacheType);
   if (cached) return NextResponse.json({ ...cached, fromCache: true });
 
@@ -52,7 +52,7 @@ export async function GET(req: NextRequest) {
 
   const { data: ann } = await admin
     .from("Announcement")
-    .select("id, konepsId, orgName, category, region, budget, rawJson, subCategories")
+    .select("id, konepsId, orgName, category, region, budget, rawJson, subCategories, bsisAmt, aValueAmt, aValueTotal")
     .eq("id", annId)
     .single();
 
@@ -63,6 +63,12 @@ export async function GET(req: NextRequest) {
   const lowerLimitRate = parseFloat(lwltStr.replace(/[^0-9.]/g, "")) || 87.745;
   const currentBudget = Number(ann.budget);
   const bidMethod = rawJson.bidMthdNm ?? rawJson.cntrctMthdNm ?? "";
+
+  // 기초금액 우선순위: bsisAmt > aValueAmt > 추정가격×1.1 (page.tsx 와 동일 로직)
+  const bsisAmtNum = Number((ann as Record<string, unknown>).bsisAmt ?? 0);
+  const aValueAmtNum = Number((ann as Record<string, unknown>).aValueAmt ?? 0);
+  const baseBudget = bsisAmtNum > 0 ? bsisAmtNum : aValueAmtNum > 0 ? aValueAmtNum : currentBudget * 1.1;
+  const aValueTotalNum = Number((ann as Record<string, unknown>).aValueTotal ?? 0);
 
   const sinceDate = periodToDate(period);
   const sinceDateStr = sinceDate ? sinceDate.slice(0, 10) : null;
@@ -153,13 +159,19 @@ export async function GET(req: NextRequest) {
   const p25 = sortedAsc.length > 0 ? sortedAsc[Math.floor(sortedAsc.length * 0.25)] : null;
   const p75 = sortedAsc.length > 0 ? sortedAsc[Math.floor(sortedAsc.length * 0.75)] : null;
 
+  // 표준 투찰가 공식: (예정가 - A값) × 낙찰하한율 + A값 (예정가 = 기초금액 × 사정율)
+  const calcBidPrice = (sajungPct: number) => {
+    const estimatedPrice = baseBudget * (sajungPct / 100);
+    return Math.round((estimatedPrice - aValueTotalNum) * (lowerLimitRate / 100) + aValueTotalNum);
+  };
+
   const topTen: TopTenItem[] = sorted.map(([bucket, count], i) => ({
     rank: i + 1,
     bucket,
     winCount: count,
     winRate: Math.round((count / total) * 1000) / 10,
     attractiveness: Math.round((count / maxCount) * 100),
-    bidPrice: Math.round(currentBudget * (bucket / 100) * (lowerLimitRate / 100)),
+    bidPrice: calcBidPrice(bucket),
   }));
 
   const result: SajungTopTenResponse = {
