@@ -47,6 +47,36 @@ function calcFee(isWon: string, actualFinalPrice: string, recommendedBidPrice: s
   };
 }
 
+/**
+ * 추정 순위 — 사용자 투찰가 vs 낙찰가 의 사정율 차이 기반.
+ * 정확한 순위는 G2B 개찰결과 상세 (참여자별 가격) 가 있어야 가능 (현재 미수집).
+ * 사정율 차이 0%p → 1순위, 3%p → 최하위로 선형 추정.
+ */
+function estimateRank(args: {
+  userBidPrice: number | null;
+  recommendedBidPrice: number | null;
+  actualFinalPrice: number | null;
+  totalBidders: number | null;
+  lowerLimitRate: number | null; // %
+  budget: number | null;
+  aValueTotal: number | null;
+}): { rank: number; total: number; diffPct: number } | null {
+  const userPrice = args.userBidPrice || args.recommendedBidPrice;
+  if (!userPrice || !args.actualFinalPrice || !args.totalBidders || !args.budget || !args.lowerLimitRate) return null;
+  const lwlt = args.lowerLimitRate / 100;
+  const aVal = args.aValueTotal ?? 0;
+  // 투찰가 → 추정 예정가 역산: estimated = (bid - aVal)/lwlt + aVal
+  const userEst   = (userPrice - aVal) / lwlt + aVal;
+  const actualEst = (args.actualFinalPrice - aVal) / lwlt + aVal;
+  const userSajung   = (userEst   / args.budget) * 100;
+  const actualSajung = (actualEst / args.budget) * 100;
+  const diff = Math.abs(userSajung - actualSajung);
+  // 0%p = 1순위, 3%p = 최하위 선형 매핑
+  const ratio = Math.min(1, diff / 3);
+  const rank = Math.max(1, Math.min(args.totalBidders, Math.ceil(1 + ratio * (args.totalBidders - 1))));
+  return { rank, total: args.totalBidders, diffPct: diff };
+}
+
 export function RequestsTable({ requests, userMap, bidResultMap }: Props) {
   const router = useRouter();
   const [editingRow, setEditingRow] = useState<Request | null>(null);
@@ -377,8 +407,8 @@ export function RequestsTable({ requests, userMap, bidResultMap }: Props) {
                           )
                           : <span style={{ color: "#D1D5DB" }}>-</span>}
                     </td>
-                    {/* 낙찰 */}
-                    <td style={{ padding: "8px 12px", minWidth: 100 }}>
+                    {/* 낙찰 + 추정 순위 */}
+                    <td style={{ padding: "8px 12px", minWidth: 110 }}>
                       <span style={{ fontSize: 11, fontWeight: 700, color: wonColor, background: wonColor + "1a", padding: "2px 7px", borderRadius: 5 }}>
                         {wonLabel}
                       </span>
@@ -390,6 +420,24 @@ export function RequestsTable({ requests, userMap, bidResultMap }: Props) {
                       {r.totalBidders && (
                         <div style={{ color: "#9CA3AF", fontSize: 10 }}>{r.totalBidders}사 참여</div>
                       )}
+                      {(() => {
+                        const est = estimateRank({
+                          userBidPrice: r.userBidPrice ? Number(r.userBidPrice) : null,
+                          recommendedBidPrice: r.recommendedBidPrice ? Number(r.recommendedBidPrice) : null,
+                          actualFinalPrice: r.actualFinalPrice ? Number(r.actualFinalPrice) : null,
+                          totalBidders: r.totalBidders ? Number(r.totalBidders) : null,
+                          lowerLimitRate: r.lowerLimitRate ? Number(r.lowerLimitRate) : null,
+                          budget: r.budget ? Number(r.budget) : null,
+                          aValueTotal: r.aValueTotal ? Number(r.aValueTotal) : null,
+                        });
+                        if (!est) return null;
+                        const color = est.rank === 1 ? "#059669" : est.rank <= Math.ceil(est.total * 0.1) ? "#1B3A6B" : est.rank <= Math.ceil(est.total * 0.3) ? "#D97706" : "#9CA3AF";
+                        return (
+                          <div style={{ marginTop: 3, fontSize: 10, fontWeight: 600, color }} title={`사정율 차이 ±${est.diffPct.toFixed(2)}%p`}>
+                            추정 {est.rank}/{est.total}위
+                          </div>
+                        );
+                      })()}
                     </td>
                     {/* 수수료 */}
                     <td style={{ padding: "8px 12px", whiteSpace: "nowrap" }}>
