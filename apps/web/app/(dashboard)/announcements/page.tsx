@@ -408,8 +408,7 @@ export default function AnnouncementsPage() {
   const [budgetPreset, setBudgetPreset] = useState<string>("");
   const [rgnType, setRgnType] = useState<string>("");
   const [ntceKind, setNtceKind] = useState<string>("");
-  const [onlyGeneral, setOnlyGeneral] = useState<boolean>(true); // 분석 가능 공고만 (default ON) — 수의·지명 제외, 일반·제한경쟁 포함
-  const [cnclsType, setCnclsType] = useState<string>(""); // 계약체결방법 세분 필터 (전체/일반/제한/수의/기타)
+  const [cnclsType, setCnclsType] = useState<string>(""); // 계약체결방법 필터 (전체/일반/제한/수의/기타) — 기본 전체
   const [myProvince, setMyProvince] = useState<string>("");      // 내 사업장 광역 (예: "전북")
   const [myCity, setMyCity] = useState<string>("");              // 내 사업장 시·군 (예: "익산시")
   const [onlyMyRegion, setOnlyMyRegion] = useState<boolean>(false);
@@ -431,7 +430,6 @@ export default function AnnouncementsPage() {
     if (typeof saved.budgetPreset === "string")    setBudgetPreset(saved.budgetPreset);
     if (typeof saved.rgnType === "string")         setRgnType(saved.rgnType);
     if (typeof saved.ntceKind === "string")        setNtceKind(saved.ntceKind);
-    if (typeof saved.onlyGeneral === "boolean")    setOnlyGeneral(saved.onlyGeneral);
     if (typeof saved.cnclsType === "string")       setCnclsType(saved.cnclsType);
     if (typeof saved.myProvince === "string")      setMyProvince(saved.myProvince);
     if (typeof saved.myCity === "string")          setMyCity(saved.myCity);
@@ -458,7 +456,6 @@ export default function AnnouncementsPage() {
         if (maxBudget)      params.set("maxBudget", maxBudget);
         if (rgnType)        params.set("rgnType", rgnType);
         if (ntceKind)       params.set("ntceKind", ntceKind);
-        if (onlyGeneral)    params.set("onlyGeneral", "1");
         if (cnclsType)      params.set("cnclsType", cnclsType);
         if (onlyMyRegion && myProvince) {
           // 내 사업장 광역 + 시 (시는 선택사항)
@@ -478,7 +475,7 @@ export default function AnnouncementsPage() {
         setLoading(false);
       }
     },
-    [keyword, konepsId, categories, regions, sort, contractMethod, deadlineRange, minBudget, maxBudget, rgnType, ntceKind, onlyGeneral, cnclsType, onlyMyRegion, myProvince, myCity]
+    [keyword, konepsId, categories, regions, sort, contractMethod, deadlineRange, minBudget, maxBudget, rgnType, ntceKind, cnclsType, onlyMyRegion, myProvince, myCity]
   );
 
   const triggerDebouncedSearch = useCallback(() => {
@@ -499,7 +496,7 @@ export default function AnnouncementsPage() {
   }, [hydrated]);
 
   const handleSearch = () => {
-    saveFilters({ keyword, categories, regions, sort, contractMethod, deadlineRange, minBudget, maxBudget, budgetPreset, rgnType, ntceKind, onlyGeneral, cnclsType, myProvince, myCity, onlyMyRegion });
+    saveFilters({ keyword, categories, regions, sort, contractMethod, deadlineRange, minBudget, maxBudget, budgetPreset, rgnType, ntceKind, cnclsType, myProvince, myCity, onlyMyRegion });
     setPage(1);
     setItems([]);
     setHasMore(true);
@@ -1033,25 +1030,9 @@ export default function AnnouncementsPage() {
               }}>{f.label}</button>
             );
           })}
-          <label style={{
-            display: "flex", alignItems: "center", gap: 6,
-            marginLeft: 8, paddingLeft: 10, borderLeft: "1px solid #E2E8F0",
-            fontSize: 12, color: "#374151", cursor: cnclsType ? "not-allowed" : "pointer",
-            userSelect: "none", opacity: cnclsType ? 0.5 : 1,
-          }} title={cnclsType ? "세부 칩이 선택되어 토글이 비활성화됩니다" : "수의계약·지명경쟁 제외 — 일반경쟁·제한경쟁만 표시 (분석 가능)"}>
-            <input
-              type="checkbox"
-              checked={onlyGeneral}
-              disabled={!!cnclsType}
-              onChange={(e) => setOnlyGeneral(e.target.checked)}
-              style={{ width: 14, height: 14, accentColor: "#1B3A6B", cursor: cnclsType ? "not-allowed" : "pointer" }}
-            />
-            <span style={{ fontWeight: onlyGeneral ? 600 : 400, color: onlyGeneral ? "#1B3A6B" : "#64748B" }}>
-              분석 가능 공고만
-            </span>
-          </label>
-          {/* 계약체결방법 세분 칩 */}
-          <div style={{ display: "flex", gap: 4, marginLeft: 6, paddingLeft: 8, borderLeft: "1px solid #E2E8F0", flexWrap: "wrap" }}>
+          {/* 계약체결방법 칩 — 통합 검색 (default '전체') */}
+          <div style={{ display: "flex", gap: 4, marginLeft: 8, paddingLeft: 10, borderLeft: "1px solid #E2E8F0", flexWrap: "wrap", alignItems: "center" }}>
+            <span style={{ fontSize: 11, color: "#94A3B8", marginRight: 2 }}>체결</span>
             {CNCLS_TYPES.map((c) => {
               const isActive = cnclsType === c.key;
               return (
