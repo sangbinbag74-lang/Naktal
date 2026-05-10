@@ -257,7 +257,7 @@ export function AiAnalysisPanel({ annDbId, budget, g2bUrl, konepsId, onRefresh, 
                   (예정가 ÷ 기초금액 × 100)
                 </span>
               </div>
-              <div style={!isContracted ? { filter: "blur(5px)", userSelect: "none", pointerEvents: "none" } : undefined}>
+              <div style={!isContracted ? { filter: "blur(5px)", userSelect: "none", pointerEvents: "none", overflow: "hidden", borderRadius: 8 } : undefined}>
                 <SajungDistBar range={bs.sajungRateRange} predicted={bs.predictedSajungRate} avg={bs.weightedAvg ?? bs.simpleAvg} />
                 <div style={{ fontSize: 11, color: "#64748B", marginTop: 8 }}>
                   예상 예정가{" "}

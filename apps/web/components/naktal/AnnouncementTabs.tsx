@@ -210,7 +210,7 @@ export function AnnouncementTabs({
           })()}
 
           {/* 사정율 분석 (서브탭 3개) — 계약 완료 후 공개 */}
-          <div style={{ background: "#fff", border: "1px solid #E8ECF2", borderRadius: 10, padding: "16px 18px", position: "relative" }}>
+          <div style={{ background: "#fff", border: "1px solid #E8ECF2", borderRadius: 10, padding: "16px 18px", position: "relative", overflow: "hidden" }}>
             <div style={{ fontSize: 13, fontWeight: 700, color: "#0F172A", marginBottom: 12 }}>
               사정율 분석
               {!isContracted && (

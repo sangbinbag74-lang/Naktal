@@ -341,7 +341,7 @@ export function NumberAnalysisSection({ annId, isClosed, bidMethod, multiplePric
             </div>
           </div>
 
-          <div style={{ position: "relative" }}>
+          <div style={{ position: "relative", overflow: "hidden", borderRadius: 12 }}>
             <div style={{
               display: "flex", flexDirection: "column", gap: 12,
               filter: isContracted ? "none" : "blur(8px)",
