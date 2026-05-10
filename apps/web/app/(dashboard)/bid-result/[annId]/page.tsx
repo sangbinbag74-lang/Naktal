@@ -353,7 +353,7 @@ export default async function BidResultPage({
         border: "2px solid #1B3A6B", padding: "20px 24px",
       }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}>
-          <span style={{ fontSize: 14, fontWeight: 800, color: "#1B3A6B" }}>📋 계약 이후 안내</span>
+          <span style={{ fontSize: 14, fontWeight: 800, color: "#1B3A6B" }}>📌 입찰 참고 데이터</span>
           <span style={{
             fontSize: 10, fontWeight: 700, background: "#EEF2FF", color: "#1B3A6B",
             padding: "2px 7px", borderRadius: 4,
