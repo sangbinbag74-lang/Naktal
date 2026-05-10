@@ -239,14 +239,31 @@ export function SajungTrendOverlay({ annId, userId, predictedSajungRate, budget,
         </div>
       )}
 
-      {/* A. 월별 사정율 추세 (메인 카드) */}
-      <MonthlyTrendCard orgPoints={data.orgPoints} orgAvg={data.orgAvg ?? 100} />
-
-      {/* C·F 보조 카드 (2 column) */}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-        <RecentTenCard orgPoints={data.orgPoints} orgAvg={data.orgAvg ?? 100} />
-        <BiddersCorrCard orgPoints={data.orgPoints} />
+      {/* 통계 카드 (롤백) */}
+      <div style={{ display: "flex", gap: 8 }}>
+        <StatCard
+          label="발주처 평균 사정율 (산술평균)"
+          value={orgAvgStr}
+          dev="기준값 (평균 대비)"
+          sub={`${data.orgCount}건`}
+          color="#1B3A6B"
+        />
+        <StatCard
+          label="내 평균 사정율"
+          value={mineAvgStr}
+          dev={data.mineCount > 0 ? mineDev : undefined}
+          devColor={mineDevColor}
+          color="#F59E0B"
+        />
+        <StatCard label="차이" value={gapStr} color={gapColor} />
       </div>
+
+      {/* 투찰 이력 없음 안내 */}
+      {data.mineCount === 0 && (
+        <div style={{ padding: "10px 14px", background: "#F8FAFC", border: "1px solid #E8ECF2", borderRadius: 8, fontSize: 12, color: "#64748B" }}>
+          💡 투찰 후 결과를 입력하면 내 사정율을 발주처 흐름과 비교할 수 있습니다.
+        </div>
+      )}
 
       {/* 차트 */}
       <style>{`
@@ -478,158 +495,6 @@ export function SajungTrendOverlay({ annId, userId, predictedSajungRate, budget,
           </div>
         </div>
       )}
-    </div>
-  );
-}
-
-// ─── A. 월별 사정율 추세 카드 ────────────────────────────────────────────────
-function MonthlyTrendCard({ orgPoints, orgAvg }: { orgPoints: OrgPoint[]; orgAvg: number }) {
-  // 1~12월별 평균 사정율 계산
-  const byMonth = new Map<number, number[]>();
-  for (const p of orgPoints) {
-    const m = parseInt(p.date.slice(5, 7), 10);
-    if (!byMonth.has(m)) byMonth.set(m, []);
-    byMonth.get(m)!.push(p.sajung);
-  }
-  const months = Array.from({ length: 12 }, (_, i) => {
-    const m = i + 1;
-    const arr = byMonth.get(m) ?? [];
-    return { month: m, avg: arr.length > 0 ? arr.reduce((s, v) => s + v, 0) / arr.length : null, count: arr.length };
-  });
-  const validAvgs = months.filter((m) => m.avg != null).map((m) => m.avg as number);
-  const yMax = validAvgs.length > 0 ? Math.max(...validAvgs) : orgAvg + 0.5;
-  const yMin = validAvgs.length > 0 ? Math.min(...validAvgs) : orgAvg - 0.5;
-  const range = Math.max(yMax - yMin, 0.5);
-  const currentMonth = new Date().getMonth() + 1;
-
-  return (
-    <div style={{ background: "#fff", border: "1px solid #E2E8F0", borderRadius: 12, padding: "14px 16px" }}>
-      <div style={{ fontSize: 12, fontWeight: 700, color: "#0F172A", marginBottom: 10 }}>
-        📅 월별 사정율 추세 <span style={{ fontSize: 11, color: "#94A3B8", fontWeight: 400 }}>(이번 달 강조)</span>
-      </div>
-      <div style={{ display: "flex", alignItems: "flex-end", gap: 4, height: 80 }}>
-        {months.map((m) => {
-          const isThisMonth = m.month === currentMonth;
-          const heightPct = m.avg != null ? ((m.avg - yMin) / range) * 100 : 0;
-          const dev = m.avg != null ? m.avg - orgAvg : null;
-          return (
-            <div key={m.month} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 3 }}>
-              <div style={{ flex: 1, width: "100%", display: "flex", alignItems: "flex-end" }}>
-                <div style={{
-                  width: "100%",
-                  height: m.avg != null ? `${Math.max(heightPct, 5)}%` : "0",
-                  background: isThisMonth ? "#1B3A6B" : (dev != null && dev >= 0 ? "#60A5FA" : "#FCA5A5"),
-                  borderRadius: "3px 3px 0 0",
-                  transition: "all 0.2s",
-                }} title={m.avg != null ? `${m.month}월 ${m.avg.toFixed(3)}% (${m.count}건)` : `${m.month}월 데이터 없음`} />
-              </div>
-              <div style={{ fontSize: 9, color: isThisMonth ? "#1B3A6B" : "#94A3B8", fontWeight: isThisMonth ? 700 : 400 }}>
-                {m.month}
-              </div>
-            </div>
-          );
-        })}
-      </div>
-      <div style={{ fontSize: 10, color: "#94A3B8", marginTop: 8 }}>
-        ※ 마우스 올리면 월별 평균 사정율 + 표본수 확인
-      </div>
-    </div>
-  );
-}
-
-// ─── C. 최근 10건 시간순 추세 카드 ───────────────────────────────────────────
-function RecentTenCard({ orgPoints, orgAvg }: { orgPoints: OrgPoint[]; orgAvg: number }) {
-  const recent = [...orgPoints].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 10).reverse();
-  if (recent.length < 2) {
-    return (
-      <div style={{ background: "#fff", border: "1px solid #E2E8F0", borderRadius: 12, padding: "14px 16px" }}>
-        <div style={{ fontSize: 12, fontWeight: 700, color: "#0F172A", marginBottom: 6 }}>📈 최근 10건 추세</div>
-        <div style={{ fontSize: 11, color: "#94A3B8" }}>데이터 부족</div>
-      </div>
-    );
-  }
-  const yMax = Math.max(...recent.map((p) => p.sajung));
-  const yMin = Math.min(...recent.map((p) => p.sajung));
-  const range = Math.max(yMax - yMin, 0.5);
-  const last = recent[recent.length - 1]!;
-  const first = recent[0]!;
-  const dir = last.sajung > first.sajung ? "↑" : last.sajung < first.sajung ? "↓" : "→";
-  const dirColor = last.sajung > first.sajung ? "#DC2626" : last.sajung < first.sajung ? "#2563EB" : "#94A3B8";
-
-  return (
-    <div style={{ background: "#fff", border: "1px solid #E2E8F0", borderRadius: 12, padding: "14px 16px" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
-        <span style={{ fontSize: 12, fontWeight: 700, color: "#0F172A" }}>📈 최근 10건 추세</span>
-        <span style={{ fontSize: 16, fontWeight: 800, color: dirColor }}>{dir}</span>
-      </div>
-      <div style={{ position: "relative", height: 60 }}>
-        <svg viewBox={`0 0 100 100`} preserveAspectRatio="none" style={{ width: "100%", height: "100%" }}>
-          <polyline
-            points={recent.map((p, i) => `${(i / (recent.length - 1)) * 100},${100 - ((p.sajung - yMin) / range) * 100}`).join(" ")}
-            fill="none" stroke="#1B3A6B" strokeWidth="2" vectorEffect="non-scaling-stroke"
-          />
-          {recent.map((p, i) => (
-            <circle key={i}
-              cx={(i / (recent.length - 1)) * 100}
-              cy={100 - ((p.sajung - yMin) / range) * 100}
-              r="2" fill="#1B3A6B" vectorEffect="non-scaling-stroke" />
-          ))}
-        </svg>
-      </div>
-      <div style={{ display: "flex", justifyContent: "space-between", fontSize: 10, color: "#94A3B8", marginTop: 4 }}>
-        <span>{first.date}</span>
-        <span>평균 {(recent.reduce((s, p) => s + p.sajung, 0) / recent.length).toFixed(3)}% (orgAvg {orgAvg.toFixed(3)}%)</span>
-        <span>{last.date}</span>
-      </div>
-    </div>
-  );
-}
-
-// ─── F. 참여자 / 사정율 상관 카드 ────────────────────────────────────────────
-function BiddersCorrCard({ orgPoints }: { orgPoints: OrgPoint[] }) {
-  const withBidders = orgPoints.filter((p) => p.numBidders != null && p.numBidders > 0);
-  if (withBidders.length < 5) {
-    return (
-      <div style={{ background: "#fff", border: "1px solid #E2E8F0", borderRadius: 12, padding: "14px 16px" }}>
-        <div style={{ fontSize: 12, fontWeight: 700, color: "#0F172A", marginBottom: 6 }}>👥 참여자 / 사정율 상관</div>
-        <div style={{ fontSize: 11, color: "#94A3B8" }}>데이터 부족 (5건 이상 필요)</div>
-      </div>
-    );
-  }
-  // 그룹별 평균 (1~10 / 11~30 / 30+)
-  const groups = [
-    { label: "1~10명", filter: (n: number) => n <= 10 },
-    { label: "11~30명", filter: (n: number) => n > 10 && n <= 30 },
-    { label: "30+명", filter: (n: number) => n > 30 },
-  ];
-  const stats = groups.map((g) => {
-    const arr = withBidders.filter((p) => g.filter(p.numBidders!));
-    const avg = arr.length > 0 ? arr.reduce((s, p) => s + p.sajung, 0) / arr.length : null;
-    return { label: g.label, avg, count: arr.length };
-  });
-
-  return (
-    <div style={{ background: "#fff", border: "1px solid #E2E8F0", borderRadius: 12, padding: "14px 16px" }}>
-      <div style={{ fontSize: 12, fontWeight: 700, color: "#0F172A", marginBottom: 10 }}>
-        👥 참여자 / 사정율 상관
-      </div>
-      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-        {stats.map((s) => (
-          <div key={s.label} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 11 }}>
-            <span style={{ color: "#64748B" }}>{s.label}</span>
-            <span>
-              {s.avg != null ? (
-                <>
-                  <strong style={{ color: "#0F172A" }}>{s.avg.toFixed(3)}%</strong>
-                  <span style={{ color: "#94A3B8", marginLeft: 4 }}>({s.count}건)</span>
-                </>
-              ) : (
-                <span style={{ color: "#CBD5E1" }}>-</span>
-              )}
-            </span>
-          </div>
-        ))}
-      </div>
     </div>
   );
 }
