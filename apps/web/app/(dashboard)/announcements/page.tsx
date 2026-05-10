@@ -399,8 +399,7 @@ export default function AnnouncementsPage() {
   const [budgetPreset, setBudgetPreset] = useState<string>("");
   const [rgnType, setRgnType] = useState<string>("");
   const [ntceKind, setNtceKind] = useState<string>("");
-  const [excludeNgtn, setExcludeNgtn] = useState<boolean>(true); // 수의계약 자동 제외 (default ON)
-  const [excludeJehan, setExcludeJehan] = useState<boolean>(false); // 제한경쟁 자동 제외 (default OFF)
+  const [onlyGeneral, setOnlyGeneral] = useState<boolean>(true); // 일반경쟁만 보기 (default ON) — 수의·제한·지명 일괄 제외
   const [myProvince, setMyProvince] = useState<string>("");      // 내 사업장 광역 (예: "전북")
   const [myCity, setMyCity] = useState<string>("");              // 내 사업장 시·군 (예: "익산시")
   const [onlyMyRegion, setOnlyMyRegion] = useState<boolean>(false);
@@ -422,8 +421,7 @@ export default function AnnouncementsPage() {
     if (typeof saved.budgetPreset === "string")    setBudgetPreset(saved.budgetPreset);
     if (typeof saved.rgnType === "string")         setRgnType(saved.rgnType);
     if (typeof saved.ntceKind === "string")        setNtceKind(saved.ntceKind);
-    if (typeof saved.excludeNgtn === "boolean")    setExcludeNgtn(saved.excludeNgtn);
-    if (typeof saved.excludeJehan === "boolean")   setExcludeJehan(saved.excludeJehan);
+    if (typeof saved.onlyGeneral === "boolean")    setOnlyGeneral(saved.onlyGeneral);
     if (typeof saved.myProvince === "string")      setMyProvince(saved.myProvince);
     if (typeof saved.myCity === "string")          setMyCity(saved.myCity);
     if (typeof saved.onlyMyRegion === "boolean")   setOnlyMyRegion(saved.onlyMyRegion);
@@ -449,8 +447,7 @@ export default function AnnouncementsPage() {
         if (maxBudget)      params.set("maxBudget", maxBudget);
         if (rgnType)        params.set("rgnType", rgnType);
         if (ntceKind)       params.set("ntceKind", ntceKind);
-        if (excludeNgtn)    params.set("excludeNgtn", "1");
-        if (excludeJehan)   params.set("excludeJehan", "1");
+        if (onlyGeneral)    params.set("onlyGeneral", "1");
         if (onlyMyRegion && myProvince) {
           // 내 사업장 광역 + 시 (시는 선택사항)
           const tokens: string[] = [myProvince];
@@ -469,7 +466,7 @@ export default function AnnouncementsPage() {
         setLoading(false);
       }
     },
-    [keyword, konepsId, categories, regions, sort, contractMethod, deadlineRange, minBudget, maxBudget, rgnType, ntceKind, excludeNgtn, excludeJehan, onlyMyRegion, myProvince, myCity]
+    [keyword, konepsId, categories, regions, sort, contractMethod, deadlineRange, minBudget, maxBudget, rgnType, ntceKind, onlyGeneral, onlyMyRegion, myProvince, myCity]
   );
 
   const triggerDebouncedSearch = useCallback(() => {
@@ -490,7 +487,7 @@ export default function AnnouncementsPage() {
   }, [hydrated]);
 
   const handleSearch = () => {
-    saveFilters({ keyword, categories, regions, sort, contractMethod, deadlineRange, minBudget, maxBudget, budgetPreset, rgnType, ntceKind, excludeNgtn, excludeJehan, myProvince, myCity, onlyMyRegion });
+    saveFilters({ keyword, categories, regions, sort, contractMethod, deadlineRange, minBudget, maxBudget, budgetPreset, rgnType, ntceKind, onlyGeneral, myProvince, myCity, onlyMyRegion });
     setPage(1);
     setItems([]);
     setHasMore(true);
@@ -1028,29 +1025,15 @@ export default function AnnouncementsPage() {
             display: "flex", alignItems: "center", gap: 6,
             marginLeft: 8, paddingLeft: 10, borderLeft: "1px solid #E2E8F0",
             fontSize: 12, color: "#374151", cursor: "pointer", userSelect: "none",
-          }}>
+          }} title="수의계약·제한경쟁·지명경쟁 일괄 제외 (분석 신뢰도 낮음)">
             <input
               type="checkbox"
-              checked={excludeNgtn}
-              onChange={(e) => setExcludeNgtn(e.target.checked)}
+              checked={onlyGeneral}
+              onChange={(e) => setOnlyGeneral(e.target.checked)}
               style={{ width: 14, height: 14, accentColor: "#1B3A6B", cursor: "pointer" }}
             />
-            <span style={{ fontWeight: excludeNgtn ? 600 : 400, color: excludeNgtn ? "#1B3A6B" : "#64748B" }}>
-              수의계약 제외
-            </span>
-          </label>
-          <label style={{
-            display: "flex", alignItems: "center", gap: 6,
-            fontSize: 12, color: "#374151", cursor: "pointer", userSelect: "none",
-          }}>
-            <input
-              type="checkbox"
-              checked={excludeJehan}
-              onChange={(e) => setExcludeJehan(e.target.checked)}
-              style={{ width: 14, height: 14, accentColor: "#1B3A6B", cursor: "pointer" }}
-            />
-            <span style={{ fontWeight: excludeJehan ? 600 : 400, color: excludeJehan ? "#1B3A6B" : "#64748B" }}>
-              제한경쟁 제외
+            <span style={{ fontWeight: onlyGeneral ? 600 : 400, color: onlyGeneral ? "#1B3A6B" : "#64748B" }}>
+              일반경쟁만 보기
             </span>
           </label>
         </div>
@@ -1166,6 +1149,11 @@ export default function AnnouncementsPage() {
                       {ann.rawJson && String(ann.rawJson.cntrctCnclsMthdNm ?? "").includes("제한") && (
                         <span style={{ fontSize: 10, fontWeight: 600, background: "#FEF3C7", color: "#92400E", padding: "2px 6px", borderRadius: 4 }}>
                           제한경쟁
+                        </span>
+                      )}
+                      {ann.rawJson && String(ann.rawJson.cntrctCnclsMthdNm ?? "").includes("지명") && (
+                        <span style={{ fontSize: 10, fontWeight: 600, background: "#FEF3C7", color: "#92400E", padding: "2px 6px", borderRadius: 4 }}>
+                          지명경쟁
                         </span>
                       )}
                       {/* 참여 가능 지역 정보 — 모든 카드에 표시 (전국참여 / 전북 / 익산 관내) */}
