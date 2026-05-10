@@ -394,12 +394,14 @@ export async function predictOptimalBid(params: {
         const allStats = [stat, ...similarStats];
         const totalSamples = allStats.reduce((s, st) => s + st.sampleSize, 0);
         if (totalSamples >= 15) {
+          // 카테고리별 default p25/p75 (공사 99/101 / 용역 80/95 / 물품 70/92)
+          const sd = DEFAULT_SAJUNG_BY_KIND[classifyCategory(params.category)];
           stat = {
             ...stat,
             avg:    allStats.reduce((s, st) => s + st.avg    * st.sampleSize, 0) / totalSamples,
             stddev: allStats.reduce((s, st) => s + (st.stddev ?? 2) * st.sampleSize, 0) / totalSamples,
-            p25:    allStats.reduce((s, st) => s + (st.p25 ?? 101) * st.sampleSize, 0) / totalSamples,
-            p75:    allStats.reduce((s, st) => s + (st.p75 ?? 106) * st.sampleSize, 0) / totalSamples,
+            p25:    allStats.reduce((s, st) => s + (st.p25 ?? sd.p25) * st.sampleSize, 0) / totalSamples,
+            p75:    allStats.reduce((s, st) => s + (st.p75 ?? sd.p75) * st.sampleSize, 0) / totalSamples,
             sampleSize: stat.sampleSize, // 표시용 원래 건수 유지
           } as SajungStatRow;
           isBlended = true;
@@ -414,12 +416,14 @@ export async function predictOptimalBid(params: {
       ?? (params.region ? await querySajungStat("ALL", params.category, budgetRange, "") : null);
     if (allStat && allStat.sampleSize >= 30) {
       const w = stat.sampleSize / 30;
+      // 카테고리별 default p25/p75
+      const sd = DEFAULT_SAJUNG_BY_KIND[classifyCategory(params.category)];
       stat = {
         ...allStat,
         avg:    stat.avg    * w + allStat.avg    * (1 - w),
         stddev: (stat.stddev ?? 2) * w + (allStat.stddev ?? 2) * (1 - w),
-        p25:    (stat.p25 ?? allStat.p25 ?? 101) * w + (allStat.p25 ?? 101) * (1 - w),
-        p75:    (stat.p75 ?? allStat.p75 ?? 106) * w + (allStat.p75 ?? 106) * (1 - w),
+        p25:    (stat.p25 ?? allStat.p25 ?? sd.p25) * w + (allStat.p25 ?? sd.p25) * (1 - w),
+        p75:    (stat.p75 ?? allStat.p75 ?? sd.p75) * w + (allStat.p75 ?? sd.p75) * (1 - w),
         sampleSize: stat.sampleSize, // 표시용 원래 건수 유지
       } as SajungStatRow;
       isBlended = true;
@@ -523,8 +527,8 @@ export async function predictOptimalBid(params: {
     numBidders: 25,
     stat_avg: stat.avg,
     stat_stddev: mlStddev,
-    stat_p25: stat.p25 ?? 99,
-    stat_p75: stat.p75 ?? 101,
+    stat_p25: stat.p25 ?? DEFAULT_SAJUNG_BY_KIND[classifyCategory(params.category)].p25,
+    stat_p75: stat.p75 ?? DEFAULT_SAJUNG_BY_KIND[classifyCategory(params.category)].p75,
     sampleSize: stat.sampleSize,
     bidder_volatility: stat.avg > 0 ? mlStddev / stat.avg : 0,
     is_sparse_org: stat.sampleSize < 30 ? 1 : 0,

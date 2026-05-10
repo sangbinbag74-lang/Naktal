@@ -2,6 +2,7 @@ import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
 import { createAdminClient, createClient } from "@/lib/supabase/server";
 import { BidResultCombos } from "@/components/naktal/BidResultCombos";
+import { classifyCategory, DEFAULT_LWLT_BY_KIND } from "@/lib/analysis/category-config";
 
 function classifyBudget(budget: number): string {
   if (budget < 100_000_000)   return "1억미만";
@@ -104,7 +105,7 @@ export default async function BidResultPage({
   // A값 정보
   const isAValue = String(req.aValueYn ?? "") === "Y";
   const aValueTotal = Number(req.aValueTotal ?? 0);
-  const lowerLimitRateNum = Number(req.lowerLimitRate ?? 87.745);
+  const lowerLimitRateNum = Number(req.lowerLimitRate ?? DEFAULT_LWLT_BY_KIND[classifyCategory(ann.category as string)]);
   // 예정가 = 기초금액(budget) × 예측사정율
   const estimatedPriceCalc = budget * (sajungRate / 100);
 

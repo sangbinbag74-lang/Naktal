@@ -6,6 +6,7 @@ import { recommendNumbers } from "@/lib/core1/frequency-engine";
 import { predictOpeningNumbers, blendWithFrequency } from "@/lib/core2/opening-engine";
 import { rateLimit } from "@/lib/rate-limit";
 import { isMultiplePriceBid, getBudgetRange } from "@/lib/bid-utils";
+import { classifyCategory, DEFAULT_LWLT_BY_KIND } from "@/lib/analysis/category-config";
 import type { Plan } from "@naktal/types";
 
 export async function POST(req: NextRequest): Promise<NextResponse> {
@@ -125,7 +126,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       region: ann.region,
       budget: Number(ann.budget),
       bsisAmt: Number(ann.bsisAmt ?? 0),
-      lwltRate: Number(ann.sucsfbidLwltRate ?? 87.745),
+      lwltRate: Number(ann.sucsfbidLwltRate ?? DEFAULT_LWLT_BY_KIND[classifyCategory(ann.category)]),
       deadline: new Date(ann.deadline),
       subCategories: (ann.subCategories as string[]) ?? [],
       numBidders: body.estimatedBidders ?? 0,

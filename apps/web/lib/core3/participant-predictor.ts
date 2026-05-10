@@ -13,6 +13,7 @@
  *   if (n != null) { ... }
  */
 import { fetchMlParticipants, type ParticipantsMlFeatures } from "../core1/ml-client";
+import { classifyCategory, DEFAULT_LWLT_BY_KIND } from "@/lib/analysis/category-config";
 
 export interface ParticipantContext {
   category: string;
@@ -54,7 +55,7 @@ function toFeatures(ctx: ParticipantContext): ParticipantsMlFeatures {
     subcat_main: ctx.subCategories?.[0] ?? "",
     budget_log: ctx.budget > 0 ? Math.log(ctx.budget + 1) : 0,
     bsisAmt_log: ctx.bsisAmt > 0 ? Math.log(ctx.bsisAmt + 1) : 0,
-    lwltRate: ctx.lwltRate || 87.745,
+    lwltRate: ctx.lwltRate || DEFAULT_LWLT_BY_KIND[classifyCategory(ctx.category)],
     month,
     season_q,
     year,
