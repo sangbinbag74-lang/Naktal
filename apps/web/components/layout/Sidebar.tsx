@@ -35,7 +35,6 @@ const MENU_SECTIONS = [
     items: [
       { href: "/admin/model",          label: "대시보드",   icon: "🏠", adminOnly: true },
       { href: "/admin/users",          label: "회원 관리",  icon: "👥", adminOnly: true },
-      { href: "/admin/payments",       label: "결제·구독",  icon: "💳", adminOnly: true },
       { href: "/admin/announcements",  label: "공고 관리",  icon: "📋", adminOnly: true },
       { href: "/admin/requests",       label: "투찰 의뢰",  icon: "📬", adminOnly: true },
       { href: "/admin/outcomes",       label: "낙찰 결과",  icon: "📈", adminOnly: true },

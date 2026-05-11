@@ -16,7 +16,7 @@ model User {
   ownerName       String
   notifyEmail     String?
   notifyPhone     String?
-  plan            Plan                   @default(FREE)
+  plan            Plan                   @default(PRO)
   isAdmin         Boolean                @default(false)
   isActive        Boolean                @default(true)
   adminMemo       String?

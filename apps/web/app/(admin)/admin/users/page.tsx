@@ -100,10 +100,6 @@ export default function AdminUsersPage() {
     { key: "bizName", label: "상호명" },
     { key: "ownerName", label: "대표자" },
     {
-      key: "plan", label: "플랜",
-      render: (r: UserRow) => <PlanSelect row={r} onChange={handlePlanChange} />,
-    },
-    {
       key: "isActive", label: "상태",
       render: (r: UserRow) => r.isActive
         ? <span style={{ color: "#16A34A", fontSize: 12, fontWeight: 600 }}>활성</span>
@@ -140,16 +136,6 @@ export default function AdminUsersPage() {
           placeholder="사업자번호 / 상호명 검색"
           style={{ ...inputStyle, width: 220 }}
         />
-        <select
-          value={planFilter}
-          onChange={(e) => { setPlanFilter(e.target.value); setPage(1); }}
-          style={inputStyle}
-        >
-          <option value="">전체 플랜</option>
-          <option value="FREE">무료</option>
-          <option value="STANDARD">스탠다드</option>
-          <option value="PRO">프로</option>
-        </select>
       </div>
 
       {loading ? (
