@@ -67,7 +67,17 @@ export default async function DashboardLayout({
           flexShrink: 0,
         }}>
           <MobileSidebar />
-          <span style={{ fontSize: 16, fontWeight: 700, color: "#1B3A6B" }}>NAKTAL.AI</span>
+          <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+            <span style={{
+              width: 24, height: 24, borderRadius: 5,
+              background: "#1B3A6B", color: "#fff",
+              display: "grid", placeItems: "center",
+              fontWeight: 900, fontSize: 13, letterSpacing: "-0.04em",
+            }}>낙</span>
+            <span style={{ fontSize: 15, fontWeight: 800, color: "#1B3A6B", letterSpacing: "-0.025em" }}>
+              NAKTAL<span style={{ color: "#60A5FA" }}>.AI</span>
+            </span>
+          </span>
         </div>
 
         {/* 데스크톱 헤더 */}

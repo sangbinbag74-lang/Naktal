@@ -86,9 +86,17 @@ export default function LoginPage() {
       }}>
         {/* 로고 */}
         <div style={{ textAlign: "center", marginBottom: 28 }}>
-          <div style={{ display: "inline-flex", alignItems: "baseline", gap: 2, marginBottom: 16 }}>
-            <span style={{ fontSize: 26, fontWeight: 700, color: "#1B3A6B" }}>NAKTAL</span>
-            <span style={{ fontSize: 26, fontWeight: 700, color: "#60A5FA" }}>.AI</span>
+          <div style={{ display: "inline-flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
+            <span style={{
+              width: 36, height: 36, borderRadius: 8,
+              background: "#1B3A6B", color: "#fff",
+              display: "grid", placeItems: "center",
+              fontWeight: 900, fontSize: 20, letterSpacing: "-0.04em",
+            }}>낙</span>
+            <span style={{ display: "inline-flex", alignItems: "baseline" }}>
+              <span style={{ fontSize: 24, fontWeight: 800, color: "#1B3A6B", letterSpacing: "-0.025em" }}>NAKTAL</span>
+              <span style={{ fontSize: 24, fontWeight: 800, color: "#60A5FA" }}>.AI</span>
+            </span>
           </div>
           <div style={{ fontSize: 22, fontWeight: 700, color: "#0F172A", marginBottom: 6 }}>
             다시 만나서 반갑습니다
@@ -195,8 +203,14 @@ export default function LoginPage() {
           >
             {/* 헤더 */}
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 28 }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <span style={{ fontSize: 18, fontWeight: 700, color: "#fff" }}>NAKTAL</span>
+              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <span style={{
+                  width: 24, height: 24, borderRadius: 5,
+                  background: "#fff", color: "#1B3A6B",
+                  display: "grid", placeItems: "center",
+                  fontWeight: 900, fontSize: 13, letterSpacing: "-0.04em",
+                }}>낙</span>
+                <span style={{ fontSize: 16, fontWeight: 800, color: "#fff", letterSpacing: "-0.025em" }}>NAKTAL</span>
                 <span style={{
                   fontSize: 10, fontWeight: 700, background: "#DC2626",
                   color: "#fff", padding: "2px 7px", borderRadius: 4,

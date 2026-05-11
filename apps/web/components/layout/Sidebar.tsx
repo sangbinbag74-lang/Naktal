@@ -51,9 +51,17 @@ export function Sidebar({ isAdmin = false }: SidebarProps) {
     <aside style={{ width: 220, minHeight: "100vh", background: "#0F1E3C", display: "flex", flexDirection: "column" }}>
       {/* 로고 */}
       <div style={{ height: 56, display: "flex", alignItems: "center", padding: "0 20px", borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
-        <Link href="/dashboard" style={{ display: "flex", alignItems: "baseline", gap: 2 }}>
-          <span style={{ fontSize: 18, fontWeight: 700, color: "#fff", letterSpacing: "0.05em" }}>NAKTAL</span>
-          <span style={{ fontSize: 18, fontWeight: 700, color: "#60A5FA" }}>.AI</span>
+        <Link href="/dashboard" style={{ display: "flex", alignItems: "center", gap: 10, textDecoration: "none", color: "#fff" }}>
+          <span style={{
+            width: 26, height: 26, borderRadius: 6,
+            background: "#fff", color: "#1B3A6B",
+            display: "grid", placeItems: "center",
+            fontWeight: 900, fontSize: 14, letterSpacing: "-0.04em",
+            flexShrink: 0,
+          }}>낙</span>
+          <span style={{ fontSize: 15, fontWeight: 800, letterSpacing: "-0.025em" }}>
+            NAKTAL<span style={{ color: "#60A5FA" }}>.AI</span>
+          </span>
         </Link>
       </div>
 

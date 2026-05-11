@@ -1,14 +1,15 @@
 {
-  "name": "낙찰AI",
-  "short_name": "낙찰AI",
-  "description": "나라장터 번호 전략 AI — 이 공고 몇 번 넣어야 해요?",
-  "start_url": "/strategy",
+  "name": "Naktal.ai — 공공입찰, 데이터로 답한다",
+  "short_name": "Naktal.ai",
+  "description": "나라장터 공고를 머신러닝이 0.5초 만에 분석",
+  "start_url": "/dashboard",
   "display": "standalone",
   "background_color": "#F0F2F5",
   "theme_color": "#1B3A6B",
   "orientation": "portrait-primary",
   "icons": [
-    { "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+    { "src": "/icon", "sizes": "32x32", "type": "image/png" },
+    { "src": "/apple-icon", "sizes": "180x180", "type": "image/png", "purpose": "any maskable" }
   ],
   "categories": ["business", "productivity"],
   "lang": "ko"

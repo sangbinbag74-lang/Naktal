@@ -132,9 +132,17 @@ export default function SignupPage() {
         boxShadow: "0 4px 24px rgba(15,30,60,0.06)",
       }}>
         <div style={{ textAlign: "center", marginBottom: 28 }}>
-          <div style={{ display: "inline-flex", alignItems: "baseline", gap: 2, marginBottom: 12 }}>
-            <span style={{ fontSize: 22, fontWeight: 700, color: "#1B3A6B" }}>NAKTAL</span>
-            <span style={{ fontSize: 22, fontWeight: 700, color: "#60A5FA" }}>.AI</span>
+          <div style={{ display: "inline-flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
+            <span style={{
+              width: 32, height: 32, borderRadius: 7,
+              background: "#1B3A6B", color: "#fff",
+              display: "grid", placeItems: "center",
+              fontWeight: 900, fontSize: 17, letterSpacing: "-0.04em",
+            }}>낙</span>
+            <span style={{ display: "inline-flex", alignItems: "baseline" }}>
+              <span style={{ fontSize: 22, fontWeight: 800, color: "#1B3A6B", letterSpacing: "-0.025em" }}>NAKTAL</span>
+              <span style={{ fontSize: 22, fontWeight: 800, color: "#60A5FA" }}>.AI</span>
+            </span>
           </div>
           <div style={{ fontSize: 20, fontWeight: 700, color: "#0F172A", marginBottom: 4 }}>회원가입</div>
           <div style={{ fontSize: 13, color: "#64748B" }}>나라장터 입찰 분석 플랫폼</div>
