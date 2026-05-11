@@ -39,7 +39,6 @@ const styles = `
   details.nk-faq summary .nk-plus{width:28px;height:28px;border-radius:999px;border:1px solid var(--border);display:grid;place-items:center;color:var(--fg-3);font-size:18px;font-weight:300;line-height:1;flex-shrink:0;transition:transform .2s, background .2s, color .2s;}
   details.nk-faq[open] summary .nk-plus{transform:rotate(45deg);background:var(--navy-800);color:#fff;border-color:var(--navy-800);}
   details.nk-faq .nk-a{font-size:15px;line-height:1.7;color:var(--fg-2);margin-top:14px;max-width:780px;}
-  details.nk-faq .nk-a.notice{background:#F8FAFC;border:1px solid var(--border);padding:16px 18px;border-radius:10px;color:var(--fg-2);}
   @keyframes nk-pulse-dot {0%,100%{opacity:.35;}50%{opacity:1;}}
 `;
 
@@ -729,7 +728,7 @@ function Pricing() {
 function FAQ() {
   const items = [
     { q: "어떤 입찰 방식을 지원하나요?", a: "복수예가, 적격심사 등 일반 공공입찰 전 영역을 지원합니다. 시설공사 · 용역 · 물품 모두 분석 대상입니다." },
-    { q: "낙찰이 보장되나요?", a: "낙찰을 보장하지 않습니다. AI는 통계적 확률을 높이는 도구이며, 최종 의사결정은 항상 사용자에게 있습니다.", notice: true },
+    { q: "낙찰이 보장되나요?", a: "낙찰을 보장하지 않습니다. AI는 통계적 확률을 높이는 도구이며, 최종 의사결정은 항상 사용자에게 있습니다." },
     { q: "데이터는 어디서 가져오나요?", a: "조달청 나라장터 공식 데이터를 사용합니다. 다른 출처는 사용하지 않습니다." },
     { q: "수수료는 어떻게 되나요?", a: "낙찰 시에만 수수료가 발생합니다. 낙찰 금액 1억원 이상은 1.5%, 1억원 미만은 1.7%. 미낙찰 시에는 어떠한 비용도 청구되지 않으며, 분석 자체는 무제한 사용 가능합니다." },
   ];
@@ -750,7 +749,7 @@ function FAQ() {
                   <span className="nk-q">{it.q}</span>
                   <span className="nk-plus">+</span>
                 </summary>
-                <div className={"nk-a" + (it.notice ? " notice" : "")}>{it.a}</div>
+                <div className="nk-a">{it.a}</div>
               </details>
             ))}
           </div>
