@@ -92,11 +92,6 @@ export default function DashboardPage() {
       {/* 헤더 */}
       <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between" }}>
         <h2 style={{ fontSize: 20, fontWeight: 700, color: "#0F172A", margin: 0 }}>대시보드</h2>
-        {!loading && data && (
-          <span style={{ fontSize: 12, color: "#64748B" }}>
-            플랜 <strong style={{ color: "#059669" }}>{data.metrics.plan?.toUpperCase() ?? "-"}</strong>
-          </span>
-        )}
       </div>
 
       {/* 메트릭 3박스 — 1줄 */}
