@@ -84,10 +84,11 @@ function estimatedResult(annId: string): RecommendResult {
     numbers: ns, hitRate: 20.0, freqMap: baseFreqMap, zone,
   });
   return {
-    combo1: toCombo(nums.slice(0, 3), "low"),
-    combo2: toCombo(nums.slice(3, 6), "mid"),
-    combo3: toCombo(nums.slice(6, 9), "high"),
-    combo4: toCombo(nums.slice(9, 12), "high"),
+    // G2B 복수예가 — 입찰자는 2개 번호 선택. 4가지 '2-번호 조합' 추천.
+    combo1: toCombo(nums.slice(0, 2), "low"),
+    combo2: toCombo(nums.slice(2, 4), "mid"),
+    combo3: toCombo(nums.slice(4, 6), "high"),
+    combo4: toCombo(nums.slice(6, 8), "high"),
     sampleSize: 0,
     modelVersion: "estimated-v1",
     isEstimated: true,
@@ -137,7 +138,8 @@ function buildResult(
   const pool = sorted.map((x) => ({ num: x.num, weight: 1 / (x.freq + 1) }));
   const picks: number[] = [];
 
-  for (let i = 0; i < 12 && pool.length > 0; i++) {
+  // G2B 복수예가 — 입찰자는 2개 번호 선택. 4가지 '2-번호 조합' 추천 → 8개 추출.
+  for (let i = 0; i < 8 && pool.length > 0; i++) {
     const total = pool.reduce((s, x) => s + x.weight, 0);
     let r = rand() * total;
     let idx = pool.length - 1;
@@ -149,10 +151,10 @@ function buildResult(
     pool.splice(idx, 1);
   }
 
-  const c1 = picks.slice(0, 3);
-  const c2 = picks.slice(3, 6);
-  const c3 = picks.slice(6, 9);
-  const c4 = picks.slice(9, 12);
+  const c1 = picks.slice(0, 2);
+  const c2 = picks.slice(2, 4);
+  const c3 = picks.slice(4, 6);
+  const c4 = picks.slice(6, 8);
 
   return {
     combo1: {
