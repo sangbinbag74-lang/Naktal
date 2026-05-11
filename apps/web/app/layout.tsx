@@ -42,6 +42,11 @@ export const metadata: Metadata = {
   alternates: {
     canonical: "https://naktal.me",
     languages: { "ko-KR": "https://naktal.me" },
+    types: {
+      "application/rss+xml": [
+        { url: "https://naktal.me/rss.xml", title: "Naktal.ai RSS" },
+      ],
+    },
   },
   openGraph: {
     title: "Naktal.ai — 공공입찰, 데이터로 답한다",
