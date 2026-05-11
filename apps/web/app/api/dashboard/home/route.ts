@@ -69,8 +69,12 @@ export async function GET(_req: NextRequest): Promise<NextResponse> {
   if (profileErr) console.error("[dashboard.home] CompanyProfile select error:", profileErr);
   const myCats = profile?.subCategories ?? (profile?.mainCategory ? [profile.mainCategory] : []);
   const myRegions = profile?.regions ?? [];
-  // row 가 존재하면 등록된 것으로 간주 (mainCategory/subCategories/regions 비어 있어도 row 있으면 OK)
-  const profileSet = !!profile?.id;
+  // 업종·지역 중 하나라도 등록되면 맞춤 추천 가능
+  const profileSet = !!profile?.id && (
+    (Array.isArray(myCats) && myCats.length > 0) ||
+    (Array.isArray(myRegions) && myRegions.length > 0) ||
+    !!profile?.mainCategory
+  );
 
   // 3. AI 추천 공고 (활성 + 사용자 매칭, 없으면 mostRecent)
   let recommendedQuery = admin

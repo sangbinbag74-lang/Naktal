@@ -147,10 +147,10 @@ export default function DashboardPage() {
         <div style={cardStyle}>
           <BoxHeader icon="🎯" title="AI 추천 공고" href="/announcements" badge="내 업종" />
           {!loading && data && !data.profileSet && (
-            <div style={{ background: "#FEF3C7", border: "1px solid #FDE68A", borderRadius: 8, padding: "8px 12px" }}>
-              <div style={{ fontSize: 11, color: "#92400E", marginBottom: 2 }}>업체 정보 미등록</div>
-              <Link href="/profile" style={{ fontSize: 11, color: "#92400E", fontWeight: 600, textDecoration: "none" }}>
-                /profile 등록 →
+            <div style={{ background: "#EFF6FF", border: "1px solid #BFDBFE", borderRadius: 8, padding: "8px 12px" }}>
+              <div style={{ fontSize: 11, color: "#1E40AF", marginBottom: 2 }}>업종·지역 등록 시 맞춤 추천</div>
+              <Link href="/profile" style={{ fontSize: 11, color: "#1E40AF", fontWeight: 600, textDecoration: "none" }}>
+                내 업체 정보에서 등록 →
               </Link>
             </div>
           )}
