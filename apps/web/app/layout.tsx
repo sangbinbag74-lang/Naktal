@@ -79,9 +79,7 @@ export const metadata: Metadata = {
   },
   verification: {
     other: {
-      // 검색엔진 사이트 등록 후 발급받은 코드로 교체:
-      // "naver-site-verification": "...",
-      // "google-site-verification": "...",
+      "naver-site-verification": "689dd8fa9c79ef28ce8e35391c0a6ec4ced1e75a",
     },
   },
   formatDetection: {
