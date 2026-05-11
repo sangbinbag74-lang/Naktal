@@ -1,400 +1,800 @@
 "use client";
-import { useState, useEffect, useCallback } from "react";
-import { useRouter } from "next/navigation";
+
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { createClient } from "@/lib/supabase/client";
 
-// ── 경쟁사 비교 데이터 ──────────────────────────────────────────────────────
-const COMPARE = [
-  { item: "사정율 예측",     naktal: "✅",      info21c: "❌",    gobid: "일부" },
-  { item: "최적 투찰가 역산", naktal: "✅",      info21c: "❌",    gobid: "❌" },
-  { item: "낙찰 확률 %",    naktal: "✅",      info21c: "❌",    gobid: "❌" },
-  { item: "복수예가 번호 전략", naktal: "✅",   info21c: "통계만", gobid: "❌" },
-  { item: "적격심사 계산기", naktal: "✅",      info21c: "배점만", gobid: "일부" },
-  { item: "실시간 참여자 수", naktal: "✅ Pro", info21c: "❌",    gobid: "❌" },
-  { item: "가격",            naktal: "무료~",   info21c: "월정액", gobid: "낙찰보수" },
-];
+/* ──────────────────────────────────────────────────────────────
+   Naktal.ai 랜딩 페이지 (Claude Design handoff 구현)
+   ────────────────────────────────────────────────────────────── */
 
-// ── 차별점 3대 섹션 ───────────────────────────────────────────────────────────
-const FEATURES = [
-  {
-    icon: "📊",
-    badge: "CORE 1",
-    title: "사정율 예측",
-    subtitle: "발주처가 어떤 가격대를 선호하는지 압니다",
-    desc: "익산시청의 최근 52건 분석 → 사정율 98.9% 집중\n기초금액 4억 × 98.9% = 예정가격 3억 9,560만원 추정",
-    color: "#1B3A6B",
-  },
-  {
-    icon: "🎯",
-    badge: "CORE 1",
-    title: "낙찰 확률 시뮬레이션",
-    subtitle: "넣기 전에 확률을 먼저 알 수 있습니다",
-    desc: "몬테카를로 시뮬레이션 5,000회 실행\n내 투찰가 기준 낙찰 확률 % 실시간 계산",
-    color: "#0369A1",
-  },
-  {
-    icon: "🔢",
-    badge: "CORE 2",
-    title: "복수예가 번호 전략",
-    subtitle: "사정율이 정해지면 번호도 달라집니다",
-    desc: "예정가격 구간이 확정되면 이 구간에서\n고빈도 번호를 회피한 최적 조합 3세트 제시",
-    color: "#1D4ED8",
-  },
-];
-
-// ── 무료 플랜 혜택 ────────────────────────────────────────────────────────────
-const FREE_BENEFITS = [
-  "나라장터 공고 모니터링 무제한",
-  "AI 최적 투찰가 분석 월 3회",
-  "적격심사 통과 계산 무제한",
-  "공고 찜 무제한",
-];
-
-// ── 브라우저 몬테카를로 시뮬레이션 (API 호출 없음) ───────────────────────────
-function normalRandom(mean: number, std: number): number {
-  let u = 0, v = 0;
-  while (u === 0) u = Math.random();
-  while (v === 0) v = Math.random();
-  return mean + std * Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
-}
-
-function calcWinProb(
-  myBid: number,
-  budget: number,
-  sajungMean: number,
-  sajungStd: number,
-  lowerLimitRate: number,
-  n = 2000
-): number {
-  if (!myBid || !budget) return 0;
-  let wins = 0;
-  for (let i = 0; i < n; i++) {
-    const simSajung = normalRandom(sajungMean, sajungStd);
-    const simPrice = budget * (simSajung / 100);
-    const simLower = simPrice * (lowerLimitRate / 100);
-    if (myBid >= simLower && myBid <= simPrice) wins++;
+const styles = `
+  :root{
+    --navy-900:#0F1E3C; --navy-800:#1B3A6B; --navy-700:#152E58; --navy-600:#1E4080;
+    --blue-400:#60A5FA; --blue-300:#93C5FD; --blue-50:#EFF6FF;
+    --green-600:#059669; --green-400:#34D399;
+    --page:#F0F2F5; --card:#FFFFFF; --cell:#F8FAFC;
+    --border:#E8ECF2; --border-light:#F1F5F9;
+    --fg-1:#0F172A; --fg-2:#334155; --fg-3:#64748B; --fg-4:#94A3B8;
   }
-  return Math.round((wins / n) * 100);
+  .nk-num{font-variant-numeric:tabular-nums;font-feature-settings:"tnum";}
+  .nk-en{font-family:'Inter','Pretendard',-apple-system,sans-serif;}
+  .nk-eyebrow{font-size:11px;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;}
+  .nk-container{max-width:1200px;margin:0 auto;padding:0 32px;}
+  @media (max-width:768px){.nk-container{padding:0 20px;}}
+  .nk-reveal{opacity:0;transform:translateY(12px);transition:opacity .7s ease, transform .7s cubic-bezier(.2,.7,.2,1);}
+  .nk-reveal.in{opacity:1;transform:none;}
+  .nk-cta-primary{background:var(--navy-800);color:#fff;border:none;height:52px;padding:0 28px;border-radius:12px;font-size:15px;font-weight:700;letter-spacing:-0.01em;display:inline-flex;align-items:center;gap:10px;transition:background .15s;text-decoration:none;cursor:pointer;}
+  .nk-cta-primary:hover{background:var(--navy-700);}
+  .nk-cta-onDark{background:#fff;color:var(--navy-800);border:none;height:52px;padding:0 28px;border-radius:12px;font-size:15px;font-weight:700;letter-spacing:-0.01em;display:inline-flex;align-items:center;gap:10px;transition:background .15s;text-decoration:none;cursor:pointer;}
+  .nk-cta-onDark:hover{background:#F1F5F9;}
+  .nk-cta-ghost-dark{background:transparent;color:rgba(255,255,255,0.85);border:1px solid rgba(255,255,255,0.2);height:52px;padding:0 24px;border-radius:12px;font-size:14px;font-weight:600;display:inline-flex;align-items:center;gap:8px;transition:background .15s, border-color .15s;text-decoration:none;}
+  .nk-cta-ghost-dark:hover{background:rgba(255,255,255,0.06);border-color:rgba(255,255,255,0.35);}
+  .nk-nav{position:sticky;top:0;z-index:60;backdrop-filter:saturate(160%) blur(8px);-webkit-backdrop-filter:saturate(160%) blur(8px);}
+  .nk-feat{background:#fff;border:1px solid var(--border);border-radius:16px;padding:28px 26px 26px;transition:box-shadow .2s ease, border-color .2s ease, transform .2s ease;}
+  .nk-feat:hover{border-color:#D6DCE6;box-shadow:0 8px 24px rgba(15,30,60,0.06);}
+  details.nk-faq{border-bottom:1px solid var(--border);padding:22px 0;}
+  details.nk-faq summary{list-style:none;cursor:pointer;display:flex;align-items:center;justify-content:space-between;gap:24px;}
+  details.nk-faq summary::-webkit-details-marker{display:none;}
+  details.nk-faq summary .nk-q{font-size:17px;font-weight:700;letter-spacing:-0.018em;color:var(--fg-1);}
+  details.nk-faq summary .nk-plus{width:28px;height:28px;border-radius:999px;border:1px solid var(--border);display:grid;place-items:center;color:var(--fg-3);font-size:18px;font-weight:300;line-height:1;flex-shrink:0;transition:transform .2s, background .2s, color .2s;}
+  details.nk-faq[open] summary .nk-plus{transform:rotate(45deg);background:var(--navy-800);color:#fff;border-color:var(--navy-800);}
+  details.nk-faq .nk-a{font-size:15px;line-height:1.7;color:var(--fg-2);margin-top:14px;max-width:780px;}
+  details.nk-faq .nk-a.notice{background:#F8FAFC;border:1px solid var(--border);padding:16px 18px;border-radius:10px;color:var(--fg-2);}
+  @keyframes nk-pulse-dot {0%,100%{opacity:.35;}50%{opacity:1;}}
+`;
+
+function useReveal() {
+  useEffect(() => {
+    const els = document.querySelectorAll(".nk-reveal");
+    const io = new IntersectionObserver((entries) => {
+      entries.forEach((e) => {
+        if (e.isIntersecting) {
+          e.target.classList.add("in");
+          io.unobserve(e.target);
+        }
+      });
+    }, { threshold: 0.12, rootMargin: "0px 0px -40px 0px" });
+    els.forEach((el) => io.observe(el));
+    return () => io.disconnect();
+  }, []);
 }
 
-// ── 인터랙티브 데모 컴포넌트 ─────────────────────────────────────────────────
-function HeroDemo() {
-  const [budgetM, setBudgetM] = useState(420);    // 단위: 백만원
-  const [bidPriceM, setBidPriceM] = useState(415);
-  const [prob, setProb] = useState(0);
-  const [computing, setComputing] = useState(false);
+/* ── Charts ──────────────────────────────────────────────────── */
 
-  const SAJUNG_MEAN = 98.9;
-  const SAJUNG_STD  = 0.8;
-  const LOWER_RATE  = 87.745;
+function HeroViz() {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  useEffect(() => {
+    const cv = canvasRef.current;
+    if (!cv) return;
+    const ctx = cv.getContext("2d");
+    if (!ctx) return;
+    const dpr = window.devicePixelRatio || 1;
+    const resize = () => {
+      const r = cv.getBoundingClientRect();
+      cv.width = r.width * dpr;
+      cv.height = r.height * dpr;
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    };
+    resize();
+    window.addEventListener("resize", resize);
+    const W = () => cv.getBoundingClientRect().width;
+    const H = () => cv.getBoundingClientRect().height;
 
-  const compute = useCallback(() => {
-    setComputing(true);
-    setTimeout(() => {
-      const p = calcWinProb(
-        bidPriceM * 1_000_000,
-        budgetM * 1_000_000,
-        SAJUNG_MEAN,
-        SAJUNG_STD,
-        LOWER_RATE,
-      );
-      setProb(p);
-      setComputing(false);
-    }, 0);
-  }, [budgetM, bidPriceM]);
+    const N = 260;
+    const pts = Array.from({ length: N }, () => {
+      let u = 0, v = 0;
+      while (u === 0) u = Math.random();
+      while (v === 0) v = Math.random();
+      const g = Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
+      const x = 0.5 + g * 0.13;
+      return { targetX: x, x: Math.random(), y: Math.random(), size: 1.2 + Math.random() * 1.8, delay: Math.random() * 1.6 };
+    });
 
-  useEffect(() => { compute(); }, [compute]);
+    const t0 = performance.now();
+    let raf = 0;
+    const draw = (now: number) => {
+      const t = (now - t0) / 1000;
+      const w = W(), h = H();
+      ctx.clearRect(0, 0, w, h);
+      const baseY = h * 0.78;
+      const amp = h * 0.55;
+      const sigma = w * 0.15;
+      ctx.beginPath();
+      for (let i = 0; i <= 200; i++) {
+        const px = (i / 200) * w;
+        const dx = px - w / 2;
+        const py = baseY - amp * Math.exp(-(dx * dx) / (2 * sigma * sigma));
+        if (i === 0) ctx.moveTo(px, py);
+        else ctx.lineTo(px, py);
+      }
+      ctx.strokeStyle = "rgba(96,165,250,0.45)";
+      ctx.lineWidth = 1.2;
+      ctx.stroke();
+      ctx.lineTo(w, baseY);
+      ctx.lineTo(0, baseY);
+      ctx.closePath();
+      const g = ctx.createLinearGradient(0, 0, 0, h);
+      g.addColorStop(0, "rgba(96,165,250,0.18)");
+      g.addColorStop(1, "rgba(96,165,250,0)");
+      ctx.fillStyle = g;
+      ctx.fill();
 
-  const optimalBid = Math.round(budgetM * (SAJUNG_MEAN / 100) * 0.9997 * 10) / 10;
-  const probColor = prob >= 50 ? "#059669" : prob >= 30 ? "#D97706" : "#DC2626";
+      pts.forEach((p) => {
+        const local = Math.max(0, Math.min(1, (t - p.delay) / 1.6));
+        const eased = 1 - Math.pow(1 - local, 3);
+        const tx = p.targetX * w;
+        const dx = tx - w / 2;
+        const ty = baseY - amp * Math.exp(-(dx * dx) / (2 * sigma * sigma)) - 6;
+        const sx = p.x * w;
+        const sy = p.y * h * 0.4;
+        const px = sx + (tx - sx) * eased;
+        const py = sy + (ty - sy) * eased;
+        const a = eased * 0.85 + Math.sin(t * 1.4 + p.delay * 4) * 0.05;
+        ctx.fillStyle = `rgba(96,165,250,${Math.max(0, a)})`;
+        ctx.beginPath();
+        ctx.arc(px, py, p.size, 0, Math.PI * 2);
+        ctx.fill();
+      });
 
+      const sweepX = ((Math.sin(t * 0.35) + 1) / 2) * w;
+      ctx.strokeStyle = "rgba(255,255,255,0.08)";
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(sweepX, 8);
+      ctx.lineTo(sweepX, h - 8);
+      ctx.stroke();
+
+      raf = requestAnimationFrame(draw);
+    };
+    raf = requestAnimationFrame(draw);
+    return () => {
+      cancelAnimationFrame(raf);
+      window.removeEventListener("resize", resize);
+    };
+  }, []);
+  return <canvas ref={canvasRef} style={{ width: "100%", height: "100%", display: "block" }} />;
+}
+
+function Sparkline({ seed = 1, color = "#60A5FA", stroke = 1.5, height = 44 }: { seed?: number; color?: string; stroke?: number; height?: number }) {
+  const pts: number[] = [];
+  let s = seed;
+  for (let i = 0; i < 32; i++) {
+    s = (s * 9301 + 49297) % 233280;
+    const r = s / 233280;
+    pts.push(0.5 + Math.sin(i * 0.4 + seed) * 0.25 + (r - 0.5) * 0.18);
+  }
+  const max = Math.max(...pts), min = Math.min(...pts);
+  const norm = pts.map((p) => (p - min) / (max - min + 0.0001));
+  const W = 140, H = height;
+  const path = norm.map((v, i) => {
+    const x = (i / (norm.length - 1)) * W;
+    const y = H - v * H * 0.85 - 4;
+    return `${i === 0 ? "M" : "L"}${x.toFixed(1)},${y.toFixed(1)}`;
+  }).join(" ");
+  const area = path + ` L${W},${H} L0,${H} Z`;
   return (
-    <div style={{ background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.15)", borderRadius: 16, padding: "28px 28px 24px", maxWidth: 480, margin: "0 auto" }}>
-      <div style={{ fontSize: 12, color: "rgba(255,255,255,0.5)", marginBottom: 18, letterSpacing: "0.08em", textTransform: "uppercase" }}>
-        데모 — 실제 엔진과 동일한 계산
-      </div>
+    <svg viewBox={`0 0 ${W} ${H}`} width="100%" height={height} preserveAspectRatio="none">
+      <path d={area} fill={color} opacity="0.12" />
+      <path d={path} fill="none" stroke={color} strokeWidth={stroke} strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
 
-      {/* 기초금액 슬라이더 */}
-      <div style={{ marginBottom: 18 }}>
-        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
-          <span style={{ fontSize: 12, color: "rgba(255,255,255,0.6)" }}>기초금액 (기준금액)</span>
-          <span style={{ fontSize: 14, fontWeight: 700, color: "#fff" }}>{budgetM.toLocaleString()}백만원</span>
-        </div>
-        <input
-          type="range"
-          min={100} max={3000} step={10}
-          value={budgetM}
-          onChange={(e) => {
-            const v = Number(e.target.value);
-            setBudgetM(v);
-            setBidPriceM(Math.round(v * (SAJUNG_MEAN / 100) * 0.9997 * 10) / 10);
-          }}
-          style={{ width: "100%", accentColor: "#60A5FA" }}
-        />
-        <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, color: "rgba(255,255,255,0.3)", marginTop: 2 }}>
-          <span>1억</span><span>30억</span>
-        </div>
-      </div>
+function MiniHistogram() {
+  const N = 22, mid = N / 2;
+  const bars = Array.from({ length: N }, (_, i) => {
+    const d = (i - mid) / 4;
+    return Math.exp(-d * d) * (0.82 + Math.sin(i * 1.2) * 0.06);
+  });
+  return (
+    <div style={{ display: "flex", alignItems: "flex-end", gap: 3, height: 80 }}>
+      {bars.map((b, i) => {
+        const isPeak = Math.abs(i - mid) < 2;
+        return <div key={i} style={{ flex: 1, height: `${b * 100}%`, background: isPeak ? "var(--blue-400)" : "rgba(27,58,107,0.55)", borderRadius: "2px 2px 0 0" }} />;
+      })}
+    </div>
+  );
+}
 
-      {/* 투찰금액 입력 */}
-      <div style={{ marginBottom: 18 }}>
-        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
-          <span style={{ fontSize: 12, color: "rgba(255,255,255,0.6)" }}>투찰금액</span>
-          <span style={{ fontSize: 11, color: "#60A5FA" }}>AI 추천: {optimalBid.toLocaleString()}백만원</span>
-        </div>
-        <input
-          type="number"
-          value={bidPriceM}
-          onChange={(e) => setBidPriceM(Number(e.target.value))}
-          style={{
-            width: "100%", height: 44, background: "rgba(255,255,255,0.08)",
-            border: "1.5px solid rgba(255,255,255,0.2)", borderRadius: 10,
-            color: "#fff", fontSize: 16, fontWeight: 700, padding: "0 14px",
-            outline: "none", boxSizing: "border-box",
-          }}
-        />
-      </div>
+function Heatmap({ cols = 14, rows = 6 }: { cols?: number; rows?: number }) {
+  const cells: number[] = [];
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      const v = (Math.sin(r * 1.3 + c * 0.8) + Math.cos(c * 0.5 - r * 0.6) + 2) / 4;
+      cells.push(v);
+    }
+  }
+  return (
+    <div style={{ display: "grid", gridTemplateColumns: `repeat(${cols},1fr)`, gap: 3 }}>
+      {cells.map((v, i) => (
+        <div key={i} style={{ aspectRatio: "1", borderRadius: 3, background: `rgba(27,58,107,${0.08 + v * 0.72})` }} />
+      ))}
+    </div>
+  );
+}
 
-      {/* 낙찰 확률 */}
-      <div style={{ background: "rgba(0,0,0,0.2)", borderRadius: 12, padding: "16px 18px" }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
-          <span style={{ fontSize: 13, color: "rgba(255,255,255,0.7)" }}>예상 낙찰 확률</span>
-          <span style={{ fontSize: 28, fontWeight: 900, color: computing ? "rgba(255,255,255,0.3)" : probColor }}>
-            {computing ? "…" : `${prob}%`}
+function NumberLottery() {
+  const picks = [3, 7, 9, 14];
+  return (
+    <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 6 }}>
+      {Array.from({ length: 15 }, (_, i) => {
+        const n = i + 1;
+        const on = picks.includes(n);
+        return (
+          <div key={n} style={{
+            aspectRatio: "1", display: "grid", placeItems: "center", borderRadius: 8,
+            background: on ? "var(--navy-800)" : "#F8FAFC",
+            color: on ? "#fff" : "var(--fg-4)",
+            border: on ? "1px solid var(--navy-800)" : "1px solid var(--border)",
+            fontSize: 13, fontWeight: on ? 700 : 500, fontVariantNumeric: "tabular-nums",
+            boxShadow: on ? "0 4px 12px rgba(27,58,107,0.18)" : "none",
+          }}>{String(n).padStart(2, "0")}</div>
+        );
+      })}
+    </div>
+  );
+}
+
+function DocFragment() {
+  const lines = [1, 0.6, 0.85, 0.4, 0.7, 0.9, 0.55];
+  const tagged = [1, 4];
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+      {lines.map((w, i) => {
+        const t = tagged.includes(i);
+        return (
+          <div key={i} style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <div style={{ flex: 1, height: 8, borderRadius: 3, background: t ? "rgba(96,165,250,0.35)" : "#E8ECF2", position: "relative", overflow: "hidden" }}>
+              <div style={{ position: "absolute", inset: 0, width: `${w * 100}%`, background: t ? "var(--blue-400)" : "#CBD5E1", borderRadius: 3 }} />
+            </div>
+            {t && <div style={{ fontSize: 9, fontWeight: 700, color: "var(--navy-800)", background: "var(--blue-50)", padding: "2px 6px", borderRadius: 4, letterSpacing: "0.04em" }}>TAG</div>}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function TrackTable() {
+  const rows = [
+    { p: "적중", c: "var(--green-600)", bg: "#F0FDF4" },
+    { p: "적중", c: "var(--green-600)", bg: "#F0FDF4" },
+    { p: "근접", c: "#C2410C", bg: "#FFF7ED" },
+    { p: "적중", c: "var(--green-600)", bg: "#F0FDF4" },
+  ];
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+      {rows.map((r, i) => (
+        <div key={i} style={{ display: "flex", alignItems: "center", gap: 8, background: "#F8FAFC", padding: "8px 10px", borderRadius: 6, border: "1px solid var(--border)" }}>
+          <div style={{ height: 6, flex: 1, background: "#E8ECF2", borderRadius: 3, position: "relative", overflow: "hidden" }}>
+            <div style={{ position: "absolute", inset: 0, width: `${70 + i * 7}%`, background: "var(--navy-800)", borderRadius: 3 }} />
+          </div>
+          <div style={{ fontSize: 10, fontWeight: 700, color: r.c, background: r.bg, padding: "2px 7px", borderRadius: 4, minWidth: 36, textAlign: "center" }}>{r.p}</div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/* ── Sections ────────────────────────────────────────────────── */
+
+function Nav({ scrolled }: { scrolled: boolean }) {
+  return (
+    <div className="nk-nav" style={{
+      background: scrolled ? "rgba(255,255,255,0.92)" : "rgba(15,30,60,0)",
+      borderBottom: scrolled ? "1px solid var(--border)" : "1px solid transparent",
+      transition: "background .25s, border-color .25s",
+    }}>
+      <div className="nk-container" style={{ height: 64, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <Link href="/" style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <div style={{
+            width: 28, height: 28, borderRadius: 7,
+            background: scrolled ? "var(--navy-800)" : "#fff",
+            color: scrolled ? "#fff" : "var(--navy-800)",
+            display: "grid", placeItems: "center", fontWeight: 900, fontSize: 15, letterSpacing: "-0.04em",
+            transition: "background .25s, color .25s",
+          }}>낙</div>
+          <span style={{ fontSize: 16, fontWeight: 800, letterSpacing: "-0.025em", color: scrolled ? "var(--fg-1)" : "#fff", transition: "color .25s" }}>
+            NAKTAL<span style={{ color: "var(--blue-400)" }}>.AI</span>
           </span>
-        </div>
-        <div style={{ height: 10, background: "rgba(255,255,255,0.1)", borderRadius: 5, overflow: "hidden" }}>
-          <div style={{ width: `${prob}%`, height: "100%", background: probColor, borderRadius: 5, transition: "width 0.4s ease" }} />
-        </div>
-        <div style={{ fontSize: 11, color: "rgba(255,255,255,0.4)", marginTop: 8 }}>
-          몬테카를로 2,000회 시뮬레이션 · 사정율 {SAJUNG_MEAN}% 기준 (데모용 고정값)
-        </div>
+        </Link>
+        <nav style={{ display: "flex", alignItems: "center", gap: 6 }}>
+          {[["엔진", "#engines"], ["프로세스", "#flow"], ["신뢰성", "#trust"], ["FAQ", "#faq"]].map(([l, h]) => (
+            <a key={h} href={h} style={{ fontSize: 13.5, fontWeight: 500, padding: "8px 14px", color: scrolled ? "var(--fg-2)" : "rgba(255,255,255,0.8)", transition: "color .25s", textDecoration: "none" }}>{l}</a>
+          ))}
+          <Link href="/login" className="nk-cta-primary" style={{
+            height: 38, padding: "0 18px", fontSize: 13.5, marginLeft: 8,
+            background: scrolled ? "var(--navy-800)" : "#fff",
+            color: scrolled ? "#fff" : "var(--navy-800)",
+          }}>분석 시작</Link>
+        </nav>
       </div>
     </div>
   );
 }
 
-// ── 메인 랜딩 페이지 ──────────────────────────────────────────────────────────
-export default function LandingPage() {
-  const router = useRouter();
-
-  useEffect(() => {
-    const hash = window.location.hash;
-    if (!hash) return;
-    const params = new URLSearchParams(hash.slice(1));
-    const type = params.get("type");
-    const accessToken = params.get("access_token");
-    const refreshToken = params.get("refresh_token");
-    if (type === "recovery" && accessToken && refreshToken) {
-      const supabase = createClient();
-      supabase.auth.setSession({ access_token: accessToken, refresh_token: refreshToken }).then(() => {
-        router.replace("/auth/reset-password");
-      });
-    }
-  }, [router]);
-
+function Hero() {
   return (
-    <div style={{ minHeight: "100vh", background: "#F0F2F5", fontFamily: "Pretendard, sans-serif" }}>
-
-      {/* ── 헤더 ── */}
-      <header style={{
-        background: "#fff", borderBottom: "1px solid #E8ECF2", height: 60,
-        display: "flex", alignItems: "center", padding: "0 32px",
-        justifyContent: "space-between", position: "sticky", top: 0, zIndex: 100,
-      }}>
-        <span style={{ fontSize: 18, fontWeight: 800, color: "#1B3A6B", letterSpacing: "-0.02em" }}>낙찰AI</span>
-        <nav style={{ display: "flex", gap: 20, alignItems: "center" }}>
-          <Link href="/pricing" style={{ fontSize: 14, color: "#374151", textDecoration: "none" }}>요금제</Link>
-          <Link href="/faq" style={{ fontSize: 14, color: "#374151", textDecoration: "none" }}>FAQ</Link>
-          <Link href="/login" style={{ fontSize: 14, color: "#374151", textDecoration: "none" }}>로그인</Link>
-          <Link href="/signup" style={{
-            fontSize: 14, background: "#1B3A6B", color: "#fff",
-            padding: "8px 20px", borderRadius: 8, textDecoration: "none", fontWeight: 600,
-          }}>무료 시작</Link>
-        </nav>
-      </header>
-
-      {/* ── Hero ── */}
-      <section style={{ background: "linear-gradient(135deg, #0F1E3C 0%, #1B3A6B 100%)", padding: "72px 24px 80px", color: "#fff" }}>
-        <div style={{ maxWidth: 1000, margin: "0 auto", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 48, alignItems: "center" }}>
-
-          {/* 왼쪽: 헤드라인 */}
-          <div>
-            <div style={{
-              display: "inline-block", background: "rgba(96,165,250,0.2)", color: "#60A5FA",
-              fontSize: 12, fontWeight: 700, padding: "5px 12px", borderRadius: 20, marginBottom: 20,
-              border: "1px solid rgba(96,165,250,0.35)",
-            }}>
-              🚀 베타 서비스 운영 중
-            </div>
-
-            <h1 style={{ fontSize: 40, fontWeight: 900, lineHeight: 1.25, marginBottom: 18, letterSpacing: "-0.02em" }}>
-              이 공고,<br />
-              <span style={{ color: "#60A5FA" }}>얼마에 넣어야<br />낙찰될까요?</span>
-            </h1>
-
-            <p style={{ fontSize: 17, color: "rgba(255,255,255,0.75)", marginBottom: 8, lineHeight: 1.7 }}>
-              수만 건 개찰 데이터가 최적 투찰금액을 알려드립니다.
-            </p>
-            <p style={{ fontSize: 14, color: "rgba(255,255,255,0.5)", marginBottom: 36, lineHeight: 1.6 }}>
-              발주처 패턴 분석 → 사정율 예측 → 낙찰 확률 계산
-            </p>
-
-            <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginBottom: 40 }}>
-              <Link href="/signup" style={{
-                display: "inline-block", background: "#60A5FA", color: "#fff",
-                padding: "15px 32px", borderRadius: 12, fontSize: 16, fontWeight: 700,
-                textDecoration: "none",
-              }}>
-                무료로 시작하기 →
-              </Link>
-              <Link href="/login" style={{
-                display: "inline-block", background: "rgba(255,255,255,0.1)", color: "#fff",
-                padding: "15px 24px", borderRadius: 12, fontSize: 14,
-                textDecoration: "none", border: "1px solid rgba(255,255,255,0.25)",
-              }}>
-                로그인
-              </Link>
-            </div>
-
-            {/* 통계 배지 */}
-            <div style={{ display: "flex", gap: 20, flexWrap: "wrap" }}>
-              {[
-                { label: "누적 분석 공고", value: "42,000+건" },
-                { label: "평균 예측 오차", value: "±0.8%p" },
-                { label: "무료 플랜", value: "AI 분석 3회/월" },
-              ].map(({ label, value }) => (
-                <div key={label}>
-                  <div style={{ fontSize: 11, color: "rgba(255,255,255,0.4)" }}>{label}</div>
-                  <div style={{ fontSize: 14, fontWeight: 700, color: "rgba(255,255,255,0.85)" }}>{value}</div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* 오른쪽: 인터랙티브 데모 */}
-          <HeroDemo />
+    <section style={{
+      position: "relative", color: "#fff",
+      paddingTop: 160, paddingBottom: 120, overflow: "hidden",
+      background: "linear-gradient(180deg, #0F1E3C 0%, #1B3A6B 100%)",
+      marginTop: -64,
+    }}>
+      <div style={{
+        position: "absolute", inset: 0,
+        backgroundImage: "radial-gradient(rgba(96,165,250,0.07) 1px, transparent 1px)",
+        backgroundSize: "28px 28px",
+        maskImage: "radial-gradient(ellipse at center top, #000 30%, transparent 75%)",
+        WebkitMaskImage: "radial-gradient(ellipse at center top, #000 30%, transparent 75%)",
+        pointerEvents: "none",
+      }} />
+      <div className="nk-container" style={{ position: "relative" }}>
+        <div style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "6px 14px", borderRadius: 999, background: "rgba(96,165,250,0.12)", border: "1px solid rgba(96,165,250,0.28)", color: "var(--blue-300)" }}>
+          <span style={{ width: 6, height: 6, borderRadius: 999, background: "var(--green-400)", boxShadow: "0 0 0 4px rgba(52,211,153,0.18)", animation: "nk-pulse-dot 2.4s ease-in-out infinite" }} />
+          <span className="nk-eyebrow" style={{ fontSize: 11, letterSpacing: "0.16em", color: "#fff" }}>PROCUREMENT INTELLIGENCE</span>
         </div>
-      </section>
 
-      {/* ── 면책 고지 ── */}
-      <div style={{ background: "#FFF7ED", borderTop: "1px solid #FED7AA", padding: "12px 24px", textAlign: "center", fontSize: 12, color: "#92400E" }}>
-        ⚠️ AI 분석 결과는 참고용이며 낙찰을 보장하지 않습니다. 실제 투찰 결정은 반드시 전문가와 상의하세요.
-      </div>
+        <h1 style={{ fontSize: "clamp(44px, 7vw, 88px)", lineHeight: 1.04, letterSpacing: "-0.035em", fontWeight: 900, margin: "28px 0 26px", maxWidth: 1080 }}>
+          직감의 시대는 끝났다.<br />
+          입찰은 이제 <span style={{ color: "var(--blue-400)" }}>데이터다.</span>
+        </h1>
 
-      {/* ── 차별점 3섹션 ── */}
-      <section style={{ maxWidth: 1000, margin: "0 auto", padding: "72px 24px" }}>
-        <div style={{ textAlign: "center", marginBottom: 52 }}>
-          <h2 style={{ fontSize: 28, fontWeight: 800, color: "#0F172A", marginBottom: 10 }}>3가지 핵심 분석 엔진</h2>
-          <p style={{ fontSize: 15, color: "#64748B" }}>투찰 전 꼭 알아야 할 3가지를 한 번에 제공합니다</p>
+        <p style={{ fontSize: "clamp(17px, 1.6vw, 21px)", lineHeight: 1.55, color: "rgba(255,255,255,0.72)", maxWidth: 680, margin: "0 0 44px", fontWeight: 400 }}>
+          사정율, 복수예가 번호, 참여 자격 — 나라장터 공고 한 건을<br />머신러닝이 단 <span style={{ color: "#fff", fontWeight: 600 }}>0.5초</span> 만에 분석합니다.
+        </p>
+
+        <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginBottom: 84 }}>
+          <Link href="/login" className="nk-cta-onDark">분석 시작 <span aria-hidden>→</span></Link>
+          <a href="#engines" className="nk-cta-ghost-dark">엔진 살펴보기</a>
         </div>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 20 }}>
-          {FEATURES.map((f) => (
-            <div key={f.title} style={{
-              background: "#fff", borderRadius: 16, border: "1px solid #E8ECF2",
-              padding: "28px 26px", borderTop: `4px solid ${f.color}`,
-            }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
-                <span style={{ fontSize: 28 }}>{f.icon}</span>
-                <span style={{ fontSize: 11, fontWeight: 700, background: f.color, color: "#fff", padding: "3px 8px", borderRadius: 4 }}>
-                  {f.badge}
-                </span>
+
+        <div style={{ position: "relative", borderRadius: 20, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.1)", padding: "22px 24px", backdropFilter: "blur(6px)" }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 18 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <span style={{ width: 7, height: 7, borderRadius: 999, background: "#F87171", boxShadow: "0 0 0 3px rgba(248,113,113,0.18)" }} />
+                <span style={{ fontSize: 11, color: "rgba(255,255,255,0.5)", letterSpacing: "0.14em", fontWeight: 700, textTransform: "uppercase" }}>LIVE FEED</span>
               </div>
-              <div style={{ fontSize: 16, fontWeight: 800, color: "#0F172A", marginBottom: 6 }}>{f.title}</div>
-              <div style={{ fontSize: 13, fontWeight: 600, color: f.color, marginBottom: 12 }}>{f.subtitle}</div>
-              <div style={{ fontSize: 13, color: "#6B7280", lineHeight: 1.8, whiteSpace: "pre-line" }}>{f.desc}</div>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* ── 경쟁사 비교 ── */}
-      <section style={{ background: "#fff", padding: "72px 24px" }}>
-        <div style={{ maxWidth: 720, margin: "0 auto" }}>
-          <div style={{ textAlign: "center", marginBottom: 44 }}>
-            <h2 style={{ fontSize: 28, fontWeight: 800, color: "#0F172A", marginBottom: 10 }}>왜 낙찰AI인가요?</h2>
-            <p style={{ fontSize: 14, color: "#64748B" }}>사실에 기반한 비교입니다.</p>
-          </div>
-          <div style={{ overflowX: "auto" }}>
-            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 14 }}>
-              <thead>
-                <tr style={{ background: "#F8FAFC" }}>
-                  <th style={{ padding: "12px 16px", textAlign: "left", color: "#374151", fontWeight: 600, borderBottom: "2px solid #E8ECF2" }}>기능</th>
-                  <th style={{ padding: "12px 16px", textAlign: "center", color: "#1B3A6B", fontWeight: 800, borderBottom: "2px solid #1B3A6B", background: "#EFF6FF" }}>낙찰AI</th>
-                  <th style={{ padding: "12px 16px", textAlign: "center", color: "#374151", fontWeight: 600, borderBottom: "2px solid #E8ECF2" }}>인포21C</th>
-                  <th style={{ padding: "12px 16px", textAlign: "center", color: "#374151", fontWeight: 600, borderBottom: "2px solid #E8ECF2" }}>고비드</th>
-                </tr>
-              </thead>
-              <tbody>
-                {COMPARE.map((row, i) => (
-                  <tr key={row.item} style={{ background: i % 2 === 0 ? "#fff" : "#FAFBFC" }}>
-                    <td style={{ padding: "10px 16px", color: "#374151", borderBottom: "1px solid #F1F5F9" }}>{row.item}</td>
-                    <td style={{ padding: "10px 16px", textAlign: "center", borderBottom: "1px solid #F1F5F9", background: "#EFF6FF", fontWeight: 700, color: "#1B3A6B" }}>{row.naktal}</td>
-                    <td style={{ padding: "10px 16px", textAlign: "center", borderBottom: "1px solid #F1F5F9", color: "#9CA3AF" }}>{row.info21c}</td>
-                    <td style={{ padding: "10px 16px", textAlign: "center", borderBottom: "1px solid #F1F5F9", color: "#9CA3AF" }}>{row.gobid}</td>
-                  </tr>
+              <div style={{ height: 14, width: 1, background: "rgba(255,255,255,0.15)" }} />
+              <div style={{ display: "flex", gap: 24 }}>
+                {[["사정율 분포", "σ"], ["낙찰 확률", "P"], ["수렴 곡선", "μ"]].map(([l, k]) => (
+                  <div key={l} style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                    <span className="nk-en nk-num" style={{ fontSize: 11, color: "var(--blue-400)", fontWeight: 700 }}>{k}</span>
+                    <span style={{ fontSize: 11.5, color: "rgba(255,255,255,0.62)" }}>{l}</span>
+                  </div>
                 ))}
-              </tbody>
-            </table>
+              </div>
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, color: "rgba(255,255,255,0.45)" }}>
+              <span className="nk-en">REALTIME</span>
+              <span style={{ width: 4, height: 4, borderRadius: 999, background: "rgba(255,255,255,0.3)" }} />
+              <span className="nk-en nk-num">0.5s</span>
+            </div>
           </div>
-        </div>
-      </section>
 
-      {/* ── 무료 플랜 CTA ── */}
-      <section style={{ maxWidth: 560, margin: "0 auto", padding: "72px 24px" }}>
-        <div style={{ background: "#fff", borderRadius: 20, border: "1px solid #E8ECF2", padding: "44px 40px", textAlign: "center" }}>
-          <div style={{ fontSize: 36, marginBottom: 16 }}>🎯</div>
-          <h2 style={{ fontSize: 24, fontWeight: 800, color: "#0F172A", marginBottom: 8 }}>
-            지금 무료로 시작하세요
-          </h2>
-          <p style={{ fontSize: 14, color: "#64748B", marginBottom: 28, lineHeight: 1.7 }}>
-            사업자등록번호만 있으면 30초 안에 가입 완료.<br />
-            신용카드 없이도 바로 분석을 시작할 수 있습니다.
-          </p>
+          <div style={{ height: 300, position: "relative", borderRadius: 12, background: "rgba(15,30,60,0.4)", border: "1px solid rgba(255,255,255,0.06)", overflow: "hidden" }}>
+            <HeroViz />
+            <div style={{ position: "absolute", left: 14, bottom: 10, fontSize: 10, color: "rgba(255,255,255,0.35)", letterSpacing: "0.1em", textTransform: "uppercase" }}>LOWER BOUND</div>
+            <div style={{ position: "absolute", right: 14, bottom: 10, fontSize: 10, color: "rgba(255,255,255,0.35)", letterSpacing: "0.1em", textTransform: "uppercase" }}>UPPER BOUND</div>
+            <div style={{ position: "absolute", left: "50%", top: 14, transform: "translateX(-50%)", fontSize: 10, color: "var(--blue-300)", letterSpacing: "0.14em", textTransform: "uppercase", fontWeight: 700 }}>OPTIMAL ZONE</div>
+          </div>
 
-          {/* 무료 플랜 혜택 */}
-          <div style={{ background: "#F8FAFC", borderRadius: 12, padding: "18px 20px", marginBottom: 28, textAlign: "left" }}>
-            <div style={{ fontSize: 12, fontWeight: 700, color: "#9CA3AF", marginBottom: 10, letterSpacing: "0.06em" }}>무료 플랜 혜택</div>
-            {FREE_BENEFITS.map((b) => (
-              <div key={b} style={{ display: "flex", alignItems: "center", gap: 8, padding: "5px 0", fontSize: 13, color: "#374151" }}>
-                <span style={{ color: "#059669", fontWeight: 700 }}>✓</span>
-                {b}
+          <div style={{ marginTop: 14, display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 14 }}>
+            {[["공고", "자동 수집"], ["공고문", "자동 파싱"], ["패턴", "학습"], ["투찰가", "산출"]].map(([k, v], i) => (
+              <div key={i} style={{ padding: "12px 14px", borderRadius: 10, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}>
+                <div style={{ fontSize: 11, color: "rgba(255,255,255,0.5)", letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 4, fontWeight: 600 }}>{`STEP ${String(i + 1).padStart(2, "0")}`}</div>
+                <div style={{ fontSize: 14, fontWeight: 700, color: "#fff" }}>{k}<span style={{ color: "rgba(255,255,255,0.5)", fontWeight: 400, marginLeft: 6 }}>{v}</span></div>
               </div>
             ))}
           </div>
+        </div>
+      </div>
+    </section>
+  );
+}
 
-          <Link href="/signup" style={{
-            display: "block", height: 52, lineHeight: "52px", background: "#1B3A6B",
-            color: "#fff", borderRadius: 12, fontSize: 16, fontWeight: 700, textDecoration: "none",
-            marginBottom: 12,
-          }}>
-            무료 회원가입 →
+function ProblemSection() {
+  const items = [
+    "엑셀과 직감으로 입찰하던 시대",
+    "수십 건의 공고를 매일 손으로 검색",
+    "발주처 패턴을 머릿속에서 추정",
+    "사정율 예측은 사실상 운",
+  ];
+  return (
+    <section style={{ background: "#fff", borderTop: "1px solid var(--border)", padding: "120px 0" }}>
+      <div className="nk-container" style={{ display: "grid", gridTemplateColumns: "minmax(260px, 0.9fr) 1.4fr", gap: 80, alignItems: "start" }}>
+        <div className="nk-reveal">
+          <div className="nk-eyebrow" style={{ color: "var(--fg-4)", marginBottom: 18 }}>THE OLD WAY</div>
+          <h2 style={{ fontSize: "clamp(34px, 4vw, 52px)", lineHeight: 1.1, letterSpacing: "-0.028em", fontWeight: 900, margin: 0, color: "var(--fg-1)" }}>
+            이걸 데이터가<br />풀 수 있다면?
+          </h2>
+        </div>
+        <div className="nk-reveal">
+          <ul style={{ margin: 0, padding: 0, listStyle: "none", display: "flex", flexDirection: "column", borderTop: "1px solid var(--border)" }}>
+            {items.map((t, i) => (
+              <li key={i} style={{ padding: "22px 0", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "baseline", gap: 24 }}>
+                <span className="nk-en nk-num" style={{ fontSize: 13, fontWeight: 700, color: "var(--fg-4)", minWidth: 40 }}>{String(i + 1).padStart(2, "0")}</span>
+                <span style={{ fontSize: 22, fontWeight: 600, letterSpacing: "-0.02em", color: "var(--fg-2)", flex: 1, textDecoration: "line-through", textDecorationColor: "rgba(220,38,38,0.35)", textDecorationThickness: 2 }}>{t}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function Engines() {
+  const cards = [
+    { tag: "ENGINE 01", title: "사정율 예측 엔진", lines: ["공고별 예정가격을 머신러닝으로 정밀 예측합니다.", "발주처·업종·예산·지역·계절성까지 동시에 학습.", "사람이 발견할 수 없는 패턴을 AI가 찾아냅니다."], viz: "histogram" },
+    { tag: "ENGINE 02", title: "복수예가 번호 추천", lines: ["15개 예비가 번호 중 어떤 4개가 뽑힐지 — AI가 예측합니다.", "방대한 개찰 데이터 학습 기반 4종 조합 자동 추천.", "고빈도 번호 회피, 저빈도 조합 강조."], viz: "lottery" },
+    { tag: "ENGINE 03", title: "공고문 자격 자동 분석", lines: ["공고 PDF 본문을 자동으로 읽고 자격 요건을 요약합니다.", "지역제한·면허·실적·업종까지 한 화면에서 확인.", "공고 시간이 아닌 분석 시간만 남깁니다."], viz: "doc" },
+    { tag: "ENGINE 04", title: "낙찰 결과 자동 추적", lines: ["투찰 후 결과를 자동으로 가져옵니다.", "AI 예측 vs 실제 — 매번 정확도를 검증합니다.", "분석 이력은 곧 당신의 자산이 됩니다."], viz: "track" },
+  ];
+  return (
+    <section id="engines" style={{ background: "var(--page)", padding: "120px 0" }}>
+      <div className="nk-container">
+        <div className="nk-reveal" style={{ maxWidth: 760, marginBottom: 64 }}>
+          <div className="nk-eyebrow" style={{ color: "var(--navy-800)", marginBottom: 16 }}>THE ENGINES</div>
+          <h2 style={{ fontSize: "clamp(34px, 4vw, 52px)", lineHeight: 1.1, letterSpacing: "-0.028em", fontWeight: 900, margin: "0 0 18px" }}>
+            공고 한 건, <span style={{ color: "var(--navy-800)" }}>네 가지 관점</span>으로<br />동시에 분석합니다.
+          </h2>
+          <p style={{ fontSize: 17, lineHeight: 1.7, color: "var(--fg-3)", margin: 0, maxWidth: 600 }}>
+            가격을 정밀히 예측하고, 번호를 역으로 잡고, 자격을 자동으로 읽고, 결과를 끝까지 추적합니다.
+          </p>
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 20 }}>
+          {cards.map((c, i) => (
+            <div key={i} className="nk-feat nk-reveal" style={{ display: "grid", gridTemplateRows: "auto auto 1fr auto", minHeight: 380 }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 24 }}>
+                <div className="nk-eyebrow nk-en" style={{ color: "var(--blue-400)", fontWeight: 800, letterSpacing: "0.16em" }}>{c.tag}</div>
+                <div className="nk-en nk-num" style={{ fontSize: 11, color: "var(--fg-4)", letterSpacing: "0.08em" }}>{String(i + 1).padStart(2, "0")} / 04</div>
+              </div>
+              <h3 style={{ fontSize: 26, fontWeight: 800, letterSpacing: "-0.024em", margin: "0 0 18px", color: "var(--fg-1)" }}>{c.title}</h3>
+              <ul style={{ margin: 0, padding: 0, listStyle: "none", display: "flex", flexDirection: "column", gap: 10 }}>
+                {c.lines.map((l, j) => (
+                  <li key={j} style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
+                    <span style={{ flexShrink: 0, marginTop: 9, width: 5, height: 5, borderRadius: 999, background: j === 0 ? "var(--navy-800)" : "var(--fg-4)" }} />
+                    <span style={{ fontSize: 15, lineHeight: 1.6, color: j === 0 ? "var(--fg-1)" : "var(--fg-3)", fontWeight: j === 0 ? 600 : 400 }}>{l}</span>
+                  </li>
+                ))}
+              </ul>
+              <div style={{ marginTop: 28, paddingTop: 24, borderTop: "1px solid var(--border)" }}>
+                {c.viz === "histogram" && <MiniHistogram />}
+                {c.viz === "lottery" && <NumberLottery />}
+                {c.viz === "doc" && <DocFragment />}
+                {c.viz === "track" && <TrackTable />}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function WhyAccurate() {
+  const items = [
+    { k: "01", t: "결합 학습", d: "최신 머신러닝 알고리즘과 깊이 있는 통계 분석을 결합합니다." },
+    { k: "02", t: "즉시 분석", d: "공고가 등록되는 순간, 모델이 즉시 분석을 시작합니다." },
+    { k: "03", t: "계속되는 학습", d: "수년치 입찰 데이터를 매일 다시 학습 — 모델은 멈추지 않습니다." },
+    { k: "04", t: "다중 안전 마진", d: "예측이 빗나가지 않도록 다중 안전 마진까지 자동으로 계산합니다." },
+  ];
+  return (
+    <section style={{ background: "var(--navy-900)", color: "#fff", padding: "120px 0", position: "relative", overflow: "hidden" }}>
+      <div style={{ position: "absolute", inset: 0, backgroundImage: "radial-gradient(rgba(96,165,250,0.06) 1px, transparent 1px)", backgroundSize: "30px 30px", maskImage: "linear-gradient(180deg, transparent, #000 30%, #000 70%, transparent)", WebkitMaskImage: "linear-gradient(180deg, transparent, #000 30%, #000 70%, transparent)" }} />
+      <div className="nk-container" style={{ position: "relative" }}>
+        <div className="nk-reveal" style={{ marginBottom: 64, maxWidth: 760 }}>
+          <div className="nk-eyebrow" style={{ color: "var(--blue-400)", marginBottom: 16 }}>WHY IT WORKS</div>
+          <h2 style={{ fontSize: "clamp(34px, 4vw, 52px)", lineHeight: 1.08, letterSpacing: "-0.028em", fontWeight: 900, margin: "0 0 18px", color: "#fff" }}>
+            정확도가 다른 이유.
+          </h2>
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 0, borderTop: "1px solid rgba(255,255,255,0.12)" }}>
+          {items.map((it, i) => (
+            <div key={i} className="nk-reveal" style={{ padding: "32px 28px 36px", borderRight: i < 3 ? "1px solid rgba(255,255,255,0.12)" : "none", position: "relative" }}>
+              <div className="nk-en nk-num" style={{ fontSize: 13, fontWeight: 700, color: "var(--blue-400)", letterSpacing: "0.08em", marginBottom: 18 }}>{it.k}</div>
+              <h3 style={{ fontSize: 22, fontWeight: 800, letterSpacing: "-0.022em", margin: "0 0 14px", color: "#fff" }}>{it.t}</h3>
+              <p style={{ fontSize: 14.5, lineHeight: 1.7, color: "rgba(255,255,255,0.65)", margin: 0 }}>{it.d}</p>
+            </div>
+          ))}
+        </div>
+
+        <div className="nk-reveal" style={{ marginTop: 64, display: "grid", gridTemplateColumns: "1.1fr 1fr", gap: 48, alignItems: "center", padding: "40px 44px", borderRadius: 16, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)" }}>
+          <div>
+            <div className="nk-eyebrow nk-en" style={{ color: "var(--blue-400)", marginBottom: 14 }}>PATTERN MAP</div>
+            <h3 style={{ fontSize: 24, fontWeight: 800, letterSpacing: "-0.022em", margin: "0 0 14px", color: "#fff" }}>발주처 × 업종 × 시기.</h3>
+            <p style={{ fontSize: 15, lineHeight: 1.7, color: "rgba(255,255,255,0.65)", margin: 0, maxWidth: 380 }}>
+              수많은 발주처가 각자 다른 패턴을 가집니다. 모델은 그 차이를 학습해 공고마다 다른 결과를 냅니다.
+            </p>
+          </div>
+          <div style={{ padding: 14, background: "rgba(0,0,0,0.25)", borderRadius: 12 }}>
+            <Heatmap cols={14} rows={6} />
+            <div style={{ display: "flex", justifyContent: "space-between", marginTop: 10, fontSize: 10, color: "rgba(255,255,255,0.4)", letterSpacing: "0.1em", textTransform: "uppercase" }}>
+              <span>업종 →</span>
+              <span>↓ 발주처</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function Flow() {
+  const steps = [
+    { n: "01", t: "공고 검색", d: "업종, 지역, 계약 방법으로 즉시 필터. 활성 공고를 한 번에 훑습니다.", sub: "SEARCH", viz: "filter" },
+    { n: "02", t: "AI 분석", d: "사정율 · 투찰가 · 번호 조합 · 자격까지 한 번에 산출.", sub: "ANALYZE", viz: "curve" },
+    { n: "03", t: "결과 추적", d: "낙찰 여부가 자동으로 기록됩니다. 다음 입찰을 위한 자산입니다.", sub: "TRACK", viz: "spark" },
+  ];
+  return (
+    <section id="flow" style={{ background: "#fff", padding: "120px 0", borderTop: "1px solid var(--border)" }}>
+      <div className="nk-container">
+        <div className="nk-reveal" style={{ marginBottom: 64, display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 40, flexWrap: "wrap" }}>
+          <div style={{ maxWidth: 560 }}>
+            <div className="nk-eyebrow" style={{ color: "var(--navy-800)", marginBottom: 16 }}>THE FLOW</div>
+            <h2 style={{ fontSize: "clamp(34px, 4vw, 52px)", lineHeight: 1.08, letterSpacing: "-0.028em", fontWeight: 900, margin: 0 }}>
+              공고에서 자산까지,<br />세 단계.
+            </h2>
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, color: "var(--fg-4)" }}>
+            <div style={{ width: 32, height: 1, background: "var(--border)" }} />
+            <span className="nk-en nk-num" style={{ fontSize: 12, letterSpacing: "0.1em", fontWeight: 700 }}>03 STAGES</span>
+          </div>
+        </div>
+
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 0, position: "relative" }}>
+          <div style={{ position: "absolute", top: 54, left: "12%", right: "12%", height: 1, background: "repeating-linear-gradient(90deg, var(--border) 0, var(--border) 6px, transparent 6px, transparent 12px)" }} />
+          {steps.map((s, i) => (
+            <div key={i} className="nk-reveal" style={{ padding: "0 24px", position: "relative", zIndex: 1 }}>
+              <div style={{ width: 108, height: 108, borderRadius: 999, background: "#fff", border: "1px solid var(--border)", boxShadow: "0 8px 24px rgba(15,30,60,0.04)", display: "grid", placeItems: "center", margin: "0 0 28px", position: "relative" }}>
+                <div style={{ position: "absolute", inset: 8, borderRadius: 999, background: "var(--cell)", display: "grid", placeItems: "center" }}>
+                  <span className="nk-en nk-num" style={{ fontSize: 32, fontWeight: 900, color: "var(--navy-800)", letterSpacing: "-0.04em" }}>{s.n}</span>
+                </div>
+              </div>
+              <div className="nk-eyebrow nk-en" style={{ color: "var(--blue-400)", marginBottom: 10, letterSpacing: "0.18em", fontWeight: 800 }}>{s.sub}</div>
+              <h3 style={{ fontSize: 26, fontWeight: 800, letterSpacing: "-0.024em", margin: "0 0 12px" }}>{s.t}</h3>
+              <p style={{ fontSize: 15, lineHeight: 1.7, color: "var(--fg-3)", margin: "0 0 22px", maxWidth: 320 }}>{s.d}</p>
+              {s.viz === "filter" && (
+                <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                  {["건설", "용역", "물품", "대전", "수의", "지역제한"].map((c, j) => (
+                    <span key={j} style={{ padding: "5px 12px", borderRadius: 999, fontSize: 12, fontWeight: 600, background: j < 2 ? "var(--navy-800)" : "#F8FAFC", color: j < 2 ? "#fff" : "var(--fg-3)", border: j < 2 ? "1px solid var(--navy-800)" : "1px solid var(--border)" }}>{c}</span>
+                  ))}
+                </div>
+              )}
+              {s.viz === "curve" && (
+                <div style={{ padding: 16, background: "var(--cell)", borderRadius: 10, border: "1px solid var(--border)" }}>
+                  <Sparkline color="#1B3A6B" stroke={2} seed={9} height={48} />
+                </div>
+              )}
+              {s.viz === "spark" && (
+                <div style={{ padding: 16, background: "var(--cell)", borderRadius: 10, border: "1px solid var(--border)" }}>
+                  <Sparkline color="#059669" stroke={2} seed={31} height={48} />
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function Trust() {
+  const items = [
+    { label: "PUBLIC DATA", t: "공식 조달 데이터", d: "조달청 나라장터 공식 데이터를 기반으로 분석합니다." },
+    { label: "COVERAGE", t: "활성 공고 전수", d: "활성 공고 전수를 분석합니다. 검색 한 번이면 충분합니다." },
+    { label: "NO LIMIT", t: "분석은 무제한", d: "분석은 무제한 무료. 결과 검증은 자동으로 이루어집니다." },
+  ];
+  return (
+    <section id="trust" style={{ background: "var(--page)", padding: "120px 0" }}>
+      <div className="nk-container">
+        <div className="nk-reveal" style={{ marginBottom: 48, maxWidth: 680 }}>
+          <div className="nk-eyebrow" style={{ color: "var(--navy-800)", marginBottom: 16 }}>FOUNDATION</div>
+          <h2 style={{ fontSize: "clamp(32px, 3.6vw, 46px)", lineHeight: 1.1, letterSpacing: "-0.028em", fontWeight: 900, margin: 0 }}>
+            신뢰는 데이터의 출처에서 시작됩니다.
+          </h2>
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 20 }}>
+          {items.map((it, i) => (
+            <div key={i} className="nk-reveal nk-feat" style={{ padding: "32px 28px" }}>
+              <div className="nk-eyebrow nk-en" style={{ color: "var(--blue-400)", marginBottom: 18, letterSpacing: "0.16em", fontWeight: 800 }}>{it.label}</div>
+              <h3 style={{ fontSize: 22, fontWeight: 800, letterSpacing: "-0.022em", margin: "0 0 12px" }}>{it.t}</h3>
+              <p style={{ fontSize: 14.5, lineHeight: 1.7, color: "var(--fg-3)", margin: 0 }}>{it.d}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function Pricing() {
+  return (
+    <section style={{ background: "var(--navy-900)", color: "#fff", padding: "140px 0", position: "relative", overflow: "hidden" }}>
+      <div style={{ position: "absolute", inset: 0, backgroundImage: "radial-gradient(rgba(96,165,250,0.06) 1px, transparent 1px)", backgroundSize: "30px 30px", maskImage: "linear-gradient(180deg, transparent, #000 30%, #000 70%, transparent)", WebkitMaskImage: "linear-gradient(180deg, transparent, #000 30%, #000 70%, transparent)" }} />
+      <div className="nk-container" style={{ position: "relative" }}>
+        <div className="nk-reveal" style={{ maxWidth: 880, marginBottom: 64 }}>
+          <div className="nk-eyebrow" style={{ color: "var(--blue-400)", marginBottom: 18 }}>PRICING</div>
+          <h2 style={{ fontSize: "clamp(40px, 5.4vw, 72px)", lineHeight: 1.04, letterSpacing: "-0.032em", fontWeight: 900, margin: "0 0 22px", color: "#fff" }}>
+            낙찰시에만 <span style={{ color: "var(--blue-400)" }}>수수료</span>가<br />발생합니다.
+          </h2>
+          <p style={{ fontSize: "clamp(16px, 1.4vw, 19px)", lineHeight: 1.6, color: "rgba(255,255,255,0.65)", margin: 0, maxWidth: 560 }}>
+            분석은 무제한 무료. 결과가 나기 전까지 어떠한 비용도 청구되지 않습니다.
+          </p>
+        </div>
+
+        <div className="nk-reveal" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+          {[
+            { label: "1억원 이상", rate: "1.5", detail: "낙찰 금액 100,000,000원 이상" },
+            { label: "1억원 미만", rate: "1.7", detail: "낙찰 금액 100,000,000원 미만" },
+          ].map((p, i) => (
+            <div key={i} style={{
+              padding: "40px 40px 36px", borderRadius: 18,
+              background: i === 0 ? "linear-gradient(180deg, rgba(96,165,250,0.16) 0%, rgba(96,165,250,0.04) 100%)" : "rgba(255,255,255,0.035)",
+              border: "1px solid " + (i === 0 ? "rgba(96,165,250,0.32)" : "rgba(255,255,255,0.1)"),
+              position: "relative",
+            }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 32 }}>
+                <span style={{ fontSize: 14, fontWeight: 700, color: i === 0 ? "var(--blue-300)" : "rgba(255,255,255,0.75)", letterSpacing: "-0.01em" }}>{p.label}</span>
+                <span className="nk-eyebrow nk-en" style={{ color: "rgba(255,255,255,0.4)", letterSpacing: "0.16em", fontSize: 10 }}>TIER {String(i + 1).padStart(2, "0")}</span>
+              </div>
+              <div style={{ display: "flex", alignItems: "baseline", gap: 4, marginBottom: 18 }}>
+                <span className="nk-en nk-num" style={{ fontSize: "clamp(72px, 8.5vw, 112px)", fontWeight: 900, lineHeight: 1, letterSpacing: "-0.05em", color: "#fff" }}>{p.rate}</span>
+                <span className="nk-en" style={{ fontSize: "clamp(36px, 4vw, 56px)", fontWeight: 700, color: i === 0 ? "var(--blue-400)" : "rgba(255,255,255,0.75)", letterSpacing: "-0.03em" }}>%</span>
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: 10, paddingTop: 24, borderTop: "1px solid rgba(255,255,255,0.1)" }}>
+                <span style={{ fontSize: 13, color: "rgba(255,255,255,0.55)" }}>{p.detail}</span>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <div className="nk-reveal" style={{ marginTop: 32, display: "flex", alignItems: "center", justifyContent: "center", gap: 32, flexWrap: "wrap", padding: "24px 32px", borderRadius: 12, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)" }}>
+          {[["미낙찰 시", "0원"], ["공고 분석", "무제한"], ["월 구독료", "없음"]].map(([k, v], i) => (
+            <span key={i} style={{ display: "flex", alignItems: "center", gap: 32 }}>
+              {i > 0 && <span style={{ width: 1, height: 32, background: "rgba(255,255,255,0.1)" }} />}
+              <span style={{ display: "flex", alignItems: "baseline", gap: 10 }}>
+                <span style={{ fontSize: 13, color: "rgba(255,255,255,0.55)" }}>{k}</span>
+                <span className="nk-num" style={{ fontSize: 20, fontWeight: 800, color: "#fff", letterSpacing: "-0.02em" }}>{v}</span>
+              </span>
+            </span>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function FAQ() {
+  const items = [
+    { q: "어떤 입찰 방식을 지원하나요?", a: "복수예가, 적격심사 등 일반 공공입찰 전 영역을 지원합니다. 시설공사 · 용역 · 물품 모두 분석 대상입니다." },
+    { q: "낙찰이 보장되나요?", a: "낙찰을 보장하지 않습니다. AI는 통계적 확률을 높이는 도구이며, 최종 의사결정은 항상 사용자에게 있습니다.", notice: true },
+    { q: "데이터는 어디서 가져오나요?", a: "조달청 나라장터 공식 데이터를 사용합니다. 다른 출처는 사용하지 않습니다." },
+    { q: "수수료는 어떻게 되나요?", a: "낙찰 시에만 수수료가 발생합니다. 낙찰 금액 1억원 이상은 1.5%, 1억원 미만은 1.7%. 미낙찰 시에는 어떠한 비용도 청구되지 않으며, 분석 자체는 무제한 사용 가능합니다." },
+  ];
+  return (
+    <section id="faq" style={{ background: "var(--page)", padding: "120px 0" }}>
+      <div className="nk-container" style={{ display: "grid", gridTemplateColumns: "minmax(220px, 0.7fr) 1.6fr", gap: 80, alignItems: "start" }}>
+        <div className="nk-reveal" style={{ position: "sticky", top: 90 }}>
+          <div className="nk-eyebrow" style={{ color: "var(--navy-800)", marginBottom: 16 }}>QUESTIONS</div>
+          <h2 style={{ fontSize: "clamp(32px, 3.6vw, 44px)", lineHeight: 1.1, letterSpacing: "-0.028em", fontWeight: 900, margin: 0 }}>
+            자주 묻는 것들.
+          </h2>
+        </div>
+        <div className="nk-reveal">
+          <div style={{ borderTop: "1px solid var(--border)" }}>
+            {items.map((it, i) => (
+              <details key={i} className="nk-faq" {...(i === 0 ? { open: true } : {})}>
+                <summary>
+                  <span className="nk-q">{it.q}</span>
+                  <span className="nk-plus">+</span>
+                </summary>
+                <div className={"nk-a" + (it.notice ? " notice" : "")}>{it.a}</div>
+              </details>
+            ))}
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function FinalCTA() {
+  return (
+    <section id="cta" style={{ background: "var(--navy-900)", color: "#fff", padding: "140px 0", position: "relative", overflow: "hidden" }}>
+      <div style={{ position: "absolute", inset: 0, background: "radial-gradient(ellipse 600px 400px at 50% 50%, rgba(96,165,250,0.12), transparent 70%)" }} />
+      <div className="nk-container" style={{ position: "relative", textAlign: "center" }}>
+        <h2 style={{ fontSize: "clamp(48px, 7vw, 92px)", lineHeight: 1.05, letterSpacing: "-0.038em", fontWeight: 900, margin: "0 0 56px", color: "#fff" }}>
+          공고를 여는 순간,<br />
+          <span style={{ color: "var(--blue-400)" }}>투찰가가 나옵니다.</span>
+        </h2>
+        <div style={{ display: "inline-flex", flexDirection: "column", alignItems: "center", gap: 14 }}>
+          <Link href="/login" className="nk-cta-onDark" style={{ height: 64, padding: "0 44px", fontSize: 18, borderRadius: 14 }}>
+            분석 시작 <span aria-hidden>→</span>
           </Link>
-          <div style={{ fontSize: 12, color: "#9CA3AF" }}>
-            이미 계정이 있으신가요?{" "}
-            <Link href="/login" style={{ color: "#1B3A6B", fontWeight: 600, textDecoration: "none" }}>로그인</Link>
-          </div>
+          <span style={{ fontSize: 13, color: "rgba(255,255,255,0.45)" }}>사업자번호로 로그인</span>
+        </div>
+      </div>
+    </section>
+  );
+}
 
-          <div style={{ marginTop: 20, padding: "12px 0", borderTop: "1px solid #F1F5F9", fontSize: 11, color: "#CBD5E1" }}>
-            신청 시 <Link href="/terms" style={{ color: "#94A3B8" }}>이용약관</Link>과{" "}
-            <Link href="/privacy" style={{ color: "#94A3B8" }}>개인정보처리방침</Link>에 동의합니다.
+function Footer() {
+  const company: [string, string][] = [
+    ["상호명", "주식회사 호라이즌"],
+    ["대표자", "박상빈"],
+    ["사업자등록번호", "398-87-03453"],
+    ["주소", "대전광역시 유성구 장대로 106, 2층 제이321호"],
+  ];
+  return (
+    <footer style={{ background: "#0A1428", color: "rgba(255,255,255,0.5)", padding: "64px 0 40px", borderTop: "1px solid rgba(255,255,255,0.06)" }}>
+      <div className="nk-container">
+        <div style={{ display: "grid", gridTemplateColumns: "1.2fr 1fr", gap: 48, paddingBottom: 40, borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
+          <div>
+            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 18 }}>
+              <div style={{ width: 28, height: 28, borderRadius: 7, background: "var(--navy-800)", color: "#fff", display: "grid", placeItems: "center", fontWeight: 900, fontSize: 14, letterSpacing: "-0.04em" }}>낙</div>
+              <span style={{ fontSize: 15, fontWeight: 800, color: "#fff", letterSpacing: "-0.02em" }}>NAKTAL<span style={{ color: "var(--blue-400)" }}>.AI</span></span>
+            </div>
+            <p style={{ fontSize: 13, lineHeight: 1.7, color: "rgba(255,255,255,0.55)", margin: "0 0 10px", maxWidth: 420 }}>
+              공공입찰, 데이터로 답한다.
+            </p>
+            <p style={{ fontSize: 11.5, lineHeight: 1.7, color: "rgba(255,255,255,0.4)", margin: 0, maxWidth: 420 }}>
+              AI 분석 결과는 참고용이며 낙찰을 보장하지 않습니다.
+            </p>
+          </div>
+          <div>
+            <div className="nk-eyebrow" style={{ color: "rgba(255,255,255,0.4)", marginBottom: 14, letterSpacing: "0.14em" }}>COMPANY</div>
+            <dl style={{ margin: 0, display: "grid", gridTemplateColumns: "auto 1fr", columnGap: 20, rowGap: 8, fontSize: 12.5 }}>
+              {company.map(([k, v]) => (
+                <div key={k} style={{ display: "contents" }}>
+                  <dt style={{ color: "rgba(255,255,255,0.45)", fontWeight: 500, whiteSpace: "nowrap" }}>{k}</dt>
+                  <dd style={{ margin: 0, color: "rgba(255,255,255,0.78)", fontWeight: 500 }}>{v}</dd>
+                </div>
+              ))}
+            </dl>
           </div>
         </div>
-      </section>
-
-      {/* ── 푸터 ── */}
-      <footer style={{ background: "#0F1E3C", color: "rgba(255,255,255,0.55)", padding: "32px", textAlign: "center", fontSize: 13, lineHeight: 2 }}>
-        <div style={{ marginBottom: 10 }}>
-          <Link href="/privacy" style={{ color: "rgba(255,255,255,0.55)", textDecoration: "none", marginRight: 20 }}>개인정보처리방침</Link>
-          <Link href="/terms" style={{ color: "rgba(255,255,255,0.55)", textDecoration: "none", marginRight: 20 }}>이용약관</Link>
-          <Link href="/faq" style={{ color: "rgba(255,255,255,0.55)", textDecoration: "none", marginRight: 20 }}>FAQ</Link>
-          <a href="mailto:support@naktal.me" style={{ color: "rgba(255,255,255,0.55)", textDecoration: "none" }}>support@naktal.me</a>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 24, flexWrap: "wrap", paddingTop: 24 }}>
+          <div style={{ fontSize: 11.5, color: "rgba(255,255,255,0.4)" }}>© 2026 Naktal.ai · 주식회사 호라이즌. All rights reserved.</div>
+          <div style={{ display: "flex", gap: 28, fontSize: 12.5 }}>
+            {[["엔진", "#engines"], ["프로세스", "#flow"], ["신뢰성", "#trust"], ["FAQ", "#faq"]].map(([l, h]) => (
+              <a key={h} href={h} style={{ color: "rgba(255,255,255,0.6)" }}>{l}</a>
+            ))}
+          </div>
         </div>
-        <div>상호명: 주식회사 호라이즌 | 대표자: 박상빈 | 사업자등록번호: 398-87-03453</div>
-        <div>주소: 대전광역시 유성구 장대로 106, 2층 제이321호 | 호스팅: Vercel Inc.</div>
-        <div style={{ fontSize: 11, color: "rgba(255,255,255,0.35)", marginTop: 8 }}>© 2025 낙찰AI. All rights reserved.</div>
-      </footer>
+      </div>
+    </footer>
+  );
+}
+
+/* ── Root ────────────────────────────────────────────────────── */
+
+export default function LandingPage() {
+  const [scrolled, setScrolled] = useState(false);
+  useEffect(() => {
+    const f = () => setScrolled(window.scrollY > 40);
+    f();
+    window.addEventListener("scroll", f, { passive: true });
+    return () => window.removeEventListener("scroll", f);
+  }, []);
+  useReveal();
+
+  return (
+    <div style={{ background: "var(--page)", color: "var(--fg-1)", fontFamily: "'Pretendard', -apple-system, 'Apple SD Gothic Neo', BlinkMacSystemFont, sans-serif", overflowX: "hidden" }}>
+      <style>{styles}</style>
+      <Nav scrolled={scrolled} />
+      <Hero />
+      <ProblemSection />
+      <Engines />
+      <WhyAccurate />
+      <Flow />
+      <Trust />
+      <Pricing />
+      <FAQ />
+      <FinalCTA />
+      <Footer />
     </div>
   );
 }
