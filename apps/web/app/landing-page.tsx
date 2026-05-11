@@ -522,6 +522,65 @@ function WhyAccurate() {
   );
 }
 
+function DataScale() {
+  const big = [
+    { n: "750만", u: "건", l: "누적 공고", d: "지난 24년간 학습" },
+    { n: "520만", u: "건", l: "낙찰 결과", d: "모델의 기초 데이터" },
+    { n: "740만", u: "건", l: "개찰 번호", d: "복수예가 AI 학습 소스" },
+    { n: "3,120만", u: "건", l: "공고 변경 이력", d: "끝까지 추적" },
+  ];
+  return (
+    <section style={{ background: "#fff", padding: "140px 0 120px", borderTop: "1px solid var(--border)" }}>
+      <div className="nk-container">
+        <div className="nk-reveal" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 80, alignItems: "flex-end", marginBottom: 72 }}>
+          <div>
+            <div className="nk-eyebrow" style={{ color: "var(--navy-800)", marginBottom: 18 }}>THE SCALE</div>
+            <h2 style={{ fontSize: "clamp(40px, 5vw, 64px)", lineHeight: 1.04, letterSpacing: "-0.032em", fontWeight: 900, margin: 0 }}>
+              <span className="nk-num nk-en" style={{ fontSize: "clamp(80px, 11vw, 156px)", fontWeight: 900, lineHeight: 0.9, letterSpacing: "-0.06em", color: "var(--navy-800)", display: "block", marginBottom: 14 }}>
+                5,300<span style={{ fontSize: "0.42em", color: "var(--blue-400)", marginLeft: 6 }}>만+</span>
+              </span>
+              건의 데이터 위에서<br />작동하는 입찰 AI.
+            </h2>
+          </div>
+          <div style={{ paddingBottom: 24 }}>
+            <p style={{ fontSize: 18, lineHeight: 1.65, color: "var(--fg-2)", margin: "0 0 20px", maxWidth: 440, fontWeight: 500 }}>
+              24년치 공공조달 기록이 모델의 토대입니다. 모든 예측은 이 데이터 위에서 계산됩니다.
+            </p>
+            <div style={{ display: "inline-flex", alignItems: "center", gap: 14, padding: "12px 18px", borderRadius: 999, background: "var(--cell)", border: "1px solid var(--border)" }}>
+              <span style={{ width: 8, height: 8, borderRadius: 999, background: "var(--green-600)", boxShadow: "0 0 0 4px rgba(5,150,105,0.15)", animation: "nk-pulse-dot 2.4s ease-in-out infinite" }} />
+              <span style={{ fontSize: 13, color: "var(--fg-2)", fontWeight: 600 }}>
+                지금 이 순간 <span className="nk-num" style={{ color: "var(--navy-800)", fontWeight: 800 }}>13,404</span>건 분석 가능
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <div className="nk-reveal" style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 0, border: "1px solid var(--border)", borderRadius: 18, overflow: "hidden", background: "#fff" }}>
+          {big.map((b, i) => (
+            <div key={i} style={{ padding: "36px 32px 32px", borderRight: i < 3 ? "1px solid var(--border)" : "none", position: "relative", background: i % 2 === 0 ? "#fff" : "#FCFDFE" }}>
+              <div className="nk-eyebrow nk-en" style={{ color: "var(--fg-4)", marginBottom: 18, letterSpacing: "0.14em", fontSize: 10 }}>{String(i + 1).padStart(2, "0")} / 04</div>
+              <div style={{ display: "flex", alignItems: "baseline", gap: 4, marginBottom: 14 }}>
+                <span className="nk-num" style={{ fontSize: "clamp(40px, 4.4vw, 60px)", fontWeight: 900, lineHeight: 1, letterSpacing: "-0.035em", color: "var(--navy-800)" }}>{b.n}</span>
+                <span style={{ fontSize: 18, fontWeight: 700, color: "var(--fg-3)" }}>{b.u}</span>
+              </div>
+              <div style={{ fontSize: 15, fontWeight: 700, color: "var(--fg-1)", marginBottom: 6, letterSpacing: "-0.01em" }}>{b.l}</div>
+              <div style={{ fontSize: 13, color: "var(--fg-3)", lineHeight: 1.5 }}>{b.d}</div>
+            </div>
+          ))}
+        </div>
+
+        <div className="nk-reveal" style={{ marginTop: 28, display: "flex", justifyContent: "center", alignItems: "center", gap: 32, fontSize: 13, color: "var(--fg-3)", flexWrap: "wrap" }}>
+          <span><span className="nk-num" style={{ color: "var(--navy-800)", fontWeight: 800 }}>2002년</span>부터 누적</span>
+          <span style={{ width: 4, height: 4, borderRadius: 999, background: "var(--border)" }} />
+          <span>나라장터 공식 데이터</span>
+          <span style={{ width: 4, height: 4, borderRadius: 999, background: "var(--border)" }} />
+          <span>매일 자동 갱신</span>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 function Flow() {
   const steps = [
     { n: "01", t: "공고 검색", d: "업종, 지역, 계약 방법으로 즉시 필터. 활성 공고를 한 번에 훑습니다.", sub: "SEARCH", viz: "filter" },
@@ -789,6 +848,7 @@ export default function LandingPage() {
       <ProblemSection />
       <Engines />
       <WhyAccurate />
+      <DataScale />
       <Flow />
       <Trust />
       <Pricing />
