@@ -381,6 +381,9 @@ export default async function BidResultPage({
             </div>
           ))}
         </div>
+        <div style={{ fontSize: 11, color: "#94A3B8", marginTop: 14, paddingTop: 12, borderTop: "1px solid #F1F5F9", lineHeight: 1.6 }}>
+          ※ AI 추천가는 동률 회피를 위해 사용자별 맞춤 보정을 거쳐 미세 조정됩니다.
+        </div>
       </div>
 
       {/* 계약 이후 안내 (개찰 카운트다운 + 통계) */}

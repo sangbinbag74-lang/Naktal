@@ -140,6 +140,11 @@ export function ContractForm(props: Props) {
         </div>
       </div>
 
+      {/* 노이즈 안내 — 사용자별 미세 차이 발생 시 의심 차단 */}
+      <div style={{ fontSize: 11, color: "#94A3B8", textAlign: "center", lineHeight: 1.6 }}>
+        ※ AI 추천가는 동률 회피를 위해 사용자별 맞춤 보정을 거쳐 미세 조정됩니다.
+      </div>
+
       {/* 서명 입력 폼 */}
       <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
         <div style={{ padding: "10px 14px", background: "#FEF2F2", border: "1px solid #FECACA", borderRadius: 8, fontSize: 12, color: "#7F1D1D" }}>
