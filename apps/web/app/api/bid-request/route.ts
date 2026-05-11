@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient, createAdminClient } from "@/lib/supabase/server";
+import { applySajungNoise, calcBidPrice } from "@/lib/core1/noise";
 
 // 의뢰 여부 확인 (BidRequestButton 마운트 시)
 export async function GET(request: NextRequest): Promise<NextResponse> {
@@ -77,11 +78,10 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     snapshotAvgSajungRate, snapshotSampleSize, snapshotConfidence,
   } = body;
 
-  // 데이터 부족(fallback) 의뢰 차단 — BidPricePrediction 검증
-  // sampleSize=0 인 경우 comprehensive route 가 적재 차단했으므로 row 없음 → 거부
+  // 데이터 부족(fallback) 의뢰 차단 + ML 원본 사정율 조회 (서버 재계산 기준)
   const { data: pred } = await admin
     .from("BidPricePrediction")
-    .select("sampleSize")
+    .select("sampleSize,predictedSajungRate")
     .eq("annId", annId)
     .gt("expiresAt", new Date().toISOString())
     .maybeSingle();
@@ -93,6 +93,21 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       sampleSize,
     }, { status: 400 });
   }
+  // 서버에서 노이즈 + 추천금액 재계산 (클라이언트 입력 무시)
+  // → 화면 사정율 = 추천금액 역산 = G2B 검증값 (3개 한 몸)
+  const mlRate = Number((pred as { predictedSajungRate?: number }).predictedSajungRate);
+  const effRate = applySajungNoise(mlRate, userId, annId, 0.05);
+  const { estimatedPrice: srvEstPrice, lowerLimit: srvLowerLimit } = calcBidPrice(
+    Number(budget ?? 0),
+    effRate,
+    Number(lowerLimitRate ?? 0),
+    Number(aValueTotal ?? 0),
+  );
+  // 계약 시점 고정: 노이즈 적용 사정율 + 그 사정율로 재계산한 모든 금액
+  const finalPredictedSajungRate = effRate;
+  const finalRecommendedBidPrice = srvLowerLimit;
+  const finalEstimatedPrice = srvEstPrice;
+  const finalLowerLimitPrice = srvLowerLimit; // 안전 마진 제거됨 → 추천금액과 동일
 
   // 전자서명 검증 — 본인 사업자번호/대표자명 일치 강제 (계약 위조 방지)
   if (bizRegNo || repName) {
@@ -165,13 +180,13 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     console.error("[bid-request] 카테고리 평균 스냅샷 실패:", (e as Error).message);
   }
 
-  // UPDATE 분기용 기본 수수료 (INSERT는 personalFeeRate/Amount로 override)
-  let feeRate = recommendedBidPrice < 100_000_000 ? 0.017 : 0.015;
-  let agreedFeeAmount = Math.round(recommendedBidPrice * feeRate);
+  // 수수료 = 서버 재계산 추천금액 기준 (클라이언트 입력 무시)
+  let feeRate = finalRecommendedBidPrice < 100_000_000 ? 0.017 : 0.015;
+  let agreedFeeAmount = Math.round(finalRecommendedBidPrice * feeRate);
 
   const { data: existing } = await admin
     .from("BidRequest")
-    .select("id")
+    .select("id,contractAt")
     .eq("userId", userId)
     .eq("annId", annId)
     .maybeSingle();
@@ -179,29 +194,37 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   let resultId: string;
 
   if (existing) {
-    const { data: updated, error } = await admin
-      .from("BidRequest")
-      .update({
-        recommendedBidPrice: String(Math.round(recommendedBidPrice)),
-        predictedSajungRate,
-        estimatedPrice: String(Math.round(estimatedPrice ?? 0)),
-        lowerLimitPrice: String(Math.round(lowerLimitPrice ?? 0)),
+    // 이미 계약 완료된 row 는 모든 금액·사정율 변경 금지 (snapshot 보존)
+    const alreadyContracted = (existing as { contractAt?: string | null }).contractAt != null;
+    const updatePayload: Record<string, unknown> = {
+      updatedAt: new Date().toISOString(),
+      ...(numberStrategy ? { numberStrategy } : {}),
+      ...(snapshotAvgSajungRate != null ? { snapshotAvgSajungRate } : {}),
+      ...(snapshotSampleSize != null ? { snapshotSampleSize } : {}),
+      ...(snapshotConfidence ? { snapshotConfidence } : {}),
+      ...(snapshotCategoryAvg != null ? { snapshotCategoryAvg } : {}),
+      ...(snapshotCategoryTotal != null ? { snapshotCategoryTotal } : {}),
+    };
+    if (!alreadyContracted) {
+      // 계약 전: 금액·사정율 갱신 허용
+      Object.assign(updatePayload, {
+        recommendedBidPrice: String(finalRecommendedBidPrice),
+        predictedSajungRate: finalPredictedSajungRate,
+        estimatedPrice: String(finalEstimatedPrice),
+        lowerLimitPrice: String(finalLowerLimitPrice),
         winProbability: Math.round((winProbability ?? 0) * 100),
         competitionScore: competitionScore ?? 0,
         agreedFeeRate: feeRate,
         agreedFeeAmount: String(agreedFeeAmount),
         agreedAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
         ...(bizRegNo ? { bizRegNo } : {}),
         ...(repName ? { repName } : {}),
         ...(bizRegNo ? { contractAt: new Date().toISOString(), contractIp } : {}),
-        ...(numberStrategy ? { numberStrategy } : {}),
-        ...(snapshotAvgSajungRate != null ? { snapshotAvgSajungRate } : {}),
-        ...(snapshotSampleSize != null ? { snapshotSampleSize } : {}),
-        ...(snapshotConfidence ? { snapshotConfidence } : {}),
-        ...(snapshotCategoryAvg != null ? { snapshotCategoryAvg } : {}),
-        ...(snapshotCategoryTotal != null ? { snapshotCategoryTotal } : {}),
-      })
+      });
+    }
+    const { data: updated, error } = await admin
+      .from("BidRequest")
+      .update(updatePayload)
       .eq("id", existing.id)
       .select("id")
       .single();
@@ -211,11 +234,8 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     }
     resultId = (updated as { id: string }).id;
   } else {
-    // 클라이언트(comprehensive) 가 이미 동적 마진 + seq 적용한 추천가 그대로 사용
-    // → comprehensive 와 BidRequest 저장값 일치 보장 (Footnote 와 실제 일치)
-    const personalBidPrice = Math.round(recommendedBidPrice);
-    feeRate = personalBidPrice < 100_000_000 ? 0.017 : 0.015;
-    agreedFeeAmount = Math.round(personalBidPrice * feeRate);
+    feeRate = finalRecommendedBidPrice < 100_000_000 ? 0.017 : 0.015;
+    agreedFeeAmount = Math.round(finalRecommendedBidPrice * feeRate);
 
     const { data: inserted, error } = await admin
       .from("BidRequest")
@@ -231,10 +251,10 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         lowerLimitRate,
         aValueYn: aValueYn ?? "",
         aValueTotal: String(Math.round(aValueTotal ?? 0)),
-        recommendedBidPrice: String(personalBidPrice),
-        predictedSajungRate,
-        estimatedPrice: String(Math.round(estimatedPrice ?? 0)),
-        lowerLimitPrice: String(Math.round(lowerLimitPrice ?? 0)),
+        recommendedBidPrice: String(finalRecommendedBidPrice),
+        predictedSajungRate: finalPredictedSajungRate,
+        estimatedPrice: String(finalEstimatedPrice),
+        lowerLimitPrice: String(finalLowerLimitPrice),
         winProbability: Math.round((winProbability ?? 0) * 100),
         competitionScore: competitionScore ?? 0,
         agreedFeeRate: feeRate,

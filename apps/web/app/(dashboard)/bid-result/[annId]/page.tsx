@@ -189,7 +189,7 @@ export default async function BidResultPage({
   const sajungDeviation = avgSajungRate > 0 ? sajungRate - avgSajungRate : null;
   const winProbability = Number(req.winProbability ?? 0); // 0~100 정수
   const competitionScore = Number(req.competitionScore ?? 0);
-  const safetyMargin = price - lowerLimit; // 추천 - 낙찰하한가 (안전 마진 + seq)
+  // safetyMargin 제거됨 (2026-05-11): 안전 마진 + seq 폐기, 추천금액 = 낙찰하한가
   // snapshot 신뢰도 우선 (계약 시점 고정)
   const confidenceLevel: "HIGH" | "MEDIUM" | "LOW" =
     (req.snapshotConfidence === "HIGH" || req.snapshotConfidence === "MEDIUM" || req.snapshotConfidence === "LOW")
@@ -201,6 +201,17 @@ export default async function BidResultPage({
   const lowerLimitRateNum = Number(req.lowerLimitRate ?? DEFAULT_LWLT_BY_KIND[classifyCategory(ann.category as string)]);
   // 예정가 = 기초금액(budget) × 예측사정율
   const estimatedPriceCalc = budget * (sajungRate / 100);
+
+  // 추천 적용 사정율 (역산) — 화면 금액(price) 을 G2B 계산기에 그대로 검증할 수 있는 값
+  // price = (budget × r/100 - A) × L/100 + A 를 r 에 대해 풀면:
+  //   r = ((price - A) × 100/L + A) × 100/budget
+  // ML 예측(sajungRate) 에 안전 마진이 더해진 결과를 사정율 표기로 환산
+  const effectiveSajungRate = budget > 0 && lowerLimitRateNum > 0
+    ? (((price - aValueTotal) * 100 / lowerLimitRateNum) + aValueTotal) * 100 / budget
+    : sajungRate;
+  const effectiveDeviation = avgSajungRate > 0 ? effectiveSajungRate - avgSajungRate : null;
+  // G2B 검증용 예정가 = budget × effectiveSajungRate / 100 (≈ 화면 추천금액 검증)
+  const effectiveEstPrice = budget * (effectiveSajungRate / 100);
 
   // 낙찰여부 (G2B API 자동 확인됨 — 사용자 회사명 vs 낙찰자명 매칭)
   const isWonVal = req.isWon as boolean | null;
@@ -274,14 +285,14 @@ export default async function BidResultPage({
           {fmtPrice(price)}
         </div>
         <div style={{ fontSize: 12, color: "#BFDBFE", marginTop: 8 }}>
-          예측 사정율 {sajungRate.toFixed(3)}%
-          {sajungDeviation !== null && (
+          예측 사정율 {effectiveSajungRate.toFixed(3)}%
+          {effectiveDeviation !== null && (
             <span style={{
               marginLeft: 6,
-              color: sajungDeviation >= 0 ? "#86EFAC" : "#FCA5A5",
+              color: effectiveDeviation >= 0 ? "#86EFAC" : "#FCA5A5",
               fontWeight: 700,
             }}>
-              ({fmtDeviation(sajungDeviation)})
+              ({fmtDeviation(effectiveDeviation)})
             </span>
           )}
         </div>
@@ -352,16 +363,16 @@ export default async function BidResultPage({
           {[
             { label: "AI 추천 투찰금액", value: fmtPrice(price), bold: true },
             { label: "기초금액", value: fmtPrice(budget) + " (부가세 포함)" },
-            { label: "예정가 (예측)", value: fmtPrice(estimatedPriceCalc) },
+            { label: "예정가 (예측)", value: fmtPrice(effectiveEstPrice) },
             isAValue && aValueTotal > 0 ? { label: "A값", value: fmtPrice(aValueTotal) } : null,
             { label: "낙찰하한율", value: `${lowerLimitRateNum.toFixed(3)}%` },
-            { label: "낙찰하한가", value: fmtPrice(lowerLimit) },
+            { label: "낙찰하한가", value: fmtPrice(price) },
             bidRate != null ? { label: "투찰률 (기초금액 대비)", value: `${bidRate.toFixed(4)}%` } : null,
             {
               label: "예측 사정율",
-              value: sajungDeviation !== null
-                ? `${sajungRate.toFixed(3)}% (발주처 평균 ${fmtDeviation(sajungDeviation)})`
-                : `${sajungRate.toFixed(3)}%`,
+              value: effectiveDeviation !== null
+                ? `${effectiveSajungRate.toFixed(3)}% (발주처 평균 ${fmtDeviation(effectiveDeviation)})`
+                : `${effectiveSajungRate.toFixed(3)}%`,
             },
           ].filter((x): x is { label: string; value: string; bold?: boolean } => x !== null).map(({ label, value, bold }) => (
             <div key={label} style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
@@ -403,9 +414,9 @@ export default async function BidResultPage({
                 color: "#1B3A6B",
               },
               {
-                label: "안전 마진",
-                value: `+${fmtPrice(safetyMargin)}`,
-                sub: "낙찰하한가 위 (사정율 오차 보상)",
+                label: "ML 예측 사정율",
+                value: `${sajungRate.toFixed(3)}%`,
+                sub: "노이즈 적용 전 원본값",
                 color: "#1B3A6B",
               },
               {

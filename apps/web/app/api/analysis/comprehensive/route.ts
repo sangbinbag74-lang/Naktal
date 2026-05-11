@@ -14,6 +14,7 @@ import { recommendNumbers } from "@/lib/core1/frequency-engine";
 import { isMultiplePriceBid } from "@/lib/bid-utils";
 import { calcBaseBudget } from "@/lib/analysis/sajung-utils";
 import { classifyCategory, DEFAULT_SAJUNG_BY_KIND, DEFAULT_LWLT_BY_KIND } from "@/lib/analysis/category-config";
+import { applySajungNoise, calcBidPrice } from "@/lib/core1/noise";
 
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24시간
 
@@ -138,7 +139,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     const estimatedPriceByACached = isAValue
       ? budgetNum * ((Number(cached.predictedSajungRate) || defaultSajung.center) / 100)
       : null;
-    return NextResponse.json(buildResponse(ann, cached, numberStrategyCached, trendMeta, estimatedPriceByACached, aValueTotal, lowerLimitRateEarly, budgetNum, bidRequestCount ?? 0, annKind));
+    return NextResponse.json(buildResponse(ann, cached, numberStrategyCached, trendMeta, estimatedPriceByACached, aValueTotal, lowerLimitRateEarly, budgetNum, bidRequestCount ?? 0, annKind, user.id));
   }
 
   // ─── 공고 메타 파싱 ────────────────────────────────────────────────────────
@@ -249,7 +250,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     recentSampleSize: sajung.recentSampleSize,
   };
 
-  return NextResponse.json(buildResponse(ann, predRecord, numberStrategy, trendMeta, estimatedPriceByA, aValueTotal, lowerLimitRate, budgetNum, bidRequestCount ?? 0, annKind));
+  return NextResponse.json(buildResponse(ann, predRecord, numberStrategy, trendMeta, estimatedPriceByA, aValueTotal, lowerLimitRate, budgetNum, bidRequestCount ?? 0, annKind, user.id));
 }
 
 // ─── 응답 빌더 ───────────────────────────────────────────────────────────────
@@ -265,11 +266,19 @@ function buildResponse(
   budgetNum?: number,
   bidRequestCount?: number,
   kind?: ReturnType<typeof classifyCategory>,
+  userId?: string,
 ) {
   // 카테고리별 default (호출자 미전달 시 ann.category 로 추정)
   const annKind = kind ?? classifyCategory(ann.category as string);
   const sd = DEFAULT_SAJUNG_BY_KIND[annKind];
   const dl = DEFAULT_LWLT_BY_KIND[annKind];
+
+  // ML 원본 사정율 + 사용자×공고 deterministic 노이즈 (σ=0.05%p)
+  // 같은 사용자가 같은 공고 재조회 시 동일 결과 보장
+  const mlRate = Number(pred.predictedSajungRate) || sd.center;
+  const effRate = userId
+    ? applySajungNoise(mlRate, userId, ann.id as string, 0.05)
+    : mlRate;
 
   // A값 공고: 낙찰하한가 + 1원 = (예정가 - A합산) × 낙찰하한율 + A합산 + 1
   const aLowerLimit = (estimatedPriceByA != null && aValueTotal != null && lowerLimitRate != null)
@@ -278,30 +287,23 @@ function buildResponse(
 
   return {
     bidStrategy: {
-      predictedSajungRate: Number(pred.predictedSajungRate) || sd.center,
+      // 화면 표시 사정율 = 노이즈 적용값 (G2B 계산기 입력 시 동일 결과)
+      predictedSajungRate: effRate,
+      // ML 원본 사정율 (감사·통계용)
+      mlPredictedSajungRate: mlRate,
       sajungRateRange: (() => {
         const r = pred.sajungRateRange as { min?: number | null; max?: number | null; p25?: number | null; p75?: number | null } | null | undefined;
         return { min: r?.min ?? sd.min, max: r?.max ?? sd.max, p25: r?.p25 ?? sd.p25, p75: r?.p75 ?? sd.p75 };
       })(),
       sampleSize: pred.sampleSize,
       optimalBidPrice: (() => {
-        // 표준 공식: 낙찰하한가 = (기초금액 × 예측사정률 - A) × 낙찰하한율 + A
-        // 추천 = 낙찰하한가 + 동적 안전 마진 + seq원
-        // 신뢰도 기반 마진: HIGH(0.05%p) / MEDIUM(0.2%p) / LOW(0.5%p)
-        // ML MAE 0.48%p 보상 → 사정율 예측이 빗나가도 낙찰하한가 미만 위험 회피
+        // 표준 공식만 사용. 안전 마진·seq 모두 제거.
+        // 화면 사정율 → 추천금액 100% 일치 → G2B 계산기 검증 통과
         const budget = budgetNum ?? Number(ann.budget) ?? 0;
-        const rate   = Number(pred.predictedSajungRate) || sd.center;
         const llRate = lowerLimitRate ?? dl;
         const aVal   = aValueTotal ?? 0;
-        const estPrice = budget * (rate / 100);
-        const lowerLimit = Math.ceil((estPrice - aVal) * (llRate / 100) + aVal);
-        // 신뢰도별 마진 (%p)
-        const ss = Number(pred.sampleSize ?? 0);
-        const marginPct = ss >= 30 ? 0.05 : ss >= 5 ? 0.2 : 0.5;
-        // marginPct 만큼 사정율이 더 높을 때의 lowerLimit 차이
-        const safetyMargin = Math.ceil(lowerLimit * marginPct / 100);
-        const seq = (bidRequestCount ?? 0) + 1;
-        return lowerLimit + safetyMargin + seq;
+        const { lowerLimit } = calcBidPrice(budget, effRate, llRate, aVal);
+        return lowerLimit;
       })(),
       bidPriceRangeLow: (() => {
         // IQR 하단 (p25, 분포 25% 분위) — 실제 데이터 분포 반영
