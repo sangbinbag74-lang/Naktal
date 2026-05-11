@@ -10,8 +10,19 @@ import * as fs from "fs";
 import * as path from "path";
 import { extractRgnLimitFromPdf, PdfRgnLimit } from "../lib/pdf-region-extract";
 
-const env = fs.readFileSync(path.resolve(__dirname, "../../../../.env"), "utf-8");
-const url = env.split("\n").find(l => l.startsWith("DIRECT_URL="))!.split("=").slice(1).join("=").trim().replace(/^["']|["']$/g, "");
+// CI 환경 (.env 없음) → process.env.DATABASE_URL 폴백
+const envPath = path.resolve(__dirname, "../../../../.env");
+let url = "";
+if (fs.existsSync(envPath)) {
+  const env = fs.readFileSync(envPath, "utf-8");
+  const line = env.split("\n").find(l => l.startsWith("DIRECT_URL="));
+  if (line) url = line.split("=").slice(1).join("=").trim().replace(/^["']|["']$/g, "");
+}
+url = url || process.env.DIRECT_URL || process.env.DATABASE_URL || "";
+if (!url) {
+  console.error("DATABASE_URL 환경변수 또는 .env DIRECT_URL 필요");
+  process.exit(1);
+}
 
 const args = process.argv.slice(2);
 const argLimit = args.includes("--limit") ? Number(args[args.indexOf("--limit") + 1]) : 0;
