@@ -10,6 +10,8 @@ interface RunSummary {
   resultUpdated: number;
   resultTotal: number;
   resultG2bFetched: number;
+  aiUpdated: number;
+  aiScanned: number;
   error?: string;
 }
 
@@ -52,7 +54,10 @@ export function AccuracyTriggers() {
         const err = await res.json().catch(() => ({})) as { error?: string };
         throw new Error(err.error || `결과 HTTP ${res.status}`);
       }
-      return await res.json() as { updated?: number; total?: number; g2bFetched?: number };
+      return await res.json() as {
+        updated?: number; total?: number; g2bFetched?: number;
+        aiUpdated?: number; aiScanned?: number;
+      };
     })();
 
     try {
@@ -64,6 +69,8 @@ export function AccuracyTriggers() {
         resultUpdated: result.updated ?? 0,
         resultTotal: result.total ?? 0,
         resultG2bFetched: result.g2bFetched ?? 0,
+        aiUpdated: result.aiUpdated ?? 0,
+        aiScanned: result.aiScanned ?? 0,
       });
       router.refresh();
     } catch (e) {
@@ -71,6 +78,7 @@ export function AccuracyTriggers() {
         ok: false,
         predFilled: 0, predIterations: 0,
         resultUpdated: 0, resultTotal: 0, resultG2bFetched: 0,
+        aiUpdated: 0, aiScanned: 0,
         error: (e as Error).message,
       });
     } finally {
@@ -113,9 +121,13 @@ export function AccuracyTriggers() {
             <>
               <strong>✓ 동기화 완료</strong>
               <div style={{ marginTop: 4 }}>
-                예측 적재 {summary.predFilled}건 ({summary.predIterations}회 반복) ·
-                결과 갱신 {summary.resultUpdated}/{summary.resultTotal}건 ·
-                G2B 직접 조회 {summary.resultG2bFetched}건
+                예측 적재 {summary.predFilled}건 ({summary.predIterations}회 반복)
+              </div>
+              <div style={{ marginTop: 2 }}>
+                BidRequest 결과 채움 {summary.resultUpdated}/{summary.resultTotal}건 (G2B 직접 조회 {summary.resultG2bFetched}건)
+              </div>
+              <div style={{ marginTop: 2 }}>
+                AI 예측 결과 채움 <strong>{summary.aiUpdated}건</strong> / 미입력 스캔 {summary.aiScanned}건
               </div>
             </>
           ) : (

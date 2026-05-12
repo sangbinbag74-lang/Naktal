@@ -102,15 +102,14 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   if (pendingErr) {
     return NextResponse.json({ error: pendingErr.message }, { status: 500 });
   }
-  if (!pending || pending.length === 0) {
-    return NextResponse.json({ ok: true, updated: 0, message: "처리 대상 없음" });
-  }
+  // BidRequest pending 0 이어도 AIPrediction 채움은 계속 진행 (early return 제거)
+  const pendingList = pending ?? [];
 
   // 2. konepsId 목록으로 BidResult + BidOpeningDetail 병렬 배치 조회
   // BidOpeningDetail: 수의계약 포함 모든 개찰결과 (getOpengResultListInfo*)
   // BidResult: 일반 입찰 결과 (getScsbidListSttus*) — 수의계약 누락
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const konepsIds = [...new Set(pending.map((r: any) => r.konepsId).filter(Boolean))];
+  const konepsIds = [...new Set(pendingList.map((r: any) => r.konepsId).filter(Boolean))];
   const [bidResultRes, openingRes] = await Promise.all([
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (admin.from("BidResult") as any)
@@ -152,7 +151,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
   // 3. userId 목록으로 User(회사명+사업자번호) 배치 조회
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const userIds = [...new Set(pending.map((r: any) => r.userId).filter(Boolean))];
+  const userIds = [...new Set(pendingList.map((r: any) => r.userId).filter(Boolean))];
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data: users } = await (admin.from("User") as any)
     .select("id,bizName,bizNo")
@@ -187,7 +186,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   let skipped = 0;
   let g2bFetched = 0;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  for (const req of pending as any[]) {
+  for (const req of pendingList as any[]) {
     let res = resultMap[req.konepsId];
     // BidResult 없으면 G2B 직접 조회 (단건, 4 op 순차)
     if (!res && req.konepsId && req.deadline) {
@@ -314,11 +313,93 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     }
   }
 
+  // ─────────────────────────────────────────────────────────────
+  // 5. AIPrediction 결과 채움 — BidRequest 와 무관하게 모든 AI 예측의 actual 채움
+  // (AccuracyClient 표의 "실제결과" 컬럼 데이터 소스)
+  // ─────────────────────────────────────────────────────────────
+  let aiUpdated = 0;
+  let aiScanned = 0;
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: aiPending } = await (admin.from("AIPrediction") as any)
+      .select("annId,predictedSajungRate")
+      .is("resultFilledAt", null)
+      .limit(500);
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const aiAnnIds = [...new Set(((aiPending ?? []) as any[]).map(a => a.annId).filter(Boolean))];
+    aiScanned = aiAnnIds.length;
+
+    if (aiAnnIds.length > 0) {
+      // Announcement에서 konepsId + 기초금액 조회
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data: aiAnns } = await (admin.from("Announcement") as any)
+        .select("id,konepsId,bsisAmt,budget,aValueAmt")
+        .in("id", aiAnnIds);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const idToAnn: Record<string, any> = Object.fromEntries(((aiAnns ?? []) as any[]).map(a => [a.id, a]));
+
+      // BidResult에서 낙찰 결과 조회
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const aiKonepsIds = ((aiAnns ?? []) as any[]).map(a => a.konepsId).filter(Boolean);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data: aiResults } = aiKonepsIds.length > 0
+        ? await (admin.from("BidResult") as any)
+            .select("annId,finalPrice,bidRate,winnerName")
+            .in("annId", aiKonepsIds)
+        : { data: [] };
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const konepsToResult: Record<string, any> = Object.fromEntries(((aiResults ?? []) as any[]).map(r => [r.annId, r]));
+
+      // 각 AIPrediction row 업데이트
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      for (const p of ((aiPending ?? []) as any[])) {
+        const ann = idToAnn[p.annId];
+        if (!ann || !ann.konepsId) continue;
+        const res = konepsToResult[ann.konepsId];
+        if (!res || !res.finalPrice || !res.bidRate) continue;
+
+        const bsis = Number(ann.bsisAmt ?? 0);
+        const avAmt = Number(ann.aValueAmt ?? 0);
+        const bud = Number(ann.budget ?? 0);
+        const base = bsis > 0 ? bsis : avAmt > 0 ? avAmt : Math.round(bud * 1.1);
+        if (base <= 0) continue;
+
+        const finalPrice = Number(res.finalPrice);
+        const bidRate = Number(res.bidRate);
+        if (finalPrice <= 0 || bidRate <= 0) continue;
+
+        const actualSajung = (finalPrice / (bidRate / 100) / base) * 100;
+        const predicted = Number(p.predictedSajungRate ?? 0);
+        if (predicted <= 0) continue;
+        const dev = Math.abs(predicted - actualSajung);
+
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const { error: updErr } = await (admin.from("AIPrediction") as any)
+          .update({
+            actualSajungRate: actualSajung.toFixed(4),
+            actualFinalPrice: String(Math.round(finalPrice)),
+            deviationPct: dev.toFixed(4),
+            isExact: dev <= 0.2,
+            isHit: dev <= 0.5,
+            isNearHit: dev <= 1.0,
+            resultFilledAt: now,
+          })
+          .eq("annId", p.annId);
+        if (!updErr) aiUpdated++;
+      }
+    }
+  } catch (e) {
+    console.error("[refresh-outcomes] AIPrediction 채움 실패:", (e as Error).message);
+  }
+
   return NextResponse.json({
     ok: true,
-    total: pending.length,
+    total: pendingList.length,
     updated,
     skipped,
     g2bFetched,
+    aiScanned,
+    aiUpdated,
   });
 }
