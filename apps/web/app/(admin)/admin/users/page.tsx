@@ -109,9 +109,14 @@ export default function AdminUsersPage() {
     {
       key: "actions", label: "관리",
       render: (r: UserRow) => (
-        <Link href={`/admin/users/${r.id}`} style={{ color: "#1B3A6B", fontSize: 12, textDecoration: "underline" }}>
-          상세
-        </Link>
+        <span style={{ display: "inline-flex", gap: 10 }}>
+          <Link href={`/admin/users/${r.id}`} style={{ color: "#1B3A6B", fontSize: 12, textDecoration: "underline" }}>
+            상세
+          </Link>
+          <Link href={`/admin/users/${r.id}/contracts`} style={{ color: "#7C3AED", fontSize: 12, textDecoration: "underline" }}>
+            의뢰화면
+          </Link>
+        </span>
       ),
     },
   ] as Parameters<typeof AdminTable>[0]["columns"];
