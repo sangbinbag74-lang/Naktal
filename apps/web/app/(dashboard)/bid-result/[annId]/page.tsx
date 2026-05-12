@@ -364,16 +364,6 @@ export default async function BidResultPage({
               </div>
             </div>
           </div>
-          {(req.userDrwtNo1 != null || req.userDrwtNo2 != null) && (
-            <div style={{ padding: "10px 14px", background: "#F5F3FF", borderRadius: 8, fontSize: 13 }}>
-              <span style={{ color: "#64748B" }}>추첨번호 </span>
-              <strong style={{ color: "#7C3AED", fontSize: 15 }}>
-                {req.userDrwtNo1 != null ? String(req.userDrwtNo1).padStart(2, "0") : "-"}
-                {" · "}
-                {req.userDrwtNo2 != null ? String(req.userDrwtNo2).padStart(2, "0") : "-"}
-              </strong>
-            </div>
-          )}
           {req.userBidAt && (
             <div style={{ marginTop: 10, fontSize: 11, color: "#94A3B8" }}>
               투찰일시: {new Date(req.userBidAt as string).toLocaleString("ko-KR", { dateStyle: "short", timeStyle: "short" })}

@@ -1,44 +1,9 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { createAdminClient, createClient } from "@/lib/supabase/server";
-import { ContractRow } from "@/components/naktal/ContractRow";
+import { ContractList } from "@/components/naktal/ContractList";
 
 export const dynamic = "force-dynamic";
-
-function fmtPrice(n: number) {
-  return new Intl.NumberFormat("ko-KR").format(Math.round(n)) + "원";
-}
-
-function fmtDate(iso: string) {
-  return new Date(iso).toLocaleDateString("ko-KR", { month: "long", day: "numeric" });
-}
-
-function getDDay(deadline: string) {
-  const diff = Math.ceil((new Date(deadline).getTime() - Date.now()) / 86400000);
-  if (diff <= 0) return { label: "마감", bg: "#F1F5F9", color: "#94A3B8" };
-  if (diff <= 2) return { label: `D-${diff}`, bg: "#FEF2F2", color: "#DC2626" };
-  if (diff <= 5) return { label: `D-${diff}`, bg: "#FFF7ED", color: "#C2410C" };
-  if (diff <= 10) return { label: `D-${diff}`, bg: "#EFF6FF", color: "#1E40AF" };
-  return { label: `D-${diff}`, bg: "#F1F5F9", color: "#475569" };
-}
-
-function WonBadge({ isWon }: { isWon: boolean | null }) {
-  if (isWon === true) return (
-    <span style={{ fontSize: 12, fontWeight: 700, color: "#059669", background: "#ECFDF5", padding: "3px 10px", borderRadius: 5, border: "1px solid #86EFAC" }}>
-      ✅ 낙찰 (1순위)
-    </span>
-  );
-  if (isWon === false) return (
-    <span style={{ fontSize: 12, fontWeight: 600, color: "#94A3B8", background: "#F1F5F9", padding: "3px 10px", borderRadius: 5 }}>
-      미낙찰
-    </span>
-  );
-  return (
-    <span style={{ fontSize: 12, fontWeight: 600, color: "#60A5FA", background: "#EFF6FF", padding: "3px 10px", borderRadius: 5 }}>
-      결과 확인 중
-    </span>
-  );
-}
 
 export default async function ContractsPage() {
   const supabase = await createClient();
@@ -51,23 +16,54 @@ export default async function ContractsPage() {
 
   const { data: contracts } = await admin
     .from("BidRequest")
-    .select("id,annId,title,orgName,deadline,recommendedBidPrice,agreedFeeRate,contractAt,isWon,feeStatus")
+    .select([
+      "id,annId,title,orgName,deadline,contractAt",
+      "recommendedBidPrice,predictedSajungRate",
+      "userBidPrice,userRank,userBidRate",
+      "actualSajungRate,actualFinalPrice,deviationPct,isHit,isWon,winnerName,totalBidders,openingDt",
+      "agreedFeeRate,feeStatus,feeAmount",
+    ].join(","))
     .eq("userId", dbUser.id as string)
     .not("contractAt", "is", null)
     .order("contractAt", { ascending: false });
 
+  const list = contracts ?? [];
+  // 통계
+  const total = list.length;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const pending = list.filter((c: any) => c.isWon == null).length;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const won = list.filter((c: any) => c.isWon === true).length;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const lost = list.filter((c: any) => c.isWon === false).length;
+  const winRate = (won + lost) > 0 ? Math.round((won / (won + lost)) * 100) : null;
+
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-      {/* 헤더 */}
+    <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
       <div>
         <h2 style={{ fontSize: 22, fontWeight: 700, color: "#0F172A", margin: "0 0 4px" }}>투찰 의뢰 내역</h2>
         <p style={{ fontSize: 13, color: "#64748B", margin: 0 }}>
-          총 {contracts?.length ?? 0}건 · AI 추천 투찰금액을 기반으로 의뢰한 공고 목록입니다
+          총 {total}건 · AI 추천 투찰금액을 기반으로 의뢰한 공고 목록입니다
         </p>
       </div>
 
-      {/* 리스트 */}
-      {!contracts || contracts.length === 0 ? (
+      {/* 통계 4카드 */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12 }}>
+        {[
+          { label: "총 의뢰", value: total + "건", color: "#1B3A6B" },
+          { label: "개찰 대기", value: pending + "건", color: pending > 0 ? "#60A5FA" : "#9CA3AF" },
+          { label: "낙찰 성공", value: won + "건", color: won > 0 ? "#059669" : "#9CA3AF" },
+          { label: "낙찰률", value: winRate != null ? winRate + "%" : "-", color: winRate != null && winRate >= 30 ? "#059669" : winRate != null && winRate >= 15 ? "#D97706" : "#9CA3AF" },
+        ].map(({ label, value, color }) => (
+          <div key={label} style={{ background: "#fff", borderRadius: 12, border: "1px solid #E8ECF2", padding: "16px 18px" }}>
+            <div style={{ fontSize: 11, color: "#9CA3AF", marginBottom: 4 }}>{label}</div>
+            <div style={{ fontSize: 22, fontWeight: 800, color }}>{value}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* 리스트 (필터·검색 클라이언트) */}
+      {list.length === 0 ? (
         <div style={{
           background: "#fff", borderRadius: 14, border: "1px solid #E8ECF2",
           padding: "56px 24px", textAlign: "center",
@@ -82,21 +78,32 @@ export default async function ContractsPage() {
           }}>공고 목록 보기</Link>
         </div>
       ) : (
-        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-          {contracts.map((c) => (
-            <ContractRow
-              key={c.id as string}
-              annId={c.annId as string}
-              title={c.title as string}
-              orgName={c.orgName as string}
-              contractAt={c.contractAt as string}
-              recommendedBidPrice={Number(c.recommendedBidPrice ?? 0)}
-              deadline={c.deadline as string}
-              isWon={c.isWon as boolean | null}
-            />
-          ))}
-        </div>
+        <ContractList items={list as unknown as ContractListItem[]} />
       )}
     </div>
   );
+}
+
+export interface ContractListItem {
+  id: string;
+  annId: string;
+  title: string;
+  orgName: string;
+  deadline: string;
+  contractAt: string;
+  recommendedBidPrice: string | number;
+  predictedSajungRate: string | number | null;
+  userBidPrice: string | number | null;
+  userRank: number | null;
+  userBidRate: string | number | null;
+  actualSajungRate: string | number | null;
+  actualFinalPrice: string | number | null;
+  deviationPct: string | number | null;
+  isHit: boolean | null;
+  isWon: boolean | null;
+  winnerName: string | null;
+  totalBidders: number | null;
+  openingDt: string | null;
+  feeStatus: string | null;
+  feeAmount: string | number | null;
 }

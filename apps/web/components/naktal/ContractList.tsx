@@ -1,0 +1,243 @@
+"use client";
+
+import Link from "next/link";
+import { useState, useMemo } from "react";
+import type { ContractListItem } from "@/app/(dashboard)/contracts/page";
+
+function fmtPrice(n: number) {
+  if (!n) return "-";
+  if (n >= 100_000_000) return `${(n / 100_000_000).toFixed(2)}억`;
+  if (n >= 10_000) return `${Math.round(n / 10_000).toLocaleString()}만`;
+  return n.toLocaleString();
+}
+function fmtDate(iso: string) {
+  return new Date(iso).toLocaleDateString("ko-KR", { month: "long", day: "numeric" });
+}
+function getDDay(deadline: string) {
+  const diff = Math.ceil((new Date(deadline).getTime() - Date.now()) / 86400000);
+  if (diff <= 0) return { label: "마감", bg: "#F1F5F9", color: "#94A3B8" };
+  if (diff <= 2) return { label: `D-${diff}`, bg: "#FEF2F2", color: "#DC2626" };
+  if (diff <= 5) return { label: `D-${diff}`, bg: "#FFF7ED", color: "#C2410C" };
+  if (diff <= 10) return { label: `D-${diff}`, bg: "#EFF6FF", color: "#1E40AF" };
+  return { label: `D-${diff}`, bg: "#F1F5F9", color: "#475569" };
+}
+
+type Tab = "all" | "pending" | "won" | "lost";
+
+export function ContractList({ items }: { items: ContractListItem[] }) {
+  const [tab, setTab] = useState<Tab>("all");
+
+  const filtered = useMemo(() => {
+    if (tab === "all") return items;
+    if (tab === "pending") return items.filter((c) => c.isWon == null);
+    if (tab === "won") return items.filter((c) => c.isWon === true);
+    return items.filter((c) => c.isWon === false);
+  }, [items, tab]);
+
+  const tabs: { key: Tab; label: string; count: number }[] = [
+    { key: "all", label: "전체", count: items.length },
+    { key: "pending", label: "대기", count: items.filter((c) => c.isWon == null).length },
+    { key: "won", label: "낙찰", count: items.filter((c) => c.isWon === true).length },
+    { key: "lost", label: "미낙찰", count: items.filter((c) => c.isWon === false).length },
+  ];
+
+  return (
+    <>
+      {/* 필터 탭 */}
+      <div style={{ display: "flex", gap: 6, padding: "4px", background: "#F1F5F9", borderRadius: 10, width: "fit-content" }}>
+        {tabs.map((t) => (
+          <button
+            key={t.key}
+            onClick={() => setTab(t.key)}
+            style={{
+              padding: "7px 16px",
+              borderRadius: 7,
+              border: "none",
+              background: tab === t.key ? "#fff" : "transparent",
+              color: tab === t.key ? "#0F172A" : "#64748B",
+              fontWeight: tab === t.key ? 700 : 500,
+              fontSize: 13,
+              cursor: "pointer",
+              boxShadow: tab === t.key ? "0 1px 3px rgba(15,23,42,0.08)" : "none",
+              transition: "all 0.12s",
+            }}
+          >
+            {t.label} {t.count > 0 && <span style={{ marginLeft: 4, fontSize: 11, color: tab === t.key ? "#1B3A6B" : "#9CA3AF" }}>{t.count}</span>}
+          </button>
+        ))}
+      </div>
+
+      {/* 카드 리스트 */}
+      <div style={{ display: "flex", flexDirection: "column", gap: 12, marginTop: 16 }}>
+        {filtered.map((c) => <ContractCard key={c.id} c={c} />)}
+        {filtered.length === 0 && (
+          <div style={{ padding: "40px", textAlign: "center", color: "#9CA3AF", fontSize: 13, background: "#fff", borderRadius: 12, border: "1px solid #E8ECF2" }}>
+            해당 상태의 의뢰가 없습니다
+          </div>
+        )}
+      </div>
+    </>
+  );
+}
+
+function ContractCard({ c }: { c: ContractListItem }) {
+  const dday = getDDay(c.deadline);
+  const won = c.isWon === true;
+  const lost = c.isWon === false;
+  const pending = c.isWon == null;
+
+  const recPrice = Number(c.recommendedBidPrice);
+  const userBid = c.userBidPrice != null ? Number(c.userBidPrice) : null;
+  const userRank = c.userRank;
+  const totalBidders = c.totalBidders;
+  const actualSajung = c.actualSajungRate != null ? Number(c.actualSajungRate) : null;
+  const predictedSajung = c.predictedSajungRate != null ? Number(c.predictedSajungRate) : null;
+  const deviation = c.deviationPct != null ? Number(c.deviationPct) : null;
+
+  function openInNewTab(href: string) {
+    window.open(href, "_blank", "noopener,noreferrer");
+  }
+
+  // 미낙찰 시 — 순위만 표시 (사정율·실투찰가 등 다른 보조정보 숨김)
+  const showDetailMetrics = won || pending; // 낙찰·대기만 상세 표시
+  const showRankOnly = lost && userRank != null;
+
+  return (
+    <div
+      onClick={() => openInNewTab(`/bid-result/${c.annId}`)}
+      style={{
+        background: won ? "linear-gradient(135deg, #fff 0%, #ECFDF5 100%)" : "#fff",
+        borderRadius: 14, border: `1px solid ${won ? "#86EFAC" : "#E8ECF2"}`,
+        padding: "20px 24px",
+        cursor: "pointer",
+        transition: "all 0.15s",
+        boxShadow: "0 1px 2px rgba(15,23,42,0.04)",
+      }}
+      onMouseEnter={(e) => { e.currentTarget.style.boxShadow = "0 6px 18px rgba(15,23,42,0.08)"; e.currentTarget.style.transform = "translateY(-1px)"; }}
+      onMouseLeave={(e) => { e.currentTarget.style.boxShadow = "0 1px 2px rgba(15,23,42,0.04)"; e.currentTarget.style.transform = "translateY(0)"; }}
+    >
+      {/* 상단: 제목 + 추천금액 + 상태 */}
+      <div style={{ display: "grid", gridTemplateColumns: "1fr auto auto auto", gap: 22, alignItems: "center" }}>
+        <div style={{ minWidth: 0 }}>
+          <div style={{ fontSize: 16, fontWeight: 700, color: "#0F172A", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", marginBottom: 6, letterSpacing: "-0.01em" }}>
+            {c.title}
+          </div>
+          <div style={{ fontSize: 12, color: "#64748B", display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+            <span>{c.orgName}</span>
+            <span style={{ color: "#CBD5E1" }}>·</span>
+            <span>의뢰 {fmtDate(c.contractAt)}</span>
+            {c.openingDt && (
+              <>
+                <span style={{ color: "#CBD5E1" }}>·</span>
+                <span>개찰 {fmtDate(c.openingDt)}</span>
+              </>
+            )}
+            <span style={{ color: "#CBD5E1" }}>|</span>
+            <Link
+              href={`/bid-contract/${c.annId}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={(e) => e.stopPropagation()}
+              style={{ color: "#1B3A6B", textDecoration: "none", fontWeight: 600 }}
+            >계약서</Link>
+            <Link
+              href={`/announcements/${c.annId}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={(e) => e.stopPropagation()}
+              style={{ color: "#1B3A6B", textDecoration: "none", fontWeight: 600 }}
+            >공고</Link>
+          </div>
+        </div>
+        <div style={{ textAlign: "right", flexShrink: 0 }}>
+          <div style={{ fontSize: 10.5, color: "#94A3B8", marginBottom: 3, fontWeight: 600 }}>AI 추천</div>
+          <div style={{ fontSize: 17, fontWeight: 800, color: "#1B3A6B", fontVariantNumeric: "tabular-nums", letterSpacing: "-0.01em" }}>
+            {fmtPrice(recPrice)}원
+          </div>
+        </div>
+        <span style={{ flexShrink: 0, fontSize: 12, fontWeight: 700, padding: "6px 12px", borderRadius: 7, background: dday.bg, color: dday.color, minWidth: 52, textAlign: "center" }}>
+          {dday.label}
+        </span>
+        <div style={{ flexShrink: 0, minWidth: 130, textAlign: "right" }}>
+          <WonBadge isWon={c.isWon} />
+        </div>
+      </div>
+
+      {/* 하단: 상세 결과 — 데이터 있을 때만 */}
+      {showDetailMetrics && userBid != null && (
+        <div style={{
+          marginTop: 14, paddingTop: 12, borderTop: "1px solid #F1F5F9",
+          display: "flex", flexWrap: "wrap", gap: 22, fontSize: 12.5,
+        }}>
+          {userRank != null ? (
+            <span>
+              <span style={{ color: "#94A3B8" }}>내 순위 </span>
+              <strong style={{ color: userRank === 1 ? "#059669" : userRank <= 3 ? "#D97706" : "#374151" }}>
+                {userRank}{totalBidders ? ` / ${totalBidders}` : ""}위
+              </strong>
+            </span>
+          ) : (userBid != null && (
+            <span>
+              <span style={{ color: "#94A3B8" }}>내 순위 </span>
+              <strong style={{ color: "#DC2626" }}>부적격</strong>
+            </span>
+          ))}
+          <span>
+            <span style={{ color: "#94A3B8" }}>내 투찰 </span>
+            <strong style={{ color: "#0F172A" }}>{fmtPrice(userBid)}원</strong>
+            {c.userBidRate != null && <span style={{ color: "#94A3B8", marginLeft: 6 }}>({Number(c.userBidRate).toFixed(3)}%)</span>}
+          </span>
+          {actualSajung != null && (
+            <span>
+              <span style={{ color: "#94A3B8" }}>실제 사정율 </span>
+              <strong>{actualSajung.toFixed(3)}%</strong>
+              {predictedSajung != null && deviation != null && (
+                <span style={{ color: deviation <= 0.5 ? "#059669" : "#94A3B8", marginLeft: 6, fontSize: 11 }}>
+                  (예측 {predictedSajung.toFixed(3)}% · 오차 {deviation.toFixed(3)}%)
+                </span>
+              )}
+            </span>
+          )}
+          {won && c.feeAmount && Number(c.feeAmount) > 0 && (
+            <span>
+              <span style={{ color: "#94A3B8" }}>수수료 </span>
+              <strong style={{ color: "#D97706" }}>{fmtPrice(Number(c.feeAmount))}원</strong>
+            </span>
+          )}
+        </div>
+      )}
+      {/* 미낙찰 — 순위만 (다른 정보 숨김) */}
+      {showRankOnly && (
+        <div style={{
+          marginTop: 14, paddingTop: 12, borderTop: "1px solid #F1F5F9",
+          fontSize: 12.5,
+        }}>
+          <span>
+            <span style={{ color: "#94A3B8" }}>내 순위 </span>
+            <strong style={{ color: "#374151" }}>
+              {userRank}{totalBidders ? ` / ${totalBidders}` : ""}위
+            </strong>
+          </span>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function WonBadge({ isWon }: { isWon: boolean | null }) {
+  if (isWon === true) return (
+    <span style={{ fontSize: 13, fontWeight: 700, color: "#059669", background: "#ECFDF5", padding: "6px 14px", borderRadius: 7, border: "1px solid #86EFAC" }}>
+      ✅ 낙찰 (1순위)
+    </span>
+  );
+  if (isWon === false) return (
+    <span style={{ fontSize: 13, fontWeight: 700, color: "#DC2626", background: "#FEF2F2", padding: "6px 14px", borderRadius: 7, border: "1px solid #FECACA" }}>
+      ❌ 미낙찰
+    </span>
+  );
+  return (
+    <span style={{ fontSize: 13, fontWeight: 600, color: "#60A5FA", background: "#EFF6FF", padding: "6px 14px", borderRadius: 7 }}>
+      결과 수집 중
+    </span>
+  );
+}
