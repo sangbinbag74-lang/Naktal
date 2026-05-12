@@ -50,12 +50,12 @@ export async function POST(request: NextRequest) {
   // 3. Resend로 notifyEmail에 실제 발송
   const resend = new Resend(process.env.RESEND_API_KEY);
   const { error: emailErr } = await resend.emails.send({
-    from: "NAKTAL <noreply@naktal.me>",
+    from: "낙비 <noreply@naktal.me>",
     to: dbUser.notifyEmail,
-    subject: "[NAKTAL] 비밀번호 재설정 안내",
+    subject: "[낙비] 비밀번호 재설정 안내",
     html: `
       <div style="font-family: sans-serif; max-width: 480px; margin: 0 auto; padding: 32px;">
-        <h2 style="color: #1B3A6B; margin-bottom: 8px;">NAKTAL 비밀번호 재설정</h2>
+        <h2 style="color: #1B3A6B; margin-bottom: 8px;">낙비 비밀번호 재설정</h2>
         <p style="color: #374151; margin-bottom: 24px;">
           아래 버튼을 클릭하면 새로운 비밀번호를 설정할 수 있습니다.<br/>
           이 링크는 <strong>1시간</strong> 동안 유효합니다.

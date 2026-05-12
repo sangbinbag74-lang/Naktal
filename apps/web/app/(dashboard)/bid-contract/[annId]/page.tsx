@@ -128,7 +128,7 @@ export default async function BidContractPage({
         fontSize: 13, color: "#374151", lineHeight: 1.9,
       }}>
         <div style={{ fontSize: 16, fontWeight: 700, textAlign: "center", marginBottom: 20, color: "#0F172A" }}>
-          Naktal.ai AI 투찰 추천 서비스 이용 계약서
+          낙비 AI 투찰 추천 서비스 이용 계약서
         </div>
 
         <div style={{ borderTop: "1px solid #E8ECF2", marginBottom: 16, paddingTop: 16 }}>
@@ -138,7 +138,7 @@ export default async function BidContractPage({
               <strong style={{ color: "#1B3A6B" }}>갑 (서비스 제공자)</strong><br /><br />
               상호: <strong>주식회사 호라이즌</strong><br />
               사업자등록번호: <strong>398-87-03453</strong><br />
-              서비스명: Naktal.ai
+              서비스명: 낙비
             </div>
             <div style={{ background: "#EFF6FF", border: "1px solid #BFDBFE", borderRadius: 8, padding: "12px 14px" }}>
               <strong style={{ color: "#1E40AF" }}>을 (이용자)</strong><br /><br />

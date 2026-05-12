@@ -16,7 +16,7 @@ export async function GET() {
   const now = new Date().toUTCString();
   const items = [
     {
-      title: "Naktal.ai — 공공입찰, 데이터로 답한다",
+      title: "낙비 — 공공입찰, 데이터로 답한다",
       link: `${SITE}`,
       description:
         "나라장터 공고를 머신러닝이 0.5초 만에 분석합니다. 사정율 예측, 복수예가 번호 추천, 공고문 자격 자동 분석, 낙찰 결과 추적까지.",
@@ -25,19 +25,19 @@ export async function GET() {
     {
       title: "자주 묻는 질문",
       link: `${SITE}/faq`,
-      description: "Naktal.ai 사용 방법, 분석 정확도, 데이터 출처, 수수료 관련 자주 묻는 질문.",
+      description: "낙비 사용 방법, 분석 정확도, 데이터 출처, 수수료 관련 자주 묻는 질문.",
       pubDate: now,
     },
     {
       title: "이용약관",
       link: `${SITE}/terms`,
-      description: "Naktal.ai 서비스 이용약관.",
+      description: "낙비 서비스 이용약관.",
       pubDate: now,
     },
     {
       title: "개인정보처리방침",
       link: `${SITE}/privacy`,
-      description: "Naktal.ai 개인정보 수집·이용·보관 방침.",
+      description: "낙비 개인정보 수집·이용·보관 방침.",
       pubDate: now,
     },
   ];
@@ -45,7 +45,7 @@ export async function GET() {
   const xml = `<?xml version="1.0" encoding="UTF-8"?>
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:dc="http://purl.org/dc/elements/1.1/">
   <channel>
-    <title>Naktal.ai — 나라장터 입찰 AI</title>
+    <title>낙비 — 나라장터 입찰 AI</title>
     <link>${SITE}</link>
     <atom:link href="${SITE}/rss.xml" rel="self" type="application/rss+xml" />
     <description>공공입찰, 데이터로 답한다. 나라장터 공고를 머신러닝이 0.5초 만에 분석.</description>

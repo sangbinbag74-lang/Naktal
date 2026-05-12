@@ -136,18 +136,37 @@ async function fetchAll<T>(
   apiKey: string,
   label: string,
 ): Promise<T[]> {
-  const all: T[] = [];
-  let pageNo = 1;
-  let totalCount = 0;
-  while (true) {
-    const { items, totalCount: tc } = await fetchPage<T>(op, baseParams, pageNo, apiKey);
-    if (pageNo === 1) totalCount = tc;
-    all.push(...items);
-    if (pageNo === 1) console.log(`    ${label}: ${totalCount}건 (예상 ${Math.ceil(totalCount / PAGE_SIZE)}페이지)`);
-    else if (pageNo % 5 === 0) console.log(`    ${label} p${pageNo} 누적 ${all.length}`);
-    if (items.length < PAGE_SIZE) break;
-    pageNo++;
-    if (pageNo > 1000) { console.error(`    [${op}] 1000페이지 초과 중단`); break; }
+  // 페이지 batch(10) + retry 패턴 (검증된 가속, feedback_recollect_acceleration.md)
+  const r1 = await fetchPage<T>(op, baseParams, 1, apiKey);
+  console.log(`    ${label}: ${r1.totalCount}건 (예상 ${Math.ceil(r1.totalCount / PAGE_SIZE)}페이지)`);
+  if (r1.totalCount === 0 || r1.items.length === 0) return [];
+
+  const totalPages = Math.min(1000, Math.ceil(r1.totalCount / PAGE_SIZE));
+  const all: T[] = [...r1.items];
+  if (totalPages <= 1) {
+    console.log(`    ${label} 페치 완료: ${all.length}건`);
+    return all;
+  }
+
+  const BATCH = 7;
+  for (let batchStart = 2; batchStart <= totalPages; batchStart += BATCH) {
+    const batchPages: number[] = [];
+    for (let p = batchStart; p < batchStart + BATCH && p <= totalPages; p++) batchPages.push(p);
+    const batchResults = await Promise.all(batchPages.map(async (p) => {
+      try {
+        return await fetchPage<T>(op, baseParams, p, apiKey);
+      } catch (e) {
+        await new Promise((rs) => setTimeout(rs, 1500));
+        try {
+          return await fetchPage<T>(op, baseParams, p, apiKey);
+        } catch (e2) {
+          console.error(`    [${op}] page ${p} 2회 실패: ${(e2 as Error).message}`);
+          return { items: [] as T[], totalCount: r1.totalCount };
+        }
+      }
+    }));
+    for (const r of batchResults) all.push(...r.items);
+    if ((batchStart - 1) % 50 < BATCH) console.log(`    ${label} ~p${batchStart + BATCH - 1} 누적 ${all.length}`);
   }
   console.log(`    ${label} 페치 완료: ${all.length}건`);
   return all;

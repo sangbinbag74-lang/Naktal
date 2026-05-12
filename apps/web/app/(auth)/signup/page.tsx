@@ -139,13 +139,15 @@ export default function SignupPage() {
               display: "grid", placeItems: "center",
               fontWeight: 900, fontSize: 17, letterSpacing: "-0.04em",
             }}>낙</span>
-            <span style={{ display: "inline-flex", alignItems: "baseline" }}>
-              <span style={{ fontSize: 22, fontWeight: 800, color: "#1B3A6B", letterSpacing: "-0.025em" }}>NAKTAL</span>
-              <span style={{ fontSize: 22, fontWeight: 800, color: "#60A5FA" }}>.AI</span>
+            <span style={{ display: "inline-flex", flexDirection: "column", alignItems: "flex-start", lineHeight: 1.1 }}>
+              <span style={{ fontSize: 24, fontWeight: 800, color: "#1B3A6B", letterSpacing: "-0.025em" }}>낙비</span>
+              <span style={{ fontSize: 11, color: "#94A3B8", marginTop: 2, fontWeight: 500 }}>
+                내 손안의 AI 낙찰비서
+              </span>
             </span>
           </div>
           <div style={{ fontSize: 20, fontWeight: 700, color: "#0F172A", marginBottom: 4 }}>회원가입</div>
-          <div style={{ fontSize: 13, color: "#64748B" }}>나라장터 입찰 분석 플랫폼</div>
+          <div style={{ fontSize: 13, color: "#64748B" }}>나라장터 공공입찰 AI 분석 서비스</div>
         </div>
 
         <form onSubmit={handleSignup} style={{ display: "flex", flexDirection: "column", gap: 14 }}>

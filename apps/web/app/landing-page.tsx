@@ -293,8 +293,13 @@ function Nav({ scrolled }: { scrolled: boolean }) {
             display: "grid", placeItems: "center", fontWeight: 900, fontSize: 15, letterSpacing: "-0.04em",
             transition: "background .25s, color .25s",
           }}>낙</div>
-          <span style={{ fontSize: 16, fontWeight: 800, letterSpacing: "-0.025em", color: scrolled ? "var(--fg-1)" : "#fff", transition: "color .25s" }}>
-            NAKTAL<span style={{ color: "var(--blue-400)" }}>.AI</span>
+          <span style={{ display: "inline-flex", flexDirection: "column", lineHeight: 1.1 }}>
+            <span style={{ fontSize: 17, fontWeight: 800, letterSpacing: "-0.025em", color: scrolled ? "var(--fg-1)" : "#fff", transition: "color .25s" }}>
+              낙비
+            </span>
+            <span style={{ fontSize: 10, fontWeight: 500, color: scrolled ? "var(--fg-3)" : "rgba(255,255,255,0.65)", marginTop: 1, transition: "color .25s" }}>
+              내 손안의 AI 낙찰비서
+            </span>
           </span>
         </Link>
         <nav style={{ display: "flex", alignItems: "center", gap: 6 }}>
@@ -793,7 +798,10 @@ function Footer() {
           <div>
             <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 18 }}>
               <div style={{ width: 28, height: 28, borderRadius: 7, background: "var(--navy-800)", color: "#fff", display: "grid", placeItems: "center", fontWeight: 900, fontSize: 14, letterSpacing: "-0.04em" }}>낙</div>
-              <span style={{ fontSize: 15, fontWeight: 800, color: "#fff", letterSpacing: "-0.02em" }}>NAKTAL<span style={{ color: "var(--blue-400)" }}>.AI</span></span>
+              <span style={{ display: "inline-flex", flexDirection: "column", lineHeight: 1.1 }}>
+                <span style={{ fontSize: 17, fontWeight: 800, color: "#fff", letterSpacing: "-0.02em" }}>낙비</span>
+                <span style={{ fontSize: 10, color: "rgba(255,255,255,0.55)", fontWeight: 500 }}>내 손안의 AI 낙찰비서</span>
+              </span>
             </div>
             <p style={{ fontSize: 13, lineHeight: 1.7, color: "rgba(255,255,255,0.55)", margin: "0 0 10px", maxWidth: 420 }}>
               공공입찰, 데이터로 답한다.
@@ -815,7 +823,7 @@ function Footer() {
           </div>
         </div>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 24, flexWrap: "wrap", paddingTop: 24 }}>
-          <div style={{ fontSize: 11.5, color: "rgba(255,255,255,0.4)" }}>© 2026 Naktal.ai · 주식회사 호라이즌. All rights reserved.</div>
+          <div style={{ fontSize: 11.5, color: "rgba(255,255,255,0.4)" }}>© 2026 낙비 · 주식회사 호라이즌. All rights reserved.</div>
           <div style={{ display: "flex", gap: 28, fontSize: 12.5 }}>
             {[["엔진", "#engines"], ["프로세스", "#flow"], ["신뢰성", "#trust"], ["FAQ", "#faq"]].map(([l, h]) => (
               <a key={h} href={h} style={{ color: "rgba(255,255,255,0.6)" }}>{l}</a>

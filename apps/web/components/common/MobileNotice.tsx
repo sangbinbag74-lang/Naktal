@@ -48,9 +48,9 @@ export function MobileNotice() {
           display: "grid", placeItems: "center",
           fontWeight: 900, fontSize: 21, letterSpacing: "-0.04em",
         }}>낙</span>
-        <span style={{ display: "inline-flex", alignItems: "baseline" }}>
-          <span style={{ fontSize: 26, fontWeight: 800, color: "#fff", letterSpacing: "-0.025em" }}>NAKTAL</span>
-          <span style={{ fontSize: 26, fontWeight: 800, color: "#60A5FA" }}>.AI</span>
+        <span style={{ display: "inline-flex", flexDirection: "column", alignItems: "flex-start", lineHeight: 1.1 }}>
+          <span style={{ fontSize: 28, fontWeight: 800, color: "#fff", letterSpacing: "-0.025em" }}>낙비</span>
+          <span style={{ fontSize: 11, color: "rgba(255,255,255,0.55)", marginTop: 2, fontWeight: 500 }}>내 손안의 AI 낙찰비서</span>
         </span>
       </div>
 
@@ -62,7 +62,7 @@ export function MobileNotice() {
       </div>
 
       <div style={{ fontSize: 14, color: "rgba(255,255,255,0.75)", lineHeight: 1.7, maxWidth: 320, marginBottom: 28 }}>
-        Naktal.ai 는 공공입찰 분석에 특화된 서비스로<br />
+        낙비는 공공입찰 분석에 특화된 서비스로<br />
         <strong style={{ color: "#fff" }}>PC 환경</strong> 에서 가장 정확하게 작동합니다.
       </div>
 

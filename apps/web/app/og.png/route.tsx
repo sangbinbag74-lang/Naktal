@@ -39,8 +39,9 @@ export async function GET() {
           >
             낙
           </div>
-          <div style={{ fontSize: 32, fontWeight: 800, letterSpacing: "-0.02em" }}>
-            NAKTAL<span style={{ color: "#60A5FA" }}>.AI</span>
+          <div style={{ display: "flex", flexDirection: "column", lineHeight: 1.1 }}>
+            <div style={{ fontSize: 38, fontWeight: 800, letterSpacing: "-0.02em" }}>낙비</div>
+            <div style={{ fontSize: 15, color: "#93C5FD", marginTop: 4, fontWeight: 500 }}>내 손안의 AI 낙찰비서</div>
           </div>
         </div>
 

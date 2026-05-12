@@ -1,0 +1,75 @@
+#!/bin/bash
+# 127월 재수집 op 병렬 가속 (사용자 명시 G2B rate 무제한)
+# Stage 2 잔여 34월 + Stage 3 127월 + verify + sentinel
+# 한 ym = op 병렬 (13 op 동시 호출) → 한 ym 1~5분 (sequential 25분 대비)
+set -u
+cd "/c/01 Ai/23 Naktal/naktal/apps/crawler"
+LOG=".recollect-cache/127months.log"
+
+ts() { date -u '+%Y-%m-%d %H:%M:%S UTC'; }
+
+run_step() {
+  local stage="$1" step="$2" ym="$3" script="$4"
+  local label="127m-fast-${stage}-${step}-${ym}"
+  echo "[$(ts)] [${label}] >>> ts-node ${script} --ym ${ym}" >> "$LOG"
+  local t0=$(date +%s)
+  pnpm exec ts-node "src/scripts/${script}" --ym "$ym" >> "$LOG" 2>&1
+  local code=$?
+  local elapsed=$(( $(date +%s) - t0 ))
+  echo "[$(ts)] [${label}] <<< exit=${code} (${elapsed}s)" >> "$LOG"
+  return $code
+}
+
+run_extras_ym() {
+  local ym="$1"
+  run_step extras collect "$ym" re-collect-extras-month.ts || return 1
+  run_step extras audit   "$ym" audit-extras.ts            || return 1
+  run_step extras load    "$ym" load-extras.ts             || return 1
+}
+
+run_bid_ym() {
+  local ym="$1"
+  run_step bid collect "$ym" re-collect-bid-month.ts || return 1
+  run_step bid audit   "$ym" audit-bid.ts            || return 1
+  run_step bid load    "$ym" load-bid.ts             || return 1
+}
+
+worker_extras() {
+  local id=$1; shift
+  echo "[$(ts)] === [fast-extras-worker-${id}] start (${#} ym) ===" >> "$LOG"
+  for ym in "$@"; do run_extras_ym "$ym"; done
+  echo "[$(ts)] === [fast-extras-worker-${id}] done ===" >> "$LOG"
+}
+
+worker_bid() {
+  local id=$1; shift
+  echo "[$(ts)] === [fast-bid-worker-${id}] start (${#} ym) ===" >> "$LOG"
+  for ym in "$@"; do run_bid_ym "$ym"; done
+  echo "[$(ts)] === [fast-bid-worker-${id}] done ===" >> "$LOG"
+}
+
+# Stage 2 (extras) 2 worker — 잔여 34월 (이미 적재된 93월 제외)
+echo "[$(ts)] === fast: 2단계 extras 2 worker (잔여 34월, op 병렬) ===" >> "$LOG"
+worker_extras 1 202101 202102 202103 202104 202105 202106 202107 202108 202109 202110 202111 202112 202201 202202 202203 202204 202206 &
+worker_extras 2 202207 202208 202209 202210 202211 202310 202311 202401 202404 202405 202409 202410 202411 202501 202502 202511 202601 &
+wait
+echo "[$(ts)] === fast: 2단계 extras 완료 ===" >> "$LOG"
+
+# Stage 3 (bid) 2 worker — 127월 평등 분할 (op 병렬)
+echo "[$(ts)] === fast: 3단계 bid 2 worker (127월, op 병렬) ===" >> "$LOG"
+worker_bid 1 200201 200202 200203 200204 200205 200206 200207 200208 200209 200210 200211 200212 200301 200302 200303 200305 200310 200311 200401 200402 200403 200409 200410 200501 200502 200503 200506 200508 200509 200601 200602 200603 200701 200702 200703 200704 200801 200802 200803 200901 201001 201007 201009 201010 201101 201102 201201 201301 201303 201401 201402 201403 201404 201407 201408 201411 201501 201502 201503 201504 201508 201509 201511 201601 &
+worker_bid 2 201602 201603 201606 201607 201608 201609 201610 201611 201701 201702 201711 201801 201810 201811 201901 201910 201911 202001 202002 202006 202007 202008 202009 202010 202011 202012 202101 202102 202103 202104 202105 202106 202107 202108 202109 202110 202111 202112 202201 202202 202203 202204 202205 202206 202207 202208 202209 202210 202211 202301 202310 202311 202401 202404 202405 202409 202410 202411 202501 202502 202510 202511 202601 &
+wait
+echo "[$(ts)] === fast: 3단계 bid 완료 ===" >> "$LOG"
+
+# Stage 4 verify
+echo "[$(ts)] === fast: 4단계 verify-totalcount 시작 ===" >> "$LOG"
+pnpm exec ts-node src/scripts/verify-totalcount.ts >> "$LOG" 2>&1
+verify_code=$?
+echo "[$(ts)] === fast: 4단계 verify 종료 exit=${verify_code} ===" >> "$LOG"
+
+# Sentinel
+cat > .recollect-cache/127months-done.flag <<EOF
+{"completedAt":"$(ts)","mode":"fast-2w-op-parallel","verifyExit":${verify_code}}
+EOF
+echo "[$(ts)] === fast: 전체 종료, sentinel 기록 ===" >> "$LOG"

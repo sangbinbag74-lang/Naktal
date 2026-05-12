@@ -29,8 +29,8 @@ export function NakLogo({ size = 28, variant = "dark", showText = true, textColo
         낙
       </span>
       {showText && (
-        <span style={{ fontSize: Math.round(size * 0.57), fontWeight: 800, letterSpacing: "-0.025em", color: textColor ?? "currentColor" }}>
-          NAKTAL<span style={{ color: "#60A5FA" }}>.AI</span>
+        <span style={{ fontSize: Math.round(size * 0.6), fontWeight: 800, letterSpacing: "-0.025em", color: textColor ?? "currentColor" }}>
+          낙비
         </span>
       )}
     </span>

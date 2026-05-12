@@ -92,15 +92,33 @@ async function fetchAll<T>(
   apiKey: string,
   label: string,
 ): Promise<T[]> {
-  const all: T[] = [];
-  let pageNo = 1;
-  while (true) {
-    const { items, totalCount } = await fetchPage<T>(op, params, pageNo, apiKey);
-    all.push(...items);
-    if (pageNo === 1) console.log(`    ${label}: ${totalCount}건`);
-    if (items.length < PAGE_SIZE) break;
-    pageNo++;
-    if (pageNo > 1000) { console.error(`    [${op}] 1000페이지 초과 중단`); break; }
+  // 페이지 batch(10) + retry 패턴 (검증된 가속, feedback_recollect_acceleration.md)
+  const r1 = await fetchPage<T>(op, params, 1, apiKey);
+  console.log(`    ${label}: ${r1.totalCount}건`);
+  if (r1.totalCount === 0 || r1.items.length === 0) return [];
+
+  const totalPages = Math.min(1000, Math.ceil(r1.totalCount / PAGE_SIZE));
+  const all: T[] = [...r1.items];
+  if (totalPages <= 1) return all;
+
+  const BATCH = 7;
+  for (let batchStart = 2; batchStart <= totalPages; batchStart += BATCH) {
+    const batchPages: number[] = [];
+    for (let p = batchStart; p < batchStart + BATCH && p <= totalPages; p++) batchPages.push(p);
+    const batchResults = await Promise.all(batchPages.map(async (p) => {
+      try {
+        return await fetchPage<T>(op, params, p, apiKey);
+      } catch (e) {
+        await new Promise((rs) => setTimeout(rs, 1000));
+        try {
+          return await fetchPage<T>(op, params, p, apiKey);
+        } catch (e2) {
+          console.error(`    [${op}] page ${p} 2회 실패: ${(e2 as Error).message}`);
+          return { items: [] as T[], totalCount: r1.totalCount };
+        }
+      }
+    }));
+    for (const r of batchResults) all.push(...r.items);
   }
   return all;
 }
@@ -127,38 +145,72 @@ async function upsertOpeningByAnn(items: OpengItem[], client: any): Promise<void
     arr.push(it);
     byAnn.set(it.bidNtceNo, arr);
   }
+  if (byAnn.size === 0) return;
+
+  const records: Array<{
+    ann_id: string;
+    prdprc_list: Array<{ order: number; amt: number; raw: OpengItem }>;
+    opening_date: string | null;
+    bid_count: number;
+    sucsfbid_rate: number | null;
+    raw_json: OpengItem[];
+  }> = [];
   for (const [annId, arr] of byAnn) {
     const first = arr[0];
-    const prdprcList = arr
-      .map((x) => ({
-        order: parseInt(String(x.rlOpengRank ?? x.prdprcList?.[0]?.prdprcOrd ?? "0"), 10) || 0,
-        amt: parseInt(String(x.sucsfbidAmt ?? "").replace(/[^0-9]/g, ""), 10) || 0,
-        raw: x,
-      }));
+    const prdprcList = arr.map((x) => ({
+      order: parseInt(String(x.rlOpengRank ?? x.prdprcList?.[0]?.prdprcOrd ?? "0"), 10) || 0,
+      amt: parseInt(String(x.sucsfbidAmt ?? "").replace(/[^0-9]/g, ""), 10) || 0,
+      raw: x,
+    }));
     const dt = first.rlOpengDt ?? first.opengDt;
-    const openingDate = dt ? new Date(dt.replace(" ", "T") + "+09:00") : null;
+    const openingDate = dt ? new Date(dt.replace(" ", "T") + "+09:00").toISOString() : null;
     const sucsfbidRate = parseFloat(String(first.sucsfbidLwltRate ?? "").replace(/[^0-9.]/g, "")) || null;
+    records.push({
+      ann_id: annId,
+      prdprc_list: prdprcList,
+      opening_date: openingDate,
+      bid_count: arr.length,
+      sucsfbid_rate: sucsfbidRate,
+      raw_json: arr,
+    });
+  }
 
+  const CHUNK = 500;
+  for (let i = 0; i < records.length; i += CHUNK) {
+    const slice = records.slice(i, i + CHUNK);
     await client.query(
       `
-      INSERT INTO "BidOpeningDetail" (id, "annId", "prdprcList", "selPrdprcIdx", "openingDate", "bidCount", "sucsfbidRate", "rawJson", "createdAt", "updatedAt")
-      VALUES (gen_random_uuid()::text, $1, $2::jsonb, '{}'::int[], $3, $4, $5, $6::jsonb, NOW(), NOW())
+      INSERT INTO "BidOpeningDetail"
+        (id, "annId", "prdprcList", "selPrdprcIdx", "openingDate", "bidCount", "sucsfbidRate", "rawJson", "createdAt", "updatedAt")
+      SELECT
+        gen_random_uuid()::text,
+        v.ann_id,
+        v.prdprc_list,
+        '{}'::int[],
+        v.opening_date::timestamptz,
+        v.bid_count,
+        v.sucsfbid_rate,
+        v.raw_json,
+        NOW(), NOW()
+      FROM jsonb_to_recordset($1::jsonb) AS v(
+        ann_id text,
+        prdprc_list jsonb,
+        opening_date text,
+        bid_count int,
+        sucsfbid_rate float8,
+        raw_json jsonb
+      )
       ON CONFLICT ("annId") DO UPDATE SET
-        "prdprcList" = EXCLUDED."prdprcList",
+        "prdprcList" = CASE
+          WHEN jsonb_array_length(EXCLUDED."prdprcList") > jsonb_array_length("BidOpeningDetail"."prdprcList")
+          THEN EXCLUDED."prdprcList" ELSE "BidOpeningDetail"."prdprcList" END,
         "openingDate" = COALESCE(EXCLUDED."openingDate", "BidOpeningDetail"."openingDate"),
-        "bidCount" = EXCLUDED."bidCount",
+        "bidCount" = GREATEST(EXCLUDED."bidCount", "BidOpeningDetail"."bidCount"),
         "sucsfbidRate" = COALESCE(EXCLUDED."sucsfbidRate", "BidOpeningDetail"."sucsfbidRate"),
         "rawJson" = EXCLUDED."rawJson",
         "updatedAt" = NOW()
       `,
-      [
-        annId,
-        JSON.stringify(prdprcList),
-        openingDate,
-        arr.length,
-        sucsfbidRate,
-        JSON.stringify(arr),
-      ],
+      [JSON.stringify(slice)],
     );
   }
 }
@@ -212,13 +264,16 @@ async function main() {
 
     const client = await pool.connect();
     try {
-      for (const op of OPS) {
-        const items = await fetchAll<OpengItem>(
+      // 4 op 병렬 fetch (G2B rate 무제한, 2026-05-06)
+      const opResults = await Promise.all(OPS.map((op) =>
+        fetchAll<OpengItem>(
           op,
           { inqryBgnDt: bgn, inqryEndDt: end },
           apiKey,
           op.replace("getOpengResultListInfo", ""),
-        );
+        ),
+      ));
+      for (const items of opResults) {
         if (items.length > 0) await upsertOpeningByAnn(items, client);
       }
     } catch (e) {

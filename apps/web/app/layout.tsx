@@ -17,13 +17,14 @@ export const viewport: Viewport = {
 export const metadata: Metadata = {
   metadataBase: new URL("https://naktal.me"),
   title: {
-    default: "Naktal.ai — 나라장터 입찰 AI · 사정율·복수예가 번호 예측",
-    template: "%s | Naktal.ai",
+    default: "낙비 — 내 손안의 AI 낙찰비서 · 나라장터 입찰 분석",
+    template: "%s | 낙비",
   },
   description:
-    "공공입찰, 데이터로 답한다. 나라장터 공고를 머신러닝이 단 0.5초 만에 분석합니다. " +
+    "낙비 — 내 손안의 AI 낙찰비서. 나라장터 공고를 머신러닝이 단 0.5초 만에 분석합니다. " +
     "사정율 예측, 복수예가 번호 추천, 공고문 자격 자동 분석, 낙찰 결과 추적까지 한 번에.",
   keywords: [
+    "낙비", "낙비AI", "낙찰비서",
     "나라장터", "나라장터 입찰", "조달청 입찰", "공공입찰", "공공입찰 AI",
     "입찰분석", "입찰 분석 AI", "AI 입찰", "입찰 사이트",
     "복수예가", "복수예가 번호", "복수예가 추천", "복수예가 AI",
@@ -32,29 +33,29 @@ export const metadata: Metadata = {
     "투찰가", "투찰금액", "최적 투찰가", "투찰 추천",
     "적격심사", "적격심사 계산기",
     "공고문 분석", "공고 자격 분석", "지역제한",
-    "Naktal", "낙찰AI", "낙찰ai",
+    "낙찰AI", "낙찰ai",
   ],
   authors: [{ name: "주식회사 호라이즌" }],
-  creator: "Naktal.ai",
+  creator: "낙비",
   publisher: "주식회사 호라이즌",
   category: "business",
-  applicationName: "Naktal.ai",
+  applicationName: "낙비",
   referrer: "origin-when-cross-origin",
   alternates: {
     canonical: "https://naktal.me",
     languages: { "ko-KR": "https://naktal.me" },
     types: {
       "application/rss+xml": [
-        { url: "https://naktal.me/rss.xml", title: "Naktal.ai RSS" },
+        { url: "https://naktal.me/rss.xml", title: "낙비 RSS" },
       ],
     },
   },
   openGraph: {
-    title: "Naktal.ai — 공공입찰, 데이터로 답한다",
+    title: "낙비 — 내 손안의 AI 낙찰비서",
     description:
       "나라장터 공고 한 건을 머신러닝이 단 0.5초 만에 분석. 사정율 · 복수예가 번호 · 자격 · 결과까지 한 번에.",
     url: "https://naktal.me",
-    siteName: "Naktal.ai",
+    siteName: "낙비",
     locale: "ko_KR",
     type: "website",
     images: [
@@ -62,13 +63,13 @@ export const metadata: Metadata = {
         url: "/og.png",
         width: 1200,
         height: 630,
-        alt: "Naktal.ai — 공공입찰, 데이터로 답한다",
+        alt: "낙비 — 내 손안의 AI 낙찰비서",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "Naktal.ai — 공공입찰, 데이터로 답한다",
+    title: "낙비 — 내 손안의 AI 낙찰비서",
     description: "나라장터 공고를 AI가 0.5초 만에 분석합니다.",
     images: ["/og.png"],
   },
@@ -108,7 +109,7 @@ export default function RootLayout({
         "@type": "Organization",
         "@id": "https://naktal.me/#org",
         name: "주식회사 호라이즌",
-        alternateName: "Naktal.ai",
+        alternateName: "낙비",
         url: "https://naktal.me",
         logo: "https://naktal.me/og.png",
         description: "나라장터 공공입찰을 AI 머신러닝으로 분석하는 서비스",
@@ -125,14 +126,14 @@ export default function RootLayout({
         "@type": "WebSite",
         "@id": "https://naktal.me/#site",
         url: "https://naktal.me",
-        name: "Naktal.ai",
-        description: "공공입찰, 데이터로 답한다",
+        name: "낙비",
+        description: "내 손안의 AI 낙찰비서 — 공공입찰, 데이터로 답한다",
         inLanguage: "ko-KR",
         publisher: { "@id": "https://naktal.me/#org" },
       },
       {
         "@type": "SoftwareApplication",
-        name: "Naktal.ai",
+        name: "낙비",
         applicationCategory: "BusinessApplication",
         operatingSystem: "Web",
         url: "https://naktal.me",

@@ -49,7 +49,8 @@ function buildEmailHtml(ann: Announcement, bizName: string): string {
   const deadline = new Date(ann.deadline).toLocaleDateString("ko-KR");
   return `
 <div style="font-family:sans-serif;max-width:600px;margin:auto;padding:24px">
-  <h1 style="color:#1E3A5F;font-size:20px;margin-bottom:4px">NAKTAL</h1>
+  <h1 style="color:#1E3A5F;font-size:20px;margin-bottom:4px">낙비</h1>
+  <p style="color:#94A3B8;font-size:11px;margin:0 0 8px">내 손안의 AI 낙찰비서</p>
   <p style="color:#6b7280;font-size:14px;margin-top:0">${bizName}님을 위한 신규 공고 알림</p>
   <hr style="border-color:#e5e7eb;margin:16px 0"/>
   <h2 style="font-size:16px;color:#111827">${ann.title}</h2>
@@ -63,7 +64,7 @@ function buildEmailHtml(ann: Announcement, bizName: string): string {
     <a href="${SITE_URL}/announcements/${ann.id}" style="display:inline-block;padding:10px 20px;background:#1E3A5F;color:#fff;border-radius:6px;text-decoration:none;font-size:14px">공고 상세 보기</a>
   </div>
   <p style="color:#9ca3af;font-size:12px;margin-top:24px">
-    이 메일은 NAKTAL 알림 설정에 따라 발송되었습니다.<br/>
+    이 메일은 낙비 알림 설정에 따라 발송되었습니다.<br/>
     알림 설정 변경: ${SITE_URL}/alerts
   </p>
 </div>`;
@@ -111,7 +112,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     for (const ann of matched.slice(0, 5)) {
       try {
         await resend.emails.send({
-          from: "NAKTAL <noreply@naktal.me>",
+          from: "낙비 <noreply@naktal.me>",
           to: user.notifyEmail,
           subject: `[낙찰AI] 새 공고: ${ann.title}`,
           html: buildEmailHtml(ann, user.bizName),

@@ -1,6 +1,6 @@
 {
-  "name": "Naktal.ai — 공공입찰, 데이터로 답한다",
-  "short_name": "Naktal.ai",
+  "name": "낙비 — 내 손안의 AI 낙찰비서",
+  "short_name": "낙비",
   "description": "나라장터 공고를 머신러닝이 0.5초 만에 분석",
   "start_url": "/dashboard",
   "display": "standalone",

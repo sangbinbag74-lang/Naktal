@@ -49,7 +49,7 @@ const OP_TO_CATEGORY: Record<string, string> = {
 };
 
 // ─── G2B 항목 → AnnouncementRow 변환 ─────────────────────────────────────────
-function mapToRow(item: G2BAnnouncement, operation: string): AnnouncementRow | null {
+export function mapToRow(item: G2BAnnouncement, operation: string): AnnouncementRow | null {
   try {
     const konepsId = item.bidNtceNo?.trim();
     const title    = item.bidNtceNm?.trim();
@@ -137,50 +137,79 @@ export async function fetchAnnouncements(
 
   const results: AnnouncementRow[] = [];
 
-  // 3개 타입(용역/시설공사/물품) 순회 — 낙찰결과 수집과 동일 패턴
-  for (const operation of NTCE_OPS) {
-    let page = 1;
-    while (page <= maxPages) {
-      let items: G2BAnnouncement[];
-      let totalCount: number;
-      try {
-        ({ items, totalCount } = await fetchAnnouncementPage({
-          pageNo: page,
-          numOfRows,
-          inqryDiv: "1",
-          inqryBgnDt,
-          inqryEndDt,
-          operation,
-        }));
-      } catch (e) {
-        if (e instanceof G2BCode07Error) {
-          // page>1 + totalCount 자연 종료 못한 경우만 도달 → 페이지 끝으로 처리
-          if (page > 1) {
-            logger.info(`  [${operation}] page=${page} resultCode=07 → 정상 페이지 끝`);
-            break;
-          }
-          // page=1 07 → 한도/장애 의심 → 호출자(bulk-import) 전파
-          logger.warn(`  [${operation}] page=1 resultCode=07 — 한도/장애 의심, 호출자 전파`);
-          throw e;
-        }
+  // op 병렬 + 페이지 batch(10) 패턴 (검증된 가속, feedback_recollect_acceleration.md)
+  async function fetchOp(operation: typeof NTCE_OPS[number]): Promise<AnnouncementRow[]> {
+    const opResults: AnnouncementRow[] = [];
+
+    // 1차: page 1 호출로 totalCount 확보
+    let r1: { items: G2BAnnouncement[]; totalCount: number };
+    try {
+      r1 = await fetchAnnouncementPage({
+        pageNo: 1, numOfRows, inqryDiv: "1", inqryBgnDt, inqryEndDt, operation,
+      });
+    } catch (e) {
+      if (e instanceof G2BCode07Error) {
+        logger.warn(`  [${operation}] page=1 resultCode=07 — 한도/장애 의심, 호출자 전파`);
         throw e;
       }
-
-      if (items.length === 0) break;
-
-      let saved = 0;
-      for (const item of items) {
-        const row = mapToRow(item, operation);
-        if (row) { results.push(row); saved++; }
-      }
-
-      logger.info(`  [${operation}] 페이지 ${page}: ${items.length}건 수신 / ${saved}건 변환 (누적 ${results.length} / 총 ${totalCount})`);
-
-      if (page * numOfRows >= totalCount) break;
-      page++;
-      await new Promise((r) => setTimeout(r, 300)); // API rate limit 방지
+      throw e;
     }
+
+    if (r1.items.length === 0) return opResults;
+
+    // page 1 결과 처리
+    for (const item of r1.items) {
+      const row = mapToRow(item, operation);
+      if (row) opResults.push(row);
+    }
+    logger.info(`  [${operation}] page=1: ${r1.items.length}건 (총 ${r1.totalCount})`);
+
+    const totalPages = Math.min(maxPages, Math.ceil(r1.totalCount / numOfRows));
+    if (totalPages <= 1) return opResults;
+
+    // page 2~totalPages: batch(10) 병렬
+    const BATCH = 10;
+    for (let batchStart = 2; batchStart <= totalPages; batchStart += BATCH) {
+      const batchPages: number[] = [];
+      for (let p = batchStart; p < batchStart + BATCH && p <= totalPages; p++) batchPages.push(p);
+      const batchResults = await Promise.all(batchPages.map(async (p) => {
+        try {
+          return await fetchAnnouncementPage({
+            pageNo: p, numOfRows, inqryDiv: "1", inqryBgnDt, inqryEndDt, operation,
+          });
+        } catch (e) {
+          // page>1 의 G2BCode07 = 자연 종료 신호로 처리
+          if (e instanceof G2BCode07Error) return { items: [] as G2BAnnouncement[], totalCount: r1.totalCount };
+          // 1회 retry
+          await new Promise((rs) => setTimeout(rs, 1500));
+          try {
+            return await fetchAnnouncementPage({
+              pageNo: p, numOfRows, inqryDiv: "1", inqryBgnDt, inqryEndDt, operation,
+            });
+          } catch (e2) {
+            logger.error(`  [${operation}] page=${p} 2회 실패: ${(e2 as Error).message}`);
+            return { items: [] as G2BAnnouncement[], totalCount: r1.totalCount };
+          }
+        }
+      }));
+      for (const r of batchResults) {
+        for (const item of r.items) {
+          const row = mapToRow(item, operation);
+          if (row) opResults.push(row);
+        }
+      }
+    }
+    logger.info(`  [${operation}] 완료: ${opResults.length}건`);
+    return opResults;
   }
+
+  // 3 op 병렬 (Promise.all)
+  const opResults = await Promise.all(NTCE_OPS.map(op => fetchOp(op).catch(e => {
+    if (e instanceof G2BCode07Error) throw e; // 한도 도달은 호출자 전파
+    logger.error(`  [${op}] op 전체 실패: ${(e as Error).message}`);
+    return [];
+  })));
+  for (const opR of opResults) results.push(...opR);
 
   logger.info(`G2B 공고 수집 완료: ${results.length}건`);
   return results;

@@ -74,8 +74,9 @@ export default async function DashboardLayout({
               display: "grid", placeItems: "center",
               fontWeight: 900, fontSize: 13, letterSpacing: "-0.04em",
             }}>낙</span>
-            <span style={{ fontSize: 15, fontWeight: 800, color: "#1B3A6B", letterSpacing: "-0.025em" }}>
-              NAKTAL<span style={{ color: "#60A5FA" }}>.AI</span>
+            <span style={{ display: "inline-flex", flexDirection: "column", lineHeight: 1.15 }}>
+              <span style={{ fontSize: 15, fontWeight: 800, color: "#1B3A6B", letterSpacing: "-0.025em" }}>낙비</span>
+              <span style={{ fontSize: 9, color: "#94A3B8", fontWeight: 500 }}>내 손안의 AI 낙찰비서</span>
             </span>
           </span>
         </div>

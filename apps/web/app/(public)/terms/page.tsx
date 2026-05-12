@@ -76,7 +76,7 @@ export default function TermsPage() {
   return (
     <div style={{ minHeight: "100vh", background: "#F0F2F5" }}>
       <header style={{ background: "#fff", borderBottom: "1px solid #E8ECF2", height: 60, display: "flex", alignItems: "center", padding: "0 32px", justifyContent: "space-between" }}>
-        <Link href="/" style={{ fontSize: 18, fontWeight: 800, color: "#1B3A6B", textDecoration: "none" }}>NAKTAL.AI</Link>
+        <Link href="/" style={{ fontSize: 18, fontWeight: 800, color: "#1B3A6B", textDecoration: "none" }}>낙비</Link>
         <Link href="/login" style={{ fontSize: 14, color: "#374151", textDecoration: "none" }}>로그인</Link>
       </header>
 
@@ -95,7 +95,7 @@ export default function TermsPage() {
       </main>
 
       <footer style={{ textAlign: "center", padding: "32px", color: "#94A3B8", fontSize: 12 }}>
-        © 2025 Naktal.ai · <Link href="/privacy" style={{ color: "#94A3B8" }}>개인정보처리방침</Link>
+        © 2025 낙비 · <Link href="/privacy" style={{ color: "#94A3B8" }}>개인정보처리방침</Link>
       </footer>
     </div>
   );

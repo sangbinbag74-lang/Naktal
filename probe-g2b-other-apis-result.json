@@ -1,0 +1,78 @@
+{
+  "generatedAt": "2026-05-04T09:20:18.007Z",
+  "results": [
+    {
+      "name": "getBidPblancListInfoCnstwkSpci",
+      "params": "bidNtceNo=20240301008&bidNtceOrd=000&type=json",
+      "http": 404,
+      "code": "??",
+      "msg": "?",
+      "snippet": "API not found\n"
+    },
+    {
+      "name": "getBidPblancListInfoServcSpci",
+      "params": "bidNtceNo=20240301008&bidNtceOrd=000&type=json",
+      "http": 404,
+      "code": "??",
+      "msg": "?",
+      "snippet": "API not found\n"
+    },
+    {
+      "name": "getBidPblancListInfoThngSpci",
+      "params": "bidNtceNo=20240301008&bidNtceOrd=000&type=json",
+      "http": 404,
+      "code": "??",
+      "msg": "?",
+      "snippet": "API not found\n"
+    },
+    {
+      "name": "getBidPblancListInfo",
+      "params": "inqryDiv=1&inqryBgnDt=202403010000&inqryEndDt=202403012359&numOfRows=1&pageNo=1&",
+      "http": 404,
+      "code": "??",
+      "msg": "?",
+      "snippet": "API not found\n"
+    },
+    {
+      "name": "getBidPblancListInfoCnstwk",
+      "params": "inqryDiv=4&inqryBgnDt=202403010000&inqryEndDt=202403312359&numOfRows=1&pageNo=1&",
+      "http": 200,
+      "code": "07",
+      "msg": "입력범위값 초과 에러",
+      "snippet": "{\"nkoneps.com.response.ResponseError\": {\n  \"header\": {\n    \"resultCode\": \"07\",\n    \"resultMsg\": \"입력범위값 초과 에러\"\n  }\n}}"
+    },
+    {
+      "name": "getBidPblancListInfoCnstwk",
+      "params": "inqryDiv=5&inqryBgnDt=202403010000&inqryEndDt=202403312359&numOfRows=1&pageNo=1&",
+      "http": 200,
+      "code": "07",
+      "msg": "입력범위값 초과 에러",
+      "snippet": "{\"nkoneps.com.response.ResponseError\": {\n  \"header\": {\n    \"resultCode\": \"07\",\n    \"resultMsg\": \"입력범위값 초과 에러\"\n  }\n}}"
+    },
+    {
+      "name": "getBidPblancListInfoCnstwk",
+      "params": "inqryDiv=2&ntceInsttCd=A100002&inqryBgnDt=202403010000&inqryEndDt=202403312359&n",
+      "http": 200,
+      "code": "08",
+      "msg": "필수값 입력 에러",
+      "snippet": "{\"nkoneps.com.response.ResponseError\": {\n  \"header\": {\n    \"resultCode\": \"08\",\n    \"resultMsg\": \"필수값 입력 에러\"\n  }\n}}"
+    },
+    {
+      "name": "getBidPblancListInfoCnstwk",
+      "params": "inqryDiv=2&dminsttCd=A100002&inqryBgnDt=202403010000&inqryEndDt=202403312359&num",
+      "http": 200,
+      "code": "08",
+      "msg": "필수값 입력 에러",
+      "snippet": "{\"nkoneps.com.response.ResponseError\": {\n  \"header\": {\n    \"resultCode\": \"08\",\n    \"resultMsg\": \"필수값 입력 에러\"\n  }\n}}"
+    },
+    {
+      "name": "getBidPblancListInfoCnstwk",
+      "params": "inqryDiv=2&bidNtceNo=20240301008&numOfRows=1&pageNo=1&type=json",
+      "http": 200,
+      "code": "00",
+      "msg": "정상",
+      "totalCount": 1,
+      "snippet": "{\"response\": {\n  \"header\": {\n    \"resultCode\": \"00\",\n    \"resultMsg\": \"정상\"\n  },\n  \"body\": {\n    \"items\": [\n      {\n        \"bidNtceNo\": \"20240301008\",\n        \"bidNtceOrd\": \"000\",\n        \"reNtceYn\": "
+    }
+  ]
+}

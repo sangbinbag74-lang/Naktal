@@ -28,7 +28,7 @@ function buildWonHtml(d: WonData): string {
   return `
 <div style="font-family:sans-serif;max-width:600px;margin:auto;padding:24px;background:#f8fafc">
   <div style="background:#fff;border-radius:12px;padding:28px;border:1px solid #e8ecf2">
-    <h1 style="color:#1B3A6B;font-size:20px;margin:0 0 4px">Naktal.ai</h1>
+    <h1 style="color:#1B3A6B;font-size:20px;margin:0 0 4px">낙비</h1>
     <p style="color:#64748B;font-size:13px;margin:0 0 20px">${d.bizName}님, 낙찰을 진심으로 축하드립니다!</p>
 
     <div style="background:linear-gradient(135deg,#1B3A6B,#2563EB);border-radius:10px;padding:20px;text-align:center;margin-bottom:20px">
@@ -70,7 +70,7 @@ function buildWonHtml(d: WonData): string {
     <a href="${SITE_URL}/contracts" style="display:block;text-align:center;padding:14px;background:#1B3A6B;color:#fff;border-radius:10px;text-decoration:none;font-size:14px;font-weight:700">계약 서류 확인하기</a>
 
     <p style="color:#9CA3AF;font-size:11px;margin-top:20px;text-align:center">
-      이 메일은 Naktal.ai 서비스 이용 계약에 따라 자동 발송되었습니다.
+      이 메일은 낙비 서비스 이용 계약에 따라 자동 발송되었습니다.
     </p>
   </div>
 </div>`;
@@ -80,7 +80,7 @@ function buildLostHtml(d: LostData): string {
   return `
 <div style="font-family:sans-serif;max-width:600px;margin:auto;padding:24px;background:#f8fafc">
   <div style="background:#fff;border-radius:12px;padding:28px;border:1px solid #e8ecf2">
-    <h1 style="color:#1B3A6B;font-size:20px;margin:0 0 4px">Naktal.ai</h1>
+    <h1 style="color:#1B3A6B;font-size:20px;margin:0 0 4px">낙비</h1>
     <p style="color:#64748B;font-size:13px;margin:0 0 20px">${d.bizName}님께 결과를 안내드립니다.</p>
 
     <div style="background:#F1F5F9;border-radius:10px;padding:20px;text-align:center;margin-bottom:20px">
@@ -106,7 +106,7 @@ function buildLostHtml(d: LostData): string {
     <a href="${SITE_URL}/announcements" style="display:block;text-align:center;padding:14px;background:#1B3A6B;color:#fff;border-radius:10px;text-decoration:none;font-size:14px;font-weight:700">다음 공고 분석하기</a>
 
     <p style="color:#9CA3AF;font-size:11px;margin-top:20px;text-align:center">
-      이 메일은 Naktal.ai 서비스 이용 계약에 따라 자동 발송되었습니다.
+      이 메일은 낙비 서비스 이용 계약에 따라 자동 발송되었습니다.
     </p>
   </div>
 </div>`;
@@ -151,8 +151,8 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   const title = req.title as string;
 
   const subject = isWon
-    ? `[Naktal.ai] 🎉 낙찰을 축하드립니다! - ${title}`
-    : `[Naktal.ai] 아쉽게도 이번엔 미낙찰입니다 - ${title}`;
+    ? `[낙비] 🎉 낙찰을 축하드립니다! - ${title}`
+    : `[낙비] 아쉽게도 이번엔 미낙찰입니다 - ${title}`;
 
   const html = isWon
     ? buildWonHtml({
@@ -172,7 +172,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
   try {
     await resend.emails.send({
-      from: "NAKTAL <noreply@naktal.me>",
+      from: "낙비 <noreply@naktal.me>",
       to: user.notifyEmail as string,
       subject,
       html,

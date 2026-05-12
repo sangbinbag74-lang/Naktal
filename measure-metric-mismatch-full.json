@@ -1,0 +1,5432 @@
+{
+  "generatedAt": "2026-05-04T09:38:24.609Z",
+  "fullBaseline": 0.7947795717472322,
+  "samples12Dec": 0.7835,
+  "sampleStats": {
+    "totalAll": 6707534,
+    "sameAll": 5331011,
+    "prevAll": 1351891,
+    "olderAll": 20787,
+    "futureAll": 3844,
+    "nullAll": 1
+  },
+  "monthlyRates": [
+    {
+      "ym": "2000-12",
+      "total": 1,
+      "same_month": 0,
+      "prev_month": 0,
+      "older": 0,
+      "future": 1,
+      "nul": 0
+    },
+    {
+      "ym": "2001-05",
+      "total": 3,
+      "same_month": 0,
+      "prev_month": 0,
+      "older": 0,
+      "future": 3,
+      "nul": 0
+    },
+    {
+      "ym": "2001-06",
+      "total": 2,
+      "same_month": 0,
+      "prev_month": 0,
+      "older": 0,
+      "future": 2,
+      "nul": 0
+    },
+    {
+      "ym": "2001-07",
+      "total": 1,
+      "same_month": 0,
+      "prev_month": 0,
+      "older": 0,
+      "future": 1,
+      "nul": 0
+    },
+    {
+      "ym": "2001-08",
+      "total": 2,
+      "same_month": 0,
+      "prev_month": 0,
+      "older": 0,
+      "future": 2,
+      "nul": 0
+    },
+    {
+      "ym": "2001-09",
+      "total": 2,
+      "same_month": 0,
+      "prev_month": 0,
+      "older": 0,
+      "future": 2,
+      "nul": 0
+    },
+    {
+      "ym": "2001-10",
+      "total": 1,
+      "same_month": 0,
+      "prev_month": 0,
+      "older": 0,
+      "future": 1,
+      "nul": 0
+    },
+    {
+      "ym": "2001-11",
+      "total": 4,
+      "same_month": 0,
+      "prev_month": 0,
+      "older": 0,
+      "future": 4,
+      "nul": 0
+    },
+    {
+      "ym": "2001-12",
+      "total": 5,
+      "same_month": 0,
+      "prev_month": 0,
+      "older": 0,
+      "future": 5,
+      "nul": 0
+    },
+    {
+      "ym": "2002-01",
+      "total": 579,
+      "same_month": 575,
+      "prev_month": 0,
+      "older": 0,
+      "future": 4,
+      "nul": 0
+    },
+    {
+      "ym": "2002-02",
+      "total": 1726,
+      "same_month": 1115,
+      "prev_month": 606,
+      "older": 0,
+      "future": 5,
+      "nul": 0
+    },
+    {
+      "ym": "2002-03",
+      "total": 2792,
+      "same_month": 1982,
+      "prev_month": 795,
+      "older": 5,
+      "future": 10,
+      "nul": 0
+    },
+    {
+      "ym": "2002-04",
+      "total": 3497,
+      "same_month": 2219,
+      "prev_month": 1256,
+      "older": 6,
+      "future": 16,
+      "nul": 0
+    },
+    {
+      "ym": "2002-05",
+      "total": 3465,
+      "same_month": 2255,
+      "prev_month": 1185,
+      "older": 12,
+      "future": 13,
+      "nul": 0
+    },
+    {
+      "ym": "2002-06",
+      "total": 2865,
+      "same_month": 1664,
+      "prev_month": 1175,
+      "older": 11,
+      "future": 15,
+      "nul": 0
+    },
+    {
+      "ym": "2002-07",
+      "total": 3373,
+      "same_month": 2289,
+      "prev_month": 1060,
+      "older": 11,
+      "future": 13,
+      "nul": 0
+    },
+    {
+      "ym": "2002-08",
+      "total": 2885,
+      "same_month": 1777,
+      "prev_month": 1096,
+      "older": 4,
+      "future": 8,
+      "nul": 0
+    },
+    {
+      "ym": "2002-09",
+      "total": 2944,
+      "same_month": 2089,
+      "prev_month": 842,
+      "older": 2,
+      "future": 11,
+      "nul": 0
+    },
+    {
+      "ym": "2002-10",
+      "total": 5350,
+      "same_month": 3956,
+      "prev_month": 1355,
+      "older": 22,
+      "future": 17,
+      "nul": 0
+    },
+    {
+      "ym": "2002-11",
+      "total": 6233,
+      "same_month": 4390,
+      "prev_month": 1831,
+      "older": 5,
+      "future": 7,
+      "nul": 0
+    },
+    {
+      "ym": "2002-12",
+      "total": 7270,
+      "same_month": 5009,
+      "prev_month": 2238,
+      "older": 8,
+      "future": 15,
+      "nul": 0
+    },
+    {
+      "ym": "2003-01",
+      "total": 3101,
+      "same_month": 2838,
+      "prev_month": 256,
+      "older": 0,
+      "future": 7,
+      "nul": 0
+    },
+    {
+      "ym": "2003-02",
+      "total": 5379,
+      "same_month": 4217,
+      "prev_month": 1153,
+      "older": 3,
+      "future": 6,
+      "nul": 0
+    },
+    {
+      "ym": "2003-03",
+      "total": 9051,
+      "same_month": 7113,
+      "prev_month": 1921,
+      "older": 6,
+      "future": 11,
+      "nul": 0
+    },
+    {
+      "ym": "2003-04",
+      "total": 10533,
+      "same_month": 7562,
+      "prev_month": 2950,
+      "older": 11,
+      "future": 10,
+      "nul": 0
+    },
+    {
+      "ym": "2003-05",
+      "total": 8701,
+      "same_month": 6029,
+      "prev_month": 2660,
+      "older": 8,
+      "future": 4,
+      "nul": 0
+    },
+    {
+      "ym": "2003-06",
+      "total": 9193,
+      "same_month": 6369,
+      "prev_month": 2797,
+      "older": 14,
+      "future": 13,
+      "nul": 0
+    },
+    {
+      "ym": "2003-07",
+      "total": 9770,
+      "same_month": 7093,
+      "prev_month": 2647,
+      "older": 19,
+      "future": 11,
+      "nul": 0
+    },
+    {
+      "ym": "2003-08",
+      "total": 8057,
+      "same_month": 5459,
+      "prev_month": 2577,
+      "older": 15,
+      "future": 6,
+      "nul": 0
+    },
+    {
+      "ym": "2003-09",
+      "total": 7734,
+      "same_month": 5240,
+      "prev_month": 2474,
+      "older": 14,
+      "future": 6,
+      "nul": 0
+    },
+    {
+      "ym": "2003-10",
+      "total": 10773,
+      "same_month": 8269,
+      "prev_month": 2490,
+      "older": 11,
+      "future": 3,
+      "nul": 0
+    },
+    {
+      "ym": "2003-11",
+      "total": 11195,
+      "same_month": 7864,
+      "prev_month": 3319,
+      "older": 8,
+      "future": 4,
+      "nul": 0
+    },
+    {
+      "ym": "2003-12",
+      "total": 15392,
+      "same_month": 11647,
+      "prev_month": 3713,
+      "older": 24,
+      "future": 8,
+      "nul": 0
+    },
+    {
+      "ym": "2004-01",
+      "total": 4348,
+      "same_month": 3891,
+      "prev_month": 443,
+      "older": 11,
+      "future": 3,
+      "nul": 0
+    },
+    {
+      "ym": "2004-02",
+      "total": 8674,
+      "same_month": 6829,
+      "prev_month": 1833,
+      "older": 6,
+      "future": 6,
+      "nul": 0
+    },
+    {
+      "ym": "2004-03",
+      "total": 14020,
+      "same_month": 11172,
+      "prev_month": 2820,
+      "older": 14,
+      "future": 14,
+      "nul": 0
+    },
+    {
+      "ym": "2004-04",
+      "total": 13920,
+      "same_month": 10210,
+      "prev_month": 3694,
+      "older": 9,
+      "future": 7,
+      "nul": 0
+    },
+    {
+      "ym": "2004-05",
+      "total": 11637,
+      "same_month": 8110,
+      "prev_month": 3502,
+      "older": 19,
+      "future": 6,
+      "nul": 0
+    },
+    {
+      "ym": "2004-06",
+      "total": 11467,
+      "same_month": 8464,
+      "prev_month": 2983,
+      "older": 14,
+      "future": 6,
+      "nul": 0
+    },
+    {
+      "ym": "2004-07",
+      "total": 10899,
+      "same_month": 8058,
+      "prev_month": 2829,
+      "older": 9,
+      "future": 3,
+      "nul": 0
+    },
+    {
+      "ym": "2004-08",
+      "total": 9077,
+      "same_month": 6232,
+      "prev_month": 2812,
+      "older": 21,
+      "future": 12,
+      "nul": 0
+    },
+    {
+      "ym": "2004-09",
+      "total": 8196,
+      "same_month": 5928,
+      "prev_month": 2237,
+      "older": 26,
+      "future": 5,
+      "nul": 0
+    },
+    {
+      "ym": "2004-10",
+      "total": 12370,
+      "same_month": 9823,
+      "prev_month": 2499,
+      "older": 43,
+      "future": 5,
+      "nul": 0
+    },
+    {
+      "ym": "2004-11",
+      "total": 14467,
+      "same_month": 10755,
+      "prev_month": 3653,
+      "older": 51,
+      "future": 8,
+      "nul": 0
+    },
+    {
+      "ym": "2004-12",
+      "total": 14212,
+      "same_month": 10614,
+      "prev_month": 3563,
+      "older": 30,
+      "future": 5,
+      "nul": 0
+    },
+    {
+      "ym": "2005-01",
+      "total": 4609,
+      "same_month": 4082,
+      "prev_month": 518,
+      "older": 1,
+      "future": 8,
+      "nul": 0
+    },
+    {
+      "ym": "2005-02",
+      "total": 7613,
+      "same_month": 5813,
+      "prev_month": 1778,
+      "older": 10,
+      "future": 12,
+      "nul": 0
+    },
+    {
+      "ym": "2005-03",
+      "total": 14499,
+      "same_month": 11900,
+      "prev_month": 2528,
+      "older": 17,
+      "future": 54,
+      "nul": 0
+    },
+    {
+      "ym": "2005-04",
+      "total": 16246,
+      "same_month": 11851,
+      "prev_month": 4314,
+      "older": 18,
+      "future": 63,
+      "nul": 0
+    },
+    {
+      "ym": "2005-05",
+      "total": 13543,
+      "same_month": 9870,
+      "prev_month": 3588,
+      "older": 14,
+      "future": 71,
+      "nul": 0
+    },
+    {
+      "ym": "2005-06",
+      "total": 12813,
+      "same_month": 9834,
+      "prev_month": 2891,
+      "older": 24,
+      "future": 64,
+      "nul": 0
+    },
+    {
+      "ym": "2005-07",
+      "total": 12591,
+      "same_month": 8955,
+      "prev_month": 3578,
+      "older": 15,
+      "future": 43,
+      "nul": 0
+    },
+    {
+      "ym": "2005-08",
+      "total": 11547,
+      "same_month": 8355,
+      "prev_month": 3139,
+      "older": 17,
+      "future": 36,
+      "nul": 0
+    },
+    {
+      "ym": "2005-09",
+      "total": 11814,
+      "same_month": 8840,
+      "prev_month": 2924,
+      "older": 14,
+      "future": 36,
+      "nul": 0
+    },
+    {
+      "ym": "2005-10",
+      "total": 14020,
+      "same_month": 10380,
+      "prev_month": 3567,
+      "older": 18,
+      "future": 55,
+      "nul": 0
+    },
+    {
+      "ym": "2005-11",
+      "total": 17192,
+      "same_month": 13264,
+      "prev_month": 3840,
+      "older": 28,
+      "future": 60,
+      "nul": 0
+    },
+    {
+      "ym": "2005-12",
+      "total": 18238,
+      "same_month": 14199,
+      "prev_month": 3991,
+      "older": 31,
+      "future": 17,
+      "nul": 0
+    },
+    {
+      "ym": "2006-01",
+      "total": 8307,
+      "same_month": 7594,
+      "prev_month": 689,
+      "older": 10,
+      "future": 14,
+      "nul": 0
+    },
+    {
+      "ym": "2006-02",
+      "total": 18166,
+      "same_month": 14920,
+      "prev_month": 3163,
+      "older": 25,
+      "future": 58,
+      "nul": 0
+    },
+    {
+      "ym": "2006-03",
+      "total": 28325,
+      "same_month": 24394,
+      "prev_month": 3805,
+      "older": 4,
+      "future": 122,
+      "nul": 0
+    },
+    {
+      "ym": "2006-04",
+      "total": 28101,
+      "same_month": 21438,
+      "prev_month": 6545,
+      "older": 7,
+      "future": 111,
+      "nul": 0
+    },
+    {
+      "ym": "2006-05",
+      "total": 25848,
+      "same_month": 20390,
+      "prev_month": 5387,
+      "older": 12,
+      "future": 59,
+      "nul": 0
+    },
+    {
+      "ym": "2006-06",
+      "total": 19310,
+      "same_month": 15038,
+      "prev_month": 4200,
+      "older": 18,
+      "future": 54,
+      "nul": 0
+    },
+    {
+      "ym": "2006-07",
+      "total": 16553,
+      "same_month": 12431,
+      "prev_month": 4075,
+      "older": 7,
+      "future": 40,
+      "nul": 0
+    },
+    {
+      "ym": "2006-08",
+      "total": 18225,
+      "same_month": 14697,
+      "prev_month": 3488,
+      "older": 5,
+      "future": 35,
+      "nul": 0
+    },
+    {
+      "ym": "2006-09",
+      "total": 20403,
+      "same_month": 16918,
+      "prev_month": 3424,
+      "older": 27,
+      "future": 34,
+      "nul": 0
+    },
+    {
+      "ym": "2006-10",
+      "total": 23806,
+      "same_month": 19862,
+      "prev_month": 3880,
+      "older": 13,
+      "future": 51,
+      "nul": 0
+    },
+    {
+      "ym": "2006-11",
+      "total": 28889,
+      "same_month": 23823,
+      "prev_month": 5006,
+      "older": 12,
+      "future": 48,
+      "nul": 0
+    },
+    {
+      "ym": "2006-12",
+      "total": 29205,
+      "same_month": 23848,
+      "prev_month": 5323,
+      "older": 14,
+      "future": 20,
+      "nul": 0
+    },
+    {
+      "ym": "2007-01",
+      "total": 13239,
+      "same_month": 12212,
+      "prev_month": 1001,
+      "older": 17,
+      "future": 9,
+      "nul": 0
+    },
+    {
+      "ym": "2007-02",
+      "total": 19572,
+      "same_month": 16305,
+      "prev_month": 3242,
+      "older": 22,
+      "future": 3,
+      "nul": 0
+    },
+    {
+      "ym": "2007-03",
+      "total": 3815,
+      "same_month": 44,
+      "prev_month": 3706,
+      "older": 21,
+      "future": 44,
+      "nul": 0
+    },
+    {
+      "ym": "2007-04",
+      "total": 23811,
+      "same_month": 23631,
+      "prev_month": 136,
+      "older": 16,
+      "future": 28,
+      "nul": 0
+    },
+    {
+      "ym": "2007-05",
+      "total": 26900,
+      "same_month": 21783,
+      "prev_month": 5089,
+      "older": 6,
+      "future": 22,
+      "nul": 0
+    },
+    {
+      "ym": "2007-06",
+      "total": 22550,
+      "same_month": 17989,
+      "prev_month": 4521,
+      "older": 16,
+      "future": 24,
+      "nul": 0
+    },
+    {
+      "ym": "2007-07",
+      "total": 22047,
+      "same_month": 17684,
+      "prev_month": 4313,
+      "older": 31,
+      "future": 19,
+      "nul": 0
+    },
+    {
+      "ym": "2007-08",
+      "total": 22687,
+      "same_month": 18494,
+      "prev_month": 4146,
+      "older": 23,
+      "future": 24,
+      "nul": 0
+    },
+    {
+      "ym": "2007-09",
+      "total": 18931,
+      "same_month": 14792,
+      "prev_month": 4083,
+      "older": 39,
+      "future": 17,
+      "nul": 0
+    },
+    {
+      "ym": "2007-10",
+      "total": 22526,
+      "same_month": 18923,
+      "prev_month": 3548,
+      "older": 43,
+      "future": 12,
+      "nul": 0
+    },
+    {
+      "ym": "2007-11",
+      "total": 21363,
+      "same_month": 17628,
+      "prev_month": 3697,
+      "older": 26,
+      "future": 12,
+      "nul": 0
+    },
+    {
+      "ym": "2007-12",
+      "total": 21852,
+      "same_month": 17790,
+      "prev_month": 4030,
+      "older": 23,
+      "future": 9,
+      "nul": 0
+    },
+    {
+      "ym": "2008-01",
+      "total": 11042,
+      "same_month": 10189,
+      "prev_month": 831,
+      "older": 18,
+      "future": 4,
+      "nul": 0
+    },
+    {
+      "ym": "2008-02",
+      "total": 18130,
+      "same_month": 15428,
+      "prev_month": 2674,
+      "older": 26,
+      "future": 2,
+      "nul": 0
+    },
+    {
+      "ym": "2008-03",
+      "total": 21561,
+      "same_month": 18208,
+      "prev_month": 3315,
+      "older": 31,
+      "future": 7,
+      "nul": 0
+    },
+    {
+      "ym": "2008-04",
+      "total": 24613,
+      "same_month": 19662,
+      "prev_month": 4911,
+      "older": 30,
+      "future": 10,
+      "nul": 0
+    },
+    {
+      "ym": "2008-05",
+      "total": 21965,
+      "same_month": 17959,
+      "prev_month": 3974,
+      "older": 26,
+      "future": 6,
+      "nul": 0
+    },
+    {
+      "ym": "2008-06",
+      "total": 20091,
+      "same_month": 16475,
+      "prev_month": 3583,
+      "older": 31,
+      "future": 2,
+      "nul": 0
+    },
+    {
+      "ym": "2008-07",
+      "total": 21272,
+      "same_month": 17049,
+      "prev_month": 4191,
+      "older": 30,
+      "future": 2,
+      "nul": 0
+    },
+    {
+      "ym": "2008-08",
+      "total": 20884,
+      "same_month": 17004,
+      "prev_month": 3823,
+      "older": 45,
+      "future": 12,
+      "nul": 0
+    },
+    {
+      "ym": "2008-09",
+      "total": 20760,
+      "same_month": 17057,
+      "prev_month": 3652,
+      "older": 49,
+      "future": 2,
+      "nul": 0
+    },
+    {
+      "ym": "2008-10",
+      "total": 25452,
+      "same_month": 21772,
+      "prev_month": 3621,
+      "older": 52,
+      "future": 7,
+      "nul": 0
+    },
+    {
+      "ym": "2008-11",
+      "total": 23360,
+      "same_month": 19008,
+      "prev_month": 4308,
+      "older": 38,
+      "future": 6,
+      "nul": 0
+    },
+    {
+      "ym": "2008-12",
+      "total": 29234,
+      "same_month": 24380,
+      "prev_month": 4796,
+      "older": 56,
+      "future": 2,
+      "nul": 0
+    },
+    {
+      "ym": "2009-01",
+      "total": 22646,
+      "same_month": 20558,
+      "prev_month": 2060,
+      "older": 26,
+      "future": 2,
+      "nul": 0
+    },
+    {
+      "ym": "2009-02",
+      "total": 39529,
+      "same_month": 34557,
+      "prev_month": 4937,
+      "older": 33,
+      "future": 2,
+      "nul": 0
+    },
+    {
+      "ym": "2009-03",
+      "total": 36422,
+      "same_month": 30761,
+      "prev_month": 5629,
+      "older": 26,
+      "future": 6,
+      "nul": 0
+    },
+    {
+      "ym": "2009-04",
+      "total": 29567,
+      "same_month": 25229,
+      "prev_month": 4279,
+      "older": 57,
+      "future": 2,
+      "nul": 0
+    },
+    {
+      "ym": "2009-05",
+      "total": 25001,
+      "same_month": 21142,
+      "prev_month": 3832,
+      "older": 27,
+      "future": 0,
+      "nul": 0
+    },
+    {
+      "ym": "2009-06",
+      "total": 26717,
+      "same_month": 22805,
+      "prev_month": 3869,
+      "older": 42,
+      "future": 1,
+      "nul": 0
+    },
+    {
+      "ym": "2009-07",
+      "total": 14242,
+      "same_month": 11929,
+      "prev_month": 2287,
+      "older": 24,
+      "future": 2,
+      "nul": 0
+    },
+    {
+      "ym": "2009-08",
+      "total": 16833,
+      "same_month": 14379,
+      "prev_month": 2438,
+      "older": 14,
+      "future": 2,
+      "nul": 0
+    },
+    {
+      "ym": "2009-09",
+      "total": 15859,
+      "same_month": 13676,
+      "prev_month": 2116,
+      "older": 64,
+      "future": 3,
+      "nul": 0
+    },
+    {
+      "ym": "2009-10",
+      "total": 17579,
+      "same_month": 15584,
+      "prev_month": 1967,
+      "older": 27,
+      "future": 1,
+      "nul": 0
+    },
+    {
+      "ym": "2009-11",
+      "total": 18115,
+      "same_month": 15346,
+      "prev_month": 2724,
+      "older": 42,
+      "future": 3,
+      "nul": 0
+    },
+    {
+      "ym": "2009-12",
+      "total": 20122,
+      "same_month": 16771,
+      "prev_month": 3311,
+      "older": 39,
+      "future": 1,
+      "nul": 0
+    },
+    {
+      "ym": "2010-01",
+      "total": 13865,
+      "same_month": 12636,
+      "prev_month": 1212,
+      "older": 15,
+      "future": 2,
+      "nul": 0
+    },
+    {
+      "ym": "2010-02",
+      "total": 31514,
+      "same_month": 27537,
+      "prev_month": 3939,
+      "older": 35,
+      "future": 3,
+      "nul": 0
+    },
+    {
+      "ym": "2010-03",
+      "total": 34893,
+      "same_month": 30436,
+      "prev_month": 4413,
+      "older": 39,
+      "future": 5,
+      "nul": 0
+    },
+    {
+      "ym": "2010-04",
+      "total": 31524,
+      "same_month": 27302,
+      "prev_month": 4196,
+      "older": 23,
+      "future": 3,
+      "nul": 0
+    },
+    {
+      "ym": "2010-05",
+      "total": 25427,
+      "same_month": 21015,
+      "prev_month": 4375,
+      "older": 34,
+      "future": 3,
+      "nul": 0
+    },
+    {
+      "ym": "2010-06",
+      "total": 26865,
+      "same_month": 22334,
+      "prev_month": 4486,
+      "older": 38,
+      "future": 7,
+      "nul": 0
+    },
+    {
+      "ym": "2010-07",
+      "total": 15902,
+      "same_month": 13203,
+      "prev_month": 2677,
+      "older": 22,
+      "future": 0,
+      "nul": 0
+    },
+    {
+      "ym": "2010-08",
+      "total": 22281,
+      "same_month": 18852,
+      "prev_month": 3406,
+      "older": 23,
+      "future": 0,
+      "nul": 0
+    },
+    {
+      "ym": "2010-09",
+      "total": 16636,
+      "same_month": 14567,
+      "prev_month": 2040,
+      "older": 26,
+      "future": 3,
+      "nul": 0
+    },
+    {
+      "ym": "2010-10",
+      "total": 20819,
+      "same_month": 18081,
+      "prev_month": 2706,
+      "older": 32,
+      "future": 0,
+      "nul": 0
+    },
+    {
+      "ym": "2010-11",
+      "total": 23945,
+      "same_month": 19967,
+      "prev_month": 3951,
+      "older": 25,
+      "future": 2,
+      "nul": 0
+    },
+    {
+      "ym": "2010-12",
+      "total": 24258,
+      "same_month": 20414,
+      "prev_month": 3813,
+      "older": 27,
+      "future": 4,
+      "nul": 0
+    },
+    {
+      "ym": "2011-01",
+      "total": 13666,
+      "same_month": 12237,
+      "prev_month": 1403,
+      "older": 21,
+      "future": 5,
+      "nul": 0
+    },
+    {
+      "ym": "2011-02",
+      "total": 32033,
+      "same_month": 28822,
+      "prev_month": 3178,
+      "older": 23,
+      "future": 10,
+      "nul": 0
+    },
+    {
+      "ym": "2011-03",
+      "total": 37016,
+      "same_month": 32682,
+      "prev_month": 4281,
+      "older": 47,
+      "future": 6,
+      "nul": 0
+    },
+    {
+      "ym": "2011-04",
+      "total": 35781,
+      "same_month": 29909,
+      "prev_month": 5841,
+      "older": 26,
+      "future": 5,
+      "nul": 0
+    },
+    {
+      "ym": "2011-05",
+      "total": 30269,
+      "same_month": 24872,
+      "prev_month": 5356,
+      "older": 34,
+      "future": 7,
+      "nul": 0
+    },
+    {
+      "ym": "2011-06",
+      "total": 29043,
+      "same_month": 24410,
+      "prev_month": 4576,
+      "older": 51,
+      "future": 6,
+      "nul": 0
+    },
+    {
+      "ym": "2011-07",
+      "total": 20137,
+      "same_month": 16123,
+      "prev_month": 3973,
+      "older": 38,
+      "future": 3,
+      "nul": 0
+    },
+    {
+      "ym": "2011-08",
+      "total": 25462,
+      "same_month": 21337,
+      "prev_month": 4073,
+      "older": 50,
+      "future": 2,
+      "nul": 0
+    },
+    {
+      "ym": "2011-09",
+      "total": 23034,
+      "same_month": 19878,
+      "prev_month": 3104,
+      "older": 49,
+      "future": 3,
+      "nul": 0
+    },
+    {
+      "ym": "2011-10",
+      "total": 26000,
+      "same_month": 21826,
+      "prev_month": 4132,
+      "older": 40,
+      "future": 2,
+      "nul": 0
+    },
+    {
+      "ym": "2011-11",
+      "total": 27450,
+      "same_month": 23059,
+      "prev_month": 4329,
+      "older": 57,
+      "future": 5,
+      "nul": 0
+    },
+    {
+      "ym": "2011-12",
+      "total": 27926,
+      "same_month": 23145,
+      "prev_month": 4735,
+      "older": 45,
+      "future": 1,
+      "nul": 0
+    },
+    {
+      "ym": "2012-01",
+      "total": 15497,
+      "same_month": 13546,
+      "prev_month": 1929,
+      "older": 21,
+      "future": 1,
+      "nul": 0
+    },
+    {
+      "ym": "2012-02",
+      "total": 37071,
+      "same_month": 33313,
+      "prev_month": 3718,
+      "older": 40,
+      "future": 0,
+      "nul": 0
+    },
+    {
+      "ym": "2012-03",
+      "total": 36769,
+      "same_month": 31701,
+      "prev_month": 5015,
+      "older": 46,
+      "future": 7,
+      "nul": 0
+    },
+    {
+      "ym": "2012-04",
+      "total": 35910,
+      "same_month": 29377,
+      "prev_month": 6484,
+      "older": 46,
+      "future": 3,
+      "nul": 0
+    },
+    {
+      "ym": "2012-05",
+      "total": 32610,
+      "same_month": 26590,
+      "prev_month": 5949,
+      "older": 68,
+      "future": 3,
+      "nul": 0
+    },
+    {
+      "ym": "2012-06",
+      "total": 28299,
+      "same_month": 23606,
+      "prev_month": 4642,
+      "older": 49,
+      "future": 2,
+      "nul": 0
+    },
+    {
+      "ym": "2012-07",
+      "total": 22594,
+      "same_month": 18330,
+      "prev_month": 4213,
+      "older": 48,
+      "future": 3,
+      "nul": 0
+    },
+    {
+      "ym": "2012-08",
+      "total": 24309,
+      "same_month": 20302,
+      "prev_month": 3954,
+      "older": 52,
+      "future": 1,
+      "nul": 0
+    },
+    {
+      "ym": "2012-09",
+      "total": 22183,
+      "same_month": 18529,
+      "prev_month": 3585,
+      "older": 66,
+      "future": 3,
+      "nul": 0
+    },
+    {
+      "ym": "2012-10",
+      "total": 24275,
+      "same_month": 20726,
+      "prev_month": 3496,
+      "older": 51,
+      "future": 2,
+      "nul": 0
+    },
+    {
+      "ym": "2012-11",
+      "total": 26498,
+      "same_month": 22409,
+      "prev_month": 4047,
+      "older": 42,
+      "future": 0,
+      "nul": 0
+    },
+    {
+      "ym": "2012-12",
+      "total": 29080,
+      "same_month": 23498,
+      "prev_month": 5482,
+      "older": 100,
+      "future": 0,
+      "nul": 0
+    },
+    {
+      "ym": "2013-01",
+      "total": 18618,
+      "same_month": 16624,
+      "prev_month": 1961,
+      "older": 30,
+      "future": 3,
+      "nul": 0
+    },
+    {
+      "ym": "2013-02",
+      "total": 35311,
+      "same_month": 30463,
+      "prev_month": 4800,
+      "older": 45,
+      "future": 3,
+      "nul": 0
+    },
+    {
+      "ym": "2013-03",
+      "total": 35883,
+      "same_month": 30597,
+      "prev_month": 5213,
+      "older": 70,
+      "future": 3,
+      "nul": 0
+    },
+    {
+      "ym": "2013-04",
+      "total": 39318,
+      "same_month": 32187,
+      "prev_month": 7014,
+      "older": 113,
+      "future": 4,
+      "nul": 0
+    },
+    {
+      "ym": "2013-05",
+      "total": 31158,
+      "same_month": 25484,
+      "prev_month": 5617,
+      "older": 56,
+      "future": 1,
+      "nul": 0
+    },
+    {
+      "ym": "2013-06",
+      "total": 26940,
+      "same_month": 21308,
+      "prev_month": 5561,
+      "older": 67,
+      "future": 4,
+      "nul": 0
+    },
+    {
+      "ym": "2013-07",
+      "total": 23425,
+      "same_month": 18794,
+      "prev_month": 4559,
+      "older": 69,
+      "future": 3,
+      "nul": 0
+    },
+    {
+      "ym": "2013-08",
+      "total": 23389,
+      "same_month": 18950,
+      "prev_month": 4384,
+      "older": 50,
+      "future": 5,
+      "nul": 0
+    },
+    {
+      "ym": "2013-09",
+      "total": 20960,
+      "same_month": 16905,
+      "prev_month": 3984,
+      "older": 68,
+      "future": 3,
+      "nul": 0
+    },
+    {
+      "ym": "2013-10",
+      "total": 25295,
+      "same_month": 20746,
+      "prev_month": 4491,
+      "older": 56,
+      "future": 2,
+      "nul": 0
+    },
+    {
+      "ym": "2013-11",
+      "total": 24277,
+      "same_month": 19383,
+      "prev_month": 4846,
+      "older": 44,
+      "future": 4,
+      "nul": 0
+    },
+    {
+      "ym": "2013-12",
+      "total": 27022,
+      "same_month": 21484,
+      "prev_month": 5457,
+      "older": 81,
+      "future": 0,
+      "nul": 0
+    },
+    {
+      "ym": "2014-01",
+      "total": 2549,
+      "same_month": 666,
+      "prev_month": 1859,
+      "older": 23,
+      "future": 1,
+      "nul": 0
+    },
+    {
+      "ym": "2014-02",
+      "total": 28347,
+      "same_month": 28254,
+      "prev_month": 52,
+      "older": 41,
+      "future": 0,
+      "nul": 0
+    },
+    {
+      "ym": "2014-03",
+      "total": 8109,
+      "same_month": 2225,
+      "prev_month": 5874,
+      "older": 8,
+      "future": 2,
+      "nul": 0
+    },
+    {
+      "ym": "2014-04",
+      "total": 28455,
+      "same_month": 28126,
+      "prev_month": 249,
+      "older": 73,
+      "future": 7,
+      "nul": 0
+    },
+    {
+      "ym": "2014-05",
+      "total": 27041,
+      "same_month": 21126,
+      "prev_month": 5897,
+      "older": 16,
+      "future": 2,
+      "nul": 0
+    },
+    {
+      "ym": "2014-06",
+      "total": 23189,
+      "same_month": 17832,
+      "prev_month": 5264,
+      "older": 90,
+      "future": 3,
+      "nul": 0
+    },
+    {
+      "ym": "2014-07",
+      "total": 5290,
+      "same_month": 1143,
+      "prev_month": 4077,
+      "older": 68,
+      "future": 2,
+      "nul": 0
+    },
+    {
+      "ym": "2014-08",
+      "total": 14662,
+      "same_month": 14460,
+      "prev_month": 140,
+      "older": 56,
+      "future": 6,
+      "nul": 0
+    },
+    {
+      "ym": "2014-09",
+      "total": 19208,
+      "same_month": 15539,
+      "prev_month": 3648,
+      "older": 8,
+      "future": 13,
+      "nul": 0
+    },
+    {
+      "ym": "2014-10",
+      "total": 22997,
+      "same_month": 18834,
+      "prev_month": 4126,
+      "older": 35,
+      "future": 2,
+      "nul": 0
+    },
+    {
+      "ym": "2014-11",
+      "total": 20744,
+      "same_month": 16253,
+      "prev_month": 4470,
+      "older": 18,
+      "future": 3,
+      "nul": 0
+    },
+    {
+      "ym": "2014-12",
+      "total": 26999,
+      "same_month": 21817,
+      "prev_month": 5097,
+      "older": 84,
+      "future": 1,
+      "nul": 0
+    },
+    {
+      "ym": "2015-01",
+      "total": 8738,
+      "same_month": 6826,
+      "prev_month": 1886,
+      "older": 25,
+      "future": 1,
+      "nul": 0
+    },
+    {
+      "ym": "2015-02",
+      "total": 25570,
+      "same_month": 23093,
+      "prev_month": 2423,
+      "older": 54,
+      "future": 0,
+      "nul": 0
+    },
+    {
+      "ym": "2015-03",
+      "total": 7637,
+      "same_month": 2219,
+      "prev_month": 5378,
+      "older": 40,
+      "future": 0,
+      "nul": 0
+    },
+    {
+      "ym": "2015-04",
+      "total": 27819,
+      "same_month": 27615,
+      "prev_month": 163,
+      "older": 37,
+      "future": 4,
+      "nul": 0
+    },
+    {
+      "ym": "2015-05",
+      "total": 26784,
+      "same_month": 20221,
+      "prev_month": 6536,
+      "older": 21,
+      "future": 6,
+      "nul": 0
+    },
+    {
+      "ym": "2015-06",
+      "total": 28161,
+      "same_month": 22364,
+      "prev_month": 5722,
+      "older": 74,
+      "future": 1,
+      "nul": 0
+    },
+    {
+      "ym": "2015-07",
+      "total": 23637,
+      "same_month": 18620,
+      "prev_month": 4955,
+      "older": 60,
+      "future": 2,
+      "nul": 0
+    },
+    {
+      "ym": "2015-08",
+      "total": 8519,
+      "same_month": 3226,
+      "prev_month": 5241,
+      "older": 50,
+      "future": 2,
+      "nul": 0
+    },
+    {
+      "ym": "2015-09",
+      "total": 18398,
+      "same_month": 17032,
+      "prev_month": 1303,
+      "older": 62,
+      "future": 1,
+      "nul": 0
+    },
+    {
+      "ym": "2015-10",
+      "total": 24081,
+      "same_month": 19426,
+      "prev_month": 4618,
+      "older": 34,
+      "future": 3,
+      "nul": 0
+    },
+    {
+      "ym": "2015-11",
+      "total": 23971,
+      "same_month": 18500,
+      "prev_month": 5430,
+      "older": 36,
+      "future": 5,
+      "nul": 0
+    },
+    {
+      "ym": "2015-12",
+      "total": 27660,
+      "same_month": 21554,
+      "prev_month": 6001,
+      "older": 102,
+      "future": 3,
+      "nul": 0
+    },
+    {
+      "ym": "2016-01",
+      "total": 15237,
+      "same_month": 12962,
+      "prev_month": 2248,
+      "older": 24,
+      "future": 3,
+      "nul": 0
+    },
+    {
+      "ym": "2016-02",
+      "total": 12606,
+      "same_month": 7115,
+      "prev_month": 5427,
+      "older": 61,
+      "future": 3,
+      "nul": 0
+    },
+    {
+      "ym": "2016-03",
+      "total": 33617,
+      "same_month": 33268,
+      "prev_month": 275,
+      "older": 70,
+      "future": 4,
+      "nul": 0
+    },
+    {
+      "ym": "2016-04",
+      "total": 33744,
+      "same_month": 26471,
+      "prev_month": 7265,
+      "older": 8,
+      "future": 0,
+      "nul": 0
+    },
+    {
+      "ym": "2016-05",
+      "total": 28559,
+      "same_month": 21316,
+      "prev_month": 7135,
+      "older": 106,
+      "future": 2,
+      "nul": 0
+    },
+    {
+      "ym": "2016-06",
+      "total": 28001,
+      "same_month": 23630,
+      "prev_month": 4283,
+      "older": 88,
+      "future": 0,
+      "nul": 0
+    },
+    {
+      "ym": "2016-07",
+      "total": 12121,
+      "same_month": 6215,
+      "prev_month": 5840,
+      "older": 66,
+      "future": 0,
+      "nul": 0
+    },
+    {
+      "ym": "2016-08",
+      "total": 5892,
+      "same_month": 3539,
+      "prev_month": 2257,
+      "older": 93,
+      "future": 3,
+      "nul": 0
+    },
+    {
+      "ym": "2016-09",
+      "total": 16207,
+      "same_month": 15648,
+      "prev_month": 505,
+      "older": 53,
+      "future": 1,
+      "nul": 0
+    },
+    {
+      "ym": "2016-10",
+      "total": 12154,
+      "same_month": 6804,
+      "prev_month": 5328,
+      "older": 17,
+      "future": 5,
+      "nul": 0
+    },
+    {
+      "ym": "2016-11",
+      "total": 20298,
+      "same_month": 18227,
+      "prev_month": 1998,
+      "older": 70,
+      "future": 3,
+      "nul": 0
+    },
+    {
+      "ym": "2016-12",
+      "total": 31088,
+      "same_month": 26447,
+      "prev_month": 4551,
+      "older": 84,
+      "future": 6,
+      "nul": 0
+    },
+    {
+      "ym": "2017-01",
+      "total": 21066,
+      "same_month": 17772,
+      "prev_month": 3252,
+      "older": 32,
+      "future": 10,
+      "nul": 0
+    },
+    {
+      "ym": "2017-02",
+      "total": 38523,
+      "same_month": 31952,
+      "prev_month": 6484,
+      "older": 86,
+      "future": 1,
+      "nul": 0
+    },
+    {
+      "ym": "2017-03",
+      "total": 42006,
+      "same_month": 34242,
+      "prev_month": 7705,
+      "older": 59,
+      "future": 0,
+      "nul": 0
+    },
+    {
+      "ym": "2017-04",
+      "total": 35154,
+      "same_month": 26749,
+      "prev_month": 8320,
+      "older": 81,
+      "future": 4,
+      "nul": 0
+    },
+    {
+      "ym": "2017-05",
+      "total": 30623,
+      "same_month": 22906,
+      "prev_month": 7574,
+      "older": 137,
+      "future": 6,
+      "nul": 0
+    },
+    {
+      "ym": "2017-06",
+      "total": 33629,
+      "same_month": 26434,
+      "prev_month": 7107,
+      "older": 84,
+      "future": 4,
+      "nul": 0
+    },
+    {
+      "ym": "2017-07",
+      "total": 27750,
+      "same_month": 21052,
+      "prev_month": 6583,
+      "older": 113,
+      "future": 2,
+      "nul": 0
+    },
+    {
+      "ym": "2017-08",
+      "total": 25077,
+      "same_month": 18688,
+      "prev_month": 6302,
+      "older": 86,
+      "future": 1,
+      "nul": 0
+    },
+    {
+      "ym": "2017-09",
+      "total": 25147,
+      "same_month": 19490,
+      "prev_month": 5603,
+      "older": 52,
+      "future": 2,
+      "nul": 0
+    },
+    {
+      "ym": "2017-10",
+      "total": 23034,
+      "same_month": 17541,
+      "prev_month": 5421,
+      "older": 69,
+      "future": 3,
+      "nul": 0
+    },
+    {
+      "ym": "2017-11",
+      "total": 31456,
+      "same_month": 24782,
+      "prev_month": 6555,
+      "older": 114,
+      "future": 5,
+      "nul": 0
+    },
+    {
+      "ym": "2017-12",
+      "total": 36844,
+      "same_month": 28640,
+      "prev_month": 8114,
+      "older": 84,
+      "future": 6,
+      "nul": 0
+    },
+    {
+      "ym": "2018-01",
+      "total": 24286,
+      "same_month": 20274,
+      "prev_month": 3941,
+      "older": 62,
+      "future": 9,
+      "nul": 0
+    },
+    {
+      "ym": "2018-02",
+      "total": 32575,
+      "same_month": 25344,
+      "prev_month": 7175,
+      "older": 46,
+      "future": 10,
+      "nul": 0
+    },
+    {
+      "ym": "2018-03",
+      "total": 40196,
+      "same_month": 32470,
+      "prev_month": 7628,
+      "older": 91,
+      "future": 7,
+      "nul": 0
+    },
+    {
+      "ym": "2018-04",
+      "total": 38876,
+      "same_month": 29837,
+      "prev_month": 8921,
+      "older": 104,
+      "future": 14,
+      "nul": 0
+    },
+    {
+      "ym": "2018-05",
+      "total": 34154,
+      "same_month": 25556,
+      "prev_month": 8445,
+      "older": 147,
+      "future": 6,
+      "nul": 0
+    },
+    {
+      "ym": "2018-06",
+      "total": 33334,
+      "same_month": 25012,
+      "prev_month": 8208,
+      "older": 103,
+      "future": 11,
+      "nul": 0
+    },
+    {
+      "ym": "2018-07",
+      "total": 29010,
+      "same_month": 21944,
+      "prev_month": 6921,
+      "older": 137,
+      "future": 8,
+      "nul": 0
+    },
+    {
+      "ym": "2018-08",
+      "total": 23958,
+      "same_month": 17846,
+      "prev_month": 6012,
+      "older": 89,
+      "future": 11,
+      "nul": 0
+    },
+    {
+      "ym": "2018-09",
+      "total": 19376,
+      "same_month": 13931,
+      "prev_month": 5356,
+      "older": 74,
+      "future": 15,
+      "nul": 0
+    },
+    {
+      "ym": "2018-10",
+      "total": 29257,
+      "same_month": 23352,
+      "prev_month": 5745,
+      "older": 148,
+      "future": 12,
+      "nul": 0
+    },
+    {
+      "ym": "2018-11",
+      "total": 31353,
+      "same_month": 24082,
+      "prev_month": 7220,
+      "older": 40,
+      "future": 11,
+      "nul": 0
+    },
+    {
+      "ym": "2018-12",
+      "total": 36028,
+      "same_month": 27413,
+      "prev_month": 8432,
+      "older": 171,
+      "future": 12,
+      "nul": 0
+    },
+    {
+      "ym": "2019-01",
+      "total": 25172,
+      "same_month": 20928,
+      "prev_month": 4135,
+      "older": 94,
+      "future": 15,
+      "nul": 0
+    },
+    {
+      "ym": "2019-02",
+      "total": 32566,
+      "same_month": 25054,
+      "prev_month": 7447,
+      "older": 52,
+      "future": 13,
+      "nul": 0
+    },
+    {
+      "ym": "2019-03",
+      "total": 40718,
+      "same_month": 32152,
+      "prev_month": 8432,
+      "older": 120,
+      "future": 14,
+      "nul": 0
+    },
+    {
+      "ym": "2019-04",
+      "total": 43873,
+      "same_month": 33630,
+      "prev_month": 10078,
+      "older": 145,
+      "future": 20,
+      "nul": 0
+    },
+    {
+      "ym": "2019-05",
+      "total": 37191,
+      "same_month": 28229,
+      "prev_month": 8811,
+      "older": 121,
+      "future": 30,
+      "nul": 0
+    },
+    {
+      "ym": "2019-06",
+      "total": 34647,
+      "same_month": 25785,
+      "prev_month": 8725,
+      "older": 117,
+      "future": 20,
+      "nul": 0
+    },
+    {
+      "ym": "2019-07",
+      "total": 34911,
+      "same_month": 26849,
+      "prev_month": 7899,
+      "older": 149,
+      "future": 14,
+      "nul": 0
+    },
+    {
+      "ym": "2019-08",
+      "total": 27297,
+      "same_month": 20151,
+      "prev_month": 7050,
+      "older": 76,
+      "future": 20,
+      "nul": 0
+    },
+    {
+      "ym": "2019-09",
+      "total": 24968,
+      "same_month": 18205,
+      "prev_month": 6615,
+      "older": 123,
+      "future": 25,
+      "nul": 0
+    },
+    {
+      "ym": "2019-10",
+      "total": 31549,
+      "same_month": 24503,
+      "prev_month": 6930,
+      "older": 101,
+      "future": 15,
+      "nul": 0
+    },
+    {
+      "ym": "2019-11",
+      "total": 34929,
+      "same_month": 26639,
+      "prev_month": 8215,
+      "older": 55,
+      "future": 20,
+      "nul": 0
+    },
+    {
+      "ym": "2019-12",
+      "total": 41586,
+      "same_month": 31592,
+      "prev_month": 9771,
+      "older": 208,
+      "future": 15,
+      "nul": 0
+    },
+    {
+      "ym": "2020-01",
+      "total": 23909,
+      "same_month": 19389,
+      "prev_month": 4429,
+      "older": 61,
+      "future": 30,
+      "nul": 0
+    },
+    {
+      "ym": "2020-02",
+      "total": 39902,
+      "same_month": 31860,
+      "prev_month": 7952,
+      "older": 69,
+      "future": 21,
+      "nul": 0
+    },
+    {
+      "ym": "2020-03",
+      "total": 47432,
+      "same_month": 36907,
+      "prev_month": 10360,
+      "older": 131,
+      "future": 34,
+      "nul": 0
+    },
+    {
+      "ym": "2020-04",
+      "total": 37075,
+      "same_month": 26907,
+      "prev_month": 10004,
+      "older": 141,
+      "future": 23,
+      "nul": 0
+    },
+    {
+      "ym": "2020-05",
+      "total": 32153,
+      "same_month": 23433,
+      "prev_month": 8552,
+      "older": 167,
+      "future": 1,
+      "nul": 0
+    },
+    {
+      "ym": "2020-06",
+      "total": 15946,
+      "same_month": 7485,
+      "prev_month": 8296,
+      "older": 155,
+      "future": 10,
+      "nul": 0
+    },
+    {
+      "ym": "2020-07",
+      "total": 8368,
+      "same_month": 5988,
+      "prev_month": 2298,
+      "older": 73,
+      "future": 9,
+      "nul": 0
+    },
+    {
+      "ym": "2020-08",
+      "total": 6799,
+      "same_month": 4597,
+      "prev_month": 2150,
+      "older": 43,
+      "future": 9,
+      "nul": 0
+    },
+    {
+      "ym": "2020-09",
+      "total": 7093,
+      "same_month": 5061,
+      "prev_month": 1974,
+      "older": 55,
+      "future": 3,
+      "nul": 0
+    },
+    {
+      "ym": "2020-10",
+      "total": 6902,
+      "same_month": 5045,
+      "prev_month": 1824,
+      "older": 31,
+      "future": 2,
+      "nul": 0
+    },
+    {
+      "ym": "2020-11",
+      "total": 8648,
+      "same_month": 6184,
+      "prev_month": 2387,
+      "older": 56,
+      "future": 21,
+      "nul": 0
+    },
+    {
+      "ym": "2020-12",
+      "total": 34662,
+      "same_month": 30755,
+      "prev_month": 3767,
+      "older": 136,
+      "future": 4,
+      "nul": 0
+    },
+    {
+      "ym": "2021-01",
+      "total": 11461,
+      "same_month": 7418,
+      "prev_month": 3962,
+      "older": 79,
+      "future": 2,
+      "nul": 0
+    },
+    {
+      "ym": "2021-02",
+      "total": 13877,
+      "same_month": 9915,
+      "prev_month": 3858,
+      "older": 103,
+      "future": 1,
+      "nul": 0
+    },
+    {
+      "ym": "2021-03",
+      "total": 4282,
+      "same_month": 145,
+      "prev_month": 4044,
+      "older": 78,
+      "future": 15,
+      "nul": 0
+    },
+    {
+      "ym": "2021-04",
+      "total": 30345,
+      "same_month": 30059,
+      "prev_month": 245,
+      "older": 39,
+      "future": 2,
+      "nul": 0
+    },
+    {
+      "ym": "2021-05",
+      "total": 15290,
+      "same_month": 6766,
+      "prev_month": 8519,
+      "older": 1,
+      "future": 4,
+      "nul": 0
+    },
+    {
+      "ym": "2021-06",
+      "total": 11608,
+      "same_month": 7969,
+      "prev_month": 3520,
+      "older": 112,
+      "future": 7,
+      "nul": 0
+    },
+    {
+      "ym": "2021-07",
+      "total": 8699,
+      "same_month": 6037,
+      "prev_month": 2594,
+      "older": 60,
+      "future": 8,
+      "nul": 0
+    },
+    {
+      "ym": "2021-08",
+      "total": 7984,
+      "same_month": 5499,
+      "prev_month": 2432,
+      "older": 43,
+      "future": 10,
+      "nul": 0
+    },
+    {
+      "ym": "2021-09",
+      "total": 6871,
+      "same_month": 4757,
+      "prev_month": 2075,
+      "older": 30,
+      "future": 9,
+      "nul": 0
+    },
+    {
+      "ym": "2021-10",
+      "total": 8241,
+      "same_month": 5886,
+      "prev_month": 2323,
+      "older": 27,
+      "future": 5,
+      "nul": 0
+    },
+    {
+      "ym": "2021-11",
+      "total": 9996,
+      "same_month": 7397,
+      "prev_month": 2547,
+      "older": 43,
+      "future": 9,
+      "nul": 0
+    },
+    {
+      "ym": "2021-12",
+      "total": 16989,
+      "same_month": 13021,
+      "prev_month": 3872,
+      "older": 82,
+      "future": 14,
+      "nul": 0
+    },
+    {
+      "ym": "2022-01",
+      "total": 19692,
+      "same_month": 17516,
+      "prev_month": 2142,
+      "older": 33,
+      "future": 1,
+      "nul": 0
+    },
+    {
+      "ym": "2022-02",
+      "total": 7247,
+      "same_month": 35,
+      "prev_month": 7154,
+      "older": 46,
+      "future": 12,
+      "nul": 0
+    },
+    {
+      "ym": "2022-03",
+      "total": 32659,
+      "same_month": 32431,
+      "prev_month": 116,
+      "older": 108,
+      "future": 4,
+      "nul": 0
+    },
+    {
+      "ym": "2022-04",
+      "total": 19178,
+      "same_month": 9582,
+      "prev_month": 9586,
+      "older": 6,
+      "future": 4,
+      "nul": 0
+    },
+    {
+      "ym": "2022-05",
+      "total": 13440,
+      "same_month": 9036,
+      "prev_month": 4241,
+      "older": 154,
+      "future": 9,
+      "nul": 0
+    },
+    {
+      "ym": "2022-06",
+      "total": 11990,
+      "same_month": 8148,
+      "prev_month": 3759,
+      "older": 69,
+      "future": 14,
+      "nul": 0
+    },
+    {
+      "ym": "2022-07",
+      "total": 9948,
+      "same_month": 6623,
+      "prev_month": 3249,
+      "older": 54,
+      "future": 22,
+      "nul": 0
+    },
+    {
+      "ym": "2022-08",
+      "total": 9055,
+      "same_month": 6294,
+      "prev_month": 2690,
+      "older": 64,
+      "future": 7,
+      "nul": 0
+    },
+    {
+      "ym": "2022-09",
+      "total": 8084,
+      "same_month": 5741,
+      "prev_month": 2304,
+      "older": 33,
+      "future": 6,
+      "nul": 0
+    },
+    {
+      "ym": "2022-10",
+      "total": 8330,
+      "same_month": 5896,
+      "prev_month": 2372,
+      "older": 43,
+      "future": 19,
+      "nul": 0
+    },
+    {
+      "ym": "2022-11",
+      "total": 30395,
+      "same_month": 27146,
+      "prev_month": 3154,
+      "older": 65,
+      "future": 30,
+      "nul": 0
+    },
+    {
+      "ym": "2022-12",
+      "total": 43278,
+      "same_month": 33668,
+      "prev_month": 9493,
+      "older": 98,
+      "future": 19,
+      "nul": 0
+    },
+    {
+      "ym": "2023-01",
+      "total": 23127,
+      "same_month": 18332,
+      "prev_month": 4732,
+      "older": 42,
+      "future": 21,
+      "nul": 0
+    },
+    {
+      "ym": "2023-02",
+      "total": 37997,
+      "same_month": 30040,
+      "prev_month": 7870,
+      "older": 67,
+      "future": 20,
+      "nul": 0
+    },
+    {
+      "ym": "2023-03",
+      "total": 50478,
+      "same_month": 41447,
+      "prev_month": 8884,
+      "older": 120,
+      "future": 27,
+      "nul": 0
+    },
+    {
+      "ym": "2023-04",
+      "total": 42024,
+      "same_month": 31890,
+      "prev_month": 9997,
+      "older": 106,
+      "future": 31,
+      "nul": 0
+    },
+    {
+      "ym": "2023-05",
+      "total": 41037,
+      "same_month": 31562,
+      "prev_month": 9308,
+      "older": 137,
+      "future": 30,
+      "nul": 0
+    },
+    {
+      "ym": "2023-06",
+      "total": 42691,
+      "same_month": 33725,
+      "prev_month": 8877,
+      "older": 65,
+      "future": 24,
+      "nul": 0
+    },
+    {
+      "ym": "2023-07",
+      "total": 34631,
+      "same_month": 26557,
+      "prev_month": 7971,
+      "older": 69,
+      "future": 34,
+      "nul": 0
+    },
+    {
+      "ym": "2023-08",
+      "total": 31507,
+      "same_month": 23916,
+      "prev_month": 7499,
+      "older": 66,
+      "future": 26,
+      "nul": 0
+    },
+    {
+      "ym": "2023-09",
+      "total": 28258,
+      "same_month": 20751,
+      "prev_month": 7437,
+      "older": 41,
+      "future": 29,
+      "nul": 0
+    },
+    {
+      "ym": "2023-10",
+      "total": 30891,
+      "same_month": 24825,
+      "prev_month": 5987,
+      "older": 53,
+      "future": 26,
+      "nul": 0
+    },
+    {
+      "ym": "2023-11",
+      "total": 40326,
+      "same_month": 32110,
+      "prev_month": 8077,
+      "older": 109,
+      "future": 30,
+      "nul": 0
+    },
+    {
+      "ym": "2023-12",
+      "total": 46856,
+      "same_month": 36020,
+      "prev_month": 10723,
+      "older": 113,
+      "future": 0,
+      "nul": 0
+    },
+    {
+      "ym": "2024-01",
+      "total": 27642,
+      "same_month": 22335,
+      "prev_month": 5238,
+      "older": 49,
+      "future": 20,
+      "nul": 0
+    },
+    {
+      "ym": "2024-02",
+      "total": 36738,
+      "same_month": 28104,
+      "prev_month": 8561,
+      "older": 60,
+      "future": 13,
+      "nul": 0
+    },
+    {
+      "ym": "2024-03",
+      "total": 43960,
+      "same_month": 34643,
+      "prev_month": 9134,
+      "older": 166,
+      "future": 17,
+      "nul": 0
+    },
+    {
+      "ym": "2024-04",
+      "total": 32415,
+      "same_month": 23046,
+      "prev_month": 9223,
+      "older": 112,
+      "future": 34,
+      "nul": 0
+    },
+    {
+      "ym": "2024-05",
+      "total": 32364,
+      "same_month": 27987,
+      "prev_month": 4229,
+      "older": 112,
+      "future": 36,
+      "nul": 0
+    },
+    {
+      "ym": "2024-06",
+      "total": 35697,
+      "same_month": 26942,
+      "prev_month": 8650,
+      "older": 64,
+      "future": 41,
+      "nul": 0
+    },
+    {
+      "ym": "2024-07",
+      "total": 33044,
+      "same_month": 25878,
+      "prev_month": 7054,
+      "older": 90,
+      "future": 22,
+      "nul": 0
+    },
+    {
+      "ym": "2024-08",
+      "total": 26854,
+      "same_month": 20085,
+      "prev_month": 6696,
+      "older": 46,
+      "future": 27,
+      "nul": 0
+    },
+    {
+      "ym": "2024-09",
+      "total": 22508,
+      "same_month": 17485,
+      "prev_month": 4929,
+      "older": 70,
+      "future": 24,
+      "nul": 0
+    },
+    {
+      "ym": "2024-10",
+      "total": 30546,
+      "same_month": 23838,
+      "prev_month": 6583,
+      "older": 92,
+      "future": 33,
+      "nul": 0
+    },
+    {
+      "ym": "2024-11",
+      "total": 36241,
+      "same_month": 28037,
+      "prev_month": 8075,
+      "older": 86,
+      "future": 43,
+      "nul": 0
+    },
+    {
+      "ym": "2024-12",
+      "total": 45238,
+      "same_month": 35088,
+      "prev_month": 9973,
+      "older": 165,
+      "future": 12,
+      "nul": 0
+    },
+    {
+      "ym": "2025-01",
+      "total": 18107,
+      "same_month": 16890,
+      "prev_month": 1183,
+      "older": 16,
+      "future": 18,
+      "nul": 0
+    },
+    {
+      "ym": "2025-02",
+      "total": 39173,
+      "same_month": 31506,
+      "prev_month": 7526,
+      "older": 126,
+      "future": 15,
+      "nul": 0
+    },
+    {
+      "ym": "2025-03",
+      "total": 45861,
+      "same_month": 36271,
+      "prev_month": 9506,
+      "older": 62,
+      "future": 22,
+      "nul": 0
+    },
+    {
+      "ym": "2025-04",
+      "total": 43478,
+      "same_month": 33589,
+      "prev_month": 9770,
+      "older": 88,
+      "future": 31,
+      "nul": 0
+    },
+    {
+      "ym": "2025-05",
+      "total": 34304,
+      "same_month": 25862,
+      "prev_month": 8309,
+      "older": 90,
+      "future": 43,
+      "nul": 0
+    },
+    {
+      "ym": "2025-06",
+      "total": 35496,
+      "same_month": 27038,
+      "prev_month": 8342,
+      "older": 83,
+      "future": 33,
+      "nul": 0
+    },
+    {
+      "ym": "2025-07",
+      "total": 31810,
+      "same_month": 24423,
+      "prev_month": 7282,
+      "older": 84,
+      "future": 21,
+      "nul": 0
+    },
+    {
+      "ym": "2025-08",
+      "total": 26912,
+      "same_month": 19932,
+      "prev_month": 6905,
+      "older": 32,
+      "future": 43,
+      "nul": 0
+    },
+    {
+      "ym": "2025-09",
+      "total": 27134,
+      "same_month": 20715,
+      "prev_month": 6302,
+      "older": 93,
+      "future": 24,
+      "nul": 0
+    },
+    {
+      "ym": "2025-10",
+      "total": 26120,
+      "same_month": 20206,
+      "prev_month": 5805,
+      "older": 85,
+      "future": 24,
+      "nul": 0
+    },
+    {
+      "ym": "2025-11",
+      "total": 35634,
+      "same_month": 27655,
+      "prev_month": 7884,
+      "older": 70,
+      "future": 25,
+      "nul": 0
+    },
+    {
+      "ym": "2025-12",
+      "total": 49430,
+      "same_month": 38740,
+      "prev_month": 10494,
+      "older": 175,
+      "future": 21,
+      "nul": 0
+    },
+    {
+      "ym": "2026-01",
+      "total": 24586,
+      "same_month": 20518,
+      "prev_month": 3999,
+      "older": 46,
+      "future": 23,
+      "nul": 0
+    },
+    {
+      "ym": "2026-02",
+      "total": 33577,
+      "same_month": 24802,
+      "prev_month": 8695,
+      "older": 62,
+      "future": 18,
+      "nul": 0
+    },
+    {
+      "ym": "2026-03",
+      "total": 47070,
+      "same_month": 37491,
+      "prev_month": 9403,
+      "older": 150,
+      "future": 26,
+      "nul": 0
+    },
+    {
+      "ym": "2026-04",
+      "total": 44239,
+      "same_month": 34133,
+      "prev_month": 9971,
+      "older": 135,
+      "future": 0,
+      "nul": 0
+    },
+    {
+      "ym": "2026-05",
+      "total": 10762,
+      "same_month": 861,
+      "prev_month": 9754,
+      "older": 147,
+      "future": 0,
+      "nul": 0
+    },
+    {
+      "ym": "2026-06",
+      "total": 210,
+      "same_month": 0,
+      "prev_month": 16,
+      "older": 193,
+      "future": 0,
+      "nul": 1
+    },
+    {
+      "ym": "2026-07",
+      "total": 17,
+      "same_month": 0,
+      "prev_month": 0,
+      "older": 17,
+      "future": 0,
+      "nul": 0
+    },
+    {
+      "ym": "2026-08",
+      "total": 2,
+      "same_month": 0,
+      "prev_month": 0,
+      "older": 2,
+      "future": 0,
+      "nul": 0
+    },
+    {
+      "ym": "2026-09",
+      "total": 4,
+      "same_month": 0,
+      "prev_month": 0,
+      "older": 4,
+      "future": 0,
+      "nul": 0
+    },
+    {
+      "ym": "2026-10",
+      "total": 1,
+      "same_month": 0,
+      "prev_month": 0,
+      "older": 1,
+      "future": 0,
+      "nul": 0
+    },
+    {
+      "ym": "2026-11",
+      "total": 3,
+      "same_month": 0,
+      "prev_month": 0,
+      "older": 3,
+      "future": 0,
+      "nul": 0
+    },
+    {
+      "ym": "2026-12",
+      "total": 7,
+      "same_month": 0,
+      "prev_month": 0,
+      "older": 7,
+      "future": 0,
+      "nul": 0
+    },
+    {
+      "ym": "2027-01",
+      "total": 2,
+      "same_month": 0,
+      "prev_month": 0,
+      "older": 2,
+      "future": 0,
+      "nul": 0
+    },
+    {
+      "ym": "2027-02",
+      "total": 1,
+      "same_month": 0,
+      "prev_month": 0,
+      "older": 1,
+      "future": 0,
+      "nul": 0
+    },
+    {
+      "ym": "2027-03",
+      "total": 2,
+      "same_month": 0,
+      "prev_month": 0,
+      "older": 2,
+      "future": 0,
+      "nul": 0
+    },
+    {
+      "ym": "2027-04",
+      "total": 3,
+      "same_month": 0,
+      "prev_month": 0,
+      "older": 3,
+      "future": 0,
+      "nul": 0
+    },
+    {
+      "ym": "2027-05",
+      "total": 4,
+      "same_month": 0,
+      "prev_month": 0,
+      "older": 4,
+      "future": 0,
+      "nul": 0
+    },
+    {
+      "ym": "2027-06",
+      "total": 4,
+      "same_month": 0,
+      "prev_month": 0,
+      "older": 4,
+      "future": 0,
+      "nul": 0
+    },
+    {
+      "ym": "2027-07",
+      "total": 17,
+      "same_month": 0,
+      "prev_month": 0,
+      "older": 17,
+      "future": 0,
+      "nul": 0
+    },
+    {
+      "ym": "2027-08",
+      "total": 8,
+      "same_month": 0,
+      "prev_month": 0,
+      "older": 8,
+      "future": 0,
+      "nul": 0
+    },
+    {
+      "ym": "2027-09",
+      "total": 1,
+      "same_month": 0,
+      "prev_month": 0,
+      "older": 1,
+      "future": 0,
+      "nul": 0
+    },
+    {
+      "ym": "2027-10",
+      "total": 2,
+      "same_month": 0,
+      "prev_month": 0,
+      "older": 2,
+      "future": 0,
+      "nul": 0
+    },
+    {
+      "ym": "2027-11",
+      "total": 2,
+      "same_month": 0,
+      "prev_month": 0,
+      "older": 2,
+      "future": 0,
+      "nul": 0
+    },
+    {
+      "ym": "2027-12",
+      "total": 6,
+      "same_month": 0,
+      "prev_month": 0,
+      "older": 6,
+      "future": 0,
+      "nul": 0
+    },
+    {
+      "ym": "2028-01",
+      "total": 6,
+      "same_month": 0,
+      "prev_month": 0,
+      "older": 6,
+      "future": 0,
+      "nul": 0
+    },
+    {
+      "ym": "2028-02",
+      "total": 3,
+      "same_month": 0,
+      "prev_month": 0,
+      "older": 3,
+      "future": 0,
+      "nul": 0
+    },
+    {
+      "ym": "2028-03",
+      "total": 1,
+      "same_month": 0,
+      "prev_month": 0,
+      "older": 1,
+      "future": 0,
+      "nul": 0
+    },
+    {
+      "ym": "2028-04",
+      "total": 4,
+      "same_month": 0,
+      "prev_month": 0,
+      "older": 4,
+      "future": 0,
+      "nul": 0
+    },
+    {
+      "ym": "2028-05",
+      "total": 2,
+      "same_month": 0,
+      "prev_month": 0,
+      "older": 2,
+      "future": 0,
+      "nul": 0
+    },
+    {
+      "ym": "2028-06",
+      "total": 2,
+      "same_month": 0,
+      "prev_month": 0,
+      "older": 2,
+      "future": 0,
+      "nul": 0
+    },
+    {
+      "ym": "2028-07",
+      "total": 1,
+      "same_month": 0,
+      "prev_month": 0,
+      "older": 1,
+      "future": 0,
+      "nul": 0
+    },
+    {
+      "ym": "2028-08",
+      "total": 17,
+      "same_month": 0,
+      "prev_month": 0,
+      "older": 17,
+      "future": 0,
+      "nul": 0
+    },
+    {
+      "ym": "2028-09",
+      "total": 1,
+      "same_month": 0,
+      "prev_month": 0,
+      "older": 1,
+      "future": 0,
+      "nul": 0
+    },
+    {
+      "ym": "2028-10",
+      "total": 3,
+      "same_month": 0,
+      "prev_month": 0,
+      "older": 3,
+      "future": 0,
+      "nul": 0
+    },
+    {
+      "ym": "2028-11",
+      "total": 1,
+      "same_month": 0,
+      "prev_month": 0,
+      "older": 1,
+      "future": 0,
+      "nul": 0
+    },
+    {
+      "ym": "2028-12",
+      "total": 2,
+      "same_month": 0,
+      "prev_month": 0,
+      "older": 2,
+      "future": 0,
+      "nul": 0
+    },
+    {
+      "ym": "2029-01",
+      "total": 1,
+      "same_month": 0,
+      "prev_month": 0,
+      "older": 1,
+      "future": 0,
+      "nul": 0
+    },
+    {
+      "ym": "2029-03",
+      "total": 1,
+      "same_month": 0,
+      "prev_month": 0,
+      "older": 1,
+      "future": 0,
+      "nul": 0
+    },
+    {
+      "ym": "2029-04",
+      "total": 1,
+      "same_month": 0,
+      "prev_month": 0,
+      "older": 1,
+      "future": 0,
+      "nul": 0
+    },
+    {
+      "ym": "2029-05",
+      "total": 4,
+      "same_month": 0,
+      "prev_month": 0,
+      "older": 4,
+      "future": 0,
+      "nul": 0
+    },
+    {
+      "ym": "2029-06",
+      "total": 1,
+      "same_month": 0,
+      "prev_month": 0,
+      "older": 1,
+      "future": 0,
+      "nul": 0
+    },
+    {
+      "ym": "2029-07",
+      "total": 2,
+      "same_month": 0,
+      "prev_month": 0,
+      "older": 2,
+      "future": 0,
+      "nul": 0
+    },
+    {
+      "ym": "2029-09",
+      "total": 5,
+      "same_month": 0,
+      "prev_month": 0,
+      "older": 5,
+      "future": 0,
+      "nul": 0
+    },
+    {
+      "ym": "2029-10",
+      "total": 2,
+      "same_month": 0,
+      "prev_month": 0,
+      "older": 2,
+      "future": 0,
+      "nul": 0
+    },
+    {
+      "ym": "2029-12",
+      "total": 3,
+      "same_month": 0,
+      "prev_month": 0,
+      "older": 3,
+      "future": 0,
+      "nul": 0
+    },
+    {
+      "ym": "2030-01",
+      "total": 2,
+      "same_month": 0,
+      "prev_month": 0,
+      "older": 2,
+      "future": 0,
+      "nul": 0
+    },
+    {
+      "ym": "2030-02",
+      "total": 2,
+      "same_month": 0,
+      "prev_month": 0,
+      "older": 2,
+      "future": 0,
+      "nul": 0
+    },
+    {
+      "ym": "2030-03",
+      "total": 2,
+      "same_month": 0,
+      "prev_month": 0,
+      "older": 2,
+      "future": 0,
+      "nul": 0
+    },
+    {
+      "ym": "2030-04",
+      "total": 1,
+      "same_month": 0,
+      "prev_month": 0,
+      "older": 1,
+      "future": 0,
+      "nul": 0
+    },
+    {
+      "ym": "2030-05",
+      "total": 2,
+      "same_month": 0,
+      "prev_month": 0,
+      "older": 2,
+      "future": 0,
+      "nul": 0
+    },
+    {
+      "ym": "2030-06",
+      "total": 1,
+      "same_month": 0,
+      "prev_month": 0,
+      "older": 1,
+      "future": 0,
+      "nul": 0
+    },
+    {
+      "ym": "2030-07",
+      "total": 1,
+      "same_month": 0,
+      "prev_month": 0,
+      "older": 1,
+      "future": 0,
+      "nul": 0
+    },
+    {
+      "ym": "2030-09",
+      "total": 1,
+      "same_month": 0,
+      "prev_month": 0,
+      "older": 1,
+      "future": 0,
+      "nul": 0
+    },
+    {
+      "ym": "2030-10",
+      "total": 2,
+      "same_month": 0,
+      "prev_month": 0,
+      "older": 2,
+      "future": 0,
+      "nul": 0
+    },
+    {
+      "ym": "2030-11",
+      "total": 2,
+      "same_month": 0,
+      "prev_month": 0,
+      "older": 2,
+      "future": 0,
+      "nul": 0
+    },
+    {
+      "ym": "2030-12",
+      "total": 1,
+      "same_month": 0,
+      "prev_month": 0,
+      "older": 1,
+      "future": 0,
+      "nul": 0
+    },
+    {
+      "ym": "2031-01",
+      "total": 1,
+      "same_month": 0,
+      "prev_month": 0,
+      "older": 1,
+      "future": 0,
+      "nul": 0
+    },
+    {
+      "ym": "2031-02",
+      "total": 3,
+      "same_month": 0,
+      "prev_month": 0,
+      "older": 3,
+      "future": 0,
+      "nul": 0
+    },
+    {
+      "ym": "2031-03",
+      "total": 3,
+      "same_month": 0,
+      "prev_month": 0,
+      "older": 3,
+      "future": 0,
+      "nul": 0
+    },
+    {
+      "ym": "2031-04",
+      "total": 3,
+      "same_month": 0,
+      "prev_month": 0,
+      "older": 3,
+      "future": 0,
+      "nul": 0
+    },
+    {
+      "ym": "2031-08",
+      "total": 1,
+      "same_month": 0,
+      "prev_month": 0,
+      "older": 1,
+      "future": 0,
+      "nul": 0
+    },
+    {
+      "ym": "2031-10",
+      "total": 3,
+      "same_month": 0,
+      "prev_month": 0,
+      "older": 3,
+      "future": 0,
+      "nul": 0
+    },
+    {
+      "ym": "2031-12",
+      "total": 2,
+      "same_month": 0,
+      "prev_month": 0,
+      "older": 2,
+      "future": 0,
+      "nul": 0
+    },
+    {
+      "ym": "2032-01",
+      "total": 2,
+      "same_month": 0,
+      "prev_month": 0,
+      "older": 2,
+      "future": 0,
+      "nul": 0
+    },
+    {
+      "ym": "2032-02",
+      "total": 1,
+      "same_month": 0,
+      "prev_month": 0,
+      "older": 1,
+      "future": 0,
+      "nul": 0
+    },
+    {
+      "ym": "2032-03",
+      "total": 2,
+      "same_month": 0,
+      "prev_month": 0,
+      "older": 2,
+      "future": 0,
+      "nul": 0
+    },
+    {
+      "ym": "2032-05",
+      "total": 2,
+      "same_month": 0,
+      "prev_month": 0,
+      "older": 2,
+      "future": 0,
+      "nul": 0
+    },
+    {
+      "ym": "2032-06",
+      "total": 3,
+      "same_month": 0,
+      "prev_month": 0,
+      "older": 3,
+      "future": 0,
+      "nul": 0
+    },
+    {
+      "ym": "2032-08",
+      "total": 1,
+      "same_month": 0,
+      "prev_month": 0,
+      "older": 1,
+      "future": 0,
+      "nul": 0
+    },
+    {
+      "ym": "2032-09",
+      "total": 2,
+      "same_month": 0,
+      "prev_month": 0,
+      "older": 2,
+      "future": 0,
+      "nul": 0
+    },
+    {
+      "ym": "2032-11",
+      "total": 6,
+      "same_month": 0,
+      "prev_month": 0,
+      "older": 6,
+      "future": 0,
+      "nul": 0
+    },
+    {
+      "ym": "2032-12",
+      "total": 2,
+      "same_month": 0,
+      "prev_month": 0,
+      "older": 2,
+      "future": 0,
+      "nul": 0
+    },
+    {
+      "ym": "2033-01",
+      "total": 1,
+      "same_month": 0,
+      "prev_month": 0,
+      "older": 1,
+      "future": 0,
+      "nul": 0
+    },
+    {
+      "ym": "2033-02",
+      "total": 1,
+      "same_month": 0,
+      "prev_month": 0,
+      "older": 1,
+      "future": 0,
+      "nul": 0
+    },
+    {
+      "ym": "2033-08",
+      "total": 2,
+      "same_month": 0,
+      "prev_month": 0,
+      "older": 2,
+      "future": 0,
+      "nul": 0
+    },
+    {
+      "ym": "2033-10",
+      "total": 2,
+      "same_month": 0,
+      "prev_month": 0,
+      "older": 2,
+      "future": 0,
+      "nul": 0
+    },
+    {
+      "ym": "2033-11",
+      "total": 1,
+      "same_month": 0,
+      "prev_month": 0,
+      "older": 1,
+      "future": 0,
+      "nul": 0
+    },
+    {
+      "ym": "2034-07",
+      "total": 1,
+      "same_month": 0,
+      "prev_month": 0,
+      "older": 1,
+      "future": 0,
+      "nul": 0
+    },
+    {
+      "ym": "2035-12",
+      "total": 1,
+      "same_month": 0,
+      "prev_month": 0,
+      "older": 1,
+      "future": 0,
+      "nul": 0
+    },
+    {
+      "ym": "2036-02",
+      "total": 1,
+      "same_month": 0,
+      "prev_month": 0,
+      "older": 1,
+      "future": 0,
+      "nul": 0
+    },
+    {
+      "ym": "2036-04",
+      "total": 1,
+      "same_month": 0,
+      "prev_month": 0,
+      "older": 1,
+      "future": 0,
+      "nul": 0
+    },
+    {
+      "ym": "2036-06",
+      "total": 1,
+      "same_month": 0,
+      "prev_month": 0,
+      "older": 1,
+      "future": 0,
+      "nul": 0
+    },
+    {
+      "ym": "2036-07",
+      "total": 4,
+      "same_month": 0,
+      "prev_month": 0,
+      "older": 4,
+      "future": 0,
+      "nul": 0
+    },
+    {
+      "ym": "2036-08",
+      "total": 2,
+      "same_month": 0,
+      "prev_month": 0,
+      "older": 2,
+      "future": 0,
+      "nul": 0
+    },
+    {
+      "ym": "2036-09",
+      "total": 3,
+      "same_month": 0,
+      "prev_month": 0,
+      "older": 3,
+      "future": 0,
+      "nul": 0
+    },
+    {
+      "ym": "2036-10",
+      "total": 16,
+      "same_month": 0,
+      "prev_month": 0,
+      "older": 16,
+      "future": 0,
+      "nul": 0
+    },
+    {
+      "ym": "2036-11",
+      "total": 6,
+      "same_month": 0,
+      "prev_month": 0,
+      "older": 6,
+      "future": 0,
+      "nul": 0
+    },
+    {
+      "ym": "2036-12",
+      "total": 5,
+      "same_month": 0,
+      "prev_month": 0,
+      "older": 5,
+      "future": 0,
+      "nul": 0
+    },
+    {
+      "ym": "2037-01",
+      "total": 14,
+      "same_month": 0,
+      "prev_month": 0,
+      "older": 14,
+      "future": 0,
+      "nul": 0
+    },
+    {
+      "ym": "2037-02",
+      "total": 6,
+      "same_month": 0,
+      "prev_month": 0,
+      "older": 6,
+      "future": 0,
+      "nul": 0
+    },
+    {
+      "ym": "2037-04",
+      "total": 3,
+      "same_month": 0,
+      "prev_month": 0,
+      "older": 3,
+      "future": 0,
+      "nul": 0
+    },
+    {
+      "ym": "2037-12",
+      "total": 1,
+      "same_month": 0,
+      "prev_month": 0,
+      "older": 1,
+      "future": 0,
+      "nul": 0
+    },
+    {
+      "ym": "2040-04",
+      "total": 1,
+      "same_month": 0,
+      "prev_month": 0,
+      "older": 1,
+      "future": 0,
+      "nul": 0
+    },
+    {
+      "ym": "2040-05",
+      "total": 2,
+      "same_month": 0,
+      "prev_month": 0,
+      "older": 2,
+      "future": 0,
+      "nul": 0
+    },
+    {
+      "ym": "2042-03",
+      "total": 1,
+      "same_month": 0,
+      "prev_month": 0,
+      "older": 1,
+      "future": 0,
+      "nul": 0
+    },
+    {
+      "ym": "2042-05",
+      "total": 1,
+      "same_month": 0,
+      "prev_month": 0,
+      "older": 1,
+      "future": 0,
+      "nul": 0
+    },
+    {
+      "ym": "2042-08",
+      "total": 1,
+      "same_month": 0,
+      "prev_month": 0,
+      "older": 1,
+      "future": 0,
+      "nul": 0
+    },
+    {
+      "ym": "2044-04",
+      "total": 1,
+      "same_month": 0,
+      "prev_month": 0,
+      "older": 1,
+      "future": 0,
+      "nul": 0
+    },
+    {
+      "ym": "2044-08",
+      "total": 1,
+      "same_month": 0,
+      "prev_month": 0,
+      "older": 1,
+      "future": 0,
+      "nul": 0
+    },
+    {
+      "ym": "2045-04",
+      "total": 1,
+      "same_month": 0,
+      "prev_month": 0,
+      "older": 1,
+      "future": 0,
+      "nul": 0
+    },
+    {
+      "ym": "2047-03",
+      "total": 1,
+      "same_month": 0,
+      "prev_month": 0,
+      "older": 1,
+      "future": 0,
+      "nul": 0
+    },
+    {
+      "ym": "2047-05",
+      "total": 1,
+      "same_month": 0,
+      "prev_month": 0,
+      "older": 1,
+      "future": 0,
+      "nul": 0
+    },
+    {
+      "ym": "2047-12",
+      "total": 1,
+      "same_month": 0,
+      "prev_month": 0,
+      "older": 1,
+      "future": 0,
+      "nul": 0
+    },
+    {
+      "ym": "2048-03",
+      "total": 1,
+      "same_month": 0,
+      "prev_month": 0,
+      "older": 1,
+      "future": 0,
+      "nul": 0
+    },
+    {
+      "ym": "2048-04",
+      "total": 1,
+      "same_month": 0,
+      "prev_month": 0,
+      "older": 1,
+      "future": 0,
+      "nul": 0
+    },
+    {
+      "ym": "2048-06",
+      "total": 1,
+      "same_month": 0,
+      "prev_month": 0,
+      "older": 1,
+      "future": 0,
+      "nul": 0
+    },
+    {
+      "ym": "2048-12",
+      "total": 1,
+      "same_month": 0,
+      "prev_month": 0,
+      "older": 1,
+      "future": 0,
+      "nul": 0
+    },
+    {
+      "ym": "2049-03",
+      "total": 1,
+      "same_month": 0,
+      "prev_month": 0,
+      "older": 1,
+      "future": 0,
+      "nul": 0
+    },
+    {
+      "ym": "2049-12",
+      "total": 2,
+      "same_month": 0,
+      "prev_month": 0,
+      "older": 2,
+      "future": 0,
+      "nul": 0
+    },
+    {
+      "ym": "2050-06",
+      "total": 1,
+      "same_month": 0,
+      "prev_month": 0,
+      "older": 1,
+      "future": 0,
+      "nul": 0
+    },
+    {
+      "ym": "2051-05",
+      "total": 1,
+      "same_month": 0,
+      "prev_month": 0,
+      "older": 1,
+      "future": 0,
+      "nul": 0
+    },
+    {
+      "ym": "2055-05",
+      "total": 1,
+      "same_month": 0,
+      "prev_month": 0,
+      "older": 1,
+      "future": 0,
+      "nul": 0
+    },
+    {
+      "ym": "2060-06",
+      "total": 1,
+      "same_month": 0,
+      "prev_month": 0,
+      "older": 1,
+      "future": 0,
+      "nul": 0
+    },
+    {
+      "ym": "2061-04",
+      "total": 1,
+      "same_month": 0,
+      "prev_month": 0,
+      "older": 1,
+      "future": 0,
+      "nul": 0
+    },
+    {
+      "ym": "2061-05",
+      "total": 1,
+      "same_month": 0,
+      "prev_month": 0,
+      "older": 1,
+      "future": 0,
+      "nul": 0
+    },
+    {
+      "ym": "2070-08",
+      "total": 1,
+      "same_month": 0,
+      "prev_month": 0,
+      "older": 1,
+      "future": 0,
+      "nul": 0
+    },
+    {
+      "ym": "2077-07",
+      "total": 3,
+      "same_month": 0,
+      "prev_month": 0,
+      "older": 3,
+      "future": 0,
+      "nul": 0
+    },
+    {
+      "ym": "2091-04",
+      "total": 1,
+      "same_month": 0,
+      "prev_month": 0,
+      "older": 1,
+      "future": 0,
+      "nul": 0
+    },
+    {
+      "ym": "2091-06",
+      "total": 1,
+      "same_month": 0,
+      "prev_month": 0,
+      "older": 1,
+      "future": 0,
+      "nul": 0
+    },
+    {
+      "ym": "2099-12",
+      "total": 4370,
+      "same_month": 0,
+      "prev_month": 0,
+      "older": 4370,
+      "future": 0,
+      "nul": 0
+    },
+    {
+      "ym": "2100-03",
+      "total": 1,
+      "same_month": 0,
+      "prev_month": 0,
+      "older": 1,
+      "future": 0,
+      "nul": 0
+    },
+    {
+      "ym": "2100-04",
+      "total": 1,
+      "same_month": 0,
+      "prev_month": 0,
+      "older": 1,
+      "future": 0,
+      "nul": 0
+    },
+    {
+      "ym": "2100-05",
+      "total": 1,
+      "same_month": 0,
+      "prev_month": 0,
+      "older": 1,
+      "future": 0,
+      "nul": 0
+    },
+    {
+      "ym": "2100-08",
+      "total": 1,
+      "same_month": 0,
+      "prev_month": 0,
+      "older": 1,
+      "future": 0,
+      "nul": 0
+    },
+    {
+      "ym": "2100-09",
+      "total": 1,
+      "same_month": 0,
+      "prev_month": 0,
+      "older": 1,
+      "future": 0,
+      "nul": 0
+    },
+    {
+      "ym": "2101-10",
+      "total": 2,
+      "same_month": 0,
+      "prev_month": 0,
+      "older": 2,
+      "future": 0,
+      "nul": 0
+    },
+    {
+      "ym": "2101-11",
+      "total": 1,
+      "same_month": 0,
+      "prev_month": 0,
+      "older": 1,
+      "future": 0,
+      "nul": 0
+    },
+    {
+      "ym": "2102-03",
+      "total": 2,
+      "same_month": 0,
+      "prev_month": 0,
+      "older": 2,
+      "future": 0,
+      "nul": 0
+    },
+    {
+      "ym": "2102-06",
+      "total": 1,
+      "same_month": 0,
+      "prev_month": 0,
+      "older": 1,
+      "future": 0,
+      "nul": 0
+    },
+    {
+      "ym": "2102-08",
+      "total": 1,
+      "same_month": 0,
+      "prev_month": 0,
+      "older": 1,
+      "future": 0,
+      "nul": 0
+    },
+    {
+      "ym": "2103-01",
+      "total": 1,
+      "same_month": 0,
+      "prev_month": 0,
+      "older": 1,
+      "future": 0,
+      "nul": 0
+    },
+    {
+      "ym": "2103-03",
+      "total": 1,
+      "same_month": 0,
+      "prev_month": 0,
+      "older": 1,
+      "future": 0,
+      "nul": 0
+    },
+    {
+      "ym": "2103-05",
+      "total": 1,
+      "same_month": 0,
+      "prev_month": 0,
+      "older": 1,
+      "future": 0,
+      "nul": 0
+    },
+    {
+      "ym": "2103-12",
+      "total": 1,
+      "same_month": 0,
+      "prev_month": 0,
+      "older": 1,
+      "future": 0,
+      "nul": 0
+    },
+    {
+      "ym": "2105-06",
+      "total": 1,
+      "same_month": 0,
+      "prev_month": 0,
+      "older": 1,
+      "future": 0,
+      "nul": 0
+    },
+    {
+      "ym": "2105-12",
+      "total": 1,
+      "same_month": 0,
+      "prev_month": 0,
+      "older": 1,
+      "future": 0,
+      "nul": 0
+    },
+    {
+      "ym": "2106-03",
+      "total": 1,
+      "same_month": 0,
+      "prev_month": 0,
+      "older": 1,
+      "future": 0,
+      "nul": 0
+    },
+    {
+      "ym": "2106-06",
+      "total": 1,
+      "same_month": 0,
+      "prev_month": 0,
+      "older": 1,
+      "future": 0,
+      "nul": 0
+    },
+    {
+      "ym": "2106-09",
+      "total": 1,
+      "same_month": 0,
+      "prev_month": 0,
+      "older": 1,
+      "future": 0,
+      "nul": 0
+    },
+    {
+      "ym": "2106-11",
+      "total": 1,
+      "same_month": 0,
+      "prev_month": 0,
+      "older": 1,
+      "future": 0,
+      "nul": 0
+    },
+    {
+      "ym": "2107-01",
+      "total": 1,
+      "same_month": 0,
+      "prev_month": 0,
+      "older": 1,
+      "future": 0,
+      "nul": 0
+    },
+    {
+      "ym": "2107-03",
+      "total": 2,
+      "same_month": 0,
+      "prev_month": 0,
+      "older": 2,
+      "future": 0,
+      "nul": 0
+    },
+    {
+      "ym": "2107-06",
+      "total": 1,
+      "same_month": 0,
+      "prev_month": 0,
+      "older": 1,
+      "future": 0,
+      "nul": 0
+    },
+    {
+      "ym": "2108-04",
+      "total": 1,
+      "same_month": 0,
+      "prev_month": 0,
+      "older": 1,
+      "future": 0,
+      "nul": 0
+    },
+    {
+      "ym": "2108-05",
+      "total": 2,
+      "same_month": 0,
+      "prev_month": 0,
+      "older": 2,
+      "future": 0,
+      "nul": 0
+    },
+    {
+      "ym": "2108-06",
+      "total": 2,
+      "same_month": 0,
+      "prev_month": 0,
+      "older": 2,
+      "future": 0,
+      "nul": 0
+    },
+    {
+      "ym": "2108-07",
+      "total": 1,
+      "same_month": 0,
+      "prev_month": 0,
+      "older": 1,
+      "future": 0,
+      "nul": 0
+    },
+    {
+      "ym": "2108-10",
+      "total": 3,
+      "same_month": 0,
+      "prev_month": 0,
+      "older": 3,
+      "future": 0,
+      "nul": 0
+    },
+    {
+      "ym": "2108-12",
+      "total": 4,
+      "same_month": 0,
+      "prev_month": 0,
+      "older": 4,
+      "future": 0,
+      "nul": 0
+    },
+    {
+      "ym": "2109-05",
+      "total": 2,
+      "same_month": 0,
+      "prev_month": 0,
+      "older": 2,
+      "future": 0,
+      "nul": 0
+    },
+    {
+      "ym": "2109-06",
+      "total": 1,
+      "same_month": 0,
+      "prev_month": 0,
+      "older": 1,
+      "future": 0,
+      "nul": 0
+    },
+    {
+      "ym": "2109-07",
+      "total": 2,
+      "same_month": 0,
+      "prev_month": 0,
+      "older": 2,
+      "future": 0,
+      "nul": 0
+    },
+    {
+      "ym": "2109-10",
+      "total": 1,
+      "same_month": 0,
+      "prev_month": 0,
+      "older": 1,
+      "future": 0,
+      "nul": 0
+    },
+    {
+      "ym": "2109-11",
+      "total": 1,
+      "same_month": 0,
+      "prev_month": 0,
+      "older": 1,
+      "future": 0,
+      "nul": 0
+    },
+    {
+      "ym": "2109-12",
+      "total": 2,
+      "same_month": 0,
+      "prev_month": 0,
+      "older": 2,
+      "future": 0,
+      "nul": 0
+    },
+    {
+      "ym": "2111-12",
+      "total": 4,
+      "same_month": 0,
+      "prev_month": 0,
+      "older": 4,
+      "future": 0,
+      "nul": 0
+    },
+    {
+      "ym": "2112-04",
+      "total": 1,
+      "same_month": 0,
+      "prev_month": 0,
+      "older": 1,
+      "future": 0,
+      "nul": 0
+    },
+    {
+      "ym": "2112-12",
+      "total": 1,
+      "same_month": 0,
+      "prev_month": 0,
+      "older": 1,
+      "future": 0,
+      "nul": 0
+    },
+    {
+      "ym": "2113-01",
+      "total": 1,
+      "same_month": 0,
+      "prev_month": 0,
+      "older": 1,
+      "future": 0,
+      "nul": 0
+    },
+    {
+      "ym": "2118-11",
+      "total": 1,
+      "same_month": 0,
+      "prev_month": 0,
+      "older": 1,
+      "future": 0,
+      "nul": 0
+    },
+    {
+      "ym": "2121-04",
+      "total": 1,
+      "same_month": 0,
+      "prev_month": 0,
+      "older": 1,
+      "future": 0,
+      "nul": 0
+    },
+    {
+      "ym": "2122-12",
+      "total": 1,
+      "same_month": 0,
+      "prev_month": 0,
+      "older": 1,
+      "future": 0,
+      "nul": 0
+    },
+    {
+      "ym": "2123-07",
+      "total": 1,
+      "same_month": 0,
+      "prev_month": 0,
+      "older": 1,
+      "future": 0,
+      "nul": 0
+    },
+    {
+      "ym": "2203-03",
+      "total": 1,
+      "same_month": 0,
+      "prev_month": 0,
+      "older": 1,
+      "future": 0,
+      "nul": 0
+    },
+    {
+      "ym": "2204-03",
+      "total": 1,
+      "same_month": 0,
+      "prev_month": 0,
+      "older": 1,
+      "future": 0,
+      "nul": 0
+    },
+    {
+      "ym": "2206-12",
+      "total": 1,
+      "same_month": 0,
+      "prev_month": 0,
+      "older": 1,
+      "future": 0,
+      "nul": 0
+    },
+    {
+      "ym": "2207-04",
+      "total": 1,
+      "same_month": 0,
+      "prev_month": 0,
+      "older": 1,
+      "future": 0,
+      "nul": 0
+    },
+    {
+      "ym": "2208-11",
+      "total": 1,
+      "same_month": 0,
+      "prev_month": 0,
+      "older": 1,
+      "future": 0,
+      "nul": 0
+    },
+    {
+      "ym": "2310-03",
+      "total": 1,
+      "same_month": 0,
+      "prev_month": 0,
+      "older": 1,
+      "future": 0,
+      "nul": 0
+    },
+    {
+      "ym": "2323-01",
+      "total": 1,
+      "same_month": 0,
+      "prev_month": 0,
+      "older": 1,
+      "future": 0,
+      "nul": 0
+    },
+    {
+      "ym": "2323-02",
+      "total": 1,
+      "same_month": 0,
+      "prev_month": 0,
+      "older": 1,
+      "future": 0,
+      "nul": 0
+    },
+    {
+      "ym": "2323-03",
+      "total": 2,
+      "same_month": 0,
+      "prev_month": 0,
+      "older": 2,
+      "future": 0,
+      "nul": 0
+    },
+    {
+      "ym": "2323-12",
+      "total": 1,
+      "same_month": 0,
+      "prev_month": 0,
+      "older": 1,
+      "future": 0,
+      "nul": 0
+    },
+    {
+      "ym": "2424-03",
+      "total": 1,
+      "same_month": 0,
+      "prev_month": 0,
+      "older": 1,
+      "future": 0,
+      "nul": 0
+    },
+    {
+      "ym": "2424-04",
+      "total": 1,
+      "same_month": 0,
+      "prev_month": 0,
+      "older": 1,
+      "future": 0,
+      "nul": 0
+    },
+    {
+      "ym": "2424-12",
+      "total": 1,
+      "same_month": 0,
+      "prev_month": 0,
+      "older": 1,
+      "future": 0,
+      "nul": 0
+    },
+    {
+      "ym": "2515-09",
+      "total": 1,
+      "same_month": 0,
+      "prev_month": 0,
+      "older": 1,
+      "future": 0,
+      "nul": 0
+    },
+    {
+      "ym": "2660-12",
+      "total": 1,
+      "same_month": 0,
+      "prev_month": 0,
+      "older": 1,
+      "future": 0,
+      "nul": 0
+    },
+    {
+      "ym": "2770-12",
+      "total": 1,
+      "same_month": 0,
+      "prev_month": 0,
+      "older": 1,
+      "future": 0,
+      "nul": 0
+    },
+    {
+      "ym": "2812-12",
+      "total": 1,
+      "same_month": 0,
+      "prev_month": 0,
+      "older": 1,
+      "future": 0,
+      "nul": 0
+    },
+    {
+      "ym": "2914-05",
+      "total": 1,
+      "same_month": 0,
+      "prev_month": 0,
+      "older": 1,
+      "future": 0,
+      "nul": 0
+    },
+    {
+      "ym": "2915-04",
+      "total": 1,
+      "same_month": 0,
+      "prev_month": 0,
+      "older": 1,
+      "future": 0,
+      "nul": 0
+    },
+    {
+      "ym": "2919-04",
+      "total": 1,
+      "same_month": 0,
+      "prev_month": 0,
+      "older": 1,
+      "future": 0,
+      "nul": 0
+    },
+    {
+      "ym": "3012-03",
+      "total": 1,
+      "same_month": 0,
+      "prev_month": 0,
+      "older": 1,
+      "future": 0,
+      "nul": 0
+    },
+    {
+      "ym": "3013-01",
+      "total": 1,
+      "same_month": 0,
+      "prev_month": 0,
+      "older": 1,
+      "future": 0,
+      "nul": 0
+    },
+    {
+      "ym": "3013-02",
+      "total": 1,
+      "same_month": 0,
+      "prev_month": 0,
+      "older": 1,
+      "future": 0,
+      "nul": 0
+    },
+    {
+      "ym": "3013-03",
+      "total": 1,
+      "same_month": 0,
+      "prev_month": 0,
+      "older": 1,
+      "future": 0,
+      "nul": 0
+    },
+    {
+      "ym": "3017-11",
+      "total": 1,
+      "same_month": 0,
+      "prev_month": 0,
+      "older": 1,
+      "future": 0,
+      "nul": 0
+    },
+    {
+      "ym": "3019-03",
+      "total": 2,
+      "same_month": 0,
+      "prev_month": 0,
+      "older": 2,
+      "future": 0,
+      "nul": 0
+    },
+    {
+      "ym": "3021-07",
+      "total": 1,
+      "same_month": 0,
+      "prev_month": 0,
+      "older": 1,
+      "future": 0,
+      "nul": 0
+    },
+    {
+      "ym": "3023-03",
+      "total": 1,
+      "same_month": 0,
+      "prev_month": 0,
+      "older": 1,
+      "future": 0,
+      "nul": 0
+    },
+    {
+      "ym": "3027-03",
+      "total": 1,
+      "same_month": 0,
+      "prev_month": 0,
+      "older": 1,
+      "future": 0,
+      "nul": 0
+    },
+    {
+      "ym": "5005-05",
+      "total": 1,
+      "same_month": 0,
+      "prev_month": 0,
+      "older": 1,
+      "future": 0,
+      "nul": 0
+    },
+    {
+      "ym": "5009-05",
+      "total": 1,
+      "same_month": 0,
+      "prev_month": 0,
+      "older": 1,
+      "future": 0,
+      "nul": 0
+    },
+    {
+      "ym": "5010-05",
+      "total": 1,
+      "same_month": 0,
+      "prev_month": 0,
+      "older": 1,
+      "future": 0,
+      "nul": 0
+    },
+    {
+      "ym": "5013-05",
+      "total": 1,
+      "same_month": 0,
+      "prev_month": 0,
+      "older": 1,
+      "future": 0,
+      "nul": 0
+    }
+  ],
+  "realMissing": 568157,
+  "incompleteCount": 122,
+  "incomplete": [
+    {
+      "ym": "2021-03",
+      "api": 53283,
+      "db": 4280,
+      "ratio": 8.032580748081001,
+      "expected": 42348,
+      "missing": 38068
+    },
+    {
+      "ym": "2020-12",
+      "api": 42658,
+      "db": 4062,
+      "ratio": 9.52224670636223,
+      "expected": 33904,
+      "missing": 29842
+    },
+    {
+      "ym": "2014-03",
+      "api": 42708,
+      "db": 8109,
+      "ratio": 18.987075021073334,
+      "expected": 33943,
+      "missing": 25834
+    },
+    {
+      "ym": "2015-03",
+      "api": 41819,
+      "db": 7637,
+      "ratio": 18.262034003682537,
+      "expected": 33237,
+      "missing": 25600
+    },
+    {
+      "ym": "2022-02",
+      "api": 39414,
+      "db": 7247,
+      "ratio": 18.386867610493734,
+      "expected": 31325,
+      "missing": 24078
+    },
+    {
+      "ym": "2021-11",
+      "api": 42154,
+      "db": 9996,
+      "ratio": 23.713052142145465,
+      "expected": 33503,
+      "missing": 23507
+    },
+    {
+      "ym": "2007-03",
+      "api": 34120,
+      "db": 3815,
+      "ratio": 11.181125439624854,
+      "expected": 27118,
+      "missing": 23303
+    },
+    {
+      "ym": "2020-11",
+      "api": 38777,
+      "db": 8637,
+      "ratio": 22.273512649250847,
+      "expected": 30819,
+      "missing": 22182
+    },
+    {
+      "ym": "2021-06",
+      "api": 41506,
+      "db": 11603,
+      "ratio": 27.954994458632488,
+      "expected": 32988,
+      "missing": 21385
+    },
+    {
+      "ym": "2022-05",
+      "api": 43625,
+      "db": 13440,
+      "ratio": 30.808022922636102,
+      "expected": 34672,
+      "missing": 21232
+    },
+    {
+      "ym": "2022-06",
+      "api": 41301,
+      "db": 11990,
+      "ratio": 29.03077407326699,
+      "expected": 32825,
+      "missing": 20835
+    },
+    {
+      "ym": "2016-02",
+      "api": 40749,
+      "db": 12606,
+      "ratio": 30.93572848413458,
+      "expected": 32386,
+      "missing": 19780
+    },
+    {
+      "ym": "2021-10",
+      "api": 35046,
+      "db": 8241,
+      "ratio": 23.514809108029446,
+      "expected": 27854,
+      "missing": 19613
+    },
+    {
+      "ym": "2021-02",
+      "api": 41727,
+      "db": 13780,
+      "ratio": 33.024180985932375,
+      "expected": 33164,
+      "missing": 19384
+    },
+    {
+      "ym": "2021-12",
+      "api": 45750,
+      "db": 16979,
+      "ratio": 37.11256830601093,
+      "expected": 36361,
+      "missing": 19382
+    },
+    {
+      "ym": "2022-10",
+      "api": 34789,
+      "db": 8330,
+      "ratio": 23.944350225646037,
+      "expected": 27650,
+      "missing": 19320
+    },
+    {
+      "ym": "2020-10",
+      "api": 32202,
+      "db": 6901,
+      "ratio": 21.430345941245886,
+      "expected": 25593,
+      "missing": 18692
+    },
+    {
+      "ym": "2020-07",
+      "api": 33429,
+      "db": 8368,
+      "ratio": 25.03215770737982,
+      "expected": 26569,
+      "missing": 18201
+    },
+    {
+      "ym": "2022-04",
+      "api": 46690,
+      "db": 19178,
+      "ratio": 41.0751766973656,
+      "expected": 37108,
+      "missing": 17930
+    },
+    {
+      "ym": "2021-07",
+      "api": 32277,
+      "db": 8698,
+      "ratio": 26.947981534839048,
+      "expected": 25653,
+      "missing": 16955
+    },
+    {
+      "ym": "2022-07",
+      "api": 33769,
+      "db": 9948,
+      "ratio": 29.458971245817168,
+      "expected": 26839,
+      "missing": 16891
+    },
+    {
+      "ym": "2020-09",
+      "api": 29689,
+      "db": 7092,
+      "ratio": 23.88763515106605,
+      "expected": 23596,
+      "missing": 16504
+    },
+    {
+      "ym": "2014-01",
+      "api": 23469,
+      "db": 2549,
+      "ratio": 10.861135966594231,
+      "expected": 18653,
+      "missing": 16104
+    },
+    {
+      "ym": "2016-08",
+      "api": 27590,
+      "db": 5892,
+      "ratio": 21.355563610003625,
+      "expected": 21928,
+      "missing": 16036
+    },
+    {
+      "ym": "2020-06",
+      "api": 40021,
+      "db": 15946,
+      "ratio": 39.84408185702506,
+      "expected": 31808,
+      "missing": 15862
+    },
+    {
+      "ym": "2022-09",
+      "api": 29893,
+      "db": 8084,
+      "ratio": 27.043120462984643,
+      "expected": 23758,
+      "missing": 15674
+    },
+    {
+      "ym": "2021-01",
+      "api": 29125,
+      "db": 7631,
+      "ratio": 26.20085836909871,
+      "expected": 23148,
+      "missing": 15517
+    },
+    {
+      "ym": "2022-08",
+      "api": 30910,
+      "db": 9055,
+      "ratio": 29.294726625687478,
+      "expected": 24567,
+      "missing": 15512
+    },
+    {
+      "ym": "2021-08",
+      "api": 29422,
+      "db": 7984,
+      "ratio": 27.136156617497107,
+      "expected": 23384,
+      "missing": 15400
+    },
+    {
+      "ym": "2021-09",
+      "api": 27882,
+      "db": 6871,
+      "ratio": 24.643138942687038,
+      "expected": 22160,
+      "missing": 15289
+    },
+    {
+      "ym": "2020-08",
+      "api": 27619,
+      "db": 6799,
+      "ratio": 24.617111408812775,
+      "expected": 21951,
+      "missing": 15152
+    },
+    {
+      "ym": "2021-05",
+      "api": 37600,
+      "db": 15289,
+      "ratio": 40.662234042553195,
+      "expected": 29884,
+      "missing": 14595
+    },
+    {
+      "ym": "2014-07",
+      "api": 24918,
+      "db": 5290,
+      "ratio": 21.229633196885786,
+      "expected": 19804,
+      "missing": 14514
+    },
+    {
+      "ym": "2015-08",
+      "api": 26149,
+      "db": 8519,
+      "ratio": 32.57868369727332,
+      "expected": 20783,
+      "missing": 12264
+    },
+    {
+      "ym": "2016-07",
+      "api": 30254,
+      "db": 12121,
+      "ratio": 40.06412375223111,
+      "expected": 24045,
+      "missing": 11924
+    },
+    {
+      "ym": "2016-10",
+      "api": 29752,
+      "db": 12154,
+      "ratio": 40.85103522452272,
+      "expected": 23646,
+      "missing": 11492
+    },
+    {
+      "ym": "2015-01",
+      "api": 23841,
+      "db": 8738,
+      "ratio": 36.65114718342352,
+      "expected": 18948,
+      "missing": 10210
+    },
+    {
+      "ym": "2016-11",
+      "api": 35328,
+      "db": 20298,
+      "ratio": 57.455842391304344,
+      "expected": 28078,
+      "missing": 7780
+    },
+    {
+      "ym": "2024-04",
+      "api": 50307,
+      "db": 32415,
+      "ratio": 64.43437295008647,
+      "expected": 39983,
+      "missing": 7568
+    },
+    {
+      "ym": "2025-01",
+      "api": 31655,
+      "db": 18107,
+      "ratio": 57.20107407992418,
+      "expected": 25159,
+      "missing": 7052
+    },
+    {
+      "ym": "2022-03",
+      "api": 49087,
+      "db": 32659,
+      "ratio": 66.53289058202783,
+      "expected": 39013,
+      "missing": 6354
+    },
+    {
+      "ym": "2021-04",
+      "api": 45948,
+      "db": 30343,
+      "ratio": 66.0376947854096,
+      "expected": 36519,
+      "missing": 6176
+    },
+    {
+      "ym": "2022-11",
+      "api": 45117,
+      "db": 30395,
+      "ratio": 67.36928430525079,
+      "expected": 35858,
+      "missing": 5463
+    },
+    {
+      "ym": "2016-03",
+      "api": 49025,
+      "db": 33617,
+      "ratio": 68.57113717491076,
+      "expected": 38964,
+      "missing": 5347
+    },
+    {
+      "ym": "2015-04",
+      "api": 41488,
+      "db": 27819,
+      "ratio": 67.05312379483223,
+      "expected": 32974,
+      "missing": 5155
+    },
+    {
+      "ym": "2022-01",
+      "api": 30960,
+      "db": 19692,
+      "ratio": 63.604651162790695,
+      "expected": 24606,
+      "missing": 4914
+    },
+    {
+      "ym": "2014-04",
+      "api": 41968,
+      "db": 28455,
+      "ratio": 67.80165840640487,
+      "expected": 33355,
+      "missing": 4900
+    },
+    {
+      "ym": "2002-03",
+      "api": 9563,
+      "db": 2792,
+      "ratio": 29.19585904005019,
+      "expected": 7600,
+      "missing": 4808
+    },
+    {
+      "ym": "2014-02",
+      "api": 41511,
+      "db": 28347,
+      "ratio": 68.28792368287924,
+      "expected": 32992,
+      "missing": 4645
+    },
+    {
+      "ym": "2002-11",
+      "api": 13344,
+      "db": 6233,
+      "ratio": 46.71013189448441,
+      "expected": 10606,
+      "missing": 4373
+    },
+    {
+      "ym": "2016-09",
+      "api": 25759,
+      "db": 16207,
+      "ratio": 62.917815132575015,
+      "expected": 20473,
+      "missing": 4266
+    },
+    {
+      "ym": "2026-01",
+      "api": 36261,
+      "db": 24586,
+      "ratio": 67.80287361076638,
+      "expected": 28820,
+      "missing": 4234
+    },
+    {
+      "ym": "2002-10",
+      "api": 11853,
+      "db": 5350,
+      "ratio": 45.136252425546274,
+      "expected": 9421,
+      "missing": 4071
+    },
+    {
+      "ym": "2002-04",
+      "api": 9095,
+      "db": 3497,
+      "ratio": 38.449697636063775,
+      "expected": 7229,
+      "missing": 3732
+    },
+    {
+      "ym": "2024-01",
+      "api": 39046,
+      "db": 27642,
+      "ratio": 70.79342314193515,
+      "expected": 31033,
+      "missing": 3391
+    },
+    {
+      "ym": "2002-05",
+      "api": 8432,
+      "db": 3465,
+      "ratio": 41.09345351043643,
+      "expected": 6702,
+      "missing": 3237
+    },
+    {
+      "ym": "2016-01",
+      "api": 23217,
+      "db": 15237,
+      "ratio": 65.62863419046388,
+      "expected": 18452,
+      "missing": 3215
+    },
+    {
+      "ym": "2002-07",
+      "api": 8248,
+      "db": 3373,
+      "ratio": 40.89476236663433,
+      "expected": 6555,
+      "missing": 3182
+    },
+    {
+      "ym": "2013-01",
+      "api": 27384,
+      "db": 18618,
+      "ratio": 67.98860648553901,
+      "expected": 21764,
+      "missing": 3146
+    },
+    {
+      "ym": "2017-01",
+      "api": 30448,
+      "db": 21066,
+      "ratio": 69.18681029952705,
+      "expected": 24199,
+      "missing": 3133
+    },
+    {
+      "ym": "2020-01",
+      "api": 34003,
+      "db": 23909,
+      "ratio": 70.31438402493897,
+      "expected": 27025,
+      "missing": 3116
+    },
+    {
+      "ym": "2007-04",
+      "api": 33787,
+      "db": 23811,
+      "ratio": 70.47385088939532,
+      "expected": 26853,
+      "missing": 3042
+    },
+    {
+      "ym": "2014-08",
+      "api": 22160,
+      "db": 14662,
+      "ratio": 66.16425992779783,
+      "expected": 17612,
+      "missing": 2950
+    },
+    {
+      "ym": "2023-01",
+      "api": 32702,
+      "db": 23127,
+      "ratio": 70.72044523270749,
+      "expected": 25991,
+      "missing": 2864
+    },
+    {
+      "ym": "2019-01",
+      "api": 35232,
+      "db": 25172,
+      "ratio": 71.44641235240691,
+      "expected": 28002,
+      "missing": 2830
+    },
+    {
+      "ym": "2018-01",
+      "api": 34102,
+      "db": 24286,
+      "ratio": 71.215764471292,
+      "expected": 27104,
+      "missing": 2818
+    },
+    {
+      "ym": "2024-05",
+      "api": 44139,
+      "db": 32364,
+      "ratio": 73.32291171073201,
+      "expected": 35081,
+      "missing": 2717
+    },
+    {
+      "ym": "2002-02",
+      "api": 5481,
+      "db": 1726,
+      "ratio": 31.49060390439701,
+      "expected": 4356,
+      "missing": 2630
+    },
+    {
+      "ym": "2015-09",
+      "api": 26433,
+      "db": 18398,
+      "ratio": 69.60239095070555,
+      "expected": 21008,
+      "missing": 2610
+    },
+    {
+      "ym": "2006-01",
+      "api": 13655,
+      "db": 8307,
+      "ratio": 60.8348590259978,
+      "expected": 10853,
+      "missing": 2546
+    },
+    {
+      "ym": "2002-06",
+      "api": 6714,
+      "db": 2865,
+      "ratio": 42.672028596961574,
+      "expected": 5336,
+      "missing": 2471
+    },
+    {
+      "ym": "2010-01",
+      "api": 20402,
+      "db": 13865,
+      "ratio": 67.95902362513479,
+      "expected": 16215,
+      "missing": 2350
+    },
+    {
+      "ym": "2002-08",
+      "api": 6483,
+      "db": 2885,
+      "ratio": 44.501002622242794,
+      "expected": 5153,
+      "missing": 2268
+    },
+    {
+      "ym": "2007-01",
+      "api": 19264,
+      "db": 13239,
+      "ratio": 68.72404485049833,
+      "expected": 15311,
+      "missing": 2072
+    },
+    {
+      "ym": "2015-02",
+      "api": 34679,
+      "db": 25570,
+      "ratio": 73.7333833155512,
+      "expected": 27562,
+      "missing": 1992
+    },
+    {
+      "ym": "2011-01",
+      "api": 19649,
+      "db": 13667,
+      "ratio": 69.55570258028399,
+      "expected": 15617,
+      "missing": 1950
+    },
+    {
+      "ym": "2005-01",
+      "api": 8167,
+      "db": 4609,
+      "ratio": 56.434431247704175,
+      "expected": 6491,
+      "missing": 1882
+    },
+    {
+      "ym": "2002-01",
+      "api": 3084,
+      "db": 579,
+      "ratio": 18.77431906614786,
+      "expected": 2451,
+      "missing": 1872
+    },
+    {
+      "ym": "2012-01",
+      "api": 21817,
+      "db": 15497,
+      "ratio": 71.03176422056194,
+      "expected": 17340,
+      "missing": 1843
+    },
+    {
+      "ym": "2005-03",
+      "api": 20498,
+      "db": 14499,
+      "ratio": 70.7337301200117,
+      "expected": 16291,
+      "missing": 1792
+    },
+    {
+      "ym": "2008-01",
+      "api": 16121,
+      "db": 11042,
+      "ratio": 68.49451026611253,
+      "expected": 12813,
+      "missing": 1771
+    },
+    {
+      "ym": "2004-01",
+      "api": 7681,
+      "db": 4348,
+      "ratio": 56.60721260252571,
+      "expected": 6105,
+      "missing": 1757
+    },
+    {
+      "ym": "2002-09",
+      "api": 5871,
+      "db": 2944,
+      "ratio": 50.14477942428888,
+      "expected": 4666,
+      "missing": 1722
+    },
+    {
+      "ym": "2002-12",
+      "api": 11305,
+      "db": 7270,
+      "ratio": 64.3078283945157,
+      "expected": 8985,
+      "missing": 1715
+    },
+    {
+      "ym": "2005-02",
+      "api": 11580,
+      "db": 7613,
+      "ratio": 65.7426597582038,
+      "expected": 9204,
+      "missing": 1591
+    },
+    {
+      "ym": "2023-11",
+      "api": 52734,
+      "db": 40326,
+      "ratio": 76.47058823529412,
+      "expected": 41912,
+      "missing": 1586
+    },
+    {
+      "ym": "2009-01",
+      "api": 30431,
+      "db": 22646,
+      "ratio": 74.41753475074759,
+      "expected": 24186,
+      "missing": 1540
+    },
+    {
+      "ym": "2003-02",
+      "api": 8631,
+      "db": 5379,
+      "ratio": 62.32186305179006,
+      "expected": 6860,
+      "missing": 1481
+    },
+    {
+      "ym": "2004-02",
+      "api": 12661,
+      "db": 8674,
+      "ratio": 68.50959639838875,
+      "expected": 10063,
+      "missing": 1389
+    },
+    {
+      "ym": "2025-11",
+      "api": 46529,
+      "db": 35634,
+      "ratio": 76.58449569085947,
+      "expected": 36980,
+      "missing": 1346
+    },
+    {
+      "ym": "2024-09",
+      "api": 29715,
+      "db": 22508,
+      "ratio": 75.74625609961299,
+      "expected": 23617,
+      "missing": 1109
+    },
+    {
+      "ym": "2003-01",
+      "api": 5273,
+      "db": 3101,
+      "ratio": 58.80902711928694,
+      "expected": 4191,
+      "missing": 1090
+    },
+    {
+      "ym": "2003-03",
+      "api": 12721,
+      "db": 9051,
+      "ratio": 71.15006681864632,
+      "expected": 10110,
+      "missing": 1059
+    },
+    {
+      "ym": "2025-10",
+      "api": 34179,
+      "db": 26120,
+      "ratio": 76.42119430059392,
+      "expected": 27165,
+      "missing": 1045
+    },
+    {
+      "ym": "2024-11",
+      "api": 46901,
+      "db": 36241,
+      "ratio": 77.27127353361337,
+      "expected": 37276,
+      "missing": 1035
+    },
+    {
+      "ym": "2023-10",
+      "api": 40047,
+      "db": 30891,
+      "ratio": 77.1368641845831,
+      "expected": 31829,
+      "missing": 938
+    },
+    {
+      "ym": "2004-03",
+      "api": 18802,
+      "db": 14020,
+      "ratio": 74.56653547494948,
+      "expected": 14943,
+      "missing": 923
+    },
+    {
+      "ym": "2005-06",
+      "api": 17056,
+      "db": 12813,
+      "ratio": 75.12312382739212,
+      "expected": 13556,
+      "missing": 743
+    },
+    {
+      "ym": "2004-10",
+      "api": 16500,
+      "db": 12372,
+      "ratio": 74.98181818181818,
+      "expected": 13114,
+      "missing": 742
+    },
+    {
+      "ym": "2020-02",
+      "api": 51102,
+      "db": 39902,
+      "ratio": 78.0830495871003,
+      "expected": 40615,
+      "missing": 713
+    },
+    {
+      "ym": "2006-03",
+      "api": 36514,
+      "db": 28325,
+      "ratio": 77.57298570411349,
+      "expected": 29021,
+      "missing": 696
+    },
+    {
+      "ym": "2008-03",
+      "api": 27756,
+      "db": 21565,
+      "ratio": 77.69491281164433,
+      "expected": 22060,
+      "missing": 495
+    },
+    {
+      "ym": "2013-03",
+      "api": 45722,
+      "db": 35883,
+      "ratio": 78.48081886181707,
+      "expected": 36339,
+      "missing": 456
+    },
+    {
+      "ym": "2024-10",
+      "api": 38991,
+      "db": 30546,
+      "ratio": 78.34115565130415,
+      "expected": 30989,
+      "missing": 443
+    },
+    {
+      "ym": "2003-10",
+      "api": 14085,
+      "db": 10771,
+      "ratio": 76.4714235001775,
+      "expected": 11194,
+      "missing": 423
+    },
+    {
+      "ym": "2017-11",
+      "api": 40055,
+      "db": 31456,
+      "ratio": 78.53201847459744,
+      "expected": 31835,
+      "missing": 379
+    },
+    {
+      "ym": "2003-11",
+      "api": 14496,
+      "db": 11196,
+      "ratio": 77.23509933774835,
+      "expected": 11521,
+      "missing": 325
+    },
+    {
+      "ym": "2025-02",
+      "api": 49673,
+      "db": 39173,
+      "ratio": 78.86175588347794,
+      "expected": 39479,
+      "missing": 306
+    },
+    {
+      "ym": "2018-11",
+      "api": 39767,
+      "db": 31353,
+      "ratio": 78.84175321246259,
+      "expected": 31606,
+      "missing": 253
+    },
+    {
+      "ym": "2006-02",
+      "api": 23123,
+      "db": 18166,
+      "ratio": 78.56247026769883,
+      "expected": 18378,
+      "missing": 212
+    },
+    {
+      "ym": "2014-11",
+      "api": 26363,
+      "db": 20744,
+      "ratio": 78.68603724917497,
+      "expected": 20953,
+      "missing": 209
+    },
+    {
+      "ym": "2017-02",
+      "api": 48671,
+      "db": 38523,
+      "ratio": 79.14980172998295,
+      "expected": 38683,
+      "missing": 160
+    },
+    {
+      "ym": "2010-07",
+      "api": 20193,
+      "db": 15902,
+      "ratio": 78.75006190263953,
+      "expected": 16049,
+      "missing": 147
+    },
+    {
+      "ym": "2005-08",
+      "api": 14704,
+      "db": 11545,
+      "ratio": 78.51605005440696,
+      "expected": 11686,
+      "missing": 141
+    },
+    {
+      "ym": "2019-11",
+      "api": 44120,
+      "db": 34929,
+      "ratio": 79.16817769718948,
+      "expected": 35066,
+      "missing": 137
+    },
+    {
+      "ym": "2003-05",
+      "api": 11104,
+      "db": 8698,
+      "ratio": 78.3321325648415,
+      "expected": 8825,
+      "missing": 127
+    },
+    {
+      "ym": "2004-09",
+      "api": 10462,
+      "db": 8194,
+      "ratio": 78.32154463773658,
+      "expected": 8315,
+      "missing": 121
+    },
+    {
+      "ym": "2008-02",
+      "api": 22939,
+      "db": 18126,
+      "ratio": 79.0182658354767,
+      "expected": 18231,
+      "missing": 105
+    },
+    {
+      "ym": "2016-06",
+      "api": 35342,
+      "db": 28001,
+      "ratio": 79.22867975779526,
+      "expected": 28089,
+      "missing": 88
+    },
+    {
+      "ym": "2015-11",
+      "api": 30228,
+      "db": 23971,
+      "ratio": 79.3006484054519,
+      "expected": 24025,
+      "missing": 54
+    },
+    {
+      "ym": "2005-09",
+      "api": 14876,
+      "db": 11812,
+      "ratio": 79.40306534014519,
+      "expected": 11823,
+      "missing": 11
+    },
+    {
+      "ym": "2011-02",
+      "api": 40305,
+      "db": 32033,
+      "ratio": 79.47649175040318,
+      "expected": 32034,
+      "missing": 1
+    }
+  ]
+}

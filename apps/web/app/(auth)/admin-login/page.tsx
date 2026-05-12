@@ -55,7 +55,7 @@ export default function AdminLoginPage() {
         {/* 헤더 */}
         <div style={{ textAlign: "center", marginBottom: 32 }}>
           <div style={{ display: "inline-flex", alignItems: "center", gap: 8, marginBottom: 16 }}>
-            <span style={{ fontSize: 22, fontWeight: 700, color: "#fff", letterSpacing: "0.05em" }}>NAKTAL</span>
+            <span style={{ fontSize: 22, fontWeight: 700, color: "#fff", letterSpacing: "0.05em" }}>낙비</span>
             <span style={{
               fontSize: 11, fontWeight: 700, background: "#DC2626",
               color: "#fff", padding: "2px 8px", borderRadius: 4, letterSpacing: "0.05em",

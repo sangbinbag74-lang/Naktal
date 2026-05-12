@@ -78,7 +78,7 @@ export default async function AdminLayout({
           display: "flex", alignItems: "center", gap: 8,
           borderBottom: "1px solid rgba(255,255,255,0.1)",
         }}>
-          <span style={{ fontSize: 15, fontWeight: 700, color: "#fff", letterSpacing: "0.05em" }}>NAKTAL</span>
+          <span style={{ fontSize: 15, fontWeight: 700, color: "#fff", letterSpacing: "0.05em" }}>낙비</span>
           <span style={{
             fontSize: 10, fontWeight: 700, background: "#DC2626",
             color: "#fff", padding: "2px 6px", borderRadius: 4,

@@ -43,7 +43,7 @@ export default function ForgotPasswordPage() {
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <Card className="w-full max-w-md">
           <CardHeader className="text-center">
-            <div className="text-3xl font-bold text-[#1E3A5F] mb-2">NAKTAL</div>
+            <div className="text-3xl font-bold text-[#1E3A5F] mb-2">낙비</div>
             <CardTitle>메일 발송 완료</CardTitle>
           </CardHeader>
           <CardContent className="text-center space-y-4">
