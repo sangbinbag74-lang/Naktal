@@ -27,6 +27,47 @@ interface BidResultData {
   numBidders: number; winnerName: string | null; openedAt: string | null;
 }
 
+// OpengCompt 단건 직접 — 박상빈님 실측한 진짜 작동 API
+async function tryOpengCompt(koneps: string, deadline: Date): Promise<BidResultData | null> {
+  const COMPT_OPS = ["getOpengResultListInfoOpengCompt", "getOpengResultListInfoCnstwkOpengCompt", "getOpengResultListInfoServcOpengCompt", "getOpengResultListInfoThngOpengCompt"];
+  for (const op of COMPT_OPS) {
+    const params = new URLSearchParams({
+      serviceKey: KEY, type: "json", inqryDiv: "1",
+      bidNtceNo: koneps, bidNtceOrd: "000",
+      inqryBgnDt: toYMD(new Date(deadline.getTime() - 3 * 86400000)) + "0000",
+      inqryEndDt: toYMD(new Date(deadline.getTime() + 15 * 86400000)) + "2359",
+      numOfRows: "999", pageNo: "1",
+    });
+    try {
+      const res = await fetch(`${BASE}/${op}?${params.toString()}`, { signal: AbortSignal.timeout(15000) });
+      if (!res.ok) continue;
+      const data = await res.json();
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const body = (data as any)?.response?.body;
+      let items = body?.items ?? [];
+      if (!Array.isArray(items)) items = items?.item ? (Array.isArray(items.item) ? items.item : [items.item]) : [];
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const matched = items.filter((i: any) => i.bidNtceNo?.trim() === koneps);
+      if (matched.length === 0) continue;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const winner = matched.find((i: any) => String(i.opengRank ?? "").trim() === "1");
+      if (!winner) continue;
+      const price = parseInt(String(winner.bidprcAmt ?? "0").replace(/\D/g, ""), 10);
+      const rate = parseFloat(String(winner.bidprcrt ?? "0"));
+      if (price <= 0 || rate <= 0) continue;
+      return {
+        annId: koneps,
+        bidRate: rate.toFixed(3),
+        finalPrice: String(price),
+        numBidders: matched.length,
+        winnerName: String(winner.prcbdrNm ?? "").trim() || null,
+        openedAt: null,
+      };
+    } catch { /* next */ }
+  }
+  return null;
+}
+
 // SCSBID 4 op + 다양한 inqryDiv/날짜 조합으로 매칭률 최대화
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function tryAllVariants(koneps: string, deadline: Date): Promise<any | null> {
@@ -101,6 +142,23 @@ async function tryAllVariants(koneps: string, deadline: Date): Promise<any | nul
 
     let inserted = 0, miss = 0;
     for (const r of rows.rows) {
+      // 1차: OpengCompt 단건 (박상빈님 실측 작동 확인)
+      const direct = await tryOpengCompt(r.konepsId, new Date(r.deadline));
+      if (direct) {
+        await p.query(
+          `INSERT INTO "BidResult" ("id","annId","bidRate","finalPrice","numBidders","winnerName","openedAt","createdAt")
+           VALUES (gen_random_uuid()::text, $1, $2, $3, $4, $5, NULL, NOW())
+           ON CONFLICT ("annId") DO UPDATE SET
+             "bidRate" = EXCLUDED."bidRate", "finalPrice" = EXCLUDED."finalPrice",
+             "numBidders" = EXCLUDED."numBidders", "winnerName" = EXCLUDED."winnerName"`,
+          [direct.annId, direct.bidRate, direct.finalPrice, direct.numBidders, direct.winnerName]
+        );
+        console.log(`  ✓ [OpengCompt] ${r.konepsId} winner=${(direct.winnerName ?? "").slice(0,18)} price=${Number(direct.finalPrice).toLocaleString()}`);
+        inserted++;
+        continue;
+      }
+
+      // 2차: SCSBID 범위 조회 (fallback)
       const found = await tryAllVariants(r.konepsId, new Date(r.deadline));
       if (!found) {
         console.log(`  ✗ ${r.konepsId} ${(r.title ?? "").slice(0,30)} — G2B 미게재`);

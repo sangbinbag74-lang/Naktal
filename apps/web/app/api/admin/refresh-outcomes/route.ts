@@ -17,26 +17,45 @@ const SCSBID_OPS = [
   "getScsbidListSttusFrgcpt",
 ];
 
-// G2B 직접 조회 — inqryDiv=2 (개찰일자 기준) — 마감 직후 결과 매칭 핵심
-// 박상빈님 실측 (diag-g2b-raw.ts): inqryDiv=2 + 좁은 범위 = 5/12 결과 정상 반환
-// 박상빈님 실측 (diag-g2b-raw.ts): inqryDiv=1 + ±60일 = 100건 한도에 막혀 매칭 실패
+// G2B 직접 조회 — 1차: SCSBID inqryDiv=2, 2차: OpengCompt (단건 직접, 박상빈님이 본 진짜 작동 API)
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function fetchFromG2B(konepsId: string, deadline: Date): Promise<any | null> {
-  // 개찰일자 기준 ±5일 좁은 범위 — numOfRows=999 안에 포함되도록
+  // 1차: SCSBID inqryDiv=2 (개찰일자 기준) — 마감 직후 결과 매칭
   const fromDate = toYMD(new Date(deadline.getTime() - 2 * 86400000)) + "0000";
   const toDate = toYMD(new Date(deadline.getTime() + 30 * 86400000)) + "2359";
   for (const op of SCSBID_OPS) {
     try {
       const { items } = await g2bFetchBidResultPage({
         pageNo: 1, numOfRows: 999, inqryBgnDt: fromDate, inqryEndDt: toDate,
-        operation: op, inqryDiv: "2", // 개찰일자 기준 (마감 직후 결과 즉시 매칭)
+        operation: op, inqryDiv: "2",
       });
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const m = items.find((i: any) => i.bidNtceNo?.trim() === konepsId);
       if (m) return m;
     } catch (e) {
-      console.error(`[refresh-outcomes] G2B ${op} 호출 실패:`, (e as Error).message);
+      console.error(`[refresh-outcomes] SCSBID ${op} 호출 실패:`, (e as Error).message);
     }
+  }
+  // 2차: OpengCompt 단건 조회 (박상빈님 실측 = '어제 1시간 후 G2B 결과 나옴' 의 진짜 작동 API)
+  try {
+    const compt = await g2bFetchOpengComptForBidNtceNo({ bidNtceNo: konepsId, deadline });
+    const winner = compt.find(c => String(c.opengRank ?? "").trim() === "1");
+    if (winner) {
+      return {
+        bidNtceNo: konepsId,
+        sucsfbidAmt: String(winner.bidprcAmt ?? "").replace(/[^0-9]/g, ""),
+        sucsfbidRate: String(winner.bidprcrt ?? ""),
+        sucsfbidCorpNm: winner.prcbdrNm ?? null,
+        bidwinnrNm: winner.prcbdrNm ?? null,
+        sucsfbidCorpBizno: winner.prcbdrBizno ?? null,
+        prtcptCnum: String(compt.length),
+        totPrtcptCo: String(compt.length),
+        opengDt: winner.bidprcDt ?? null,
+        _viaOpengCompt: true,
+      };
+    }
+  } catch (e) {
+    console.error(`[refresh-outcomes] OpengCompt 단건 호출 실패:`, (e as Error).message);
   }
   return null;
 }
