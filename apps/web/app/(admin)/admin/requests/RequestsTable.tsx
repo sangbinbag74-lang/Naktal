@@ -530,9 +530,15 @@ export function RequestsTable({ requests, userMap, bidResultMap, annOpengMap = {
                             <strong>{new Date(r.userBidAt).toLocaleString("ko-KR", { dateStyle: "short", timeStyle: "short" })}</strong>
                           </span>
                         )}
+                        {r.actualFinalPrice != null && Number(r.actualFinalPrice) > 0 && (
+                          <span>
+                            <span style={{ color: "#94A3B8" }}>낙찰금액 </span>
+                            <strong style={{ color: "#059669" }}>{fmtPrice(r.actualFinalPrice)}</strong>
+                          </span>
+                        )}
                         {r.actualSajungRate != null && (
                           <span>
-                            <span style={{ color: "#94A3B8" }}>실제사정율 </span>
+                            <span style={{ color: "#94A3B8" }}>낙찰사정율 </span>
                             <strong>{Number(r.actualSajungRate).toFixed(3)}%</strong>
                           </span>
                         )}
