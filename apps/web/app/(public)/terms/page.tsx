@@ -43,7 +43,7 @@ export default function TermsPage() {
 • 번호 추천 서비스를 1회 이상 이용한 경우: 환불 불가
 • 구독 기간 중 중도 해지 시: 잔여 기간 환불 불가
 
-환불 요청: support@naktal.me`,
+환불 요청: 카카오톡 채널 '낙비' (@naktal) — http://pf.kakao.com/_SQxmKX/chat`,
     },
     {
       title: "제6조 (면책 조항)",

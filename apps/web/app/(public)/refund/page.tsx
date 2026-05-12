@@ -35,9 +35,10 @@ const SECTIONS = [
   {
     title: "4. 환불 신청 방법",
     content:
-      "환불을 요청하는 사용자는 다음 방법으로 신청할 수 있습니다.\n" +
-      "• 이메일: support@naktal.me\n" +
-      "• 카카오톡 채널: 낙비 고객센터\n\n" +
+      "환불을 요청하는 사용자는 카카오톡 채널을 통해 신청할 수 있습니다.\n\n" +
+      "• 카카오톡 채널: 낙비 (@naktal)\n" +
+      "• 채널 URL: http://pf.kakao.com/_SQxmKX\n" +
+      "• 1:1 채팅: http://pf.kakao.com/_SQxmKX/chat\n\n" +
       "환불 신청 시 다음 정보를 함께 제공해 주세요.\n" +
       "① 사업자등록번호 · 회사명\n" +
       "② 환불 요청 사유\n" +
@@ -95,7 +96,28 @@ export default function RefundPolicyPage() {
           ))}
         </div>
 
-        <div style={{ marginTop: 28, padding: "16px 20px", background: "#fff", borderRadius: 10, border: "1px solid #E8ECF2", fontSize: 13, color: "#64748B" }}>
+        {/* 카카오톡 채널 CTA */}
+        <div style={{ marginTop: 28, background: "#FEE500", borderRadius: 12, padding: "20px 24px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16, flexWrap: "wrap" }}>
+          <div>
+            <div style={{ fontSize: 14, fontWeight: 700, color: "#191600", marginBottom: 4 }}>환불 신청은 카카오톡 채널로</div>
+            <div style={{ fontSize: 12, color: "#3C1E1E" }}>1:1 채팅으로 빠르게 처리해드립니다</div>
+          </div>
+          <a
+            href="http://pf.kakao.com/_SQxmKX/chat"
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{
+              background: "#191600", color: "#FEE500",
+              padding: "10px 22px", borderRadius: 8,
+              fontSize: 14, fontWeight: 700,
+              textDecoration: "none", whiteSpace: "nowrap",
+            }}
+          >
+            💬 카톡 문의하기
+          </a>
+        </div>
+
+        <div style={{ marginTop: 16, padding: "16px 20px", background: "#fff", borderRadius: 10, border: "1px solid #E8ECF2", fontSize: 13, color: "#64748B" }}>
           관련 문서: <Link href="/terms" style={{ color: "#1B3A6B", textDecoration: "underline" }}>이용약관</Link> · <Link href="/privacy" style={{ color: "#1B3A6B", textDecoration: "underline" }}>개인정보처리방침</Link> · <Link href="/pricing" style={{ color: "#1B3A6B", textDecoration: "underline" }}>요금 안내</Link>
         </div>
       </main>

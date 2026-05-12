@@ -790,6 +790,7 @@ function Footer() {
     ["대표자", "박상빈"],
     ["사업자등록번호", "398-87-03453"],
     ["주소", "대전광역시 유성구 장대로 106, 2층 제이321호"],
+    ["고객문의", "카카오톡 채널 '낙비' (@naktal)"],
   ];
   return (
     <footer style={{ background: "#0A1428", color: "rgba(255,255,255,0.5)", padding: "64px 0 40px", borderTop: "1px solid rgba(255,255,255,0.06)" }}>

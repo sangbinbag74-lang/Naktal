@@ -54,13 +54,15 @@ export default function PrivacyPage() {
 • 처리 정지 요청
 • 동의 철회
 
-요청은 support@naktal.me로 이메일을 보내주시면 10일 이내에 처리합니다.`,
+요청은 카카오톡 채널 '낙비' (@naktal — http://pf.kakao.com/_SQxmKX/chat)로 보내주시면 10일 이내에 처리합니다.`,
     },
     {
       title: "7. 개인정보 보호책임자",
       content: `• 이름: 박상빈 (대표이사)
-• 이메일: privacy@naktal.me
-• 개인정보 관련 문의는 위 이메일로 연락 바랍니다.`,
+• 카카오톡 채널: 낙비 (@naktal)
+• 채널 URL: http://pf.kakao.com/_SQxmKX
+• 1:1 채팅: http://pf.kakao.com/_SQxmKX/chat
+• 개인정보 관련 문의는 위 카카오톡 채널로 연락 바랍니다.`,
     },
     {
       title: "8. 개인정보처리방침 변경",

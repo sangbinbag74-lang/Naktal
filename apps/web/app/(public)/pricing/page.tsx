@@ -117,6 +117,27 @@ export default function PublicPricingPage() {
           </ul>
         </div>
 
+        {/* 카카오톡 채널 CTA */}
+        <div style={{ marginBottom: 16, background: "#FEE500", borderRadius: 12, padding: "20px 24px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16, flexWrap: "wrap" }}>
+          <div>
+            <div style={{ fontSize: 14, fontWeight: 700, color: "#191600", marginBottom: 4 }}>문의·상담은 카카오톡으로</div>
+            <div style={{ fontSize: 12, color: "#3C1E1E" }}>요금 · 수수료 · 가입 관련 1:1 안내</div>
+          </div>
+          <a
+            href="http://pf.kakao.com/_SQxmKX/chat"
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{
+              background: "#191600", color: "#FEE500",
+              padding: "10px 22px", borderRadius: 8,
+              fontSize: 14, fontWeight: 700,
+              textDecoration: "none", whiteSpace: "nowrap",
+            }}
+          >
+            💬 카톡 문의하기
+          </a>
+        </div>
+
         <div style={{ background: "#fff", border: "1px solid #E8ECF2", borderRadius: 12, padding: "20px 24px" }}>
           <h2 style={{ fontSize: 15, fontWeight: 700, color: "#0F172A", margin: "0 0 12px" }}>관련 문서</h2>
           <div style={{ display: "flex", gap: 16, flexWrap: "wrap", fontSize: 13 }}>
