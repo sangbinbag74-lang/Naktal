@@ -19,11 +19,12 @@ const nextConfig = {
             key: "Content-Security-Policy",
             value: [
               "default-src 'self'",
-              "script-src 'self' 'unsafe-inline' 'unsafe-eval'",  // Next.js 요구
+              "script-src 'self' 'unsafe-inline' 'unsafe-eval' t1.kakaocdn.net developers.kakao.com",  // Next.js + Kakao SDK
               "style-src 'self' 'unsafe-inline' cdn.jsdelivr.net",
-              "img-src 'self' data: blob:",
+              "img-src 'self' data: blob: *.kakaocdn.net k.kakaocdn.net t1.kakaocdn.net",
               "font-src 'self' cdn.jsdelivr.net",
-              "connect-src 'self' *.supabase.co wss://*.supabase.co apis.data.go.kr",
+              "connect-src 'self' *.supabase.co wss://*.supabase.co apis.data.go.kr kapi.kakao.com kauth.kakao.com",
+              "frame-src 'self' kauth.kakao.com accounts.kakao.com",
               "frame-ancestors 'none'",
             ].join("; "),
           },
