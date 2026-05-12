@@ -12,6 +12,7 @@ interface RunSummary {
   resultG2bFetched: number;
   aiUpdated: number;
   aiScanned: number;
+  aiG2bFetched: number;
   aiNoResult: number;
   aiNoBase: number;
   aiBadPredicted: number;
@@ -67,7 +68,7 @@ export function AccuracyTriggers() {
       }
       return await res.json() as {
         updated?: number; total?: number; g2bFetched?: number;
-        aiUpdated?: number; aiScanned?: number;
+        aiUpdated?: number; aiScanned?: number; aiG2bFetched?: number;
         aiNoResult?: number; aiNoBase?: number; aiBadPredicted?: number;
       };
     })();
@@ -91,6 +92,7 @@ export function AccuracyTriggers() {
         resultG2bFetched: result.g2bFetched ?? 0,
         aiUpdated: result.aiUpdated ?? 0,
         aiScanned: result.aiScanned ?? 0,
+        aiG2bFetched: result.aiG2bFetched ?? 0,
         aiNoResult: result.aiNoResult ?? 0,
         aiNoBase: result.aiNoBase ?? 0,
         aiBadPredicted: result.aiBadPredicted ?? 0,
@@ -103,7 +105,7 @@ export function AccuracyTriggers() {
         ok: false,
         predFilled: 0, predIterations: 0,
         resultUpdated: 0, resultTotal: 0, resultG2bFetched: 0,
-        aiUpdated: 0, aiScanned: 0, aiNoResult: 0, aiNoBase: 0, aiBadPredicted: 0,
+        aiUpdated: 0, aiScanned: 0, aiG2bFetched: 0, aiNoResult: 0, aiNoBase: 0, aiBadPredicted: 0,
         elapsedMs: Date.now() - startedAt,
         error: (e as Error).message,
       });
@@ -189,6 +191,11 @@ export function AccuracyTriggers() {
               </div>
               <div style={{ marginTop: 2 }}>
                 AI 예측 결과 채움 <strong>{summary.aiUpdated}건</strong> / 스캔 {summary.aiScanned}건
+                {summary.aiG2bFetched > 0 && (
+                  <span style={{ marginLeft: 6, fontSize: 11, color: "#1B3A6B", fontWeight: 600 }}>
+                    (G2B 직접 조회 {summary.aiG2bFetched}건)
+                  </span>
+                )}
                 {(summary.aiNoResult > 0 || summary.aiNoBase > 0 || summary.aiBadPredicted > 0) && (
                   <span style={{ marginLeft: 6, fontSize: 11, color: "#94A3B8" }}>
                     (결과 미수집 {summary.aiNoResult} · 기초금액 없음 {summary.aiNoBase} · 예측값 0 {summary.aiBadPredicted})

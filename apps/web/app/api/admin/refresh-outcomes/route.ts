@@ -319,13 +319,14 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   // ─────────────────────────────────────────────────────────────
   let aiUpdated = 0;
   let aiScanned = 0;
-  let aiNoResult = 0;     // BidResult 매칭 실패
+  let aiNoResult = 0;     // BidResult 매칭 실패 (G2B 직접 조회도 실패)
   let aiNoBase = 0;       // 기초금액 0
   let aiBadPredicted = 0; // predictedSajungRate 0
+  let aiG2bFetched = 0;   // G2B 직접 조회로 신규 BidResult 확보
   try {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: aiPending } = await (admin.from("AIPrediction") as any)
-      .select("annId,konepsId,predictedSajungRate,budget")
+      .select("annId,konepsId,predictedSajungRate,budget,deadline")
       .is("resultFilledAt", null)
       .limit(500);
 
@@ -352,17 +353,55 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const konepsToAnn: Record<string, any> = Object.fromEntries(((annRes.data ?? []) as any[]).map(a => [a.konepsId, a]));
 
+      const nowDate = new Date();
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       for (const p of ((aiPending ?? []) as any[])) {
         const koneps = p.konepsId;
         if (!koneps) { aiNoResult++; continue; }
-        const res = konepsToResult[koneps];
+
+        let res = konepsToResult[koneps];
+
+        // BidResult 매칭 실패 + 마감 지난 경우 → G2B 직접 조회 (BidRequest 처리부와 동일 로직)
+        if ((!res || !res.finalPrice || !res.bidRate) && p.deadline) {
+          const deadlineDate = new Date(p.deadline);
+          if (deadlineDate < nowDate) {
+            // SCSBID 단건 조회
+            const found = await fetchFromG2B(koneps, deadlineDate);
+            if (found) {
+              const rateRaw = (found.sucsfbidRate || "").replace(/[^0-9.]/g, "");
+              const priceRaw = (found.sucsfbidAmt || "").replace(/[^0-9]/g, "");
+              if (rateRaw && priceRaw) {
+                res = {
+                  annId: koneps,
+                  bidRate: parseFloat(rateRaw).toFixed(3),
+                  finalPrice: String(parseInt(priceRaw, 10)),
+                  numBidders: parseInt((found.prtcptCnum || found.totPrtcptCo || "0").replace(/[^0-9]/g, ""), 10),
+                  winnerName: found.sucsfbidCorpNm?.trim() || found.bidwinnrNm?.trim() || null,
+                  openedAt: found.opengDt ? g2bParseDate(found.opengDt) : null,
+                };
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                await (admin.from("BidResult") as any).upsert(res, { onConflict: "annId" });
+                aiG2bFetched++;
+              }
+            }
+            // SCSBID 도 실패 시 OpengResult 직접 조회 (수의계약 포함)
+            if ((!res || !res.finalPrice || !res.bidRate)) {
+              const opengFound = await fetchOpengFromG2B(koneps, deadlineDate);
+              if (opengFound) {
+                res = opengFound;
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                await (admin.from("BidResult") as any).upsert(res, { onConflict: "annId" });
+                aiG2bFetched++;
+              }
+            }
+          }
+        }
+
         if (!res || !res.finalPrice || !res.bidRate) { aiNoResult++; continue; }
 
         const ann = konepsToAnn[koneps];
         const bsis = Number(ann?.bsisAmt ?? 0);
         const avAmt = Number(ann?.aValueAmt ?? 0);
-        // AIPrediction.budget 폴백 — Announcement 매칭 실패 시 사용
         const bud = Number(ann?.budget ?? p.budget ?? 0);
         const base = bsis > 0 ? bsis : avAmt > 0 ? avAmt : Math.round(bud * 1.1);
         if (base <= 0) { aiNoBase++; continue; }
@@ -405,6 +444,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     g2bFetched,
     aiScanned,
     aiUpdated,
+    aiG2bFetched,
     aiNoResult,
     aiNoBase,
     aiBadPredicted,
