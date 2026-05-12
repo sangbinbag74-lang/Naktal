@@ -264,7 +264,22 @@ export function AccuracyClient({ bppList, activeCount, predCount }: Props) {
                       </td>
                       {/* 예측사정율 */}
                       <td style={{ padding: "8px 12px", color: "#1B3A6B", fontWeight: 600, whiteSpace: "nowrap" }}>
-                        {r.predictedSajungRate != null ? Number(r.predictedSajungRate).toFixed(3) + "%" : "-"}
+                        {r.predictedSajungRate != null ? (
+                          <>
+                            {Number(r.predictedSajungRate).toFixed(3)}%
+                            {r.actualSajungRate != null && (() => {
+                              // 예측 - 실제 (음수 = 예측이 낮음 / 양수 = 예측이 높음)
+                              const diff = Number(r.predictedSajungRate) - Number(r.actualSajungRate);
+                              const sign = diff >= 0 ? "+" : "";
+                              const color = Math.abs(diff) <= 0.5 ? "#059669" : Math.abs(diff) <= 1.0 ? "#D97706" : "#DC2626";
+                              return (
+                                <span style={{ marginLeft: 6, fontSize: 11, color, fontWeight: 700 }}>
+                                  ({sign}{diff.toFixed(3)}%p)
+                                </span>
+                              );
+                            })()}
+                          </>
+                        ) : "-"}
                       </td>
                       {/* 실제결과 */}
                       <td style={{ padding: "8px 12px", whiteSpace: "nowrap" }}>
