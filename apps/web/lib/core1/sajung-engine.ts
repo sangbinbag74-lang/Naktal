@@ -313,7 +313,7 @@ async function _fetchPoints(
 
   let q = supabase
     .from("Announcement")
-    .select("konepsId,budget,aValueAmt,deadline")
+    .select("konepsId,budget,bsisAmt,aValueAmt,deadline")
     .eq("region", region);
   if (cats.length === 1) {
     q = q.eq("category", cats[0]);
@@ -345,10 +345,12 @@ async function _fetchPoints(
     if (!ann) continue;
     const bidRate    = Number(bid.bidRate);
     const finalPrice = Number(bid.finalPrice);
+    // base = bsisAmt(기초금액) 우선 > aValueAmt > budget×1.1
+    const bsisE = Number((ann as Record<string, unknown>).bsisAmt);
     const aValueAmtE = Number((ann as Record<string, unknown>).aValueAmt);
-    const budget     = aValueAmtE > 0 ? aValueAmtE : Number(ann.budget) * 1.1;
-    if (!bidRate || !finalPrice || !budget) continue;
-    const sajung = (finalPrice / (bidRate / 100)) / budget * 100;
+    const base = bsisE > 0 ? bsisE : aValueAmtE > 0 ? aValueAmtE : Number(ann.budget) * 1.1;
+    if (!bidRate || !finalPrice || !base) continue;
+    const sajung = (finalPrice / (bidRate / 100)) / base * 100;
     if (sajung < filterRange.min || sajung > filterRange.max) continue;
     points.push({ sajung, deadline: ann.deadline as string });
   }

@@ -89,13 +89,26 @@ export async function POST(
 
   // BidRequest 업데이트
   const now = new Date().toISOString();
-  const budget = Number(bidReq.budget ?? 0);
+  // 사정율 base = Announcement.bsisAmt 우선 (기초금액). budget(추정가격) 직접 사용은 사정율 잘못 큰 값 유발.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: annRow } = await (admin.from("Announcement") as any)
+    .select("bsisAmt,aValueAmt,budget")
+    .eq("konepsId", bidReq.konepsId)
+    .maybeSingle();
+  const bsisAmtNum = Number(annRow?.bsisAmt ?? 0);
+  const avAmtNum   = Number(annRow?.aValueAmt ?? 0);
+  const annBudget  = Number(annRow?.budget ?? 0);
+  const reqBudget  = Number(bidReq.budget ?? 0);
+  const base = bsisAmtNum > 0 ? bsisAmtNum
+             : avAmtNum > 0   ? avAmtNum
+             : annBudget > 0  ? Math.round(annBudget * 1.1)
+             : Math.round(reqBudget * 1.1);
   const finalPrice = Number(bidResultRow.finalPrice);
   const bidRate = parseFloat(rateRaw);
 
   const actualSajungRate =
-    budget > 0 && bidRate > 0
-      ? (finalPrice / (bidRate / 100) / budget) * 100
+    base > 0 && bidRate > 0
+      ? (finalPrice / (bidRate / 100) / base) * 100
       : null;
 
   // User 조회 (낙찰 여부 판별)

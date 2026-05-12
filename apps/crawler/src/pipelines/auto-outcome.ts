@@ -24,11 +24,11 @@ function classifyResult(
   return Math.abs(bidRate - actualRate) < 0.005 ? "WIN" : "LOSE";
 }
 
-/** 사정율 계산: finalPrice / (bidRate/100) / budget × 100 */
-function calcSajungRate(finalPrice: number, bidRatePct: number, budget: number): number | null {
-  if (!finalPrice || !bidRatePct || !budget) return null;
+/** 사정율 계산: finalPrice / (bidRate/100) / base × 100 (base = bsisAmt 우선) */
+function calcSajungRate(finalPrice: number, bidRatePct: number, base: number): number | null {
+  if (!finalPrice || !bidRatePct || !base) return null;
   const estimatedPrice = finalPrice / (bidRatePct / 100);
-  const sajung = (estimatedPrice / budget) * 100;
+  const sajung = (estimatedPrice / base) * 100;
   if (sajung < 97 || sajung > 103) return null; // 유효범위 외 제거
   return Math.round(sajung * 10000) / 10000;
 }
@@ -50,13 +50,14 @@ export async function collectAutoOutcomes(): Promise<{ updated: number; skipped:
 
   if (!pending?.length) return { updated: 0, skipped: 0, sajungUpdated: 0 };
 
-  // annId → Announcement(budget, orgName, category, region, budgetRange) 조회
+  // annId → Announcement(bsisAmt, aValueAmt, budget, orgName, category, region) 조회
   const annIds = [...new Set(pending.map((p) => p.annId))];
   const { data: announcements } = await db
     .from("Announcement")
-    .select("id,budget,orgName,category,region")
+    .select("id,bsisAmt,aValueAmt,budget,orgName,category,region")
     .in("id", annIds);
-  const annMap = new Map((announcements ?? []).map((a) => [a.id, a]));
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const annMap = new Map((announcements ?? []).map((a) => [a.id, a as any]));
 
   for (const outcome of pending) {
     const detail = await getBidResultDetail(outcome.annId).catch(() => null);
@@ -71,10 +72,13 @@ export async function collectAutoOutcomes(): Promise<{ updated: number; skipped:
 
     const result = classifyResult(bidRate, actualRate);
 
-    // 실제 사정율 계산
+    // 실제 사정율 계산 — base = bsisAmt(기초금액) 우선
     const ann = annMap.get(outcome.annId);
-    const budget = ann ? Number(ann.budget) : 0;
-    const actualSajungRate = finalPrice && budget ? calcSajungRate(finalPrice, actualRate, budget) : null;
+    const bsis = Number(ann?.bsisAmt ?? 0);
+    const av   = Number(ann?.aValueAmt ?? 0);
+    const bud  = Number(ann?.budget ?? 0);
+    const base = bsis > 0 ? bsis : av > 0 ? av : Math.round(bud * 1.1);
+    const actualSajungRate = finalPrice && base ? calcSajungRate(finalPrice, actualRate, base) : null;
 
     // 추천 번호 적중 여부 재계산
     let recommendHit: boolean | null = null;

@@ -156,7 +156,7 @@ type BidRow = {
   annId: string;
   bidRate: string;
   finalPrice: string;
-  Announcement: { orgName: string; category: string; region: string; budget: string; deadline: string } | null;
+  Announcement: { orgName: string; category: string; region: string; budget: string; bsisAmt?: string | null; aValueAmt?: string | null; deadline: string } | null;
 };
 
 async function fetchAllBidRows(): Promise<BidRow[]> {
@@ -186,7 +186,7 @@ async function fetchAllBidRows(): Promise<BidRow[]> {
     const chunk = annIds.slice(i, i + 500);
     const { data, error } = await supabase
       .from("Announcement")
-      .select("konepsId,orgName,category,region,budget,deadline")
+      .select("konepsId,orgName,category,region,budget,bsisAmt,aValueAmt,deadline")
       .in("konepsId", chunk);
     if (error) { console.error("Announcement 조회 오류:", error.message); continue; }
     for (const a of data ?? []) annMap.set(a.konepsId, a);
@@ -228,12 +228,16 @@ async function buildStats(): Promise<void> {
     const bidRate = parseFloat(row.bidRate);
     const finalPrice = parseFloat(row.finalPrice);
     const budget = parseFloat(ann.budget);
+    const bsisAmt = parseFloat(ann.bsisAmt ?? "0");
+    const avAmt   = parseFloat(ann.aValueAmt ?? "0");
+    // base = bsisAmt(기초금액) 우선 > aValueAmt > budget×1.1
+    const base = bsisAmt > 0 ? bsisAmt : avAmt > 0 ? avAmt : Math.round(budget * 1.1);
 
-    if (!bidRate || !finalPrice || !budget || bidRate <= 0) { skipped++; continue; }
+    if (!bidRate || !finalPrice || !base || bidRate <= 0) { skipped++; continue; }
 
     // 예정가격 = 낙찰금액 ÷ (낙찰률 ÷ 100)
     const estimatedPrice = finalPrice / (bidRate / 100);
-    const sajungRate = (estimatedPrice / budget) * 100;
+    const sajungRate = (estimatedPrice / base) * 100;
 
     // 유효 범위 97~103%
     if (sajungRate < SAJUNG_MIN || sajungRate > SAJUNG_MAX) { skipped++; continue; }
