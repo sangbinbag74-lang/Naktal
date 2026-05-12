@@ -790,12 +790,45 @@ function Footer() {
     ["대표자", "박상빈"],
     ["사업자등록번호", "398-87-03453"],
     ["주소", "대전광역시 유성구 장대로 106, 2층 제이321호"],
-    ["고객문의", "카카오톡 채널 '낙비' (@naktal)"],
+  ];
+  // 4 컬럼 정책·서비스 링크
+  const linkGroups: { title: string; links: { label: string; href: string }[] }[] = [
+    {
+      title: "서비스",
+      links: [
+        { label: "엔진 소개", href: "#engines" },
+        { label: "분석 프로세스", href: "#flow" },
+        { label: "신뢰성", href: "#trust" },
+        { label: "FAQ", href: "/faq" },
+      ],
+    },
+    {
+      title: "요금·정책",
+      links: [
+        { label: "이용 요금", href: "/pricing" },
+        { label: "환불 정책", href: "/refund" },
+      ],
+    },
+    {
+      title: "법적 고지",
+      links: [
+        { label: "이용약관", href: "/terms" },
+        { label: "개인정보처리방침", href: "/privacy" },
+      ],
+    },
+    {
+      title: "고객지원",
+      links: [
+        { label: "💬 카카오톡 채널", href: "http://pf.kakao.com/_SQxmKX" },
+        { label: "1:1 채팅 문의", href: "http://pf.kakao.com/_SQxmKX/chat" },
+      ],
+    },
   ];
   return (
     <footer style={{ background: "#0A1428", color: "rgba(255,255,255,0.5)", padding: "64px 0 40px", borderTop: "1px solid rgba(255,255,255,0.06)" }}>
       <div className="nk-container">
-        <div style={{ display: "grid", gridTemplateColumns: "1.2fr 1fr", gap: 48, paddingBottom: 40, borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
+        {/* 상단: 회사 정보 + 4 컬럼 링크 */}
+        <div style={{ display: "grid", gridTemplateColumns: "1.6fr 1fr 1fr 1fr 1fr", gap: 36, paddingBottom: 36, borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
           <div>
             <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 18 }}>
               <div style={{ width: 28, height: 28, borderRadius: 7, background: "var(--navy-800)", color: "#fff", display: "grid", placeItems: "center", fontWeight: 900, fontSize: 14, letterSpacing: "-0.04em" }}>낙</div>
@@ -804,34 +837,55 @@ function Footer() {
                 <span style={{ fontSize: 10, color: "rgba(255,255,255,0.55)", fontWeight: 500 }}>내 손안의 AI 낙찰비서</span>
               </span>
             </div>
-            <p style={{ fontSize: 13, lineHeight: 1.7, color: "rgba(255,255,255,0.55)", margin: "0 0 10px", maxWidth: 420 }}>
+            <p style={{ fontSize: 12.5, lineHeight: 1.7, color: "rgba(255,255,255,0.55)", margin: "0 0 10px", maxWidth: 320 }}>
               공공입찰, 데이터로 답한다.
             </p>
-            <p style={{ fontSize: 11.5, lineHeight: 1.7, color: "rgba(255,255,255,0.4)", margin: 0, maxWidth: 420 }}>
+            <p style={{ fontSize: 11, lineHeight: 1.7, color: "rgba(255,255,255,0.38)", margin: 0, maxWidth: 320 }}>
               AI 분석 결과는 참고용이며 낙찰을 보장하지 않습니다.
             </p>
           </div>
-          <div>
-            <div className="nk-eyebrow" style={{ color: "rgba(255,255,255,0.4)", marginBottom: 14, letterSpacing: "0.14em" }}>COMPANY</div>
-            <dl style={{ margin: 0, display: "grid", gridTemplateColumns: "auto 1fr", columnGap: 20, rowGap: 8, fontSize: 12.5 }}>
-              {company.map(([k, v]) => (
-                <div key={k} style={{ display: "contents" }}>
-                  <dt style={{ color: "rgba(255,255,255,0.45)", fontWeight: 500, whiteSpace: "nowrap" }}>{k}</dt>
-                  <dd style={{ margin: 0, color: "rgba(255,255,255,0.78)", fontWeight: 500 }}>{v}</dd>
-                </div>
-              ))}
-            </dl>
+          {linkGroups.map((group) => (
+            <div key={group.title}>
+              <div className="nk-eyebrow" style={{ color: "rgba(255,255,255,0.5)", marginBottom: 14, letterSpacing: "0.14em", fontSize: 11, fontWeight: 700 }}>
+                {group.title}
+              </div>
+              <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: 9 }}>
+                {group.links.map((link) => (
+                  <li key={link.label}>
+                    <a
+                      href={link.href}
+                      target={link.href.startsWith("http") ? "_blank" : undefined}
+                      rel={link.href.startsWith("http") ? "noopener noreferrer" : undefined}
+                      style={{
+                        fontSize: 13, color: "rgba(255,255,255,0.78)",
+                        textDecoration: "none", fontWeight: 500,
+                        transition: "color 0.15s",
+                      }}
+                    >
+                      {link.label}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
+        </div>
+
+        {/* 회사 정보 (작은 글씨) */}
+        <div style={{ padding: "24px 0", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+          <div style={{ display: "flex", gap: 24, flexWrap: "wrap", fontSize: 12, color: "rgba(255,255,255,0.55)" }}>
+            {company.map(([k, v]) => (
+              <span key={k}>
+                <span style={{ color: "rgba(255,255,255,0.4)" }}>{k}: </span>
+                <span style={{ color: "rgba(255,255,255,0.75)", fontWeight: 500 }}>{v}</span>
+              </span>
+            ))}
           </div>
         </div>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 24, flexWrap: "wrap", paddingTop: 24 }}>
-          <div style={{ fontSize: 11.5, color: "rgba(255,255,255,0.4)" }}>© 2026 낙비 · 주식회사 호라이즌. All rights reserved.</div>
-          <div style={{ display: "flex", gap: 20, fontSize: 12.5, flexWrap: "wrap" }}>
-            <a href="/pricing" style={{ color: "rgba(255,255,255,0.7)", fontWeight: 500 }}>요금 안내</a>
-            <a href="/refund" style={{ color: "rgba(255,255,255,0.7)", fontWeight: 500 }}>환불 정책</a>
-            <a href="/terms" style={{ color: "rgba(255,255,255,0.7)", fontWeight: 500 }}>이용약관</a>
-            <a href="/privacy" style={{ color: "rgba(255,255,255,0.7)", fontWeight: 500 }}>개인정보처리방침</a>
-            <a href="/faq" style={{ color: "rgba(255,255,255,0.7)", fontWeight: 500 }}>FAQ</a>
-          </div>
+
+        {/* 저작권 */}
+        <div style={{ paddingTop: 20, fontSize: 11.5, color: "rgba(255,255,255,0.4)", textAlign: "center" }}>
+          © 2026 낙비 · 주식회사 호라이즌. All rights reserved.
         </div>
       </div>
     </footer>
