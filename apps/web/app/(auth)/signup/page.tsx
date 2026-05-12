@@ -262,6 +262,34 @@ export default function SignupPage() {
           </div>
         </div>
 
+        {/* 수집 항목 안내 (카카오 비즈앱 심사 대응) */}
+        <div style={{
+          background: "#F8FAFC", border: "1px solid #E2E8F0", borderRadius: 10,
+          padding: "14px 16px", marginBottom: 18, fontSize: 12, lineHeight: 1.7,
+        }}>
+          <div style={{ fontWeight: 700, color: "#0F172A", marginBottom: 8, fontSize: 12.5 }}>
+            📋 수집하는 회원정보
+          </div>
+          <div style={{ color: "#475569", marginBottom: 6 }}>
+            <span style={{ color: "#1B3A6B", fontWeight: 700 }}>[필수]</span> 카카오 본인인증으로 자동 수집
+          </div>
+          <div style={{ color: "#64748B", paddingLeft: 8, marginBottom: 8 }}>
+            ✓ 이름 · ✓ 휴대폰 번호 · ✓ CI(연계정보)
+          </div>
+          <div style={{ color: "#475569", marginBottom: 6 }}>
+            <span style={{ color: "#1B3A6B", fontWeight: 700 }}>[필수]</span> 직접 입력
+          </div>
+          <div style={{ color: "#64748B", paddingLeft: 8, marginBottom: 8 }}>
+            ✓ 사업자등록번호 · ✓ 비밀번호
+          </div>
+          <div style={{ color: "#475569", marginBottom: 6 }}>
+            <span style={{ color: "#94A3B8", fontWeight: 700 }}>[선택]</span>
+          </div>
+          <div style={{ color: "#94A3B8", paddingLeft: 8 }}>
+            ○ 알림 이메일 · ○ 알림 전화번호
+          </div>
+        </div>
+
         <form onSubmit={handleSignup} style={{ display: "flex", flexDirection: "column", gap: 16 }}>
           {/* 1단계: 카카오 본인인증 */}
           <div>
