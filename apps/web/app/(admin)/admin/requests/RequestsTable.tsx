@@ -480,6 +480,64 @@ export function RequestsTable({ requests, userMap, bidResultMap, annOpengMap = {
                     </td>
                   </tr>
                 );
+              }).flatMap((tr, i) => {
+                const r = filtered[i];
+                if (!r) return [tr];
+                // 사용자 매칭 상세 — 데이터 있는 경우만 보조 행 추가
+                const hasMatch = r.userRank != null || r.userBidPrice != null || r.userDrwtNo1 != null || r.userBidAt;
+                if (!hasMatch) return [tr];
+                return [
+                  tr,
+                  <tr key={(r.id ?? i) + "-detail"} style={{ background: "#F8FAFC", borderBottom: "1px solid #E8ECF2" }}>
+                    <td colSpan={11} style={{ padding: "6px 18px", fontSize: 11.5, color: "#475569" }}>
+                      <div style={{ display: "flex", flexWrap: "wrap", gap: 18, alignItems: "center" }}>
+                        <span style={{ fontSize: 10, color: "#94A3B8", fontWeight: 600 }}>📊 매칭상세</span>
+                        {r.userRank != null && (
+                          <span>
+                            <span style={{ color: "#94A3B8" }}>순위 </span>
+                            <strong style={{ color: r.userRank === 1 ? "#059669" : r.userRank <= 3 ? "#D97706" : "#374151" }}>
+                              {r.userRank}{r.totalBidders ? ` / ${r.totalBidders}` : ""}위
+                            </strong>
+                          </span>
+                        )}
+                        {r.userBidPrice != null && (
+                          <span>
+                            <span style={{ color: "#94A3B8" }}>실투찰가 </span>
+                            <strong style={{ color: "#1B3A6B" }}>{fmtPrice(r.userBidPrice)}</strong>
+                          </span>
+                        )}
+                        {r.userBidRate != null && (
+                          <span>
+                            <span style={{ color: "#94A3B8" }}>투찰률 </span>
+                            <strong>{Number(r.userBidRate).toFixed(3)}%</strong>
+                          </span>
+                        )}
+                        {(r.userDrwtNo1 != null || r.userDrwtNo2 != null) && (
+                          <span>
+                            <span style={{ color: "#94A3B8" }}>추첨번호 </span>
+                            <strong style={{ color: "#7C3AED" }}>
+                              {r.userDrwtNo1 != null ? String(r.userDrwtNo1).padStart(2, "0") : "-"}
+                              {" · "}
+                              {r.userDrwtNo2 != null ? String(r.userDrwtNo2).padStart(2, "0") : "-"}
+                            </strong>
+                          </span>
+                        )}
+                        {r.userBidAt && (
+                          <span>
+                            <span style={{ color: "#94A3B8" }}>투찰일시 </span>
+                            <strong>{new Date(r.userBidAt).toLocaleString("ko-KR", { dateStyle: "short", timeStyle: "short" })}</strong>
+                          </span>
+                        )}
+                        {r.actualSajungRate != null && (
+                          <span>
+                            <span style={{ color: "#94A3B8" }}>실제사정율 </span>
+                            <strong>{Number(r.actualSajungRate).toFixed(3)}%</strong>
+                          </span>
+                        )}
+                      </div>
+                    </td>
+                  </tr>,
+                ];
               })}
             </tbody>
           </table>
