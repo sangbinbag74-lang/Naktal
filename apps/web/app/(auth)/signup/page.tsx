@@ -10,11 +10,15 @@ interface FormState {
   bizNo: string;
   bizName: string;
   ownerName: string;
+  ownerPhone: string;
   password: string;
   passwordConfirm: string;
   notifyEmail: string;
   notifyPhone: string;
 }
+
+// 카카오 비즈앱 심사 통과 시 true 로 변경 → 카카오 인증 흐름 자동 활성화
+const KAKAO_AUTH_ENABLED = false;
 
 interface KakaoVerified {
   kakaoId: string;
@@ -46,7 +50,7 @@ const LabelStyle: React.CSSProperties = {
 export default function SignupPage() {
   const router = useRouter();
   const [form, setForm] = useState<FormState>({
-    bizNo: "", bizName: "", ownerName: "",
+    bizNo: "", bizName: "", ownerName: "", ownerPhone: "",
     password: "", passwordConfirm: "",
     notifyEmail: "", notifyPhone: "",
   });
@@ -133,9 +137,11 @@ export default function SignupPage() {
     setError(null);
 
     if (form.bizNo.length !== 10) { setError("사업자번호 10자리를 입력해주세요."); return; }
+    if (!form.ownerName.trim()) { setError("대표자 이름을 입력해주세요."); return; }
+    if (!form.ownerPhone.trim()) { setError("대표자 휴대폰 번호를 입력해주세요."); return; }
     if (form.password.length < 8) { setError("비밀번호는 8자 이상이어야 합니다."); return; }
     if (form.password !== form.passwordConfirm) { setError("비밀번호가 일치하지 않습니다."); return; }
-    if (!kakaoVerified) { setError("카카오 본인인증을 먼저 완료해주세요."); return; }
+    if (KAKAO_AUTH_ENABLED && !kakaoVerified) { setError("카카오 본인인증을 먼저 완료해주세요."); return; }
 
     setLoading(true);
     setVerifying(true);
@@ -156,7 +162,7 @@ export default function SignupPage() {
       console.error("사업자 검증 API 호출 실패 — 가입 진행");
     }
 
-    // G2B 업체정보 자동 조회 (실패해도 수동 입력 유지)
+    // G2B 업체정보 자동 조회 + 대표자명 자동 대조
     let g2bCeoName: string | null = null;
     try {
       const g2bRes = await fetch(`/api/auth/lookup-biz?bizNo=${form.bizNo}`);
@@ -165,8 +171,7 @@ export default function SignupPage() {
         g2bCeoName = g2b.ceoName ?? null;
         setForm(prev => ({
           ...prev,
-          bizName:   g2b.bizName ?? prev.bizName,
-          ownerName: g2b.ceoName ?? prev.ownerName,
+          bizName: g2b.bizName ?? prev.bizName,
         }));
         setBizAutoFilled(true);
       }
@@ -176,12 +181,10 @@ export default function SignupPage() {
 
     setVerifying(false);
 
-    // 카카오 이름 vs 대표자명 매칭 (한국 이름 공백·특수문자 정규화)
+    // 대표자명 자기신고 vs G2B 자동조회 결과 대조 (한국 이름 공백·특수문자 정규화)
     const norm = (s: string) => (s || "").replace(/\s+/g, "").replace(/[()-]/g, "");
-    const ceoName = g2bCeoName ?? form.ownerName;
-    const kakaoName = kakaoVerified.name;
-    if (ceoName && norm(kakaoName) !== norm(ceoName)) {
-      setError(`본인인증 실패: 카카오 명의(${kakaoName})와 사업자 대표자명(${ceoName})이 일치하지 않습니다. 대표자 본인만 가입 가능합니다.`);
+    if (g2bCeoName && norm(form.ownerName) !== norm(g2bCeoName)) {
+      setError(`입력하신 대표자명(${form.ownerName})과 사업자등록증의 대표자명(${g2bCeoName})이 일치하지 않습니다.`);
       setLoading(false);
       return;
     }
@@ -197,16 +200,20 @@ export default function SignupPage() {
     }
 
     try {
+      const payload: Record<string, unknown> = {
+        bizNo: form.bizNo, bizName: form.bizName, ownerName: form.ownerName,
+        notifyEmail: form.notifyEmail || null,
+        notifyPhone: form.notifyPhone || form.ownerPhone || null,
+      };
+      if (KAKAO_AUTH_ENABLED && kakaoVerified) {
+        payload.kakaoId = kakaoVerified.kakaoId;
+        payload.kakaoVerifiedName = kakaoVerified.name;
+        payload.kakaoVerifiedPhone = kakaoVerified.phone;
+      }
       await fetch("/api/auth/create-user", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          bizNo: form.bizNo, bizName: form.bizName, ownerName: form.ownerName,
-          notifyEmail: form.notifyEmail || null, notifyPhone: form.notifyPhone || null,
-          kakaoId: kakaoVerified.kakaoId,
-          kakaoVerifiedName: kakaoVerified.name,
-          kakaoVerifiedPhone: kakaoVerified.phone,
-        }),
+        body: JSON.stringify(payload),
       });
     } catch { console.error("User 프로필 저장 실패"); }
 
@@ -253,94 +260,108 @@ export default function SignupPage() {
             1분이면 시작할 수 있어요
           </div>
           <div style={{ fontSize: 13, color: "#64748B" }}>
-            카카오 인증 + 사업자번호만 있으면 끝
+            사업자번호 + 대표자 정보만 있으면 끝
           </div>
         </div>
 
         <form onSubmit={handleSignup} style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-          {/* 1단계: 카카오 본인인증 */}
+          {/* 카카오 본인인증 (점검 중) */}
+          {KAKAO_AUTH_ENABLED ? (
+            <div>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+                <span style={{ background: "#1B3A6B", color: "#fff", width: 20, height: 20, borderRadius: 10, display: "grid", placeItems: "center", fontSize: 11, fontWeight: 700 }}>★</span>
+                <label style={{ ...LabelStyle, margin: 0 }}>본인인증</label>
+              </div>
+              {kakaoVerified ? (
+                <div style={{ background: "#ECFDF5", border: "1.5px solid #A7F3D0", borderRadius: 10, padding: "14px 16px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <div>
+                    <div style={{ fontSize: 12, color: "#059669", fontWeight: 700, marginBottom: 3 }}>✓ 인증 완료</div>
+                    <div style={{ fontSize: 14, color: "#0F172A", fontWeight: 700 }}>{kakaoVerified.name}</div>
+                  </div>
+                  <button type="button" onClick={() => setKakaoVerified(null)} style={{ fontSize: 11, color: "#64748B", background: "none", border: "1px solid #E2E8F0", borderRadius: 6, padding: "4px 10px", cursor: "pointer" }}>다시 인증</button>
+                </div>
+              ) : (
+                <button type="button" onClick={handleKakaoVerify} disabled={kakaoLoading || loading} style={{ width: "100%", height: 50, background: kakaoLoading ? "#F9DD4A" : "#FEE500", color: "#191600", border: "none", borderRadius: 10, fontSize: 14, fontWeight: 700, cursor: kakaoLoading ? "wait" : "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+                  <span style={{ fontSize: 16 }}>💬</span>
+                  {kakaoLoading ? "인증 중..." : "카카오로 시작하기"}
+                </button>
+              )}
+            </div>
+          ) : (
+            <div>
+              <div style={{
+                width: "100%", padding: "12px 14px",
+                background: "#FFFBEB", border: "1px dashed #FCD34D", borderRadius: 10,
+                fontSize: 12, color: "#92400E", lineHeight: 1.6, textAlign: "center",
+              }}>
+                <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 4 }}>
+                  💬 카카오 본인인증 점검 중
+                </div>
+                <div style={{ color: "#B45309" }}>
+                  현재는 직접 입력으로 가입하실 수 있습니다.<br/>점검 완료 후 더 빠른 가입이 가능해집니다.
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* 1단계: 사업자번호 */}
           <div>
             <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
               <span style={{ background: "#1B3A6B", color: "#fff", width: 20, height: 20, borderRadius: 10, display: "grid", placeItems: "center", fontSize: 11, fontWeight: 700 }}>1</span>
-              <label style={{ ...LabelStyle, margin: 0 }}>본인인증</label>
-            </div>
-            {kakaoVerified ? (
-              <div style={{
-                background: "#ECFDF5", border: "1.5px solid #A7F3D0",
-                borderRadius: 10, padding: "14px 16px",
-                display: "flex", justifyContent: "space-between", alignItems: "center",
-              }}>
-                <div>
-                  <div style={{ fontSize: 12, color: "#059669", fontWeight: 700, marginBottom: 3 }}>
-                    ✓ 인증 완료
-                  </div>
-                  <div style={{ fontSize: 14, color: "#0F172A", fontWeight: 700 }}>{kakaoVerified.name}</div>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setKakaoVerified(null)}
-                  style={{ fontSize: 11, color: "#64748B", background: "none", border: "1px solid #E2E8F0", borderRadius: 6, padding: "4px 10px", cursor: "pointer" }}
-                >다시 인증</button>
-              </div>
-            ) : (
-              <button
-                type="button"
-                onClick={handleKakaoVerify}
-                disabled={kakaoLoading || loading}
-                style={{
-                  width: "100%", height: 50,
-                  background: kakaoLoading ? "#F9DD4A" : "#FEE500",
-                  color: "#191600", border: "none", borderRadius: 10,
-                  fontSize: 14, fontWeight: 700,
-                  cursor: kakaoLoading ? "wait" : "pointer",
-                  display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
-                  boxShadow: "0 1px 2px rgba(0,0,0,0.05)",
-                }}
-              >
-                <span style={{ fontSize: 16 }}>💬</span>
-                {kakaoLoading ? "인증 중..." : "카카오로 시작하기"}
-              </button>
-            )}
-          </div>
-
-          {/* 2단계: 사업자번호 */}
-          <div>
-            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
-              <span style={{
-                background: kakaoVerified ? "#1B3A6B" : "#CBD5E1",
-                color: "#fff", width: 20, height: 20, borderRadius: 10,
-                display: "grid", placeItems: "center", fontSize: 11, fontWeight: 700,
-              }}>2</span>
               <label style={{ ...LabelStyle, margin: 0 }}>사업자번호</label>
             </div>
-            <BizNoInput value={form.bizNo} onChange={set("bizNo")} disabled={loading || !kakaoVerified} />
+            <BizNoInput value={form.bizNo} onChange={set("bizNo")} disabled={loading} />
             {bizAutoFilled && (
-              <div style={{
-                marginTop: 8, padding: "10px 12px",
-                background: "#EFF6FF", border: "1px solid #BFDBFE", borderRadius: 8,
-                fontSize: 12, color: "#1E40AF", lineHeight: 1.6,
-              }}>
-                <strong>{form.bizName}</strong> · 대표자 {form.ownerName}
+              <div style={{ marginTop: 8, padding: "10px 12px", background: "#EFF6FF", border: "1px solid #BFDBFE", borderRadius: 8, fontSize: 12, color: "#1E40AF", lineHeight: 1.6 }}>
+                <strong>{form.bizName}</strong>
                 <div style={{ fontSize: 10.5, color: "#60A5FA", marginTop: 2 }}>나라장터 자동 조회됨</div>
               </div>
             )}
           </div>
 
-          {/* 3단계: 비밀번호 */}
+          {/* 2단계: 대표자 이름 */}
           <div>
             <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
-              <span style={{
-                background: kakaoVerified ? "#1B3A6B" : "#CBD5E1",
-                color: "#fff", width: 20, height: 20, borderRadius: 10,
-                display: "grid", placeItems: "center", fontSize: 11, fontWeight: 700,
-              }}>3</span>
+              <span style={{ background: "#1B3A6B", color: "#fff", width: 20, height: 20, borderRadius: 10, display: "grid", placeItems: "center", fontSize: 11, fontWeight: 700 }}>2</span>
+              <label style={{ ...LabelStyle, margin: 0 }}>대표자 이름</label>
+            </div>
+            <input
+              type="text" required value={form.ownerName} disabled={loading}
+              onChange={setE("ownerName")} placeholder="사업자등록증의 대표자명"
+              className="naktal-input" autoComplete="name"
+            />
+            <div style={{ fontSize: 10.5, color: "#94A3B8", marginTop: 4, lineHeight: 1.5 }}>
+              사업자등록증과 일치하지 않으면 가입이 거부됩니다. (나라장터 자동 대조)
+            </div>
+          </div>
+
+          {/* 3단계: 대표자 휴대폰 */}
+          <div>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+              <span style={{ background: "#1B3A6B", color: "#fff", width: 20, height: 20, borderRadius: 10, display: "grid", placeItems: "center", fontSize: 11, fontWeight: 700 }}>3</span>
+              <label style={{ ...LabelStyle, margin: 0 }}>대표자 휴대폰</label>
+            </div>
+            <input
+              type="tel" required value={form.ownerPhone} disabled={loading}
+              onChange={setE("ownerPhone")} placeholder="010-0000-0000"
+              className="naktal-input" autoComplete="tel"
+            />
+            <div style={{ fontSize: 10.5, color: "#94A3B8", marginTop: 4, lineHeight: 1.5 }}>
+              공고 알림·낙찰 결과 안내 발송용
+            </div>
+          </div>
+
+          {/* 4단계: 비밀번호 */}
+          <div>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+              <span style={{ background: "#1B3A6B", color: "#fff", width: 20, height: 20, borderRadius: 10, display: "grid", placeItems: "center", fontSize: 11, fontWeight: 700 }}>4</span>
               <label style={{ ...LabelStyle, margin: 0 }}>비밀번호</label>
             </div>
-            <input type="password" required minLength={8} value={form.password} disabled={loading || !kakaoVerified}
+            <input type="password" required minLength={8} value={form.password} disabled={loading}
               onChange={setE("password")} placeholder="8자 이상" className="naktal-input"
               style={{ marginBottom: 8 }}
             />
-            <input type="password" required value={form.passwordConfirm} disabled={loading || !kakaoVerified}
+            <input type="password" required value={form.passwordConfirm} disabled={loading}
               onChange={setE("passwordConfirm")} placeholder="비밀번호 재입력" className="naktal-input" />
           </div>
 
@@ -384,15 +405,9 @@ export default function SignupPage() {
             </div>
           )}
 
-          <button type="submit" disabled={loading || !kakaoVerified} className="naktal-btn-primary" style={{ marginTop: 4 }}>
+          <button type="submit" disabled={loading} className="naktal-btn-primary" style={{ marginTop: 4 }}>
             {verifying ? "사업자 검증 중..." : loading ? "가입 중..." : "회원가입 완료"}
           </button>
-
-          {!kakaoVerified && (
-            <div style={{ fontSize: 11, color: "#94A3B8", textAlign: "center", marginTop: -4 }}>
-              먼저 카카오로 본인인증을 완료해주세요
-            </div>
-          )}
         </form>
 
         <p style={{ textAlign: "center", fontSize: 13, color: "#64748B", marginTop: 16 }}>
@@ -420,22 +435,19 @@ export default function SignupPage() {
           📋 수집하는 회원정보
         </div>
         <div style={{ color: "#1B3A6B", fontWeight: 700, marginBottom: 4 }}>
-          [필수] 카카오 인증 자동 수집
-        </div>
-        <div style={{ color: "#64748B", paddingLeft: 8, marginBottom: 10 }}>
-          ✓ 이름<br/>✓ 휴대폰 번호<br/>✓ CI(연계정보)
-        </div>
-        <div style={{ color: "#1B3A6B", fontWeight: 700, marginBottom: 4 }}>
           [필수] 직접 입력
         </div>
         <div style={{ color: "#64748B", paddingLeft: 8, marginBottom: 10 }}>
-          ✓ 사업자등록번호<br/>✓ 비밀번호
+          ✓ 사업자등록번호<br/>✓ 대표자 이름<br/>✓ 대표자 휴대폰<br/>✓ 비밀번호
         </div>
         <div style={{ color: "#94A3B8", fontWeight: 700, marginBottom: 4 }}>
           [선택]
         </div>
-        <div style={{ color: "#94A3B8", paddingLeft: 8 }}>
+        <div style={{ color: "#94A3B8", paddingLeft: 8, marginBottom: 10 }}>
           ○ 알림 이메일<br/>○ 알림 전화번호
+        </div>
+        <div style={{ fontSize: 11, color: "#92400E", background: "#FFFBEB", border: "1px dashed #FCD34D", borderRadius: 8, padding: "8px 10px", lineHeight: 1.5 }}>
+          카카오 본인인증은 현재 점검 중입니다. 점검 완료 후 자동으로 활성화됩니다.
         </div>
       </aside>
     </div>
