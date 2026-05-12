@@ -46,6 +46,19 @@ const LabelStyle: React.CSSProperties = {
   marginBottom: 6,
 };
 
+function ItemRow({ name, reason, optional = false }: { name: string; reason: string; optional?: boolean }) {
+  return (
+    <div style={{ marginBottom: 8 }}>
+      <div style={{ fontSize: 12, fontWeight: 600, color: optional ? "#64748B" : "#0F172A", marginBottom: 2 }}>
+        {optional ? "○" : "✓"} {name}
+      </div>
+      <div style={{ fontSize: 10.5, color: "#94A3B8", lineHeight: 1.55, paddingLeft: 14 }}>
+        {reason}
+      </div>
+    </div>
+  );
+}
+
 export default function SignupPage() {
   const router = useRouter();
   const [form, setForm] = useState<FormState>({
@@ -408,41 +421,54 @@ export default function SignupPage() {
         </p>
       </div>
 
-      {/* 우측: 수집 항목 안내 (데스크탑 한정, 카카오 비즈앱 심사 대응) */}
+      {/* 우측: 수집 항목 + 사유 (데스크탑 한정, 카카오 비즈앱 심사 대응) */}
       <aside style={{
         position: "absolute",
         top: "50%",
-        left: "calc(50% + 252px)",
+        left: "calc(50% + 240px)",
         transform: "translateY(-50%)",
-        width: 280,
+        width: 320,
         background: "#fff",
         border: "1px solid #EAECF0",
         borderRadius: 16,
-        padding: "20px 22px",
-        fontSize: 12.5,
-        lineHeight: 1.7,
+        padding: "22px 24px",
         boxShadow: "0 2px 12px rgba(15,30,60,0.04)",
       }}>
-        <div style={{ fontWeight: 700, color: "#0F172A", marginBottom: 12, fontSize: 13.5 }}>
-          📋 수집하는 회원정보
+        <div style={{ fontWeight: 800, color: "#0F172A", marginBottom: 16, fontSize: 14 }}>
+          📋 수집 항목 및 이용 목적
         </div>
-        <div style={{ color: "#1B3A6B", fontWeight: 700, marginBottom: 4 }}>
-          [필수] 카카오 인증 자동 수집
+
+        {/* [필수] 카카오 본인인증 */}
+        <div style={{ marginBottom: 16 }}>
+          <div style={{ color: "#1B3A6B", fontWeight: 700, fontSize: 12, marginBottom: 8, paddingBottom: 6, borderBottom: "1px solid #E2E8F0" }}>
+            [필수] 카카오 본인인증 자동 수집
+          </div>
+          <ItemRow name="이름" reason="사업자등록증 대표자명과 인증 명의 일치 확인 (명의도용 차단)" />
+          <ItemRow name="휴대폰 번호" reason="공고 마감·낙찰 결과 알림톡 발송, 부정 가입 방지" />
+          <ItemRow name="CI(연계정보)" reason="1사업자번호=1계정 중복 가입 방지, 동일인 식별" />
         </div>
-        <div style={{ color: "#64748B", paddingLeft: 8, marginBottom: 10 }}>
-          ✓ 이름<br/>✓ 휴대폰 번호<br/>✓ CI(연계정보)
+
+        {/* [필수] 직접 입력 */}
+        <div style={{ marginBottom: 16 }}>
+          <div style={{ color: "#1B3A6B", fontWeight: 700, fontSize: 12, marginBottom: 8, paddingBottom: 6, borderBottom: "1px solid #E2E8F0" }}>
+            [필수] 직접 입력
+          </div>
+          <ItemRow name="사업자등록번호" reason="회원 식별, 나라장터 사업자 정보 자동 조회" />
+          <ItemRow name="비밀번호" reason="계정 보안 (bcrypt 단방향 암호화 저장)" />
         </div>
-        <div style={{ color: "#1B3A6B", fontWeight: 700, marginBottom: 4 }}>
-          [필수] 직접 입력
+
+        {/* [선택] */}
+        <div>
+          <div style={{ color: "#94A3B8", fontWeight: 700, fontSize: 12, marginBottom: 8, paddingBottom: 6, borderBottom: "1px solid #F1F5F9" }}>
+            [선택]
+          </div>
+          <ItemRow name="알림 이메일" reason="공고·낙찰 알림 추가 발송 (미입력 시 카카오 알림톡만)" optional />
+          <ItemRow name="알림 전화번호" reason="카카오와 다른 번호로 알림 수신 시" optional />
         </div>
-        <div style={{ color: "#64748B", paddingLeft: 8, marginBottom: 10 }}>
-          ✓ 사업자등록번호<br/>✓ 비밀번호
-        </div>
-        <div style={{ color: "#94A3B8", fontWeight: 700, marginBottom: 4 }}>
-          [선택]
-        </div>
-        <div style={{ color: "#94A3B8", paddingLeft: 8 }}>
-          ○ 알림 이메일<br/>○ 알림 전화번호
+
+        <div style={{ marginTop: 14, paddingTop: 12, borderTop: "1px solid #E2E8F0", fontSize: 10.5, color: "#94A3B8", lineHeight: 1.6 }}>
+          자세한 처리·보유·파기 등은{" "}
+          <Link href="/privacy" style={{ color: "#1B3A6B" }}>개인정보처리방침</Link>
         </div>
       </aside>
     </div>
