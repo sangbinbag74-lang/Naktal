@@ -288,6 +288,14 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     const feeAmount = isWon ? Math.round(finalPrice * feeRate) : 0;
     const feeStatus = isWon ? "invoiced" : "waived";
 
+    // 추천 따름 자동 판정: 추천가 vs 실투찰가 차이 ±0.5% 이내 = 추천 따름
+    // userBidPrice 가 G2B에서 매칭됐을 때만 판정 가능
+    let userFollowedRecommendation: boolean | null = null;
+    if (userBidPriceFromG2B != null && recPrice > 0) {
+      const diff = Math.abs(userBidPriceFromG2B - recPrice) / recPrice;
+      userFollowedRecommendation = diff <= 0.005; // ±0.5%
+    }
+
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { error: updateErr } = await (admin.from("BidRequest") as any)
       .update({
@@ -310,6 +318,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         ...(userDrwtNo1 != null ? { userDrwtNo1 } : {}),
         ...(userDrwtNo2 != null ? { userDrwtNo2 } : {}),
         ...(userBidAtFromG2B != null ? { userBidAt: userBidAtFromG2B } : {}),
+        ...(userFollowedRecommendation != null ? { userFollowedRecommendation } : {}),
       })
       .eq("id", req.id);
 
