@@ -354,15 +354,17 @@ export function RequestsTable({ requests, userMap, bidResultMap, annOpengMap = {
                     <td style={{ padding: "8px 12px", whiteSpace: "nowrap" }}>
                       <div style={{ color: "#1B3A6B", fontWeight: 600 }}>{fmtPrice(r.recommendedBidPrice)}</div>
                       {r.predictedSajungRate && (
-                        <div style={{ color: "#9CA3AF", fontSize: 10, marginTop: 1 }}>사정율 {Number(r.predictedSajungRate).toFixed(2)}%</div>
+                        <div style={{ color: "#9CA3AF", fontSize: 10, marginTop: 1 }}>예측사정율 {Number(r.predictedSajungRate).toFixed(3)}%</div>
                       )}
                     </td>
-                    {/* 실투찰금액 */}
+                    {/* 실투찰금액 — 사정율 단위 통일 (추천=예측사정율, 실투찰=실제사정율) */}
                     <td style={{ padding: "8px 12px", whiteSpace: "nowrap" }}>
                       {r.userBidPrice
                         ? <>
                             <div style={{ color: "#374151", fontWeight: 600 }}>{fmtPrice(r.userBidPrice)}</div>
-                            {r.userBidRate != null && (
+                            {r.actualSajungRate != null ? (
+                              <div style={{ color: "#9CA3AF", fontSize: 10, marginTop: 1 }}>실제사정율 {Number(r.actualSajungRate).toFixed(3)}%</div>
+                            ) : r.userBidRate != null && (
                               <div style={{ color: "#9CA3AF", fontSize: 10, marginTop: 1 }}>투찰률 {Number(r.userBidRate).toFixed(3)}%</div>
                             )}
                           </>
