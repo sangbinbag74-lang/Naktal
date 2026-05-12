@@ -3,23 +3,28 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
-interface Result {
+interface RunSummary {
   ok: boolean;
-  message: string;
+  predFilled: number;
+  predIterations: number;
+  resultUpdated: number;
+  resultTotal: number;
+  resultG2bFetched: number;
+  error?: string;
 }
 
 export function AccuracyTriggers() {
   const router = useRouter();
-  const [analyzing, setAnalyzing] = useState(false);
-  const [refreshing, setRefreshing] = useState(false);
-  const [analyzeResult, setAnalyzeResult] = useState<Result | null>(null);
-  const [refreshResult, setRefreshResult] = useState<Result | null>(null);
+  const [running, setRunning] = useState(false);
+  const [summary, setSummary] = useState<RunSummary | null>(null);
 
-  async function handleAnalyze() {
-    setAnalyzing(true);
-    setAnalyzeResult(null);
-    try {
-      // 반복 호출 — 최대 30회 (50건 × 30 = 1500건)
+  async function handleSync() {
+    setRunning(true);
+    setSummary(null);
+
+    // 분석(run-predictions)과 결과 수집(refresh-outcomes) 동시 실행
+    // 분석은 반복 호출 — 최대 30회 (50건 × 30 = 1500건)
+    const predTask = (async () => {
       let totalFilled = 0;
       let iterations = 0;
       for (let i = 0; i < 30; i++) {
@@ -29,119 +34,95 @@ export function AccuracyTriggers() {
           body: JSON.stringify({ catFilter: "construction" }),
         });
         if (!res.ok) {
-          const err = await res.json().catch(() => ({}));
-          throw new Error(err.error || `HTTP ${res.status}`);
+          const err = await res.json().catch(() => ({})) as { error?: string };
+          throw new Error(err.error || `예측 HTTP ${res.status}`);
         }
-        const data = await res.json() as { filled?: number; skipped?: number };
+        const data = await res.json() as { filled?: number };
         const filled = data.filled ?? 0;
         totalFilled += filled;
         iterations = i + 1;
         if (filled === 0) break;
       }
-      setAnalyzeResult({
-        ok: true,
-        message: `완료 — ${totalFilled}건 분석 (${iterations}회 반복)`,
-      });
-      router.refresh();
-    } catch (e) {
-      setAnalyzeResult({ ok: false, message: (e as Error).message });
-    } finally {
-      setAnalyzing(false);
-    }
-  }
+      return { totalFilled, iterations };
+    })();
 
-  async function handleRefresh() {
-    setRefreshing(true);
-    setRefreshResult(null);
-    try {
+    const resultTask = (async () => {
       const res = await fetch("/api/admin/refresh-outcomes", { method: "POST" });
       if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err.error || `HTTP ${res.status}`);
+        const err = await res.json().catch(() => ({})) as { error?: string };
+        throw new Error(err.error || `결과 HTTP ${res.status}`);
       }
-      const data = await res.json() as { updated?: number; total?: number; skipped?: number; g2bFetched?: number };
-      setRefreshResult({
+      return await res.json() as { updated?: number; total?: number; g2bFetched?: number };
+    })();
+
+    try {
+      const [pred, result] = await Promise.all([predTask, resultTask]);
+      setSummary({
         ok: true,
-        message: `완료 — 처리 ${data.total ?? 0}건 / 갱신 ${data.updated ?? 0}건 / G2B 직접 ${data.g2bFetched ?? 0}건 / 결과없음 ${data.skipped ?? 0}건`,
+        predFilled: pred.totalFilled,
+        predIterations: pred.iterations,
+        resultUpdated: result.updated ?? 0,
+        resultTotal: result.total ?? 0,
+        resultG2bFetched: result.g2bFetched ?? 0,
       });
       router.refresh();
     } catch (e) {
-      setRefreshResult({ ok: false, message: (e as Error).message });
+      setSummary({
+        ok: false,
+        predFilled: 0, predIterations: 0,
+        resultUpdated: 0, resultTotal: 0, resultG2bFetched: 0,
+        error: (e as Error).message,
+      });
     } finally {
-      setRefreshing(false);
+      setRunning(false);
     }
   }
 
   return (
     <div style={{ background: "#fff", borderRadius: 14, border: "1px solid #E8ECF2", padding: "18px 20px" }}>
-      <div style={{ fontSize: 14, fontWeight: 700, color: "#0F172A", marginBottom: 12 }}>수동 트리거</div>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-        {/* 공고 자동분석 */}
-        <div style={{ background: "#F8FAFC", borderRadius: 10, padding: "14px 16px" }}>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
-            <div>
-              <div style={{ fontSize: 13, fontWeight: 700, color: "#0F172A" }}>공고 자동분석</div>
-              <div style={{ fontSize: 11, color: "#94A3B8", marginTop: 2 }}>활성 공고 → BidPricePrediction 적재 (공사 카테고리)</div>
-            </div>
-            <button
-              onClick={handleAnalyze}
-              disabled={analyzing}
-              style={{
-                padding: "8px 14px", borderRadius: 8, border: "none",
-                background: analyzing ? "#CBD5E1" : "#1B3A6B",
-                color: "#fff", fontWeight: 700, fontSize: 12,
-                cursor: analyzing ? "not-allowed" : "pointer",
-                whiteSpace: "nowrap",
-              }}
-            >
-              {analyzing ? "분석중…" : "지금 실행"}
-            </button>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: summary ? 12 : 0, gap: 16, flexWrap: "wrap" }}>
+        <div>
+          <div style={{ fontSize: 14, fontWeight: 700, color: "#0F172A" }}>예측 + 결과 동시 갱신</div>
+          <div style={{ fontSize: 11.5, color: "#94A3B8", marginTop: 3, lineHeight: 1.5 }}>
+            활성 공고 → BidPricePrediction 적재 (공사 우선) · 마감+1h 지난 BidRequest → 낙찰 결과 자동 채움
           </div>
-          {analyzeResult && (
-            <div style={{
-              padding: "8px 10px", borderRadius: 6, fontSize: 11, marginTop: 4,
-              background: analyzeResult.ok ? "#ECFDF5" : "#FEF2F2",
-              color: analyzeResult.ok ? "#059669" : "#DC2626",
-              border: `1px solid ${analyzeResult.ok ? "#A7F3D0" : "#FECACA"}`,
-            }}>
-              {analyzeResult.ok ? "✓ " : "✗ "}{analyzeResult.message}
-            </div>
-          )}
         </div>
-
-        {/* 공고 결과 받기 */}
-        <div style={{ background: "#F8FAFC", borderRadius: 10, padding: "14px 16px" }}>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
-            <div>
-              <div style={{ fontSize: 13, fontWeight: 700, color: "#0F172A" }}>공고 결과 받기</div>
-              <div style={{ fontSize: 11, color: "#94A3B8", marginTop: 2 }}>마감+1h 지난 BidRequest → 낙찰 결과 자동 채움</div>
-            </div>
-            <button
-              onClick={handleRefresh}
-              disabled={refreshing}
-              style={{
-                padding: "8px 14px", borderRadius: 8, border: "none",
-                background: refreshing ? "#CBD5E1" : "#7C3AED",
-                color: "#fff", fontWeight: 700, fontSize: 12,
-                cursor: refreshing ? "not-allowed" : "pointer",
-                whiteSpace: "nowrap",
-              }}
-            >
-              {refreshing ? "조회중…" : "지금 실행"}
-            </button>
-          </div>
-          {refreshResult && (
-            <div style={{
-              padding: "8px 10px", borderRadius: 6, fontSize: 11, marginTop: 4,
-              background: refreshResult.ok ? "#ECFDF5" : "#FEF2F2",
-              color: refreshResult.ok ? "#059669" : "#DC2626",
-              border: `1px solid ${refreshResult.ok ? "#A7F3D0" : "#FECACA"}`,
-            }}>
-              {refreshResult.ok ? "✓ " : "✗ "}{refreshResult.message}
-            </div>
-          )}
-        </div>
+        <button
+          onClick={handleSync}
+          disabled={running}
+          style={{
+            padding: "10px 18px", borderRadius: 8, border: "none",
+            background: running ? "#CBD5E1" : "#1B3A6B",
+            color: "#fff", fontWeight: 700, fontSize: 13,
+            cursor: running ? "not-allowed" : "pointer",
+            whiteSpace: "nowrap",
+          }}
+        >
+          {running ? "동기화 중…" : "⚡ 지금 동기화"}
+        </button>
       </div>
+      {summary && (
+        <div style={{
+          padding: "10px 12px", borderRadius: 8, fontSize: 12,
+          background: summary.ok ? "#ECFDF5" : "#FEF2F2",
+          color: summary.ok ? "#065F46" : "#DC2626",
+          border: `1px solid ${summary.ok ? "#A7F3D0" : "#FECACA"}`,
+          lineHeight: 1.6,
+        }}>
+          {summary.ok ? (
+            <>
+              <strong>✓ 동기화 완료</strong>
+              <div style={{ marginTop: 4 }}>
+                예측 적재 {summary.predFilled}건 ({summary.predIterations}회 반복) ·
+                결과 갱신 {summary.resultUpdated}/{summary.resultTotal}건 ·
+                G2B 직접 조회 {summary.resultG2bFetched}건
+              </div>
+            </>
+          ) : (
+            <>✗ {summary.error ?? "알 수 없는 오류"}</>
+          )}
+        </div>
+      )}
     </div>
   );
 }

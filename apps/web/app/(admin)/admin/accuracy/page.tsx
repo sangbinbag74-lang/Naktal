@@ -102,16 +102,8 @@ export default async function AdminAccuracyPage() {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const statsOther = computeStats(aiPreds.filter((p: any) => !isConstruction(p.category) && !isService(p.category) && !isGoods(p.category)) as any);
 
-  // ─── 최근 예측 내역 (30건, 카테고리 포함) ──────────────────────────────────
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: recentPredsRaw } = await (admin.from("AIPrediction") as any)
-    .select("annId,title,orgName,budget,predictedSajungRate,actualSajungRate,deviationPct,isExact,isHit,isNearHit,predictedAt,resultFilledAt")
-    .order("predictedAt", { ascending: false })
-    .limit(30);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const recentPreds = (recentPredsRaw ?? []).map((p: any) => ({ ...p, category: aiCatMap[p.annId] ?? "기타" }));
-
-  // ─── 활성 BidPricePrediction (분석 가능 공고) ──────────────────────────────
+  // ─── 통합 예측 목록 — 활성 + 만료(결과확정) 모두 ──────────────────────────
+  // expiresAt 필터 제거 → 결과 완료된 예측도 같이 표시
   const { data: bppListRaw } = await admin
     .from("BidPricePrediction")
     .select(`
@@ -126,9 +118,8 @@ export default async function AdminAccuracyPage() {
       createdAt,
       announcement:Announcement(id, title, orgName, deadline, budget, category)
     `)
-    .gt("expiresAt", now)
     .order("createdAt", { ascending: false })
-    .limit(200);
+    .limit(300);
 
   const bppListAll = (bppListRaw ?? []) as unknown as BppItem[];
 
@@ -348,88 +339,12 @@ export default async function AdminAccuracyPage() {
         </div>
       </div>
 
-      {/* ── 섹션 3: 최근 예측 vs 결과 (통합 30건) ── */}
-      {(recentPreds ?? []).length > 0 && (
-        <div style={{ background: "#fff", borderRadius: 14, border: "1px solid #E8ECF2", padding: "20px" }}>
-          <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 14 }}>
-            <div>
-              <span style={{ fontSize: 15, fontWeight: 800, color: "#0F172A" }}>최근 예측 vs 결과</span>
-              <span style={{ fontSize: 11, color: "#94A3B8", marginLeft: 8 }}>최근 30건</span>
-            </div>
-            <div style={{ display: "flex", gap: 12, fontSize: 11, color: "#64748B" }}>
-              <span><span style={{ color: "#059669" }}>●</span> 완전적중 ≤0.2%p</span>
-              <span><span style={{ color: "#1B3A6B" }}>●</span> 적중 ≤0.5%p</span>
-              <span><span style={{ color: "#D97706" }}>●</span> 근접 ≤1.0%p</span>
-              <span><span style={{ color: "#DC2626" }}>●</span> 미적중</span>
-            </div>
-          </div>
-          <div style={{ overflowX: "auto" }}>
-            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
-              <thead>
-                <tr style={{ background: "#F8FAFC" }}>
-                  {["예측일", "카테고리", "발주처", "예산", "예측", "실제", "편차", "결과"].map((h) => (
-                    <th key={h} style={{ padding: "9px 12px", textAlign: "left", color: "#374151", fontWeight: 600, borderBottom: "2px solid #E8ECF2", whiteSpace: "nowrap" }}>{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-                {(recentPreds ?? []).map((p: any, i: number) => {
-                  const hasResult = p.resultFilledAt != null;
-                  const hitColor  = p.isExact ? "#059669" : p.isHit ? "#1B3A6B" : p.isNearHit ? "#D97706" : hasResult ? "#DC2626" : "#9CA3AF";
-                  const hitLabel  = p.isExact ? "완전적중" : p.isHit ? "적중" : p.isNearHit ? "근접" : hasResult ? "미적중" : "미개찰";
-                  const cat = String(p.category ?? "기타");
-                  const catColor = isConstruction(cat) ? "#1B3A6B" : isService(cat) ? "#D97706" : isGoods(cat) ? "#7C3AED" : "#64748B";
-                  const catBg = isConstruction(cat) ? "#EFF6FF" : isService(cat) ? "#FFFBEB" : isGoods(cat) ? "#F5F3FF" : "#F1F5F9";
-                  return (
-                    <tr key={i} style={{ borderBottom: "1px solid #F1F5F9" }}>
-                      <td style={{ padding: "8px 12px", color: "#6B7280", whiteSpace: "nowrap" }}>
-                        {new Date(p.predictedAt).toLocaleDateString("ko-KR", { month: "short", day: "numeric" })}
-                      </td>
-                      <td style={{ padding: "8px 12px", whiteSpace: "nowrap" }}>
-                        <span style={{ fontSize: 10.5, fontWeight: 600, color: catColor, background: catBg, padding: "2px 7px", borderRadius: 5 }}>
-                          {cat}
-                        </span>
-                      </td>
-                      <td style={{ padding: "8px 12px", color: "#374151", maxWidth: 200, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={p.orgName}>
-                        {p.orgName}
-                      </td>
-                      <td style={{ padding: "8px 12px", color: "#374151", whiteSpace: "nowrap" }}>
-                        {Number(p.budget ?? 0).toLocaleString("ko-KR")}원
-                      </td>
-                      <td style={{ padding: "8px 12px", color: "#1B3A6B", fontWeight: 700, whiteSpace: "nowrap" }}>
-                        {Number(p.predictedSajungRate).toFixed(2)}%
-                      </td>
-                      <td style={{ padding: "8px 12px", whiteSpace: "nowrap" }}>
-                        {hasResult
-                          ? <span style={{ color: "#0F172A", fontWeight: 700 }}>{Number(p.actualSajungRate).toFixed(2)}%</span>
-                          : <span style={{ color: "#D1D5DB" }}>-</span>}
-                      </td>
-                      <td style={{ padding: "8px 12px", whiteSpace: "nowrap" }}>
-                        {hasResult
-                          ? <span style={{ color: Number(p.deviationPct) <= 0.5 ? "#059669" : Number(p.deviationPct) <= 1.0 ? "#D97706" : "#DC2626", fontWeight: 600 }}>{Number(p.deviationPct).toFixed(3)}%p</span>
-                          : <span style={{ color: "#D1D5DB" }}>-</span>}
-                      </td>
-                      <td style={{ padding: "8px 12px" }}>
-                        <span style={{ fontSize: 11, fontWeight: 700, color: hitColor, background: hitColor + "1a", padding: "3px 8px", borderRadius: 5 }}>
-                          {hitLabel}
-                        </span>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
-
-      {/* ── 섹션 4: 신규 분석 공고 (AccuracyClient) ── */}
+      {/* ── 섹션 3: 통합 예측·결과 목록 (AccuracyClient) ── */}
       <div>
         <div style={{ fontSize: 15, fontWeight: 800, color: "#0F172A", marginBottom: 10 }}>
-          신규 분석 공고
+          예측·결과 통합 목록
           <span style={{ fontSize: 11, color: "#94A3B8", fontWeight: 400, marginLeft: 8 }}>
-            · 활성 공사 우선 정렬 · 검색·필터 가능
+            · 활성 + 결과 완료 모두 · 검색·상태 필터
           </span>
         </div>
         <AccuracyClient
