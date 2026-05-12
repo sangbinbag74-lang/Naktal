@@ -264,14 +264,14 @@ export function AccuracyClient({ bppList, activeCount, predCount }: Props) {
                       </td>
                       {/* 예측사정율 */}
                       <td style={{ padding: "8px 12px", color: "#1B3A6B", fontWeight: 600, whiteSpace: "nowrap" }}>
-                        {r.predictedSajungRate != null ? Number(r.predictedSajungRate).toFixed(2) + "%" : "-"}
+                        {r.predictedSajungRate != null ? Number(r.predictedSajungRate).toFixed(3) + "%" : "-"}
                       </td>
                       {/* 실제결과 */}
                       <td style={{ padding: "8px 12px", whiteSpace: "nowrap" }}>
                         {r.actualSajungRate != null ? (
                           <div>
                             <div style={{ color: "#0F172A", fontWeight: 700, fontSize: 12 }}>
-                              {Number(r.actualSajungRate).toFixed(2)}%
+                              {Number(r.actualSajungRate).toFixed(3)}%
                             </div>
                             {r.deviationPct != null && (
                               <div style={{ fontSize: 10, marginTop: 1, color: r.isHit ? "#059669" : Number(r.deviationPct) <= 1.0 ? "#D97706" : "#DC2626", fontWeight: 600 }}>
