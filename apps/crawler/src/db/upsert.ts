@@ -304,13 +304,30 @@ export async function fillAIPredictionResult(data: BidResultRow): Promise<void> 
 
   if (fetchErr || !pred) return; // 없거나 이미 채워진 경우 스킵
 
-  const budget = Number(pred.budget ?? 0);
+  // 사정율 계산 base = Announcement.bsisAmt (기초금액) 우선
+  // budget (추정가격) 으로 나누면 사정율이 잘못 큰 값으로 나옴 (예: 110.91% 비정상)
+  const { data: ann } = await supabase
+    .from("Announcement")
+    .select("bsisAmt, aValueAmt, budget")
+    .eq("konepsId", data.annId)
+    .maybeSingle();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const annAny = ann as any;
+  const bsis = Number(annAny?.bsisAmt ?? 0);
+  const avAmt = Number(annAny?.aValueAmt ?? 0);
+  const annBudget = Number(annAny?.budget ?? 0);
+  const predBudget = Number(pred.budget ?? 0);
+  const base = bsis > 0 ? bsis
+             : avAmt > 0 ? avAmt
+             : annBudget > 0 ? Math.round(annBudget * 1.1)
+             : Math.round(predBudget * 1.1);
+
   const bidRateNum = Number(data.bidRate);
-  if (budget <= 0 || bidRateNum <= 0) return;
+  if (base <= 0 || bidRateNum <= 0) return;
 
   // 실제 사정율 = (낙찰금액 ÷ 낙찰률%) ÷ 기초금액 × 100
   const estimatedFinalPrice = Number(data.finalPrice) / (bidRateNum / 100);
-  const actualSajungRate = (estimatedFinalPrice / budget) * 100;
+  const actualSajungRate = (estimatedFinalPrice / base) * 100;
 
   const predicted = Number(pred.predictedSajungRate);
   const deviationPct = Math.abs(predicted - actualSajungRate);
