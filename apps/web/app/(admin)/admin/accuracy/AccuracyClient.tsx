@@ -223,7 +223,12 @@ export function AccuracyClient({ bppList, activeCount, predCount }: Props) {
                       <td style={{ padding: "8px 12px", whiteSpace: "nowrap" }}>
                         {ann?.deadline ? (
                           <div>
-                            <div style={{ color: "#6B7280", fontSize: 11.5 }}>{new Date(ann.deadline).toLocaleDateString("ko-KR")}</div>
+                            <div style={{ color: "#6B7280", fontSize: 11.5 }}>
+                              {new Date(ann.deadline).toLocaleDateString("ko-KR")}{" "}
+                              <span style={{ color: "#94A3B8", fontSize: 10.5 }}>
+                                {new Date(ann.deadline).toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit", hour12: false })}
+                              </span>
+                            </div>
                             {dd && (
                               <span style={{ fontSize: 10, fontWeight: 700, color: dd.color, background: dd.color + "1a", padding: "1px 5px", borderRadius: 4 }}>
                                 {dd.label}
