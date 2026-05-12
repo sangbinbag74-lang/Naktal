@@ -21,6 +21,14 @@ model User {
   isActive        Boolean                @default(true)
   adminMemo       String?
   createdAt       DateTime               @default(now())
+  // 마케팅·이벤트 수신 동의 (회원가입 체크박스)
+  marketingConsent   Boolean   @default(false)
+  marketingConsentAt DateTime?
+  // 카카오 본인인증 (비즈앱 통과 후 활성화)
+  kakaoId            String?   @unique
+  kakaoVerifiedName  String?
+  kakaoVerifiedPhone String?
+  kakaoVerifiedAt    DateTime?
   subscription    Subscription?
   alerts          UserAlert[]
   companyProfile  CompanyProfile?

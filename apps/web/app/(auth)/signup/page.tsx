@@ -60,7 +60,7 @@ export default function SignupPage() {
   const [bizAutoFilled, setBizAutoFilled] = useState(false);
   const [kakaoVerified, setKakaoVerified] = useState<KakaoVerified | null>(null);
   const [kakaoLoading, setKakaoLoading] = useState(false);
-  const [showOptional, setShowOptional] = useState(false);
+  const [marketingConsent, setMarketingConsent] = useState(false);
 
   // 카카오 SDK 로드 + 콜백에서 돌아왔을 때 sessionStorage 복원
   useEffect(() => {
@@ -139,6 +139,8 @@ export default function SignupPage() {
     if (form.bizNo.length !== 10) { setError("사업자번호 10자리를 입력해주세요."); return; }
     if (!form.ownerName.trim()) { setError("대표자 이름을 입력해주세요."); return; }
     if (!form.ownerPhone.trim()) { setError("대표자 휴대폰 번호를 입력해주세요."); return; }
+    if (!form.notifyEmail.trim()) { setError("이메일을 입력해주세요."); return; }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.notifyEmail.trim())) { setError("올바른 이메일 형식이 아닙니다."); return; }
     if (form.password.length < 8) { setError("비밀번호는 8자 이상이어야 합니다."); return; }
     if (form.password !== form.passwordConfirm) { setError("비밀번호가 일치하지 않습니다."); return; }
     if (KAKAO_AUTH_ENABLED && !kakaoVerified) { setError("카카오 본인인증을 먼저 완료해주세요."); return; }
@@ -202,8 +204,9 @@ export default function SignupPage() {
     try {
       const payload: Record<string, unknown> = {
         bizNo: form.bizNo, bizName: form.bizName, ownerName: form.ownerName,
-        notifyEmail: form.notifyEmail || null,
-        notifyPhone: form.notifyPhone || form.ownerPhone || null,
+        notifyEmail: form.notifyEmail,
+        notifyPhone: form.ownerPhone,
+        marketingConsent,
       };
       if (KAKAO_AUTH_ENABLED && kakaoVerified) {
         payload.kakaoId = kakaoVerified.kakaoId;
@@ -339,7 +342,7 @@ export default function SignupPage() {
           <div>
             <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
               <span style={{ background: "#1B3A6B", color: "#fff", width: 20, height: 20, borderRadius: 10, display: "grid", placeItems: "center", fontSize: 11, fontWeight: 700 }}>3</span>
-              <label style={{ ...LabelStyle, margin: 0 }}>대표자 휴대폰</label>
+              <label style={{ ...LabelStyle, margin: 0 }}>휴대폰</label>
             </div>
             <input
               type="tel" required value={form.ownerPhone} disabled={loading}
@@ -347,14 +350,30 @@ export default function SignupPage() {
               className="naktal-input" autoComplete="tel"
             />
             <div style={{ fontSize: 10.5, color: "#94A3B8", marginTop: 4, lineHeight: 1.5 }}>
-              공고 알림·낙찰 결과 안내 발송용
+              카카오 알림톡·낙찰 결과 안내 발송용
             </div>
           </div>
 
-          {/* 4단계: 비밀번호 */}
+          {/* 4단계: 이메일 */}
           <div>
             <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
               <span style={{ background: "#1B3A6B", color: "#fff", width: 20, height: 20, borderRadius: 10, display: "grid", placeItems: "center", fontSize: 11, fontWeight: 700 }}>4</span>
+              <label style={{ ...LabelStyle, margin: 0 }}>이메일</label>
+            </div>
+            <input
+              type="email" required value={form.notifyEmail} disabled={loading}
+              onChange={setE("notifyEmail")} placeholder="contact@company.com"
+              className="naktal-input" autoComplete="email"
+            />
+            <div style={{ fontSize: 10.5, color: "#94A3B8", marginTop: 4, lineHeight: 1.5 }}>
+              계산서·결과 리포트 발송용
+            </div>
+          </div>
+
+          {/* 5단계: 비밀번호 */}
+          <div>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+              <span style={{ background: "#1B3A6B", color: "#fff", width: 20, height: 20, borderRadius: 10, display: "grid", placeItems: "center", fontSize: 11, fontWeight: 700 }}>5</span>
               <label style={{ ...LabelStyle, margin: 0 }}>비밀번호</label>
             </div>
             <input type="password" required minLength={8} value={form.password} disabled={loading}
@@ -365,39 +384,26 @@ export default function SignupPage() {
               onChange={setE("passwordConfirm")} placeholder="비밀번호 재입력" className="naktal-input" />
           </div>
 
-          {/* 추가 정보 (선택, 토글) */}
-          <div>
-            <button
-              type="button"
-              onClick={() => setShowOptional(!showOptional)}
-              style={{
-                width: "100%", padding: "10px 14px",
-                background: "transparent", border: "1px dashed #CBD5E1", borderRadius: 8,
-                fontSize: 12, color: "#64748B", cursor: "pointer",
-                display: "flex", alignItems: "center", justifyContent: "space-between",
-              }}
-            >
-              <span>알림 이메일·전화번호 (선택)</span>
-              <span style={{ transform: showOptional ? "rotate(180deg)" : "rotate(0deg)", transition: "transform 0.15s" }}>▼</span>
-            </button>
-            {showOptional && (
-              <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 10, padding: "12px 14px", background: "#F8FAFC", borderRadius: 8 }}>
-                <div>
-                  <label style={{ fontSize: 11, color: "#64748B", display: "block", marginBottom: 4 }}>알림 이메일</label>
-                  <input type="email" value={form.notifyEmail} disabled={loading}
-                    onChange={setE("notifyEmail")} placeholder="notify@company.com" className="naktal-input" />
-                </div>
-                <div>
-                  <label style={{ fontSize: 11, color: "#64748B", display: "block", marginBottom: 4 }}>알림 전화번호</label>
-                  <input type="tel" value={form.notifyPhone} disabled={loading}
-                    onChange={setE("notifyPhone")} placeholder="010-0000-0000" className="naktal-input" />
-                </div>
-                <div style={{ fontSize: 10.5, color: "#94A3B8", lineHeight: 1.5 }}>
-                  공고 알림·낙찰 결과 안내를 받으실 연락처입니다. 마케팅 발송 안 함.
-                </div>
-              </div>
-            )}
-          </div>
+          {/* 수신동의 (선택, 체크박스만) */}
+          <label style={{
+            display: "flex", alignItems: "flex-start", gap: 8,
+            padding: "10px 12px", background: "#F8FAFC", borderRadius: 8,
+            cursor: "pointer", fontSize: 12, color: "#475569", lineHeight: 1.5,
+          }}>
+            <input
+              type="checkbox"
+              checked={marketingConsent}
+              onChange={(e) => setMarketingConsent(e.target.checked)}
+              disabled={loading}
+              style={{ marginTop: 3, width: 14, height: 14, accentColor: "#1B3A6B", cursor: "pointer" }}
+            />
+            <span>
+              <strong style={{ color: "#0F172A" }}>(선택)</strong> 새 공고 추천·이벤트·서비스 안내 수신에 동의합니다.
+              <span style={{ display: "block", fontSize: 10.5, color: "#94A3B8", marginTop: 2 }}>
+                낙찰 결과·계산서 등 거래 필수 안내는 동의와 무관하게 발송됩니다.
+              </span>
+            </span>
+          </label>
 
           {error && (
             <div style={{ background: "#FEF2F2", border: "1px solid #FECACA", borderRadius: 8, padding: "10px 12px", fontSize: 13, color: "#DC2626" }}>
@@ -438,13 +444,13 @@ export default function SignupPage() {
           [필수] 직접 입력
         </div>
         <div style={{ color: "#64748B", paddingLeft: 8, marginBottom: 10 }}>
-          ✓ 사업자등록번호<br/>✓ 대표자 이름<br/>✓ 대표자 휴대폰<br/>✓ 비밀번호
+          ✓ 사업자등록번호<br/>✓ 대표자 이름<br/>✓ 휴대폰<br/>✓ 이메일<br/>✓ 비밀번호
         </div>
         <div style={{ color: "#94A3B8", fontWeight: 700, marginBottom: 4 }}>
           [선택]
         </div>
         <div style={{ color: "#94A3B8", paddingLeft: 8, marginBottom: 10 }}>
-          ○ 알림 이메일<br/>○ 알림 전화번호
+          ○ 마케팅·이벤트 수신 동의
         </div>
         <div style={{ fontSize: 11, color: "#92400E", background: "#FFFBEB", border: "1px dashed #FCD34D", borderRadius: 8, padding: "8px 10px", lineHeight: 1.5 }}>
           카카오 본인인증은 현재 점검 중입니다. 점검 완료 후 자동으로 활성화됩니다.

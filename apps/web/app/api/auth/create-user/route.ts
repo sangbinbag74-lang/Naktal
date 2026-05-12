@@ -17,6 +17,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     ownerName: string;
     notifyEmail?: string | null;
     notifyPhone?: string | null;
+    marketingConsent?: boolean;
     kakaoId?: string;
     kakaoVerifiedName?: string;
     kakaoVerifiedPhone?: string | null;
@@ -31,13 +32,15 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   const admin = createAdminClient();
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const userRow: any = {
-    id:          crypto.randomUUID(),
-    supabaseId:  user.id,
-    bizNo:       body.bizNo,
-    bizName:     body.bizName,
-    ownerName:   body.ownerName,
-    notifyEmail: body.notifyEmail ?? null,
-    notifyPhone: body.notifyPhone ?? null,
+    id:                crypto.randomUUID(),
+    supabaseId:        user.id,
+    bizNo:             body.bizNo,
+    bizName:           body.bizName,
+    ownerName:         body.ownerName,
+    notifyEmail:       body.notifyEmail ?? null,
+    notifyPhone:       body.notifyPhone ?? null,
+    marketingConsent:  body.marketingConsent === true,
+    marketingConsentAt: body.marketingConsent === true ? new Date().toISOString() : null,
   };
   if (body.kakaoId) {
     userRow.kakaoId = body.kakaoId;
