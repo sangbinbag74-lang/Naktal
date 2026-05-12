@@ -42,36 +42,68 @@ export default async function AdminAccuracyPage() {
   const admin = createAdminClient();
   const now = new Date().toISOString();
 
-  // ─── AIPrediction 적중률 ─────────────────────────────────────────────────────
+  // ─── AIPrediction 적중률 (카테고리별 분리) ────────────────────────────────
+  // 공사: 사정율 정상 97~103% / 용역·물품: 80~100% — 분포 다르므로 분리 통계
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: aiPreds } = await (admin.from("AIPrediction") as any)
-    .select("isExact,isHit,isNearHit,deviationPct,resultFilledAt")
+  const { data: aiPredsRaw } = await (admin.from("AIPrediction") as any)
+    .select("isExact,isHit,isNearHit,deviationPct,resultFilledAt,annId")
     .limit(2000);
+  // Announcement.category JOIN — 카테고리별 그룹화
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const aiAnnIds = (aiPredsRaw ?? []).map((p: any) => p.annId).filter(Boolean);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: aiAnns } = aiAnnIds.length > 0
+    ? await (admin.from("Announcement") as any).select("id,category").in("id", aiAnnIds)
+    : { data: [] };
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const aiCatMap: Record<string, string> = Object.fromEntries((aiAnns ?? []).map((a: any) => [a.id, a.category ?? "기타"]));
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const aiPreds = (aiPredsRaw ?? []).map((p: any) => ({ ...p, category: aiCatMap[p.annId] ?? "기타" }));
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const aiTotal        = aiPreds?.length ?? 0;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const aiWithResult   = (aiPreds ?? []).filter((p: any) => p.resultFilledAt != null);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const aiExactCount   = aiWithResult.filter((p: any) => p.isExact).length;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const aiHitCount     = aiWithResult.filter((p: any) => p.isHit).length;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const aiNearHitCount = aiWithResult.filter((p: any) => p.isNearHit).length;
-  const aiExactRate    = aiWithResult.length > 0 ? (aiExactCount   / aiWithResult.length) * 100 : 0;
-  const aiHitRate      = aiWithResult.length > 0 ? (aiHitCount     / aiWithResult.length) * 100 : 0;
-  const aiNearHitRate  = aiWithResult.length > 0 ? (aiNearHitCount / aiWithResult.length) * 100 : 0;
-  const aiAvgDev = aiWithResult.length > 0
+  function computeStats(rows: any[]) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    ? aiWithResult.reduce((s: number, p: any) => s + Number(p.deviationPct ?? 0), 0) / aiWithResult.length
-    : null;
-
-  // ─── AIPrediction 최근 20건 ──────────────────────────────────────────────────
+    const withResult = rows.filter((p: any) => p.resultFilledAt != null);
+    const total = rows.length;
+    if (withResult.length === 0) return { total, evaluated: 0, exactRate: 0, hitRate: 0, nearRate: 0, mae: null as number | null };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const exact = withResult.filter((p: any) => p.isExact).length;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const hit = withResult.filter((p: any) => p.isHit).length;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const near = withResult.filter((p: any) => p.isNearHit).length;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const mae = withResult.reduce((s: number, p: any) => s + Number(p.deviationPct ?? 0), 0) / withResult.length;
+    return {
+      total, evaluated: withResult.length,
+      exactRate: (exact / withResult.length) * 100,
+      hitRate: (hit / withResult.length) * 100,
+      nearRate: (near / withResult.length) * 100,
+      mae,
+    };
+  }
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: recentPreds } = await (admin.from("AIPrediction") as any)
-    .select("title,orgName,budget,predictedSajungRate,actualSajungRate,deviationPct,isExact,isHit,isNearHit,predictedAt,resultFilledAt")
+  const aiCons = aiPreds.filter((p: any) => isConstruction(p.category));
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const aiServ = aiPreds.filter((p: any) => (p.category || "").includes("용역"));
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const aiThng = aiPreds.filter((p: any) => (p.category || "").includes("물품"));
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const aiOther = aiPreds.filter((p: any) => !isConstruction(p.category) && !(p.category || "").includes("용역") && !(p.category || "").includes("물품"));
+  const statsAll  = computeStats(aiPreds);
+  const statsCons = computeStats(aiCons);
+  const statsServ = computeStats(aiServ);
+  const statsThng = computeStats(aiThng);
+  const statsOther = computeStats(aiOther);
+
+  // ─── AIPrediction 최근 20건 (카테고리 포함) ───────────────────────────────
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: recentPredsRaw } = await (admin.from("AIPrediction") as any)
+    .select("title,orgName,budget,annId,predictedSajungRate,actualSajungRate,deviationPct,isExact,isHit,isNearHit,predictedAt,resultFilledAt")
     .order("predictedAt", { ascending: false })
     .limit(20);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const recentPreds = (recentPredsRaw ?? []).map((p: any) => ({ ...p, category: aiCatMap[p.annId] ?? "기타" }));
 
   // ─── SajungRateStat 신뢰도 분포 ─────────────────────────────────────────────
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -350,22 +382,52 @@ export default async function AdminAccuracyPage() {
         />
       </div>
 
-      {/* ── AIPrediction 적중률 6카드 ── */}
-      {aiTotal > 0 && (
+      {/* ── AIPrediction 적중률 — 카테고리별 분리 (사정율 분포가 다르므로) ── */}
+      {statsAll.total > 0 && (
         <div>
-          <div style={{ fontSize: 14, fontWeight: 700, color: "#374151", marginBottom: 10 }}>AI 사정율 예측 적중률</div>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(6, 1fr)", gap: 12 }}>
+          <div style={{ fontSize: 14, fontWeight: 700, color: "#374151", marginBottom: 4 }}>
+            AI 사정율 예측 적중률 <span style={{ fontSize: 11, color: "#9CA3AF", fontWeight: 400, marginLeft: 6 }}>· 카테고리별 분리</span>
+          </div>
+          <div style={{ fontSize: 11, color: "#94A3B8", marginBottom: 10 }}>
+            공사: 97~103% 정상 / 용역·물품: 80~95% 정상 — 분포가 다르므로 따로 봐야 함
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12 }}>
             {[
-              { label: "전체 예측", value: aiTotal + "건", color: "#374151" },
-              { label: "결과 수집", value: aiWithResult.length + "건", color: "#374151" },
-              { label: "완전 적중 ±0.2%", value: aiWithResult.length > 0 ? `${aiExactRate.toFixed(1)}%` : "-", color: aiExactRate >= 20 ? "#059669" : aiExactRate >= 10 ? "#D97706" : "#DC2626" },
-              { label: "적중 ±0.5%", value: aiWithResult.length > 0 ? `${aiHitRate.toFixed(1)}%` : "-", color: aiHitRate >= 30 ? "#059669" : aiHitRate >= 15 ? "#D97706" : "#DC2626" },
-              { label: "근접 ±1.0%", value: aiWithResult.length > 0 ? `${aiNearHitRate.toFixed(1)}%` : "-", color: aiNearHitRate >= 50 ? "#059669" : aiNearHitRate >= 30 ? "#D97706" : "#DC2626" },
-              { label: "평균 편차", value: aiAvgDev != null ? `${aiAvgDev.toFixed(3)}%p` : "-", color: aiAvgDev == null ? "#9CA3AF" : aiAvgDev < 0.5 ? "#059669" : aiAvgDev < 1.0 ? "#D97706" : "#DC2626" },
-            ].map(({ label, value, color }) => (
+              { label: "공사",   stats: statsCons,  badge: "🏗️" },
+              { label: "용역",   stats: statsServ,  badge: "📋" },
+              { label: "물품",   stats: statsThng,  badge: "📦" },
+              { label: "기타",   stats: statsOther, badge: "📌" },
+            ].map(({ label, stats, badge }) => (
               <div key={label} style={{ background: "#fff", borderRadius: 12, border: "1px solid #E8ECF2", padding: "16px" }}>
-                <div style={{ fontSize: 11, color: "#9CA3AF", marginBottom: 4 }}>{label}</div>
-                <div style={{ fontSize: 20, fontWeight: 800, color }}>{value}</div>
+                <div style={{ fontSize: 12, color: "#64748B", marginBottom: 8, fontWeight: 600 }}>
+                  {badge} {label} <span style={{ fontSize: 10, color: "#9CA3AF", marginLeft: 4 }}>예측 {stats.total} · 결과 {stats.evaluated}</span>
+                </div>
+                {stats.evaluated > 0 ? (
+                  <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                    <div style={{ display: "flex", justifyContent: "space-between" }}>
+                      <span style={{ fontSize: 11, color: "#94A3B8" }}>적중 ±0.5</span>
+                      <strong style={{ fontSize: 15, color: stats.hitRate >= 30 ? "#059669" : stats.hitRate >= 15 ? "#D97706" : "#DC2626" }}>
+                        {stats.hitRate.toFixed(1)}%
+                      </strong>
+                    </div>
+                    <div style={{ display: "flex", justifyContent: "space-between" }}>
+                      <span style={{ fontSize: 11, color: "#94A3B8" }}>근접 ±1.0</span>
+                      <strong style={{ fontSize: 13, color: stats.nearRate >= 50 ? "#059669" : stats.nearRate >= 30 ? "#D97706" : "#94A3B8" }}>
+                        {stats.nearRate.toFixed(1)}%
+                      </strong>
+                    </div>
+                    <div style={{ display: "flex", justifyContent: "space-between" }}>
+                      <span style={{ fontSize: 11, color: "#94A3B8" }}>MAE</span>
+                      <strong style={{ fontSize: 13, color: stats.mae == null ? "#9CA3AF" : stats.mae < 0.5 ? "#059669" : stats.mae < 1.0 ? "#D97706" : "#DC2626" }}>
+                        {stats.mae != null ? stats.mae.toFixed(3) + "%p" : "-"}
+                      </strong>
+                    </div>
+                  </div>
+                ) : (
+                  <div style={{ fontSize: 12, color: "#94A3B8", textAlign: "center", padding: "12px 0" }}>
+                    결과 수집 전
+                  </div>
+                )}
               </div>
             ))}
           </div>
@@ -380,7 +442,7 @@ export default async function AdminAccuracyPage() {
             <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12.5 }}>
               <thead>
                 <tr style={{ background: "#F8FAFC" }}>
-                  {["예측일", "발주처", "예산", "예측사정율", "실제사정율", "편차", "결과"].map((h) => (
+                  {["예측일", "카테고리", "발주처", "예산", "예측사정율", "실제사정율", "편차", "결과"].map((h) => (
                     <th key={h} style={{ padding: "9px 12px", textAlign: "left", color: "#374151", fontWeight: 600, borderBottom: "2px solid #E8ECF2", whiteSpace: "nowrap" }}>{h}</th>
                   ))}
                 </tr>
@@ -391,10 +453,19 @@ export default async function AdminAccuracyPage() {
                   const hasResult = p.resultFilledAt != null;
                   const hitColor  = p.isExact ? "#059669" : p.isHit ? "#1B3A6B" : p.isNearHit ? "#D97706" : hasResult ? "#DC2626" : "#9CA3AF";
                   const hitLabel  = p.isExact ? "완전 적중" : p.isHit ? "적중" : p.isNearHit ? "근접" : hasResult ? "미적중" : "미개찰";
+                  const cat = String(p.category ?? "기타");
+                  const isCon = isConstruction(cat);
+                  const catColor = isCon ? "#1B3A6B" : cat.includes("용역") ? "#D97706" : cat.includes("물품") ? "#7C3AED" : "#64748B";
+                  const catBg = isCon ? "#EFF6FF" : cat.includes("용역") ? "#FFFBEB" : cat.includes("물품") ? "#F5F3FF" : "#F1F5F9";
                   return (
                     <tr key={i} style={{ borderBottom: "1px solid #F1F5F9" }}>
                       <td style={{ padding: "8px 12px", color: "#6B7280", whiteSpace: "nowrap" }}>
                         {new Date(p.predictedAt).toLocaleDateString("ko-KR")}
+                      </td>
+                      <td style={{ padding: "8px 12px", whiteSpace: "nowrap" }}>
+                        <span style={{ fontSize: 11, fontWeight: 600, color: catColor, background: catBg, padding: "2px 7px", borderRadius: 5 }}>
+                          {cat}
+                        </span>
                       </td>
                       <td style={{ padding: "8px 12px", color: "#374151", maxWidth: 160, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={p.orgName}>
                         {p.orgName}
