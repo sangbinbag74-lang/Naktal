@@ -36,11 +36,11 @@ export function AccuracyTriggers() {
     setStage("pred");
     setStageDetail("예측 적재 시작…");
 
-    // 분석(run-predictions) — 반복 호출 최대 30회 (단계 표시 위해 await)
+    // 분석(run-predictions) — 반복 호출 최대 60회 (단계 표시 위해 await)
     const predTask = (async () => {
       let totalFilled = 0;
       let iterations = 0;
-      for (let i = 0; i < 30; i++) {
+      for (let i = 0; i < 60; i++) {
         const res = await fetch("/api/admin/run-predictions", {
           method: "POST",
           headers: { "Content-Type": "application/json" },

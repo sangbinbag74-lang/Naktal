@@ -177,7 +177,55 @@ export default async function AdminAccuracyPage() {
     };
   });
 
-  const bppList = [...bppListWithResult].sort((a, b) => {
+  // BPP에 없지만 AIPrediction에 결과가 채워진 row 추가 — 어떤 결과도 누락 없이 표시
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: extraAiRows } = await (admin.from("AIPrediction") as any)
+    .select("annId,konepsId,title,orgName,deadline,budget,predictedSajungRate,actualSajungRate,actualFinalPrice,deviationPct,isHit,resultFilledAt")
+    .not("resultFilledAt", "is", null)
+    .order("resultFilledAt", { ascending: false })
+    .limit(500);
+
+  const bppAnnIdSet = new Set(bppAnnIds);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const extraOnlyAi = (extraAiRows ?? []).filter((r: any) => !bppAnnIdSet.has(r.annId));
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const extraAnnIds = extraOnlyAi.map((r: any) => r.annId);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let extraCatMap: Record<string, string> = {};
+  if (extraAnnIds.length > 0) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: extraAnns } = await (admin.from("Announcement") as any)
+      .select("id,category").in("id", extraAnnIds);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    extraCatMap = Object.fromEntries((extraAnns ?? []).map((a: any) => [a.id, a.category ?? "기타"]));
+  }
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const aiOnlyAsBpp: BppItem[] = extraOnlyAi.map((r: any) => ({
+    annId: r.annId,
+    predictedSajungRate: Number(r.predictedSajungRate ?? 0),
+    optimalBidPrice: null,
+    bidPriceRangeLow: null,
+    bidPriceRangeHigh: null,
+    winProbability: null,
+    sampleSize: null,
+    expiresAt: r.resultFilledAt ?? new Date(0).toISOString(),
+    createdAt: r.resultFilledAt ?? new Date(0).toISOString(),
+    announcement: {
+      id: r.annId,
+      title: r.title ?? "",
+      orgName: r.orgName ?? "",
+      deadline: r.deadline ?? new Date(0).toISOString(),
+      budget: String(r.budget ?? "0"),
+      category: extraCatMap[r.annId] ?? "기타",
+    },
+    actualSajungRate: r.actualSajungRate != null ? Number(r.actualSajungRate) : null,
+    actualFinalPrice: r.actualFinalPrice ?? null,
+    winnerName: null,
+    deviationPct: r.deviationPct != null ? Number(r.deviationPct) : null,
+    isHit: r.isHit ?? null,
+  }));
+
+  const bppList = [...bppListWithResult, ...aiOnlyAsBpp].sort((a, b) => {
     const ac = isConstruction(a.announcement?.category) ? 0 : 1;
     const bc = isConstruction(b.announcement?.category) ? 0 : 1;
     if (ac !== bc) return ac - bc;
