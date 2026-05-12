@@ -224,9 +224,9 @@ export function AccuracyClient({ bppList, activeCount, predCount }: Props) {
                         {ann?.deadline ? (
                           <div>
                             <div style={{ color: "#6B7280", fontSize: 11.5 }}>
-                              {new Date(ann.deadline).toLocaleDateString("ko-KR")}{" "}
+                              {new Date(ann.deadline).toLocaleDateString("ko-KR", { timeZone: "Asia/Seoul" })}{" "}
                               <span style={{ color: "#94A3B8", fontSize: 10.5 }}>
-                                {new Date(ann.deadline).toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit", hour12: false })}
+                                {new Date(ann.deadline).toLocaleTimeString("ko-KR", { timeZone: "Asia/Seoul", hour: "2-digit", minute: "2-digit", hour12: false })}
                               </span>
                             </div>
                             {dd && (
