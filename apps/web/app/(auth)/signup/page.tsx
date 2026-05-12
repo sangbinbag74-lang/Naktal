@@ -29,10 +29,7 @@ declare global {
       isInitialized: () => boolean;
       init: (key: string) => void;
       Auth: {
-        login: (opts: { scope: string; success: (auth: { access_token: string }) => void; fail?: (err: unknown) => void }) => void;
-      };
-      API: {
-        request: (opts: { url: string; success: (res: unknown) => void; fail?: (err: unknown) => void }) => void;
+        authorize: (opts: { redirectUri: string; scope?: string; state?: string }) => void;
       };
     };
   }
@@ -61,78 +58,66 @@ export default function SignupPage() {
   const [kakaoLoading, setKakaoLoading] = useState(false);
   const [showOptional, setShowOptional] = useState(false);
 
-  // 카카오 SDK 로드
+  // 카카오 SDK 로드 + 콜백에서 돌아왔을 때 sessionStorage 복원
   useEffect(() => {
     const KAKAO_KEY = process.env.NEXT_PUBLIC_KAKAO_JS_KEY;
     if (!KAKAO_KEY) {
       console.error("[kakao] NEXT_PUBLIC_KAKAO_JS_KEY missing");
       return;
     }
-    if (document.querySelector('script[src*="kakao.min.js"]')) {
-      if (window.Kakao && !window.Kakao.isInitialized()) window.Kakao.init(KAKAO_KEY);
-      return;
+    if (!document.querySelector('script[src*="kakao.min.js"]')) {
+      const script = document.createElement("script");
+      script.src = "https://t1.kakaocdn.net/kakao_js_sdk/2.7.4/kakao.min.js";
+      script.async = true;
+      script.onload = () => {
+        if (window.Kakao && !window.Kakao.isInitialized()) {
+          window.Kakao.init(KAKAO_KEY);
+          console.log("[kakao] SDK initialized");
+        }
+      };
+      script.onerror = () => console.error("[kakao] SDK load failed");
+      document.head.appendChild(script);
+    } else if (window.Kakao && !window.Kakao.isInitialized()) {
+      window.Kakao.init(KAKAO_KEY);
     }
-    const script = document.createElement("script");
-    script.src = "https://t1.kakaocdn.net/kakao_js_sdk/2.7.4/kakao.min.js";
-    script.async = true;
-    script.onload = () => {
-      if (window.Kakao && !window.Kakao.isInitialized()) {
-        window.Kakao.init(KAKAO_KEY);
-        console.log("[kakao] SDK initialized");
+
+    // 카카오 콜백에서 돌아온 경우 — sessionStorage에서 인증 정보 복원
+    try {
+      const stored = sessionStorage.getItem("kakao_verified");
+      if (stored) {
+        const v = JSON.parse(stored) as KakaoVerified;
+        if (v.name) {
+          setKakaoVerified(v);
+          setForm(prev => ({
+            ...prev,
+            notifyEmail: prev.notifyEmail || v.email || "",
+            notifyPhone: prev.notifyPhone || (v.phone ? v.phone.replace(/^\+82\s*/, "0").replace(/\s/g, "") : ""),
+          }));
+        }
+        sessionStorage.removeItem("kakao_verified");
       }
-    };
-    script.onerror = () => {
-      console.error("[kakao] SDK load failed — CSP 또는 네트워크 확인");
-    };
-    document.head.appendChild(script);
+    } catch (e) { console.error("[kakao] sessionStorage parse failed", e); }
+
+    // URL ?error= 파라미터
+    const params = new URLSearchParams(window.location.search);
+    const err = params.get("error");
+    if (err) {
+      setError(decodeURIComponent(err));
+      window.history.replaceState({}, "", "/signup");
+    }
   }, []);
 
-  async function handleKakaoVerify() {
+  function handleKakaoVerify() {
     if (!window.Kakao || !window.Kakao.isInitialized()) {
       setError("카카오 SDK 초기화 실패. 새로고침 후 다시 시도해주세요.");
       return;
     }
     setKakaoLoading(true);
     setError(null);
-    window.Kakao.Auth.login({
+    // SDK v2: authorize는 redirect 기반 — /auth/kakao/callback 에서 토큰 교환 후 sessionStorage 저장 + signup으로 복귀
+    window.Kakao.Auth.authorize({
+      redirectUri: `${window.location.origin}/auth/kakao/callback`,
       scope: "profile_nickname,account_email,name,phone_number",
-      success: () => {
-        window.Kakao!.API.request({
-          url: "/v2/user/me",
-          success: async (res) => {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const data = res as any;
-            const account = data?.kakao_account ?? {};
-            const verified: KakaoVerified = {
-              kakaoId: String(data.id),
-              name: account.name ?? account.profile?.nickname ?? "",
-              phone: account.phone_number ?? null,
-              email: account.email ?? null,
-            };
-            if (!verified.name) {
-              setError("카카오에서 이름을 받아오지 못했습니다. 카카오 계정 본인인증을 먼저 완료해주세요.");
-              setKakaoLoading(false);
-              return;
-            }
-            setKakaoVerified(verified);
-            // 자동으로 알림 정보 채움
-            setForm(prev => ({
-              ...prev,
-              notifyEmail: prev.notifyEmail || verified.email || "",
-              notifyPhone: prev.notifyPhone || (verified.phone ? verified.phone.replace(/^\+82 /, "0") : ""),
-            }));
-            setKakaoLoading(false);
-          },
-          fail: () => {
-            setError("카카오 사용자 정보 조회 실패");
-            setKakaoLoading(false);
-          },
-        });
-      },
-      fail: () => {
-        setError("카카오 로그인이 취소되었습니다.");
-        setKakaoLoading(false);
-      },
     });
   }
 
