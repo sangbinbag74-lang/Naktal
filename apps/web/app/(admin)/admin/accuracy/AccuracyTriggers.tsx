@@ -97,47 +97,51 @@ export function AccuracyTriggers() {
     })();
 
     // 결과 갱신은 백그라운드로 시작하지만, 단계 표시는 예측 끝난 뒤 결과 단계로 전환
-    let resultFinished = false;
-    resultTask.finally(() => { resultFinished = true; });
-
-    try {
-      const pred = await predTask;
-      setStage("result");
-      setStageDetail(resultFinished ? "결과 정리 중…" : "결과 채움 진행 중…");
-      const result = await resultTask;
-      setStage("done");
-      setSummary({
-        ok: true,
-        pullElapsedMs, pullOk, pullDetail,
-        predFilled: pred.totalFilled,
-        predIterations: pred.iterations,
-        resultUpdated: result.updated ?? 0,
-        resultTotal: result.total ?? 0,
-        resultG2bFetched: result.g2bFetched ?? 0,
-        aiUpdated: result.aiUpdated ?? 0,
-        aiScanned: result.aiScanned ?? 0,
-        aiG2bFetched: result.aiG2bFetched ?? 0,
-        aiNoResult: result.aiNoResult ?? 0,
-        aiNoBase: result.aiNoBase ?? 0,
-        aiBadPredicted: result.aiBadPredicted ?? 0,
-        elapsedMs: Date.now() - startedAt,
-      });
-      router.refresh();
-    } catch (e) {
-      setStage("done");
-      setSummary({
-        ok: false,
-        pullElapsedMs, pullOk, pullDetail,
-        predFilled: 0, predIterations: 0,
-        resultUpdated: 0, resultTotal: 0, resultG2bFetched: 0,
-        aiUpdated: 0, aiScanned: 0, aiG2bFetched: 0, aiNoResult: 0, aiNoBase: 0, aiBadPredicted: 0,
-        elapsedMs: Date.now() - startedAt,
-        error: (e as Error).message,
-      });
-    } finally {
-      setRunning(false);
-      setStageDetail("");
+    // 각 단계 개별 try-catch — 부분 실패도 사유 명시 (전체 fail 처리 X)
+    const errors: string[] = [];
+    if (!pullOk) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const d = pullDetail as any;
+      const detailMsg = d?.error ?? d?.message ?? JSON.stringify(d ?? {}).slice(0, 200);
+      errors.push(`G2B 수집 실패: ${detailMsg}`);
     }
+
+    let pred = { totalFilled: 0, iterations: 0 };
+    try { pred = await predTask; }
+    catch (e) { errors.push(`예측 적재 실패: ${(e as Error).message || String(e)}`); }
+
+    setStage("result");
+    setStageDetail("결과 채움 진행 중…");
+
+    let result: {
+      updated?: number; total?: number; g2bFetched?: number;
+      aiUpdated?: number; aiScanned?: number; aiG2bFetched?: number;
+      aiNoResult?: number; aiNoBase?: number; aiBadPredicted?: number;
+    } = {};
+    try { result = await resultTask; }
+    catch (e) { errors.push(`결과 채움 실패: ${(e as Error).message || String(e)}`); }
+
+    setStage("done");
+    setSummary({
+      ok: errors.length === 0,
+      pullElapsedMs, pullOk, pullDetail,
+      predFilled: pred.totalFilled,
+      predIterations: pred.iterations,
+      resultUpdated: result.updated ?? 0,
+      resultTotal: result.total ?? 0,
+      resultG2bFetched: result.g2bFetched ?? 0,
+      aiUpdated: result.aiUpdated ?? 0,
+      aiScanned: result.aiScanned ?? 0,
+      aiG2bFetched: result.aiG2bFetched ?? 0,
+      aiNoResult: result.aiNoResult ?? 0,
+      aiNoBase: result.aiNoBase ?? 0,
+      aiBadPredicted: result.aiBadPredicted ?? 0,
+      elapsedMs: Date.now() - startedAt,
+      error: errors.length > 0 ? errors.join(" / ") : undefined,
+    });
+    router.refresh();
+    setRunning(false);
+    setStageDetail("");
   }
 
   return (
@@ -247,7 +251,39 @@ export function AccuracyTriggers() {
               </div>
             </>
           ) : (
-            <>✗ {summary.error ?? "알 수 없는 오류"}</>
+            <>
+              <strong>✗ 동기화 부분 실패</strong>
+              <span style={{ marginLeft: 8, fontSize: 10.5, color: "#94A3B8" }}>
+                {(summary.elapsedMs / 1000).toFixed(1)}초 소요
+              </span>
+              {summary.error && (
+                <div style={{ marginTop: 4, padding: "6px 8px", background: "#FEF2F2", borderRadius: 6, fontSize: 11.5, color: "#991B1B" }}>
+                  실패 사유: {summary.error}
+                </div>
+              )}
+              <div style={{ marginTop: 4 }}>
+                G2B 수집 {summary.pullOk ? "✓" : "✗"} ({(summary.pullElapsedMs / 1000).toFixed(1)}초)
+              </div>
+              <div style={{ marginTop: 2 }}>
+                예측 적재 {summary.predFilled}건 ({summary.predIterations}회 반복)
+              </div>
+              <div style={{ marginTop: 2 }}>
+                BidRequest 결과 채움 {summary.resultUpdated}/{summary.resultTotal}건 (G2B 직접 조회 {summary.resultG2bFetched}건)
+              </div>
+              <div style={{ marginTop: 2 }}>
+                AI 예측 결과 채움 <strong>{summary.aiUpdated}건</strong> / 스캔 {summary.aiScanned}건
+                {summary.aiG2bFetched > 0 && (
+                  <span style={{ marginLeft: 6, fontSize: 11, color: "#1B3A6B", fontWeight: 600 }}>
+                    (G2B 직접 조회 {summary.aiG2bFetched}건)
+                  </span>
+                )}
+                {(summary.aiNoResult > 0 || summary.aiNoBase > 0 || summary.aiBadPredicted > 0) && (
+                  <span style={{ marginLeft: 6, fontSize: 11, color: "#94A3B8" }}>
+                    (결과 미수집 {summary.aiNoResult} · 기초금액 없음 {summary.aiNoBase} · 예측값 0 {summary.aiBadPredicted})
+                  </span>
+                )}
+              </div>
+            </>
           )}
         </div>
       )}
