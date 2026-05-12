@@ -1,14 +1,18 @@
 import { createAdminClient } from "@/lib/supabase/server";
-import Link from "next/link";
 import { AccuracyClient } from "./AccuracyClient";
 import { AccuracyTriggers } from "./AccuracyTriggers";
 
 export const dynamic = "force-dynamic";
 
-/** 공사 카테고리 판정 — "시설공사", "공사" 키워드 포함 */
 function isConstruction(category: string | null | undefined): boolean {
   if (!category) return false;
   return category.includes("공사") || category === "시설공사";
+}
+function isService(c: string | null | undefined): boolean {
+  return !!c && c.includes("용역");
+}
+function isGoods(c: string | null | undefined): boolean {
+  return !!c && c.includes("물품");
 }
 
 type AnnInfo = { id: string; title: string; orgName: string; deadline: string; budget: string; category: string } | null;
@@ -24,31 +28,52 @@ type BppItem = {
   createdAt: string;
   announcement: AnnInfo;
 };
-type BppBacktest = {
-  annId: string;
-  predictedSajungRate: number;
-  createdAt: string;
-  announcement: {
-    budget: string;
-    bsisAmt: string | null;
-    aValueAmt: string | null;
-    orgName: string;
-    category: string;
-    bidResult: { finalPrice: string; bidRate: string } | null;
-  } | null;
-};
+
+interface CatStats {
+  total: number;
+  evaluated: number;
+  exactCount: number;
+  hitCount: number;
+  nearHitCount: number;
+  mae: number | null;
+}
+
+function computeStats(rows: Array<{ resultFilledAt: string | null; isExact: boolean | null; isHit: boolean | null; isNearHit: boolean | null; deviationPct: number | null }>): CatStats {
+  const withResult = rows.filter((r) => r.resultFilledAt != null);
+  if (withResult.length === 0) return { total: rows.length, evaluated: 0, exactCount: 0, hitCount: 0, nearHitCount: 0, mae: null };
+  return {
+    total: rows.length,
+    evaluated: withResult.length,
+    exactCount: withResult.filter((r) => r.isExact).length,
+    hitCount: withResult.filter((r) => r.isHit).length,
+    nearHitCount: withResult.filter((r) => r.isNearHit).length,
+    mae: withResult.reduce((s, r) => s + Number(r.deviationPct ?? 0), 0) / withResult.length,
+  };
+}
+
+function pct(n: number, d: number): string {
+  if (d === 0) return "-";
+  return ((n / d) * 100).toFixed(1) + "%";
+}
+
+function rateColor(rate: number, good: number, ok: number): string {
+  return rate >= good ? "#059669" : rate >= ok ? "#D97706" : "#DC2626";
+}
+
+function maeColor(mae: number | null): string {
+  if (mae == null) return "#9CA3AF";
+  return mae < 0.5 ? "#059669" : mae < 1.0 ? "#D97706" : "#DC2626";
+}
 
 export default async function AdminAccuracyPage() {
   const admin = createAdminClient();
   const now = new Date().toISOString();
 
-  // ─── AIPrediction 적중률 (카테고리별 분리) ────────────────────────────────
-  // 공사: 사정율 정상 97~103% / 용역·물품: 80~100% — 분포 다르므로 분리 통계
+  // ─── AIPrediction 전체 + 카테고리 매핑 ─────────────────────────────────────
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data: aiPredsRaw } = await (admin.from("AIPrediction") as any)
-    .select("isExact,isHit,isNearHit,deviationPct,resultFilledAt,annId")
+    .select("annId,isExact,isHit,isNearHit,deviationPct,resultFilledAt")
     .limit(2000);
-  // Announcement.category JOIN — 카테고리별 그룹화
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const aiAnnIds = (aiPredsRaw ?? []).map((p: any) => p.annId).filter(Boolean);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -60,193 +85,28 @@ export default async function AdminAccuracyPage() {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const aiPreds = (aiPredsRaw ?? []).map((p: any) => ({ ...p, category: aiCatMap[p.annId] ?? "기타" }));
 
+  // 카테고리별 통계
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  function computeStats(rows: any[]) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const withResult = rows.filter((p: any) => p.resultFilledAt != null);
-    const total = rows.length;
-    if (withResult.length === 0) return { total, evaluated: 0, exactRate: 0, hitRate: 0, nearRate: 0, mae: null as number | null };
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const exact = withResult.filter((p: any) => p.isExact).length;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const hit = withResult.filter((p: any) => p.isHit).length;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const near = withResult.filter((p: any) => p.isNearHit).length;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const mae = withResult.reduce((s: number, p: any) => s + Number(p.deviationPct ?? 0), 0) / withResult.length;
-    return {
-      total, evaluated: withResult.length,
-      exactRate: (exact / withResult.length) * 100,
-      hitRate: (hit / withResult.length) * 100,
-      nearRate: (near / withResult.length) * 100,
-      mae,
-    };
-  }
+  const statsAll  = computeStats(aiPreds as any);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const aiCons = aiPreds.filter((p: any) => isConstruction(p.category));
+  const statsCons = computeStats(aiPreds.filter((p: any) => isConstruction(p.category)) as any);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const aiServ = aiPreds.filter((p: any) => (p.category || "").includes("용역"));
+  const statsServ = computeStats(aiPreds.filter((p: any) => isService(p.category)) as any);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const aiThng = aiPreds.filter((p: any) => (p.category || "").includes("물품"));
+  const statsThng = computeStats(aiPreds.filter((p: any) => isGoods(p.category)) as any);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const aiOther = aiPreds.filter((p: any) => !isConstruction(p.category) && !(p.category || "").includes("용역") && !(p.category || "").includes("물품"));
-  const statsAll  = computeStats(aiPreds);
-  const statsCons = computeStats(aiCons);
-  const statsServ = computeStats(aiServ);
-  const statsThng = computeStats(aiThng);
-  const statsOther = computeStats(aiOther);
+  const statsOther = computeStats(aiPreds.filter((p: any) => !isConstruction(p.category) && !isService(p.category) && !isGoods(p.category)) as any);
 
-  // ─── AIPrediction 최근 20건 (카테고리 포함) ───────────────────────────────
+  // ─── 최근 예측 내역 (30건, 카테고리 포함) ──────────────────────────────────
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data: recentPredsRaw } = await (admin.from("AIPrediction") as any)
-    .select("title,orgName,budget,annId,predictedSajungRate,actualSajungRate,deviationPct,isExact,isHit,isNearHit,predictedAt,resultFilledAt")
+    .select("annId,title,orgName,budget,predictedSajungRate,actualSajungRate,deviationPct,isExact,isHit,isNearHit,predictedAt,resultFilledAt")
     .order("predictedAt", { ascending: false })
-    .limit(20);
+    .limit(30);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const recentPreds = (recentPredsRaw ?? []).map((p: any) => ({ ...p, category: aiCatMap[p.annId] ?? "기타" }));
 
-  // ─── SajungRateStat 신뢰도 분포 ─────────────────────────────────────────────
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: statSummary } = await (admin.from("SajungRateStat") as any)
-    .select("sampleSize,avg,stddev")
-    .neq("orgName", "ALL")
-    .limit(100000);
-
-  const totalStatRows = statSummary?.length ?? 0;
-  const avgSajung = statSummary && statSummary.length > 0
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    ? statSummary.reduce((s: number, r: any) => s + r.avg, 0) / statSummary.length
-    : null;
-
-  let highCount = 0, mediumCount = 0, lowCount = 0;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  for (const r of statSummary ?? [] as any[]) {
-    const ss = r.sampleSize ?? 0;
-    const sd = r.stddev ?? 99;
-    if (ss >= 15 && sd <= 2.0) highCount++;
-    else if (ss >= 5 && sd <= 3.0) mediumCount++;
-    else lowCount++;
-  }
-  const confidenceTotal = highCount + mediumCount + lowCount;
-
-  // ─── BidPricePrediction 백테스트 ──────────────────────────────────────────────
-  // 사정율 = 예정가 / 기초금액(bsisAmt) × 100 (영구 통일 — 2026-05-12)
-  const { data: bppBacktestRows } = await admin
-    .from("BidPricePrediction")
-    .select(`
-      annId,
-      predictedSajungRate,
-      createdAt,
-      announcement:Announcement(
-        budget,
-        bsisAmt,
-        aValueAmt,
-        orgName,
-        category,
-        bidResult:BidResult(finalPrice, bidRate)
-      )
-    `)
-    .order("createdAt", { ascending: false })
-    .limit(500);
-
-  const bppBacktest = (bppBacktestRows ?? []) as unknown as BppBacktest[];
-
-  // BidOpeningDetail 폴백 (수의계약 등 BidResult 누락분)
-  const bppAnnIds = bppBacktest.map((r) => r.annId);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: openingRows } = await (admin.from("BidOpeningDetail") as any)
-    .select("annId,sucsfbidRate,rawJson")
-    .in("annId", bppAnnIds.slice(0, 500));
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const openingMap: Record<string, any> = Object.fromEntries(
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (openingRows ?? []).map((o: any) => [o.annId, o])
-  );
-
-  function baseAmountOf(a: BppBacktest["announcement"]): number {
-    if (!a) return 0;
-    const bsis = Number(a.bsisAmt ?? 0);
-    if (bsis > 0) return bsis;
-    const av = Number(a.aValueAmt ?? 0);
-    if (av > 0) return av;
-    return Math.round(Number(a.budget ?? 0) * 1.1);
-  }
-
-  type BppCalc = { predictedSajungRate: number; actualSajungRate: number; deviation: number; isHit: boolean; isNear: boolean; orgName: string; category: string; createdAt: string };
-  const bppCalc: BppCalc[] = bppBacktest
-    .map((r): BppCalc | null => {
-      const baseAmt = baseAmountOf(r.announcement);
-      if (baseAmt <= 0) return null;
-
-      let finalPrice = 0;
-      let bidRate = 0;
-      // 1순위: BidResult (일반 입찰)
-      if (r.announcement?.bidResult) {
-        finalPrice = Number(r.announcement.bidResult.finalPrice);
-        bidRate = Number(r.announcement.bidResult.bidRate);
-      }
-      // 2순위: BidOpeningDetail.opengCorpInfo (수의계약 포함)
-      if ((!finalPrice || !bidRate) && openingMap[r.annId]?.rawJson) {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const arr = openingMap[r.annId].rawJson as any[];
-        if (arr.length > 0 && arr[0].opengCorpInfo) {
-          const parts = String(arr[0].opengCorpInfo).split("^");
-          if (parts.length >= 5) {
-            finalPrice = parseInt((parts[3] || "").replace(/\D/g, ""), 10) || 0;
-            bidRate = openingMap[r.annId].sucsfbidRate ?? parseFloat(parts[4] || "0");
-          }
-        }
-      }
-      if (!finalPrice || !bidRate) return null;
-
-      const actualSajungRate = (finalPrice / (bidRate / 100)) / baseAmt * 100;
-      // 정상범위 필터 (사정율은 97~103% 이내. 이탈값은 데이터 이상으로 제외)
-      if (actualSajungRate < 97 || actualSajungRate > 103) return null;
-
-      const deviation = Math.abs(r.predictedSajungRate - actualSajungRate);
-      return {
-        predictedSajungRate: r.predictedSajungRate,
-        actualSajungRate,
-        deviation,
-        isHit: deviation <= 0.5,
-        isNear: deviation <= 1.0,
-        orgName: r.announcement!.orgName,
-        category: r.announcement!.category,
-        createdAt: r.createdAt,
-      };
-    })
-    .filter((r): r is BppCalc => r != null);
-
-  const bppTotal    = bppBacktest.length;
-  const bppCompared = bppCalc.length;
-  const bppHitCount  = bppCalc.filter((r) => r.isHit).length;
-  const bppNearCount = bppCalc.filter((r) => r.isNear).length;
-  const bppHitRate   = bppCompared > 0 ? (bppHitCount  / bppCompared) * 100 : 0;
-  const bppNearRate  = bppCompared > 0 ? (bppNearCount / bppCompared) * 100 : 0;
-  const bppMAE       = bppCompared > 0
-    ? bppCalc.reduce((s, r) => s + r.deviation, 0) / bppCompared
-    : null;
-
-  const bppZone0  = bppCalc.filter((r) => r.deviation <= 0.5).length;
-  const bppZone1  = bppCalc.filter((r) => r.deviation > 0.5 && r.deviation <= 1.0).length;
-  const bppZone2  = bppCalc.filter((r) => r.deviation > 1.0 && r.deviation <= 2.0).length;
-  const bppZone3  = bppCalc.filter((r) => r.deviation > 2.0).length;
-  const bppRecent = bppCalc.slice(0, 20);
-
-  // ─── 공사 카테고리 분리 통계 (사용자 요청 — 공사가 핵심) ─────────────────────
-  const bppConstruction = bppCalc.filter((r) => isConstruction(r.category));
-  const bppNonConstruction = bppCalc.filter((r) => !isConstruction(r.category));
-  const conTotal    = bppConstruction.length;
-  const conHitRate  = conTotal > 0 ? (bppConstruction.filter((r) => r.isHit).length  / conTotal) * 100 : 0;
-  const conNearRate = conTotal > 0 ? (bppConstruction.filter((r) => r.isNear).length / conTotal) * 100 : 0;
-  const conMAE      = conTotal > 0 ? bppConstruction.reduce((s, r) => s + r.deviation, 0) / conTotal : null;
-  const nonConTotal = bppNonConstruction.length;
-  const nonConHitRate = nonConTotal > 0 ? (bppNonConstruction.filter((r) => r.isHit).length / nonConTotal) * 100 : 0;
-  const nonConMAE    = nonConTotal > 0 ? bppNonConstruction.reduce((s, r) => s + r.deviation, 0) / nonConTotal : null;
-  // 정확도 1순위 = 편차 최소 (공사만)
-  const conTop = conTotal > 0 ? [...bppConstruction].sort((a, b) => a.deviation - b.deviation)[0] : null;
-
-  // ─── BidPricePrediction 현재 유효 목록 (AccuracyClient용) ─────────────────────
+  // ─── 활성 BidPricePrediction (분석 가능 공고) ──────────────────────────────
   const { data: bppListRaw } = await admin
     .from("BidPricePrediction")
     .select(`
@@ -266,183 +126,188 @@ export default async function AdminAccuracyPage() {
     .limit(200);
 
   const bppListAll = (bppListRaw ?? []) as unknown as BppItem[];
-  // 공사 카테고리를 상단 (사용자 요청)
   const bppList = [...bppListAll].sort((a, b) => {
     const ac = isConstruction(a.announcement?.category) ? 0 : 1;
     const bc = isConstruction(b.announcement?.category) ? 0 : 1;
     if (ac !== bc) return ac - bc;
     return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
   });
-  const constructionPredCount = bppListAll.filter((r) => isConstruction(r.announcement?.category)).length;
 
-  // ─── 진행중 공고 수 / 예측 완료 수 — 공사만 ──────────────────────────────────
   const { count: activeCount } = await admin
     .from("Announcement")
     .select("id", { count: "exact", head: true })
     .gt("deadline", now)
     .ilike("category", "%공사%");
 
-  // 공사 예측만 카운트 (Announcement.category 조인이 필요하나 PostgREST count 제약으로
-  // bppListAll 의 공사 비율로 추정)
   const { count: predCount } = await admin
     .from("BidPricePrediction")
     .select("annId", { count: "exact", head: true })
     .gt("expiresAt", now);
 
+  // ─── SajungRateStat 신뢰도 분포 (사이드 정보) ──────────────────────────────
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: statSummary } = await (admin.from("SajungRateStat") as any)
+    .select("sampleSize,stddev")
+    .neq("orgName", "ALL")
+    .limit(100000);
+
+  let highCount = 0, mediumCount = 0, lowCount = 0;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  for (const r of statSummary ?? []) {
+    const ss = r.sampleSize ?? 0;
+    const sd = r.stddev ?? 99;
+    if (ss >= 15 && sd <= 2.0) highCount++;
+    else if (ss >= 5 && sd <= 3.0) mediumCount++;
+    else lowCount++;
+  }
+  const confidenceTotal = highCount + mediumCount + lowCount;
+
+  // ─── 카테고리 행 데이터 ────────────────────────────────────────────────────
+  const catRows: { key: string; label: string; emoji: string; color: string; bg: string; stats: CatStats }[] = [
+    { key: "all",   label: "전체", emoji: "📊", color: "#1B3A6B", bg: "#EFF6FF", stats: statsAll },
+    { key: "cons",  label: "공사", emoji: "🏗️", color: "#1B3A6B", bg: "#EFF6FF", stats: statsCons },
+    { key: "serv",  label: "용역", emoji: "📋", color: "#D97706", bg: "#FFFBEB", stats: statsServ },
+    { key: "thng",  label: "물품", emoji: "📦", color: "#7C3AED", bg: "#F5F3FF", stats: statsThng },
+    { key: "other", label: "기타", emoji: "📌", color: "#64748B", bg: "#F1F5F9", stats: statsOther },
+  ];
+
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
-      <div>
-        <h2 style={{ fontSize: 22, fontWeight: 700, color: "#0F172A", margin: "0 0 4px" }}>정확도 분석</h2>
-        <p style={{ fontSize: 13, color: "#64748B", margin: 0 }}>공사 중심 적중률 · 신규 공사 공고 우선 분석 · 발주처 신뢰도</p>
+    <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+      {/* 헤더 + 트리거 */}
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 16, flexWrap: "wrap" }}>
+        <div>
+          <h2 style={{ fontSize: 22, fontWeight: 700, color: "#0F172A", margin: "0 0 4px" }}>정확도 분석</h2>
+          <p style={{ fontSize: 13, color: "#64748B", margin: 0 }}>
+            AI 사정율 예측 적중률 · 카테고리별 분리 · 발주처 신뢰도
+          </p>
+        </div>
       </div>
 
-      {/* 수동 트리거 */}
       <AccuracyTriggers />
 
-      {/* ── 공사 중심 분석 (사용자 요청 — 핵심) ─────────────────────────────── */}
-      <div style={{ background: "#fff", borderRadius: 14, border: "2px solid #1B3A6B", padding: "20px" }}>
+      {/* ── 섹션 1: KPI 4카드 (한눈에 요약) ── */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12 }}>
+        {[
+          {
+            label: "전체 예측",
+            value: statsAll.total.toLocaleString() + "건",
+            sub: `결과 수집 ${statsAll.evaluated}건`,
+            color: "#1B3A6B",
+          },
+          {
+            label: "적중률 (±0.5%p)",
+            value: statsAll.evaluated > 0 ? pct(statsAll.hitCount, statsAll.evaluated) : "-",
+            sub: `${statsAll.hitCount} / ${statsAll.evaluated}건 적중`,
+            color: statsAll.evaluated > 0 ? rateColor((statsAll.hitCount / statsAll.evaluated) * 100, 30, 15) : "#9CA3AF",
+          },
+          {
+            label: "평균 편차 (MAE)",
+            value: statsAll.mae != null ? statsAll.mae.toFixed(3) + "%p" : "-",
+            sub: statsAll.mae != null && statsAll.mae < 0.5 ? "우수" : statsAll.mae != null && statsAll.mae < 1.0 ? "양호" : statsAll.mae != null ? "개선 필요" : "-",
+            color: maeColor(statsAll.mae),
+          },
+          {
+            label: "분석 가능 공고",
+            value: (predCount ?? 0).toLocaleString() + "건",
+            sub: `활성 공사 ${(activeCount ?? 0).toLocaleString()}건 중`,
+            color: "#0F172A",
+          },
+        ].map(({ label, value, sub, color }) => (
+          <div key={label} style={{ background: "#fff", borderRadius: 12, border: "1px solid #E8ECF2", padding: "18px 20px" }}>
+            <div style={{ fontSize: 11, color: "#9CA3AF", marginBottom: 6, fontWeight: 600 }}>{label}</div>
+            <div style={{ fontSize: 26, fontWeight: 800, color, lineHeight: 1.1 }}>{value}</div>
+            <div style={{ fontSize: 11, color: "#94A3B8", marginTop: 6 }}>{sub}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* ── 섹션 2: 카테고리별 정확도 표 ── */}
+      <div style={{ background: "#fff", borderRadius: 14, border: "1px solid #E8ECF2", padding: "20px" }}>
         <div style={{ display: "flex", alignItems: "baseline", gap: 8, marginBottom: 14 }}>
-          <span style={{ fontSize: 11, fontWeight: 700, background: "#1B3A6B", color: "#fff", padding: "3px 9px", borderRadius: 4 }}>핵심</span>
-          <span style={{ fontSize: 16, fontWeight: 800, color: "#0F172A" }}>공사 카테고리 적중률</span>
-          <span style={{ fontSize: 12, color: "#64748B" }}>(공사·시설 외 용역·물품은 평가 방식이 달라 별도 집계)</span>
+          <span style={{ fontSize: 15, fontWeight: 800, color: "#0F172A" }}>카테고리별 정확도</span>
+          <span style={{ fontSize: 11, color: "#94A3B8" }}>· 사정율 분포가 다르므로 분리 집계</span>
         </div>
-
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12, marginBottom: 16 }}>
-          {[
-            { label: "공사 비교 가능",  value: conTotal + "건",                                                    color: "#0F172A" },
-            { label: "적중 ±0.5%p",     value: conTotal > 0 ? `${conHitRate.toFixed(1)}%` : "-",                  color: conHitRate >= 30 ? "#059669" : conHitRate >= 15 ? "#D97706" : "#DC2626" },
-            { label: "근접 ±1.0%p",     value: conTotal > 0 ? `${conNearRate.toFixed(1)}%` : "-",                 color: conNearRate >= 50 ? "#059669" : conNearRate >= 30 ? "#D97706" : "#DC2626" },
-            { label: "평균 편차 (MAE)", value: conMAE != null ? `${conMAE.toFixed(3)}%p` : "-",                   color: conMAE == null ? "#9CA3AF" : conMAE < 0.5 ? "#059669" : conMAE < 1.0 ? "#D97706" : "#DC2626" },
-          ].map(({ label, value, color }) => (
-            <div key={label} style={{ background: "#F8FAFC", borderRadius: 10, padding: "12px 14px" }}>
-              <div style={{ fontSize: 11, color: "#64748B", marginBottom: 4 }}>{label}</div>
-              <div style={{ fontSize: 19, fontWeight: 800, color }}>{value}</div>
-            </div>
-          ))}
+        <div style={{ overflowX: "auto" }}>
+          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12.5 }}>
+            <thead>
+              <tr style={{ background: "#F8FAFC" }}>
+                {["카테고리", "예측 / 결과수집", "완전적중 ±0.2%p", "적중 ±0.5%p", "근접 ±1.0%p", "MAE"].map((h, idx) => (
+                  <th key={h} style={{ padding: "10px 14px", textAlign: idx === 0 ? "left" : "center", color: "#374151", fontWeight: 600, borderBottom: "2px solid #E8ECF2", whiteSpace: "nowrap" }}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {catRows.map((row) => {
+                const s = row.stats;
+                const isAll = row.key === "all";
+                return (
+                  <tr key={row.key} style={{
+                    borderBottom: "1px solid #F1F5F9",
+                    background: isAll ? "#FAFBFC" : undefined,
+                  }}>
+                    <td style={{ padding: "12px 14px" }}>
+                      <span style={{ fontSize: 13, fontWeight: isAll ? 800 : 700, color: row.color, background: row.bg, padding: "3px 9px", borderRadius: 6 }}>
+                        {row.emoji} {row.label}
+                      </span>
+                    </td>
+                    <td style={{ padding: "12px 14px", textAlign: "center", color: "#374151" }}>
+                      <strong style={{ fontSize: 13 }}>{s.total.toLocaleString()}</strong>
+                      <span style={{ color: "#94A3B8", marginLeft: 6, fontSize: 11 }}>/ {s.evaluated}</span>
+                    </td>
+                    <td style={{ padding: "12px 14px", textAlign: "center" }}>
+                      {s.evaluated > 0 ? (
+                        <strong style={{ fontSize: 13.5, color: rateColor((s.exactCount / s.evaluated) * 100, 20, 10) }}>
+                          {pct(s.exactCount, s.evaluated)}
+                        </strong>
+                      ) : <span style={{ color: "#D1D5DB" }}>-</span>}
+                    </td>
+                    <td style={{ padding: "12px 14px", textAlign: "center" }}>
+                      {s.evaluated > 0 ? (
+                        <strong style={{ fontSize: 14, color: rateColor((s.hitCount / s.evaluated) * 100, 30, 15) }}>
+                          {pct(s.hitCount, s.evaluated)}
+                        </strong>
+                      ) : <span style={{ color: "#D1D5DB" }}>-</span>}
+                    </td>
+                    <td style={{ padding: "12px 14px", textAlign: "center" }}>
+                      {s.evaluated > 0 ? (
+                        <strong style={{ fontSize: 13.5, color: rateColor((s.nearHitCount / s.evaluated) * 100, 50, 30) }}>
+                          {pct(s.nearHitCount, s.evaluated)}
+                        </strong>
+                      ) : <span style={{ color: "#D1D5DB" }}>-</span>}
+                    </td>
+                    <td style={{ padding: "12px 14px", textAlign: "center" }}>
+                      {s.mae != null ? (
+                        <strong style={{ fontSize: 13.5, color: maeColor(s.mae) }}>{s.mae.toFixed(3)}%p</strong>
+                      ) : <span style={{ color: "#D1D5DB" }}>-</span>}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
         </div>
-
-        {/* 정확도 1순위 공고 (편차 최소, 공사만) */}
-        {conTop ? (
-          <div style={{ background: "linear-gradient(135deg, #EFF6FF 0%, #F0F9FF 100%)", border: "1px solid #BFDBFE", borderRadius: 10, padding: "14px 16px" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
-              <span style={{ fontSize: 11, fontWeight: 700, background: "#1B3A6B", color: "#fff", padding: "2px 8px", borderRadius: 4 }}>🏆 정확도 1순위</span>
-              <span style={{ fontSize: 12, color: "#64748B" }}>편차 가장 작음</span>
-            </div>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr auto auto auto", gap: 16, alignItems: "center" }}>
-              <div style={{ minWidth: 0 }}>
-                <div style={{ fontSize: 14, fontWeight: 700, color: "#0F172A", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                  {conTop.orgName}
-                </div>
-                <div style={{ fontSize: 11, color: "#64748B", marginTop: 2 }}>
-                  {conTop.category} · {new Date(conTop.createdAt).toLocaleDateString("ko-KR")}
-                </div>
-              </div>
-              <div style={{ textAlign: "center" }}>
-                <div style={{ fontSize: 10, color: "#64748B" }}>예측</div>
-                <div style={{ fontSize: 13, fontWeight: 700, color: "#1B3A6B" }}>{conTop.predictedSajungRate.toFixed(2)}%</div>
-              </div>
-              <div style={{ textAlign: "center" }}>
-                <div style={{ fontSize: 10, color: "#64748B" }}>실제</div>
-                <div style={{ fontSize: 13, fontWeight: 700, color: "#0F172A" }}>{conTop.actualSajungRate.toFixed(2)}%</div>
-              </div>
-              <div style={{ textAlign: "center" }}>
-                <div style={{ fontSize: 10, color: "#64748B" }}>편차</div>
-                <div style={{ fontSize: 13, fontWeight: 800, color: "#059669" }}>±{conTop.deviation.toFixed(3)}%p</div>
-              </div>
-            </div>
-          </div>
-        ) : (
-          <div style={{ background: "#F8FAFC", borderRadius: 10, padding: "14px 16px", color: "#94A3B8", fontSize: 12, textAlign: "center" }}>
-            공사 카테고리 결과 데이터 없음 — BidResult 매칭 후 표시
-          </div>
-        )}
-
-        {/* 비공사 비교용 */}
-        {nonConTotal > 0 && (
-          <div style={{ marginTop: 12, padding: "10px 14px", background: "#FFFBEB", border: "1px solid #FDE68A", borderRadius: 8 }}>
-            <div style={{ fontSize: 11, color: "#92400E", marginBottom: 4 }}>참고 — 용역/물품 (저가 경쟁 영향, 별도 집계)</div>
-            <div style={{ display: "flex", gap: 16, fontSize: 12, color: "#374151" }}>
-              <span>{nonConTotal}건</span>
-              <span>· 적중 {nonConHitRate.toFixed(1)}%</span>
-              <span>· MAE {nonConMAE != null ? nonConMAE.toFixed(3) + "%p" : "-"}</span>
-            </div>
-          </div>
-        )}
       </div>
 
-      {/* ── AccuracyClient: 신규 공고 — 공사 우선 정렬 ── */}
-      <div>
-        <div style={{ fontSize: 14, fontWeight: 700, color: "#374151", marginBottom: 8 }}>
-          신규 분석 공고 <span style={{ fontSize: 11, color: "#9CA3AF", fontWeight: 400, marginLeft: 6 }}>· 공사 {constructionPredCount}건이 상단에 자동 정렬</span>
-        </div>
-        <AccuracyClient
-          bppList={bppList}
-          activeCount={activeCount ?? 0}
-          predCount={predCount ?? 0}
-        />
-      </div>
-
-      {/* ── AIPrediction 적중률 — 카테고리별 분리 (사정율 분포가 다르므로) ── */}
-      {statsAll.total > 0 && (
-        <div>
-          <div style={{ fontSize: 14, fontWeight: 700, color: "#374151", marginBottom: 4 }}>
-            AI 사정율 예측 적중률 <span style={{ fontSize: 11, color: "#9CA3AF", fontWeight: 400, marginLeft: 6 }}>· 카테고리별 분리</span>
-          </div>
-          <div style={{ fontSize: 11, color: "#94A3B8", marginBottom: 10 }}>
-            공사: 97~103% 정상 / 용역·물품: 80~95% 정상 — 분포가 다르므로 따로 봐야 함
-          </div>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12 }}>
-            {[
-              { label: "공사",   stats: statsCons,  badge: "🏗️" },
-              { label: "용역",   stats: statsServ,  badge: "📋" },
-              { label: "물품",   stats: statsThng,  badge: "📦" },
-              { label: "기타",   stats: statsOther, badge: "📌" },
-            ].map(({ label, stats, badge }) => (
-              <div key={label} style={{ background: "#fff", borderRadius: 12, border: "1px solid #E8ECF2", padding: "16px" }}>
-                <div style={{ fontSize: 12, color: "#64748B", marginBottom: 8, fontWeight: 600 }}>
-                  {badge} {label} <span style={{ fontSize: 10, color: "#9CA3AF", marginLeft: 4 }}>예측 {stats.total} · 결과 {stats.evaluated}</span>
-                </div>
-                {stats.evaluated > 0 ? (
-                  <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                    <div style={{ display: "flex", justifyContent: "space-between" }}>
-                      <span style={{ fontSize: 11, color: "#94A3B8" }}>적중 ±0.5</span>
-                      <strong style={{ fontSize: 15, color: stats.hitRate >= 30 ? "#059669" : stats.hitRate >= 15 ? "#D97706" : "#DC2626" }}>
-                        {stats.hitRate.toFixed(1)}%
-                      </strong>
-                    </div>
-                    <div style={{ display: "flex", justifyContent: "space-between" }}>
-                      <span style={{ fontSize: 11, color: "#94A3B8" }}>근접 ±1.0</span>
-                      <strong style={{ fontSize: 13, color: stats.nearRate >= 50 ? "#059669" : stats.nearRate >= 30 ? "#D97706" : "#94A3B8" }}>
-                        {stats.nearRate.toFixed(1)}%
-                      </strong>
-                    </div>
-                    <div style={{ display: "flex", justifyContent: "space-between" }}>
-                      <span style={{ fontSize: 11, color: "#94A3B8" }}>MAE</span>
-                      <strong style={{ fontSize: 13, color: stats.mae == null ? "#9CA3AF" : stats.mae < 0.5 ? "#059669" : stats.mae < 1.0 ? "#D97706" : "#DC2626" }}>
-                        {stats.mae != null ? stats.mae.toFixed(3) + "%p" : "-"}
-                      </strong>
-                    </div>
-                  </div>
-                ) : (
-                  <div style={{ fontSize: 12, color: "#94A3B8", textAlign: "center", padding: "12px 0" }}>
-                    결과 수집 전
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* ── AIPrediction 최근 예측 테이블 ── */}
+      {/* ── 섹션 3: 최근 예측 vs 결과 (통합 30건) ── */}
       {(recentPreds ?? []).length > 0 && (
         <div style={{ background: "#fff", borderRadius: 14, border: "1px solid #E8ECF2", padding: "20px" }}>
-          <div style={{ fontSize: 14, fontWeight: 700, color: "#0F172A", marginBottom: 14 }}>최근 AI 예측 내역 (최근 20건)</div>
+          <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 14 }}>
+            <div>
+              <span style={{ fontSize: 15, fontWeight: 800, color: "#0F172A" }}>최근 예측 vs 결과</span>
+              <span style={{ fontSize: 11, color: "#94A3B8", marginLeft: 8 }}>최근 30건</span>
+            </div>
+            <div style={{ display: "flex", gap: 12, fontSize: 11, color: "#64748B" }}>
+              <span><span style={{ color: "#059669" }}>●</span> 완전적중 ≤0.2%p</span>
+              <span><span style={{ color: "#1B3A6B" }}>●</span> 적중 ≤0.5%p</span>
+              <span><span style={{ color: "#D97706" }}>●</span> 근접 ≤1.0%p</span>
+              <span><span style={{ color: "#DC2626" }}>●</span> 미적중</span>
+            </div>
+          </div>
           <div style={{ overflowX: "auto" }}>
-            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12.5 }}>
+            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
               <thead>
                 <tr style={{ background: "#F8FAFC" }}>
-                  {["예측일", "카테고리", "발주처", "예산", "예측사정율", "실제사정율", "편차", "결과"].map((h) => (
+                  {["예측일", "카테고리", "발주처", "예산", "예측", "실제", "편차", "결과"].map((h) => (
                     <th key={h} style={{ padding: "9px 12px", textAlign: "left", color: "#374151", fontWeight: 600, borderBottom: "2px solid #E8ECF2", whiteSpace: "nowrap" }}>{h}</th>
                   ))}
                 </tr>
@@ -452,42 +317,41 @@ export default async function AdminAccuracyPage() {
                 {(recentPreds ?? []).map((p: any, i: number) => {
                   const hasResult = p.resultFilledAt != null;
                   const hitColor  = p.isExact ? "#059669" : p.isHit ? "#1B3A6B" : p.isNearHit ? "#D97706" : hasResult ? "#DC2626" : "#9CA3AF";
-                  const hitLabel  = p.isExact ? "완전 적중" : p.isHit ? "적중" : p.isNearHit ? "근접" : hasResult ? "미적중" : "미개찰";
+                  const hitLabel  = p.isExact ? "완전적중" : p.isHit ? "적중" : p.isNearHit ? "근접" : hasResult ? "미적중" : "미개찰";
                   const cat = String(p.category ?? "기타");
-                  const isCon = isConstruction(cat);
-                  const catColor = isCon ? "#1B3A6B" : cat.includes("용역") ? "#D97706" : cat.includes("물품") ? "#7C3AED" : "#64748B";
-                  const catBg = isCon ? "#EFF6FF" : cat.includes("용역") ? "#FFFBEB" : cat.includes("물품") ? "#F5F3FF" : "#F1F5F9";
+                  const catColor = isConstruction(cat) ? "#1B3A6B" : isService(cat) ? "#D97706" : isGoods(cat) ? "#7C3AED" : "#64748B";
+                  const catBg = isConstruction(cat) ? "#EFF6FF" : isService(cat) ? "#FFFBEB" : isGoods(cat) ? "#F5F3FF" : "#F1F5F9";
                   return (
                     <tr key={i} style={{ borderBottom: "1px solid #F1F5F9" }}>
                       <td style={{ padding: "8px 12px", color: "#6B7280", whiteSpace: "nowrap" }}>
-                        {new Date(p.predictedAt).toLocaleDateString("ko-KR")}
+                        {new Date(p.predictedAt).toLocaleDateString("ko-KR", { month: "short", day: "numeric" })}
                       </td>
                       <td style={{ padding: "8px 12px", whiteSpace: "nowrap" }}>
-                        <span style={{ fontSize: 11, fontWeight: 600, color: catColor, background: catBg, padding: "2px 7px", borderRadius: 5 }}>
+                        <span style={{ fontSize: 10.5, fontWeight: 600, color: catColor, background: catBg, padding: "2px 7px", borderRadius: 5 }}>
                           {cat}
                         </span>
                       </td>
-                      <td style={{ padding: "8px 12px", color: "#374151", maxWidth: 160, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={p.orgName}>
+                      <td style={{ padding: "8px 12px", color: "#374151", maxWidth: 200, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={p.orgName}>
                         {p.orgName}
                       </td>
                       <td style={{ padding: "8px 12px", color: "#374151", whiteSpace: "nowrap" }}>
                         {Number(p.budget ?? 0).toLocaleString("ko-KR")}원
                       </td>
-                      <td style={{ padding: "8px 12px", color: "#1B3A6B", fontWeight: 600, whiteSpace: "nowrap" }}>
+                      <td style={{ padding: "8px 12px", color: "#1B3A6B", fontWeight: 700, whiteSpace: "nowrap" }}>
                         {Number(p.predictedSajungRate).toFixed(2)}%
                       </td>
                       <td style={{ padding: "8px 12px", whiteSpace: "nowrap" }}>
                         {hasResult
-                          ? <span style={{ color: "#374151", fontWeight: 600 }}>{Number(p.actualSajungRate).toFixed(2)}%</span>
-                          : <span style={{ color: "#D1D5DB" }}>미개찰</span>}
+                          ? <span style={{ color: "#0F172A", fontWeight: 700 }}>{Number(p.actualSajungRate).toFixed(2)}%</span>
+                          : <span style={{ color: "#D1D5DB" }}>-</span>}
                       </td>
                       <td style={{ padding: "8px 12px", whiteSpace: "nowrap" }}>
                         {hasResult
-                          ? <span style={{ color: Number(p.deviationPct) <= 0.5 ? "#059669" : "#DC2626" }}>{Number(p.deviationPct).toFixed(3)}%p</span>
+                          ? <span style={{ color: Number(p.deviationPct) <= 0.5 ? "#059669" : Number(p.deviationPct) <= 1.0 ? "#D97706" : "#DC2626", fontWeight: 600 }}>{Number(p.deviationPct).toFixed(3)}%p</span>
                           : <span style={{ color: "#D1D5DB" }}>-</span>}
                       </td>
                       <td style={{ padding: "8px 12px" }}>
-                        <span style={{ fontSize: 11, fontWeight: 700, color: hitColor, background: hitColor + "1a", padding: "2px 7px", borderRadius: 5 }}>
+                        <span style={{ fontSize: 11, fontWeight: 700, color: hitColor, background: hitColor + "1a", padding: "3px 8px", borderRadius: 5 }}>
                           {hitLabel}
                         </span>
                       </td>
@@ -500,27 +364,44 @@ export default async function AdminAccuracyPage() {
         </div>
       )}
 
-      {/* ── SajungRateStat 신뢰도 분포 ── */}
-      <div style={{ background: "#fff", borderRadius: 14, border: "1px solid #E8ECF2", padding: "20px" }}>
-        <div style={{ display: "flex", alignItems: "baseline", gap: 8, marginBottom: 14 }}>
-          <div style={{ fontSize: 14, fontWeight: 700, color: "#0F172A" }}>발주처 신뢰도 분포</div>
-          <span style={{ fontSize: 12, color: "#9CA3AF" }}>
-            발주처 {confidenceTotal}개 / 평균 사정율 {avgSajung != null ? avgSajung.toFixed(2) + "%" : "-"}
+      {/* ── 섹션 4: 신규 분석 공고 (AccuracyClient) ── */}
+      <div>
+        <div style={{ fontSize: 15, fontWeight: 800, color: "#0F172A", marginBottom: 10 }}>
+          신규 분석 공고
+          <span style={{ fontSize: 11, color: "#94A3B8", fontWeight: 400, marginLeft: 8 }}>
+            · 활성 공사 우선 정렬 · 검색·필터 가능
           </span>
         </div>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10, marginBottom: 14 }}>
+        <AccuracyClient
+          bppList={bppList}
+          activeCount={activeCount ?? 0}
+          predCount={predCount ?? 0}
+        />
+      </div>
+
+      {/* ── 섹션 5: 발주처 신뢰도 분포 (사이드) ── */}
+      <div style={{ background: "#fff", borderRadius: 14, border: "1px solid #E8ECF2", padding: "20px" }}>
+        <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 14, flexWrap: "wrap", gap: 8 }}>
+          <div>
+            <span style={{ fontSize: 15, fontWeight: 800, color: "#0F172A" }}>발주처 신뢰도 분포</span>
+            <span style={{ fontSize: 11, color: "#94A3B8", marginLeft: 8 }}>총 {confidenceTotal.toLocaleString()}개 발주처</span>
+          </div>
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12, marginBottom: 14 }}>
           {[
-            { label: "HIGH", count: highCount, desc: "N≥15 & stddev≤2.0", bg: "#ECFDF5", color: "#059669", border: "#A7F3D0" },
-            { label: "MEDIUM", count: mediumCount, desc: "N≥5 & stddev≤3.0", bg: "#FFFBEB", color: "#D97706", border: "#FCD34D" },
-            { label: "LOW", count: lowCount, desc: "그 외 (데이터 부족)", bg: "#FEF2F2", color: "#DC2626", border: "#FECACA" },
+            { label: "HIGH",   count: highCount,   desc: "N≥15 & σ≤2.0", bg: "#ECFDF5", color: "#059669", border: "#A7F3D0" },
+            { label: "MEDIUM", count: mediumCount, desc: "N≥5 & σ≤3.0",  bg: "#FFFBEB", color: "#D97706", border: "#FCD34D" },
+            { label: "LOW",    count: lowCount,    desc: "데이터 부족",   bg: "#FEF2F2", color: "#DC2626", border: "#FECACA" },
           ].map(({ label, count, desc, bg, color, border }) => (
-            <div key={label} style={{ background: bg, borderRadius: 10, border: `1px solid ${border}`, padding: "14px 16px" }}>
-              <div style={{ fontSize: 11, color, fontWeight: 700, marginBottom: 4 }}>{label}</div>
-              <div style={{ fontSize: 24, fontWeight: 800, color }}>{count}개</div>
-              <div style={{ fontSize: 11, color: "#9CA3AF", marginTop: 4 }}>{desc}</div>
-              <div style={{ fontSize: 12, color, marginTop: 6, fontWeight: 600 }}>
-                {confidenceTotal > 0 ? ((count / confidenceTotal) * 100).toFixed(1) : "0.0"}%
+            <div key={label} style={{ background: bg, borderRadius: 10, border: `1px solid ${border}`, padding: "16px 18px" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 6 }}>
+                <span style={{ fontSize: 12, color, fontWeight: 700 }}>{label}</span>
+                <span style={{ fontSize: 11, color, fontWeight: 600 }}>
+                  {confidenceTotal > 0 ? ((count / confidenceTotal) * 100).toFixed(1) : "0.0"}%
+                </span>
               </div>
+              <div style={{ fontSize: 24, fontWeight: 800, color }}>{count.toLocaleString()}개</div>
+              <div style={{ fontSize: 10.5, color: "#9CA3AF", marginTop: 4 }}>{desc}</div>
             </div>
           ))}
         </div>
@@ -531,105 +412,6 @@ export default async function AdminAccuracyPage() {
             <div style={{ width: `${(lowCount / confidenceTotal) * 100}%`, background: "#DC2626" }} />
           </div>
         )}
-        {totalStatRows === 0 && (
-          <div style={{ color: "#9CA3AF", fontSize: 13, marginTop: 8 }}>
-            SajungRateStat 데이터 없음 — collect-sajung-stat.ts 실행 필요
-          </div>
-        )}
-      </div>
-
-      {/* ── BidPricePrediction 백테스트 ── */}
-      <div>
-        <div style={{ fontSize: 14, fontWeight: 700, color: "#374151", marginBottom: 4 }}>
-          BidPricePrediction 백테스트 <span style={{ fontSize: 12, color: "#9CA3AF", fontWeight: 400 }}>(CORE 1 엔진 · 최근 {bppTotal}건 예측)</span>
-        </div>
-        <div style={{ fontSize: 12, color: "#9CA3AF", marginBottom: 10 }}>
-          BidResult 보유 {bppCompared}건 기준 — 실제 낙찰 결과와 비교
-        </div>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12, marginBottom: 16 }}>
-          {[
-            { label: "비교 가능", value: bppCompared + "건", color: "#374151" },
-            { label: "적중 ±0.5%", value: bppCompared > 0 ? `${bppHitRate.toFixed(1)}%` : "-", color: bppHitRate >= 30 ? "#059669" : bppHitRate >= 15 ? "#D97706" : "#DC2626" },
-            { label: "근접 ±1.0%", value: bppCompared > 0 ? `${bppNearRate.toFixed(1)}%` : "-", color: bppNearRate >= 50 ? "#059669" : bppNearRate >= 30 ? "#D97706" : "#DC2626" },
-            { label: "MAE (평균편차)", value: bppMAE != null ? `${bppMAE.toFixed(3)}%p` : "-", color: bppMAE == null ? "#9CA3AF" : bppMAE < 0.5 ? "#059669" : bppMAE < 1.0 ? "#D97706" : "#DC2626" },
-          ].map(({ label, value, color }) => (
-            <div key={label} style={{ background: "#fff", borderRadius: 12, border: "1px solid #E8ECF2", padding: "16px" }}>
-              <div style={{ fontSize: 11, color: "#9CA3AF", marginBottom: 4 }}>{label}</div>
-              <div style={{ fontSize: 20, fontWeight: 800, color }}>{value}</div>
-            </div>
-          ))}
-        </div>
-
-        {bppCompared > 0 && (
-          <div style={{ marginBottom: 16 }}>
-            <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, color: "#9CA3AF", marginBottom: 4 }}>
-              <span>편차 구간 분포</span>
-              <span>≤0.5% {bppZone0}건 · 0.5~1% {bppZone1}건 · 1~2% {bppZone2}건 · &gt;2% {bppZone3}건</span>
-            </div>
-            <div style={{ height: 10, borderRadius: 5, overflow: "hidden", display: "flex", background: "#F1F5F9" }}>
-              {bppZone0 > 0 && <div style={{ width: `${(bppZone0 / bppCompared) * 100}%`, background: "#059669" }} />}
-              {bppZone1 > 0 && <div style={{ width: `${(bppZone1 / bppCompared) * 100}%`, background: "#D97706" }} />}
-              {bppZone2 > 0 && <div style={{ width: `${(bppZone2 / bppCompared) * 100}%`, background: "#DC2626" }} />}
-              {bppZone3 > 0 && <div style={{ width: `${(bppZone3 / bppCompared) * 100}%`, background: "#7F1D1D" }} />}
-            </div>
-          </div>
-        )}
-
-        <div style={{ background: "#fff", borderRadius: 14, border: "1px solid #E8ECF2", padding: "20px" }}>
-          <div style={{ fontSize: 13, fontWeight: 700, color: "#0F172A", marginBottom: 14 }}>
-            최근 예측 vs 실제 결과 ({bppRecent.length}건)
-          </div>
-          {bppCompared === 0 ? (
-            <div style={{ color: "#9CA3AF", fontSize: 13, textAlign: "center", padding: "20px 0" }}>
-              BidResult 매칭 데이터 없음 — 낙찰 결과 수집 후 표시됩니다
-            </div>
-          ) : (
-            <div style={{ overflowX: "auto" }}>
-              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12.5 }}>
-                <thead>
-                  <tr style={{ background: "#F8FAFC" }}>
-                    {["예측일", "발주처", "업종", "예측사정율", "실제사정율", "편차", "결과"].map((h) => (
-                      <th key={h} style={{ padding: "9px 12px", textAlign: "left", color: "#374151", fontWeight: 600, borderBottom: "2px solid #E8ECF2", whiteSpace: "nowrap" }}>{h}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {bppRecent.map((r, i) => {
-                    const hitColor = r.isHit ? "#059669" : r.isNear ? "#D97706" : "#DC2626";
-                    const hitLabel = r.isHit ? "적중" : r.isNear ? "근접" : "미적중";
-                    return (
-                      <tr key={i} style={{ borderBottom: "1px solid #F1F5F9" }}>
-                        <td style={{ padding: "8px 12px", color: "#6B7280", whiteSpace: "nowrap" }}>
-                          {new Date(r.createdAt).toLocaleDateString("ko-KR")}
-                        </td>
-                        <td style={{ padding: "8px 12px", color: "#374151", maxWidth: 160, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={r.orgName}>
-                          {r.orgName}
-                        </td>
-                        <td style={{ padding: "8px 12px", color: "#374151", whiteSpace: "nowrap" }}>{r.category}</td>
-                        <td style={{ padding: "8px 12px", color: "#1B3A6B", fontWeight: 600, whiteSpace: "nowrap" }}>
-                          {r.predictedSajungRate.toFixed(2)}%
-                        </td>
-                        <td style={{ padding: "8px 12px", fontWeight: 600, whiteSpace: "nowrap" }}>
-                          {r.actualSajungRate.toFixed(2)}%
-                        </td>
-                        <td style={{ padding: "8px 12px", whiteSpace: "nowrap" }}>
-                          <span style={{ color: r.deviation <= 0.5 ? "#059669" : r.deviation <= 1.0 ? "#D97706" : "#DC2626" }}>
-                            {r.deviation.toFixed(3)}%p
-                          </span>
-                        </td>
-                        <td style={{ padding: "8px 12px" }}>
-                          <span style={{ fontSize: 11, fontWeight: 700, color: hitColor, background: hitColor + "1a", padding: "2px 7px", borderRadius: 5 }}>
-                            {hitLabel}
-                          </span>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
       </div>
     </div>
   );
