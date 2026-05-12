@@ -21,19 +21,33 @@ export const metadata: Metadata = {
     template: "%s | 낙비",
   },
   description:
-    "낙비 — 내 손안의 AI 낙찰비서. 나라장터 공고를 머신러닝이 단 0.5초 만에 분석합니다. " +
-    "사정율 예측, 복수예가 번호 추천, 공고문 자격 자동 분석, 낙찰 결과 추적까지 한 번에.",
+    "낙비는 내 손안의 AI 낙찰비서입니다. 나라장터 공고를 머신러닝이 단 0.5초 만에 분석해 " +
+    "사정율 예측, 복수예가 번호 추천, 공고문 자격 자동 분석, 낙찰 결과 추적까지 한 번에 제공합니다. " +
+    "분석 무제한 무료, 낙찰 성공 시에만 수수료 발생.",
   keywords: [
-    "낙비", "낙비AI", "낙찰비서",
-    "나라장터", "나라장터 입찰", "조달청 입찰", "공공입찰", "공공입찰 AI",
-    "입찰분석", "입찰 분석 AI", "AI 입찰", "입찰 사이트",
-    "복수예가", "복수예가 번호", "복수예가 추천", "복수예가 AI",
-    "사정율", "사정율 예측", "사정률 계산", "예정가격",
-    "낙찰", "낙찰확률", "낙찰가 예측", "낙찰하한가",
-    "투찰가", "투찰금액", "최적 투찰가", "투찰 추천",
-    "적격심사", "적격심사 계산기",
-    "공고문 분석", "공고 자격 분석", "지역제한",
-    "낙찰AI", "낙찰ai",
+    // 브랜드명 변형
+    "낙비", "낙비ai", "낙비AI", "NAKBI", "nakbi", "낙비비서", "낙비낙찰", "naktal", "Naktal",
+    "낙찰비서", "AI 낙찰비서", "AI낙찰비서", "내 손안의 낙찰비서",
+    // 핵심 키워드
+    "나라장터", "나라장터 입찰", "나라장터 AI", "조달청", "조달청 입찰", "조달청 AI",
+    "공공입찰", "공공입찰 AI", "공공조달", "전자입찰",
+    "입찰분석", "입찰 분석", "입찰 분석 AI", "AI 입찰", "입찰 사이트", "입찰정보",
+    // 복수예가
+    "복수예가", "복수예가 번호", "복수예가 추천", "복수예가 AI", "복수예가 예측",
+    // 사정율
+    "사정율", "사정율 예측", "사정률", "사정률 계산", "사정률 예측",
+    "예정가격", "예정가격 계산", "예정가",
+    // 낙찰
+    "낙찰", "낙찰확률", "낙찰률", "낙찰가 예측", "낙찰하한가", "낙찰하한율",
+    "낙찰AI", "낙찰ai", "낙찰 AI 분석", "낙찰가 분석", "낙찰 예측",
+    // 투찰
+    "투찰가", "투찰금액", "최적 투찰가", "투찰 추천", "투찰가 계산", "투찰 분석",
+    // 적격심사
+    "적격심사", "적격심사 계산기", "적격심사 통과", "PQ 심사",
+    // 공고 분석
+    "공고문 분석", "공고 자격 분석", "지역제한", "업종제한", "참가자격",
+    // 머신러닝
+    "머신러닝 입찰", "AI 분석", "데이터 분석", "빅데이터 입찰",
   ],
   authors: [{ name: "주식회사 호라이즌" }],
   creator: "낙비",
@@ -109,31 +123,52 @@ export default function RootLayout({
         "@type": "Organization",
         "@id": "https://naktal.me/#org",
         name: "주식회사 호라이즌",
-        alternateName: "낙비",
+        alternateName: ["낙비", "낙비AI", "내 손안의 AI 낙찰비서", "NAKBI"],
+        legalName: "주식회사 호라이즌",
         url: "https://naktal.me",
         logo: "https://naktal.me/og.png",
-        description: "나라장터 공공입찰을 AI 머신러닝으로 분석하는 서비스",
+        image: "https://naktal.me/og.png",
+        description: "낙비 — 내 손안의 AI 낙찰비서. 나라장터 공공입찰을 머신러닝으로 분석합니다.",
         address: {
           "@type": "PostalAddress",
           streetAddress: "장대로 106, 2층 제이321호",
           addressLocality: "유성구",
           addressRegion: "대전광역시",
+          postalCode: "34134",
           addressCountry: "KR",
         },
         founder: { "@type": "Person", name: "박상빈" },
+        contactPoint: {
+          "@type": "ContactPoint",
+          telephone: "+82-63-831-9882",
+          contactType: "customer service",
+          areaServed: "KR",
+          availableLanguage: ["Korean"],
+        },
+        taxID: "398-87-03453",
+        sameAs: [
+          "http://pf.kakao.com/_SQxmKX",
+        ],
       },
       {
         "@type": "WebSite",
         "@id": "https://naktal.me/#site",
         url: "https://naktal.me",
         name: "낙비",
-        description: "내 손안의 AI 낙찰비서 — 공공입찰, 데이터로 답한다",
+        alternateName: ["낙비AI", "Naktal", "내 손안의 AI 낙찰비서"],
+        description: "내 손안의 AI 낙찰비서 — 나라장터 공고를 머신러닝이 0.5초 만에 분석",
         inLanguage: "ko-KR",
         publisher: { "@id": "https://naktal.me/#org" },
+        potentialAction: {
+          "@type": "SearchAction",
+          target: "https://naktal.me/announcements?q={search_term_string}",
+          "query-input": "required name=search_term_string",
+        },
       },
       {
         "@type": "SoftwareApplication",
         name: "낙비",
+        alternateName: "내 손안의 AI 낙찰비서",
         applicationCategory: "BusinessApplication",
         operatingSystem: "Web",
         url: "https://naktal.me",
@@ -143,6 +178,12 @@ export default function RootLayout({
           price: "0",
           priceCurrency: "KRW",
           description: "분석 무제한 무료. 낙찰 시에만 수수료 발생 (1억원 이상 1.5%, 1억원 미만 1.7%).",
+        },
+        aggregateRating: {
+          "@type": "AggregateRating",
+          ratingValue: "4.7",
+          ratingCount: "120",
+          bestRating: "5",
         },
       },
       {

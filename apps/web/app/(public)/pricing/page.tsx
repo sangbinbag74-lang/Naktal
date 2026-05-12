@@ -4,8 +4,15 @@ import Link from "next/link";
 export const dynamic = "force-static";
 
 export const metadata: Metadata = {
-  title: "이용 요금 안내",
-  description: "낙비 — 분석 무제한 무료. 낙찰 성공 시에만 수수료(1.5% 또는 1.7%) 발생.",
+  title: "요금 안내 — 분석 무료, 낙찰 시에만 수수료",
+  description: "낙비 — 내 손안의 AI 낙찰비서. AI 사정율 예측·복수예가 번호 추천·공고문 자격 분석 모두 무료. 낙찰 성공 시에만 수수료(1억 이상 1.5% / 1억 미만 1.7%) 발생.",
+  keywords: ["낙비 요금", "낙비 가격", "낙비 수수료", "낙찰AI 요금", "공공입찰 AI 요금", "나라장터 AI 무료", "성공보수형 수수료"],
+  alternates: { canonical: "https://naktal.me/pricing" },
+  openGraph: {
+    title: "낙비 — 요금 안내 (분석 무제한 무료)",
+    description: "AI 사정율 예측·복수예가 번호·자격 분석 모두 무료. 낙찰 시에만 수수료.",
+    url: "https://naktal.me/pricing",
+  },
 };
 
 interface Plan {

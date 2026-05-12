@@ -4,8 +4,10 @@ import Link from "next/link";
 export const dynamic = "force-static";
 
 export const metadata: Metadata = {
-  title: "환불·취소 정책",
-  description: "낙비 서비스의 환불·취소·청약철회 정책 안내",
+  title: "환불·취소·청약철회 정책",
+  description: "낙비 서비스의 환불·취소·청약철회 정책. 미낙찰 시 수수료 0원, 낙찰 후 발주처 사유 무효 시 전액 환불.",
+  keywords: ["낙비 환불", "낙비 취소", "낙비 청약철회", "낙찰AI 환불", "공공입찰 AI 환불"],
+  alternates: { canonical: "https://naktal.me/refund" },
 };
 
 const SECTIONS = [

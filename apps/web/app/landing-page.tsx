@@ -345,7 +345,8 @@ function Hero() {
         </h1>
 
         <p style={{ fontSize: "clamp(17px, 1.6vw, 21px)", lineHeight: 1.55, color: "rgba(255,255,255,0.72)", maxWidth: 680, margin: "0 0 44px", fontWeight: 400 }}>
-          사정율, 복수예가 번호, 참여 자격 — 나라장터 공고 한 건을<br />머신러닝이 단 <span style={{ color: "#fff", fontWeight: 600 }}>0.5초</span> 만에 분석합니다.
+          <strong style={{ color: "#fff", fontWeight: 700 }}>낙비</strong> — 내 손안의 AI 낙찰비서.<br />
+          나라장터 공고의 사정율·복수예가 번호·참여 자격을<br />머신러닝이 단 <span style={{ color: "#fff", fontWeight: 600 }}>0.5초</span> 만에 분석합니다.
         </p>
 
         <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginBottom: 84 }}>
