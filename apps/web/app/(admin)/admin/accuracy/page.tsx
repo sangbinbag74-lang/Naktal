@@ -1,6 +1,7 @@
 import { createAdminClient } from "@/lib/supabase/server";
 import Link from "next/link";
 import { AccuracyClient } from "./AccuracyClient";
+import { AccuracyTriggers } from "./AccuracyTriggers";
 
 export const dynamic = "force-dynamic";
 
@@ -27,7 +28,14 @@ type BppBacktest = {
   annId: string;
   predictedSajungRate: number;
   createdAt: string;
-  announcement: { budget: string; orgName: string; category: string; bidResult: { finalPrice: string; bidRate: string } | null } | null;
+  announcement: {
+    budget: string;
+    bsisAmt: string | null;
+    aValueAmt: string | null;
+    orgName: string;
+    category: string;
+    bidResult: { finalPrice: string; bidRate: string } | null;
+  } | null;
 };
 
 export default async function AdminAccuracyPage() {
@@ -90,6 +98,7 @@ export default async function AdminAccuracyPage() {
   const confidenceTotal = highCount + mediumCount + lowCount;
 
   // ─── BidPricePrediction 백테스트 ──────────────────────────────────────────────
+  // 사정율 = 예정가 / 기초금액(bsisAmt) × 100 (영구 통일 — 2026-05-12)
   const { data: bppBacktestRows } = await admin
     .from("BidPricePrediction")
     .select(`
@@ -98,6 +107,8 @@ export default async function AdminAccuracyPage() {
       createdAt,
       announcement:Announcement(
         budget,
+        bsisAmt,
+        aValueAmt,
         orgName,
         category,
         bidResult:BidResult(finalPrice, bidRate)
@@ -107,30 +118,72 @@ export default async function AdminAccuracyPage() {
     .limit(500);
 
   const bppBacktest = (bppBacktestRows ?? []) as unknown as BppBacktest[];
-  const bppWithResult = bppBacktest.filter(
-    (r) => r.announcement?.bidResult != null &&
-      Number(r.announcement.budget) > 0 &&
-      Number(r.announcement.bidResult.bidRate) > 0
+
+  // BidOpeningDetail 폴백 (수의계약 등 BidResult 누락분)
+  const bppAnnIds = bppBacktest.map((r) => r.annId);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: openingRows } = await (admin.from("BidOpeningDetail") as any)
+    .select("annId,sucsfbidRate,rawJson")
+    .in("annId", bppAnnIds.slice(0, 500));
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const openingMap: Record<string, any> = Object.fromEntries(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (openingRows ?? []).map((o: any) => [o.annId, o])
   );
 
+  function baseAmountOf(a: BppBacktest["announcement"]): number {
+    if (!a) return 0;
+    const bsis = Number(a.bsisAmt ?? 0);
+    if (bsis > 0) return bsis;
+    const av = Number(a.aValueAmt ?? 0);
+    if (av > 0) return av;
+    return Math.round(Number(a.budget ?? 0) * 1.1);
+  }
+
   type BppCalc = { predictedSajungRate: number; actualSajungRate: number; deviation: number; isHit: boolean; isNear: boolean; orgName: string; category: string; createdAt: string };
-  const bppCalc: BppCalc[] = bppWithResult.map((r) => {
-    const budget = Number(r.announcement!.budget);
-    const finalPrice = Number(r.announcement!.bidResult!.finalPrice);
-    const bidRate = Number(r.announcement!.bidResult!.bidRate);
-    const actualSajungRate = (finalPrice / (bidRate / 100)) / budget * 100;
-    const deviation = Math.abs(r.predictedSajungRate - actualSajungRate);
-    return {
-      predictedSajungRate: r.predictedSajungRate,
-      actualSajungRate,
-      deviation,
-      isHit: deviation <= 0.5,
-      isNear: deviation <= 1.0,
-      orgName: r.announcement!.orgName,
-      category: r.announcement!.category,
-      createdAt: r.createdAt,
-    };
-  });
+  const bppCalc: BppCalc[] = bppBacktest
+    .map((r): BppCalc | null => {
+      const baseAmt = baseAmountOf(r.announcement);
+      if (baseAmt <= 0) return null;
+
+      let finalPrice = 0;
+      let bidRate = 0;
+      // 1순위: BidResult (일반 입찰)
+      if (r.announcement?.bidResult) {
+        finalPrice = Number(r.announcement.bidResult.finalPrice);
+        bidRate = Number(r.announcement.bidResult.bidRate);
+      }
+      // 2순위: BidOpeningDetail.opengCorpInfo (수의계약 포함)
+      if ((!finalPrice || !bidRate) && openingMap[r.annId]?.rawJson) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const arr = openingMap[r.annId].rawJson as any[];
+        if (arr.length > 0 && arr[0].opengCorpInfo) {
+          const parts = String(arr[0].opengCorpInfo).split("^");
+          if (parts.length >= 5) {
+            finalPrice = parseInt((parts[3] || "").replace(/\D/g, ""), 10) || 0;
+            bidRate = openingMap[r.annId].sucsfbidRate ?? parseFloat(parts[4] || "0");
+          }
+        }
+      }
+      if (!finalPrice || !bidRate) return null;
+
+      const actualSajungRate = (finalPrice / (bidRate / 100)) / baseAmt * 100;
+      // 정상범위 필터 (사정율은 97~103% 이내. 이탈값은 데이터 이상으로 제외)
+      if (actualSajungRate < 97 || actualSajungRate > 103) return null;
+
+      const deviation = Math.abs(r.predictedSajungRate - actualSajungRate);
+      return {
+        predictedSajungRate: r.predictedSajungRate,
+        actualSajungRate,
+        deviation,
+        isHit: deviation <= 0.5,
+        isNear: deviation <= 1.0,
+        orgName: r.announcement!.orgName,
+        category: r.announcement!.category,
+        createdAt: r.createdAt,
+      };
+    })
+    .filter((r): r is BppCalc => r != null);
 
   const bppTotal    = bppBacktest.length;
   const bppCompared = bppCalc.length;
@@ -210,6 +263,9 @@ export default async function AdminAccuracyPage() {
         <h2 style={{ fontSize: 22, fontWeight: 700, color: "#0F172A", margin: "0 0 4px" }}>정확도 분석</h2>
         <p style={{ fontSize: 13, color: "#64748B", margin: 0 }}>공사 중심 적중률 · 신규 공사 공고 우선 분석 · 발주처 신뢰도</p>
       </div>
+
+      {/* 수동 트리거 */}
+      <AccuracyTriggers />
 
       {/* ── 공사 중심 분석 (사용자 요청 — 핵심) ─────────────────────────────── */}
       <div style={{ background: "#fff", borderRadius: 14, border: "2px solid #1B3A6B", padding: "20px" }}>
