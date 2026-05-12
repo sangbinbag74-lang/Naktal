@@ -28,6 +28,9 @@ export default async function AdminRequestsPage() {
   let bidResultMap: Record<string, any> = {};
   // 공고 rawJson.opengDt fallback (BidRequest.openingDt 비어있을 때)
   let annOpengMap: Record<string, string | null> = {};
+  // 사정율 역산용 (bsisAmt, aValueTotal, sucsfbidLwltRate)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let annInfoMap: Record<string, { bsisAmt: number; aValueTotal: number; lowerLimitRate: number }> = {};
 
   try {
     const [
@@ -116,10 +119,10 @@ export default async function AdminRequestsPage() {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         bidResultMap = Object.fromEntries((bidResults ?? []).map((b: any) => [b.annId, b]));
 
-        // Announcement.rawJson.opengDt fallback
+        // Announcement.rawJson.opengDt fallback + 사정율 역산 base 데이터
         const { data: anns } = await admin
           .from("Announcement")
-          .select("id, rawJson")
+          .select("id, rawJson, bsisAmt, aValueTotal, sucsfbidLwltRate")
           .in("id", annIds);
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         annOpengMap = Object.fromEntries((anns ?? []).map((a: any) => {
@@ -127,6 +130,15 @@ export default async function AdminRequestsPage() {
           const dt = raw.opengDt ?? raw.rlOpengDt ?? null;
           return [a.id, dt];
         }));
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        annInfoMap = Object.fromEntries((anns ?? []).map((a: any) => [
+          a.id,
+          {
+            bsisAmt: Number(a.bsisAmt ?? 0),
+            aValueTotal: Number(a.aValueTotal ?? 0),
+            lowerLimitRate: Number(a.sucsfbidLwltRate ?? 0),
+          },
+        ]));
       }
     }
   } catch {
@@ -201,7 +213,7 @@ export default async function AdminRequestsPage() {
       {/* ── 의뢰 목록 테이블 ── */}
       <div style={{ background: "#fff", borderRadius: 14, border: "1px solid #E8ECF2", padding: "20px" }}>
         <div style={{ fontSize: 14, fontWeight: 700, color: "#0F172A", marginBottom: 14 }}>의뢰 목록 (최근 50건)</div>
-        <RequestsTable requests={requests} userMap={userMap} bidResultMap={bidResultMap} annOpengMap={annOpengMap} />
+        <RequestsTable requests={requests} userMap={userMap} bidResultMap={bidResultMap} annOpengMap={annOpengMap} annInfoMap={annInfoMap} />
       </div>
     </div>
   );

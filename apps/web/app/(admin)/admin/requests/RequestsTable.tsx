@@ -9,11 +9,36 @@ type BidResultInfo = { annId: string; winnerName: string | null; finalPrice: num
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Request = Record<string, any>;
 
+type AnnInfo = { bsisAmt: number; aValueTotal: number; lowerLimitRate: number };
+
 interface Props {
   requests: Request[];
   userMap: Record<string, UserInfo>;
   bidResultMap: Record<string, BidResultInfo>;
   annOpengMap?: Record<string, string | null>; // 공고 rawJson.opengDt fallback
+  annInfoMap?: Record<string, AnnInfo>; // 사정율 역산용 (bsisAmt/aValueTotal/lowerLimitRate)
+}
+
+/**
+ * 투찰가 → 사정율 역산
+ * 예정가 = (price - aValue) × 100 / lowerLimitRate + aValue
+ * 사정율 = 예정가 ÷ 기초금액(base) × 100
+ * base 우선순위: bsisAmt > aValueTotal > budget × 1.1
+ */
+function reverseSajung(price: number, info: AnnInfo | undefined, budget: number): number | null {
+  if (!info || price <= 0) return null;
+  const lwlt = info.lowerLimitRate > 0 ? info.lowerLimitRate : 87.745;
+  const aVal = info.aValueTotal > 0 ? info.aValueTotal : 0;
+  const base = info.bsisAmt > 0
+    ? info.bsisAmt
+    : info.aValueTotal > 0
+      ? info.aValueTotal
+      : budget > 0
+        ? budget * 1.1
+        : 0;
+  if (base <= 0) return null;
+  const estimated = (price - aVal) * 100 / lwlt + aVal;
+  return estimated / base * 100;
 }
 
 const feeStatusOptions = [
@@ -49,7 +74,7 @@ function calcFee(isWon: string, actualFinalPrice: string, recommendedBidPrice: s
 }
 
 
-export function RequestsTable({ requests, userMap, bidResultMap, annOpengMap = {} }: Props) {
+export function RequestsTable({ requests, userMap, bidResultMap, annOpengMap = {}, annInfoMap = {} }: Props) {
   const router = useRouter();
   const [editingRow, setEditingRow] = useState<Request | null>(null);
   const [saving, setSaving] = useState(false);
@@ -357,17 +382,15 @@ export function RequestsTable({ requests, userMap, bidResultMap, annOpengMap = {
                         <div style={{ color: "#9CA3AF", fontSize: 10, marginTop: 1 }}>예측사정율 {Number(r.predictedSajungRate).toFixed(3)}%</div>
                       )}
                     </td>
-                    {/* 실투찰금액 — 본인 사정율 표시 (본인 실투찰가 기준 역산) */}
+                    {/* 실투찰금액 — 본인 투찰가 기준 사정율 역산 */}
                     <td style={{ padding: "8px 12px", whiteSpace: "nowrap" }}>
                       {r.userBidPrice
                         ? <>
                             <div style={{ color: "#374151", fontWeight: 600 }}>{fmtPrice(r.userBidPrice)}</div>
                             {(() => {
-                              const ub = Number(r.userBidPrice ?? 0);
-                              const ur = Number(r.userBidRate ?? 0);
-                              const bud = Number(r.budget ?? 0);
-                              if (ub > 0 && ur > 0 && bud > 0) {
-                                const mySajung = (ub / (ur / 100) / bud) * 100;
+                              const info = annInfoMap[r.annId];
+                              const mySajung = reverseSajung(Number(r.userBidPrice ?? 0), info, Number(r.budget ?? 0));
+                              if (mySajung != null) {
                                 return <div style={{ color: "#9CA3AF", fontSize: 10, marginTop: 1 }}>본인사정율 {mySajung.toFixed(3)}%</div>;
                               }
                               if (r.userBidRate != null) {
@@ -538,13 +561,11 @@ export function RequestsTable({ requests, userMap, bidResultMap, annOpengMap = {
                             <strong>{new Date(r.userBidAt).toLocaleString("ko-KR", { dateStyle: "short", timeStyle: "short" })}</strong>
                           </span>
                         )}
-                        {/* 본인 실제 사정율 = 본인 실투찰가 기준 역산 */}
+                        {/* 본인 사정율 = 본인 실투찰가 역산 */}
                         {(() => {
-                          const ub = Number(r.userBidPrice ?? 0);
-                          const ur = Number(r.userBidRate ?? 0);
-                          const bud = Number(r.budget ?? 0);
-                          if (ub <= 0 || ur <= 0 || bud <= 0) return null;
-                          const mySajung = (ub / (ur / 100) / bud) * 100;
+                          const info = annInfoMap[r.annId];
+                          const mySajung = reverseSajung(Number(r.userBidPrice ?? 0), info, Number(r.budget ?? 0));
+                          if (mySajung == null) return null;
                           return (
                             <span>
                               <span style={{ color: "#94A3B8" }}>본인사정율 </span>
@@ -558,10 +579,23 @@ export function RequestsTable({ requests, userMap, bidResultMap, annOpengMap = {
                             <strong style={{ color: "#059669" }}>{fmtPrice(r.actualFinalPrice)}</strong>
                           </span>
                         )}
+                        {/* 낙찰사정율 = 낙찰가 역산 */}
+                        {(() => {
+                          const info = annInfoMap[r.annId];
+                          const winSajung = reverseSajung(Number(r.actualFinalPrice ?? 0), info, Number(r.budget ?? 0));
+                          if (winSajung == null) return null;
+                          return (
+                            <span>
+                              <span style={{ color: "#94A3B8" }}>낙찰사정율 </span>
+                              <strong style={{ color: "#059669" }}>{winSajung.toFixed(3)}%</strong>
+                            </span>
+                          );
+                        })()}
+                        {/* 결과 사정율 (G2B 공식, 비교용) */}
                         {r.actualSajungRate != null && (
                           <span>
-                            <span style={{ color: "#94A3B8" }}>낙찰사정율 </span>
-                            <strong style={{ color: "#059669" }}>{Number(r.actualSajungRate).toFixed(3)}%</strong>
+                            <span style={{ color: "#94A3B8" }}>결과사정율 </span>
+                            <strong style={{ color: "#7C3AED" }}>{Number(r.actualSajungRate).toFixed(3)}%</strong>
                           </span>
                         )}
                       </div>
