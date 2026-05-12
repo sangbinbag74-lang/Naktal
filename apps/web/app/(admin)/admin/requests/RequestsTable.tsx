@@ -483,7 +483,7 @@ export function RequestsTable({ requests, userMap, bidResultMap, annOpengMap = {
               }).flatMap((tr, i) => {
                 const r = filtered[i];
                 if (!r) return [tr];
-                // 사용자 매칭 상세 — 데이터 있는 경우만 보조 행 추가
+                // 매칭 데이터 없으면 보조행 자동 숨김
                 const hasMatch = r.userRank != null || r.userBidPrice != null || r.userDrwtNo1 != null || r.userBidAt;
                 if (!hasMatch) return [tr];
                 return [
