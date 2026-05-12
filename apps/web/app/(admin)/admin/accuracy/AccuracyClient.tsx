@@ -268,9 +268,18 @@ export function AccuracyClient({ bppList, activeCount, predCount }: Props) {
                             )}
                           </div>
                         ) : (
-                          <span style={{ fontSize: 10.5, color: "#94A3B8" }}>
-                            {ann?.deadline && new Date(ann.deadline) < new Date() ? "결과 대기" : "마감 전"}
-                          </span>
+                          (() => {
+                            if (!ann?.deadline) return <span style={{ fontSize: 10.5, color: "#94A3B8" }}>마감 전</span>;
+                            const deadlineMs = new Date(ann.deadline).getTime();
+                            const nowMs = Date.now();
+                            if (deadlineMs > nowMs) return <span style={{ fontSize: 10.5, color: "#94A3B8" }}>마감 전</span>;
+                            // 마감 후 7일 초과인데도 결과 없음 = G2B 미공개 가능성 (유찰·수의)
+                            const daysSinceDeadline = (nowMs - deadlineMs) / 86400000;
+                            if (daysSinceDeadline > 7) {
+                              return <span style={{ fontSize: 10.5, color: "#D97706", fontWeight: 600 }}>유찰/수의</span>;
+                            }
+                            return <span style={{ fontSize: 10.5, color: "#94A3B8" }}>결과 대기</span>;
+                          })()
                         )}
                       </td>
                       {/* 낙찰확률 */}

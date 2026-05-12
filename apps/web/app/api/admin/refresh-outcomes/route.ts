@@ -254,7 +254,21 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
           bidNtceNo: req.konepsId,
           deadline: new Date(req.deadline),
         });
-        const me = comptItems.find(c => String(c.prcbdrBizno ?? "").replace(/\D/g, "") === userBizNo);
+        // 사업자번호 정규화 강화 — 숫자만 추출 후 끝자리 10자 사용 (앞 0/지점코드 차이 흡수)
+        const userBizNoLast10 = userBizNo.slice(-10);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const normalizeBiz = (raw: any): string => {
+          const s = String(raw ?? "").replace(/\D/g, "");
+          return s.length >= 10 ? s.slice(-10) : s.padStart(10, "0");
+        };
+        // G2B 응답에서 사업자번호가 들어올 수 있는 후보 필드 (스키마 변동 대비)
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const getCandidateBiznos = (c: any): string[] => [
+          c.prcbdrBizno, c.bizno, c.bizNo, c.prtcptCorpBizno,
+          c.prcbdrCeoBizno, c.bidprrBizno,
+        ].filter(Boolean).map(normalizeBiz);
+
+        const me = comptItems.find(c => getCandidateBiznos(c).includes(userBizNoLast10));
         if (me) {
           userRank = parseInt(me.opengRank ?? "0", 10) || null;
           userBidPriceFromG2B = parseInt(String(me.bidprcAmt ?? "0").replace(/[^0-9]/g, ""), 10) || null;
