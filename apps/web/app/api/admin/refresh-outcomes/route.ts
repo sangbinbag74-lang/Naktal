@@ -493,6 +493,61 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     console.error("[refresh-outcomes] AIPrediction 채움 실패:", (e as Error).message);
   }
 
+  // ─────────────────────────────────────────────────────────────
+  // 6. AIPrediction 비정상 사정율 (95% 미만 또는 105% 초과) 자동 재계산
+  // 옛 fillAIPredictionResult 가 budget을 base로 잘못 써서 들어간 row 자동 정정
+  // ─────────────────────────────────────────────────────────────
+  let aiAnomalyFixed = 0;
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: anomalies } = await (admin.from("AIPrediction") as any)
+      .select("annId,konepsId,predictedSajungRate")
+      .or("actualSajungRate.gt.105,actualSajungRate.lt.95")
+      .limit(200);
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const anomalyKoneps = ((anomalies ?? []) as any[]).map(r => r.konepsId).filter(Boolean);
+    if (anomalyKoneps.length > 0) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data: brs } = await (admin.from("BidResult") as any)
+        .select("annId,finalPrice,bidRate").in("annId", anomalyKoneps);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data: anns } = await (admin.from("Announcement") as any)
+        .select("konepsId,bsisAmt,budget,aValueAmt").in("konepsId", anomalyKoneps);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const brMap: Record<string, any> = Object.fromEntries(((brs ?? []) as any[]).map(r => [r.annId, r]));
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const annMap2: Record<string, any> = Object.fromEntries(((anns ?? []) as any[]).map(r => [r.konepsId, r]));
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      for (const a of ((anomalies ?? []) as any[])) {
+        const br = brMap[a.konepsId];
+        const ann = annMap2[a.konepsId];
+        if (!br?.finalPrice || !br?.bidRate || !ann) continue;
+        const bsis = Number(ann.bsisAmt ?? 0);
+        const av = Number(ann.aValueAmt ?? 0);
+        const bud = Number(ann.budget ?? 0);
+        const base = bsis > 0 ? bsis : av > 0 ? av : Math.round(bud * 1.1);
+        if (base <= 0) continue;
+        const correctSajung = (Number(br.finalPrice) / (Number(br.bidRate) / 100) / base) * 100;
+        if (correctSajung < 95 || correctSajung > 105) continue; // 재계산도 비정상이면 스킵
+        const pred = Number(a.predictedSajungRate ?? 0);
+        const dev = pred > 0 ? Math.abs(pred - correctSajung) : null;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        await (admin.from("AIPrediction") as any).update({
+          actualSajungRate: correctSajung.toFixed(4),
+          deviationPct: dev?.toFixed(4) ?? null,
+          isExact: dev != null && dev <= 0.2,
+          isHit: dev != null && dev <= 0.5,
+          isNearHit: dev != null && dev <= 1.0,
+        }).eq("annId", a.annId);
+        aiAnomalyFixed++;
+      }
+    }
+  } catch (e) {
+    console.error("[refresh-outcomes] anomaly fix 실패:", (e as Error).message);
+  }
+
   return NextResponse.json({
     ok: true,
     total: pendingList.length,
@@ -505,5 +560,6 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     aiNoResult,
     aiNoBase,
     aiBadPredicted,
+    aiAnomalyFixed,
   });
 }
