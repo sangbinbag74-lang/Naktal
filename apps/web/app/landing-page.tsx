@@ -824,10 +824,12 @@ function Footer() {
         </div>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 24, flexWrap: "wrap", paddingTop: 24 }}>
           <div style={{ fontSize: 11.5, color: "rgba(255,255,255,0.4)" }}>© 2026 낙비 · 주식회사 호라이즌. All rights reserved.</div>
-          <div style={{ display: "flex", gap: 28, fontSize: 12.5 }}>
-            {[["엔진", "#engines"], ["프로세스", "#flow"], ["신뢰성", "#trust"], ["FAQ", "#faq"]].map(([l, h]) => (
-              <a key={h} href={h} style={{ color: "rgba(255,255,255,0.6)" }}>{l}</a>
-            ))}
+          <div style={{ display: "flex", gap: 20, fontSize: 12.5, flexWrap: "wrap" }}>
+            <a href="/pricing" style={{ color: "rgba(255,255,255,0.7)", fontWeight: 500 }}>요금 안내</a>
+            <a href="/refund" style={{ color: "rgba(255,255,255,0.7)", fontWeight: 500 }}>환불 정책</a>
+            <a href="/terms" style={{ color: "rgba(255,255,255,0.7)", fontWeight: 500 }}>이용약관</a>
+            <a href="/privacy" style={{ color: "rgba(255,255,255,0.7)", fontWeight: 500 }}>개인정보처리방침</a>
+            <a href="/faq" style={{ color: "rgba(255,255,255,0.7)", fontWeight: 500 }}>FAQ</a>
           </div>
         </div>
       </div>
