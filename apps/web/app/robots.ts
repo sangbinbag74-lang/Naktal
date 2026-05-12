@@ -11,7 +11,7 @@ export default function robots(): MetadataRoute.Robots {
     "/bid-result", "/bid-result/*",
     "/contracts", "/folder", "/history",
     "/profile", "/settings", "/alerts",
-    "/pricing", "/login", "/signup",
+    "/billing", "/login", "/signup",
     "/auth", "/auth/*",
   ];
   return {
