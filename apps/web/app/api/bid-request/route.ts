@@ -97,8 +97,24 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   // → 화면 사정율 = 추천금액 역산 = G2B 검증값 (3개 한 몸)
   const mlRate = Number((pred as { predictedSajungRate?: number }).predictedSajungRate);
   const effRate = applySajungNoise(mlRate, userId, annId, 0.05);
+  // 사정율의 기준 금액 = Announcement.bsisAmt (기초금액). 없으면 폴백.
+  // BidRequest.budget 도 같은 값으로 저장 → 사정율 계산 일관성 보장
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: annForBase } = await admin
+    .from("Announcement")
+    .select("bsisAmt,budget,aValueAmt")
+    .eq("konepsId", annId)
+    .maybeSingle();
+  const bsisAmt = Number((annForBase as { bsisAmt?: number } | null)?.bsisAmt ?? 0);
+  const annAValueAmt = Number((annForBase as { aValueAmt?: number } | null)?.aValueAmt ?? 0);
+  const annBudget = Number((annForBase as { budget?: number } | null)?.budget ?? 0);
+  const serverBaseAmount = bsisAmt > 0
+    ? bsisAmt
+    : annAValueAmt > 0 ? annAValueAmt
+    : annBudget > 0 ? Math.round(annBudget * 1.1)
+    : Number(budget ?? 0);
   const { estimatedPrice: srvEstPrice, lowerLimit: srvLowerLimit } = calcBidPrice(
-    Number(budget ?? 0),
+    serverBaseAmount,
     effRate,
     Number(lowerLimitRate ?? 0),
     Number(aValueTotal ?? 0),
@@ -247,7 +263,8 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         title,
         orgName,
         deadline,
-        budget: String(Math.round(budget ?? 0)),
+        // budget = 기초금액(Announcement.bsisAmt) — 사정율 계산의 일관된 기준
+        budget: String(serverBaseAmount),
         lowerLimitRate,
         aValueYn: aValueYn ?? "",
         aValueTotal: String(Math.round(aValueTotal ?? 0)),

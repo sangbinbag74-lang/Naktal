@@ -107,6 +107,22 @@ async function runFillBidResults(): Promise<NextResponse> {
     (users ?? []).map((u: any) => [u.id, u.bizName ?? ""])
   );
 
+  // 사정율 기준 = Announcement.bsisAmt (BidRequest.budget 무시)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: anns } = await (admin.from("Announcement") as any)
+    .select("konepsId,bsisAmt,budget,aValueAmt")
+    .in("konepsId", konepsIds);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const annMap: Record<string, number> = Object.fromEntries(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (anns ?? []).map((a: any) => {
+      const bsis = Number(a.bsisAmt ?? 0);
+      const avAmt = Number(a.aValueAmt ?? 0);
+      const bud = Number(a.budget ?? 0);
+      return [a.konepsId, bsis > 0 ? bsis : avAmt > 0 ? avAmt : Math.round(bud * 1.1)];
+    })
+  );
+
   // 4. 각 BidRequest 업데이트
   let updated = 0;
   let skipped = 0;
@@ -124,13 +140,13 @@ async function runFillBidResults(): Promise<NextResponse> {
         ? winnerName.includes(bizName) || bizName.includes(winnerName)
         : false;
 
-    // 사정율 계산
-    const budget = Number(req.budget ?? 0);
+    // 사정율 = 예정가 / 기초금액 × 100. 기초금액은 Announcement.bsisAmt 우선
+    const baseAmount = annMap[req.konepsId] ?? Number(req.budget ?? 0);
     const finalPrice = Number(res.finalPrice ?? 0);
     const bidRate = Number(res.bidRate ?? 0);
     const actualSajungRate =
-      budget > 0 && bidRate > 0
-        ? (finalPrice / (bidRate / 100) / budget) * 100
+      baseAmount > 0 && bidRate > 0
+        ? (finalPrice / (bidRate / 100) / baseAmount) * 100
         : null;
 
     // 예측 오차 & 적중 여부
