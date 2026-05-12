@@ -17,18 +17,19 @@ const SCSBID_OPS = [
   "getScsbidListSttusFrgcpt",
 ];
 
-// G2B 직접 조회 — fetch-result API 와 동일 방식 (검증된 매칭률)
-// 날짜 범위: 마감 -7일 ~ +60일 (개찰 게재 1~6주 지연 흡수)
-// inqryDiv 안 씀 (default=1, 공고일자 기준) — fetch-result 와 동일
+// G2B 직접 조회 — inqryDiv=2 (개찰일자 기준) — 마감 직후 결과 매칭 핵심
+// 박상빈님 실측 (diag-g2b-raw.ts): inqryDiv=2 + 좁은 범위 = 5/12 결과 정상 반환
+// 박상빈님 실측 (diag-g2b-raw.ts): inqryDiv=1 + ±60일 = 100건 한도에 막혀 매칭 실패
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function fetchFromG2B(konepsId: string, deadline: Date): Promise<any | null> {
-  const fromDate = toYMD(new Date(deadline.getTime() - 7 * 86400000)) + "0000";
-  const toDate = toYMD(new Date(deadline.getTime() + 60 * 86400000)) + "2359";
+  // 개찰일자 기준 ±5일 좁은 범위 — numOfRows=999 안에 포함되도록
+  const fromDate = toYMD(new Date(deadline.getTime() - 2 * 86400000)) + "0000";
+  const toDate = toYMD(new Date(deadline.getTime() + 30 * 86400000)) + "2359";
   for (const op of SCSBID_OPS) {
     try {
       const { items } = await g2bFetchBidResultPage({
-        pageNo: 1, numOfRows: 100, inqryBgnDt: fromDate, inqryEndDt: toDate,
-        operation: op, // inqryDiv 생략 → default 공고일자
+        pageNo: 1, numOfRows: 999, inqryBgnDt: fromDate, inqryEndDt: toDate,
+        operation: op, inqryDiv: "2", // 개찰일자 기준 (마감 직후 결과 즉시 매칭)
       });
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const m = items.find((i: any) => i.bidNtceNo?.trim() === konepsId);
