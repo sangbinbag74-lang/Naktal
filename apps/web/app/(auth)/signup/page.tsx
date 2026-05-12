@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
@@ -14,6 +14,29 @@ interface FormState {
   passwordConfirm: string;
   notifyEmail: string;
   notifyPhone: string;
+}
+
+interface KakaoVerified {
+  kakaoId: string;
+  name: string;
+  phone: string | null;
+  birthday: string | null;
+  email: string | null;
+}
+
+declare global {
+  interface Window {
+    Kakao?: {
+      isInitialized: () => boolean;
+      init: (key: string) => void;
+      Auth: {
+        login: (opts: { scope: string; success: (auth: { access_token: string }) => void; fail?: (err: unknown) => void }) => void;
+      };
+      API: {
+        request: (opts: { url: string; success: (res: unknown) => void; fail?: (err: unknown) => void }) => void;
+      };
+    };
+  }
 }
 
 const LabelStyle: React.CSSProperties = {
@@ -35,6 +58,76 @@ export default function SignupPage() {
   const [loading, setLoading] = useState(false);
   const [verifying, setVerifying] = useState(false);
   const [bizAutoFilled, setBizAutoFilled] = useState(false);
+  const [kakaoVerified, setKakaoVerified] = useState<KakaoVerified | null>(null);
+  const [kakaoLoading, setKakaoLoading] = useState(false);
+
+  // 카카오 SDK 로드
+  useEffect(() => {
+    const KAKAO_KEY = process.env.NEXT_PUBLIC_KAKAO_JS_KEY;
+    if (!KAKAO_KEY) return;
+    if (document.querySelector('script[src*="kakao.min.js"]')) {
+      if (window.Kakao && !window.Kakao.isInitialized()) window.Kakao.init(KAKAO_KEY);
+      return;
+    }
+    const script = document.createElement("script");
+    script.src = "https://t1.kakaocdn.net/kakao_js_sdk/2.7.4/kakao.min.js";
+    script.integrity = "sha384-DKYJZ8NLiK8MN4/C5P2dtSmLQ4KwPaoqAfyA/DfmEc1VDxu4yyC7wy6K1Hs90nka";
+    script.crossOrigin = "anonymous";
+    script.onload = () => {
+      if (window.Kakao && !window.Kakao.isInitialized()) window.Kakao.init(KAKAO_KEY);
+    };
+    document.head.appendChild(script);
+  }, []);
+
+  async function handleKakaoVerify() {
+    if (!window.Kakao || !window.Kakao.isInitialized()) {
+      setError("카카오 SDK 초기화 실패. 새로고침 후 다시 시도해주세요.");
+      return;
+    }
+    setKakaoLoading(true);
+    setError(null);
+    window.Kakao.Auth.login({
+      scope: "profile_nickname,account_email,name,phone_number,birthday",
+      success: () => {
+        window.Kakao!.API.request({
+          url: "/v2/user/me",
+          success: async (res) => {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const data = res as any;
+            const account = data?.kakao_account ?? {};
+            const verified: KakaoVerified = {
+              kakaoId: String(data.id),
+              name: account.name ?? account.profile?.nickname ?? "",
+              phone: account.phone_number ?? null,
+              birthday: account.birthday ?? null,
+              email: account.email ?? null,
+            };
+            if (!verified.name) {
+              setError("카카오에서 이름을 받아오지 못했습니다. 카카오 계정 본인인증을 먼저 완료해주세요.");
+              setKakaoLoading(false);
+              return;
+            }
+            setKakaoVerified(verified);
+            // 자동으로 알림 정보 채움
+            setForm(prev => ({
+              ...prev,
+              notifyEmail: prev.notifyEmail || verified.email || "",
+              notifyPhone: prev.notifyPhone || (verified.phone ? verified.phone.replace(/^\+82 /, "0") : ""),
+            }));
+            setKakaoLoading(false);
+          },
+          fail: () => {
+            setError("카카오 사용자 정보 조회 실패");
+            setKakaoLoading(false);
+          },
+        });
+      },
+      fail: () => {
+        setError("카카오 로그인이 취소되었습니다.");
+        setKakaoLoading(false);
+      },
+    });
+  }
 
   function set(key: keyof FormState) {
     return (value: string) => setForm((prev) => ({ ...prev, [key]: value }));
@@ -50,6 +143,7 @@ export default function SignupPage() {
     if (form.bizNo.length !== 10) { setError("사업자번호 10자리를 입력해주세요."); return; }
     if (form.password.length < 8) { setError("비밀번호는 8자 이상이어야 합니다."); return; }
     if (form.password !== form.passwordConfirm) { setError("비밀번호가 일치하지 않습니다."); return; }
+    if (!kakaoVerified) { setError("카카오 본인인증을 먼저 완료해주세요."); return; }
 
     setLoading(true);
     setVerifying(true);
@@ -71,10 +165,12 @@ export default function SignupPage() {
     }
 
     // G2B 업체정보 자동 조회 (실패해도 수동 입력 유지)
+    let g2bCeoName: string | null = null;
     try {
       const g2bRes = await fetch(`/api/auth/lookup-biz?bizNo=${form.bizNo}`);
       const g2b = await g2bRes.json() as { ok: boolean; bizName?: string; ceoName?: string };
       if (g2b.ok && g2b.bizName) {
+        g2bCeoName = g2b.ceoName ?? null;
         setForm(prev => ({
           ...prev,
           bizName:   g2b.bizName ?? prev.bizName,
@@ -87,6 +183,16 @@ export default function SignupPage() {
     }
 
     setVerifying(false);
+
+    // 카카오 이름 vs 대표자명 매칭 (한국 이름 공백·특수문자 정규화)
+    const norm = (s: string) => (s || "").replace(/\s+/g, "").replace(/[()-]/g, "");
+    const ceoName = g2bCeoName ?? form.ownerName;
+    const kakaoName = kakaoVerified.name;
+    if (ceoName && norm(kakaoName) !== norm(ceoName)) {
+      setError(`본인인증 실패: 카카오 명의(${kakaoName})와 사업자 대표자명(${ceoName})이 일치하지 않습니다. 대표자 본인만 가입 가능합니다.`);
+      setLoading(false);
+      return;
+    }
 
     const email = `biz_${form.bizNo}@naktal.biz`;
     const supabase = createClient();
@@ -105,6 +211,10 @@ export default function SignupPage() {
         body: JSON.stringify({
           bizNo: form.bizNo, bizName: form.bizName, ownerName: form.ownerName,
           notifyEmail: form.notifyEmail || null, notifyPhone: form.notifyPhone || null,
+          kakaoId: kakaoVerified.kakaoId,
+          kakaoVerifiedName: kakaoVerified.name,
+          kakaoVerifiedPhone: kakaoVerified.phone,
+          kakaoVerifiedBirth: kakaoVerified.birthday,
         }),
       });
     } catch { console.error("User 프로필 저장 실패"); }
@@ -151,6 +261,50 @@ export default function SignupPage() {
         </div>
 
         <form onSubmit={handleSignup} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+          {/* 카카오 본인인증 */}
+          <div>
+            <label style={LabelStyle}>본인인증 <span style={{ color: "#DC2626" }}>*</span></label>
+            {kakaoVerified ? (
+              <div style={{
+                background: "#ECFDF5", border: "1px solid #A7F3D0",
+                borderRadius: 10, padding: "12px 14px",
+                display: "flex", justifyContent: "space-between", alignItems: "center",
+              }}>
+                <div>
+                  <div style={{ fontSize: 12, color: "#059669", fontWeight: 700, marginBottom: 2 }}>
+                    ✅ 카카오 인증 완료
+                  </div>
+                  <div style={{ fontSize: 13, color: "#0F172A", fontWeight: 600 }}>{kakaoVerified.name}</div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setKakaoVerified(null)}
+                  style={{ fontSize: 11, color: "#64748B", background: "none", border: "none", textDecoration: "underline", cursor: "pointer" }}
+                >다시 인증</button>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={handleKakaoVerify}
+                disabled={kakaoLoading || loading}
+                style={{
+                  width: "100%", height: 48,
+                  background: kakaoLoading ? "#F9DD4A" : "#FEE500",
+                  color: "#191600", border: "none", borderRadius: 10,
+                  fontSize: 14, fontWeight: 700,
+                  cursor: kakaoLoading ? "wait" : "pointer",
+                  display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+                }}
+              >
+                <span style={{ fontSize: 16 }}>💬</span>
+                {kakaoLoading ? "인증 중..." : "카카오로 본인인증"}
+              </button>
+            )}
+            <div style={{ fontSize: 11, color: "#94A3B8", marginTop: 5, lineHeight: 1.5 }}>
+              사업자 대표자 본인 명의의 카카오 계정으로 인증해주세요
+            </div>
+          </div>
+
           <div>
             <label style={LabelStyle}>사업자번호 <span style={{ color: "#DC2626" }}>*</span></label>
             <BizNoInput value={form.bizNo} onChange={set("bizNo")} disabled={loading} />

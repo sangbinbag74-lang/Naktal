@@ -17,6 +17,10 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     ownerName: string;
     notifyEmail?: string | null;
     notifyPhone?: string | null;
+    kakaoId?: string;
+    kakaoVerifiedName?: string;
+    kakaoVerifiedPhone?: string | null;
+    kakaoVerifiedBirth?: string | null;
   };
   try {
     body = await request.json();
@@ -25,20 +29,25 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   }
 
   // RLS 우회: service_role로 User 테이블 upsert
-  // id는 Prisma cuid가 아닌 직접 insert이므로 직접 생성 (onConflict 시 무시됨)
   const admin = createAdminClient();
-  const { error } = await admin.from("User").upsert(
-    {
-      id:          crypto.randomUUID(),
-      supabaseId:  user.id,
-      bizNo:       body.bizNo,
-      bizName:     body.bizName,
-      ownerName:   body.ownerName,
-      notifyEmail: body.notifyEmail ?? null,
-      notifyPhone: body.notifyPhone ?? null,
-    },
-    { onConflict: "supabaseId" }
-  );
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const userRow: any = {
+    id:          crypto.randomUUID(),
+    supabaseId:  user.id,
+    bizNo:       body.bizNo,
+    bizName:     body.bizName,
+    ownerName:   body.ownerName,
+    notifyEmail: body.notifyEmail ?? null,
+    notifyPhone: body.notifyPhone ?? null,
+  };
+  if (body.kakaoId) {
+    userRow.kakaoId = body.kakaoId;
+    userRow.kakaoVerifiedName = body.kakaoVerifiedName ?? null;
+    userRow.kakaoVerifiedPhone = body.kakaoVerifiedPhone ?? null;
+    userRow.kakaoVerifiedBirth = body.kakaoVerifiedBirth ?? null;
+    userRow.kakaoVerifiedAt = new Date().toISOString();
+  }
+  const { error } = await admin.from("User").upsert(userRow, { onConflict: "supabaseId" });
 
   if (error) {
     console.error("[create-user]", error.message);
