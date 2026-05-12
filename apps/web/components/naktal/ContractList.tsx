@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { useState, useMemo } from "react";
 import type { ContractListItem } from "@/app/(dashboard)/contracts/page";
 
 function fmtPrice(n: number) {
@@ -22,61 +21,11 @@ function getDDay(deadline: string) {
   return { label: `D-${diff}`, bg: "#F1F5F9", color: "#475569" };
 }
 
-type Tab = "all" | "pending" | "won" | "lost";
-
 export function ContractList({ items }: { items: ContractListItem[] }) {
-  const [tab, setTab] = useState<Tab>("all");
-
-  const filtered = useMemo(() => {
-    if (tab === "all") return items;
-    if (tab === "pending") return items.filter((c) => c.isWon == null);
-    if (tab === "won") return items.filter((c) => c.isWon === true);
-    return items.filter((c) => c.isWon === false);
-  }, [items, tab]);
-
-  const tabs: { key: Tab; label: string; count: number }[] = [
-    { key: "all", label: "전체", count: items.length },
-    { key: "pending", label: "대기", count: items.filter((c) => c.isWon == null).length },
-    { key: "won", label: "낙찰", count: items.filter((c) => c.isWon === true).length },
-    { key: "lost", label: "미낙찰", count: items.filter((c) => c.isWon === false).length },
-  ];
-
   return (
-    <>
-      {/* 필터 탭 */}
-      <div style={{ display: "flex", gap: 6, padding: "4px", background: "#F1F5F9", borderRadius: 10, width: "fit-content" }}>
-        {tabs.map((t) => (
-          <button
-            key={t.key}
-            onClick={() => setTab(t.key)}
-            style={{
-              padding: "7px 16px",
-              borderRadius: 7,
-              border: "none",
-              background: tab === t.key ? "#fff" : "transparent",
-              color: tab === t.key ? "#0F172A" : "#64748B",
-              fontWeight: tab === t.key ? 700 : 500,
-              fontSize: 13,
-              cursor: "pointer",
-              boxShadow: tab === t.key ? "0 1px 3px rgba(15,23,42,0.08)" : "none",
-              transition: "all 0.12s",
-            }}
-          >
-            {t.label} {t.count > 0 && <span style={{ marginLeft: 4, fontSize: 11, color: tab === t.key ? "#1B3A6B" : "#9CA3AF" }}>{t.count}</span>}
-          </button>
-        ))}
-      </div>
-
-      {/* 카드 리스트 */}
-      <div style={{ display: "flex", flexDirection: "column", gap: 12, marginTop: 16 }}>
-        {filtered.map((c) => <ContractCard key={c.id} c={c} />)}
-        {filtered.length === 0 && (
-          <div style={{ padding: "40px", textAlign: "center", color: "#9CA3AF", fontSize: 13, background: "#fff", borderRadius: 12, border: "1px solid #E8ECF2" }}>
-            해당 상태의 의뢰가 없습니다
-          </div>
-        )}
-      </div>
-    </>
+    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+      {items.map((c) => <ContractCard key={c.id} c={c} />)}
+    </div>
   );
 }
 
