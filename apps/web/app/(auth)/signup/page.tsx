@@ -61,6 +61,68 @@ export default function SignupPage() {
   const [kakaoVerified, setKakaoVerified] = useState<KakaoVerified | null>(null);
   const [kakaoLoading, setKakaoLoading] = useState(false);
   const [showOptional, setShowOptional] = useState(false);
+  // 휴대폰 OTP
+  const [phoneNumber, setPhoneNumber] = useState("");
+  const [otpCode, setOtpCode] = useState("");
+  const [otpSent, setOtpSent] = useState(false);
+  const [otpVerified, setOtpVerified] = useState(false);
+  const [otpSending, setOtpSending] = useState(false);
+  const [otpVerifying, setOtpVerifying] = useState(false);
+  const [otpTimer, setOtpTimer] = useState(0); // 재발송 카운트다운
+
+  useEffect(() => {
+    if (otpTimer <= 0) return;
+    const t = setInterval(() => setOtpTimer((v) => Math.max(0, v - 1)), 1000);
+    return () => clearInterval(t);
+  }, [otpTimer]);
+
+  async function handleSendOtp() {
+    setError(null);
+    setOtpSending(true);
+    try {
+      const res = await fetch("/api/auth/send-otp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phone: phoneNumber }),
+      });
+      const data = await res.json() as { ok: boolean; error?: string };
+      if (!data.ok) {
+        setError(data.error ?? "발송 실패");
+        setOtpSending(false);
+        return;
+      }
+      setOtpSent(true);
+      setOtpTimer(60);
+    } catch {
+      setError("네트워크 오류");
+    } finally {
+      setOtpSending(false);
+    }
+  }
+
+  async function handleVerifyOtp() {
+    setError(null);
+    setOtpVerifying(true);
+    try {
+      const res = await fetch("/api/auth/verify-otp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phone: phoneNumber, code: otpCode }),
+      });
+      const data = await res.json() as { ok: boolean; error?: string };
+      if (!data.ok) {
+        setError(data.error ?? "인증 실패");
+        setOtpVerifying(false);
+        return;
+      }
+      setOtpVerified(true);
+      setForm((prev) => ({ ...prev, notifyPhone: phoneNumber }));
+    } catch {
+      setError("네트워크 오류");
+    } finally {
+      setOtpVerifying(false);
+    }
+  }
 
   // 카카오 SDK 로드
   useEffect(() => {
@@ -145,6 +207,7 @@ export default function SignupPage() {
     if (form.password.length < 8) { setError("비밀번호는 8자 이상이어야 합니다."); return; }
     if (form.password !== form.passwordConfirm) { setError("비밀번호가 일치하지 않습니다."); return; }
     if (!kakaoVerified) { setError("카카오 본인인증을 먼저 완료해주세요."); return; }
+    if (!otpVerified) { setError("휴대폰 인증을 먼저 완료해주세요."); return; }
 
     setLoading(true);
     setVerifying(true);
@@ -311,7 +374,7 @@ export default function SignupPage() {
             )}
           </div>
 
-          {/* 2단계: 사업자번호 */}
+          {/* 2단계: 휴대폰 인증 */}
           <div>
             <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
               <span style={{
@@ -319,9 +382,95 @@ export default function SignupPage() {
                 color: "#fff", width: 20, height: 20, borderRadius: 10,
                 display: "grid", placeItems: "center", fontSize: 11, fontWeight: 700,
               }}>2</span>
+              <label style={{ ...LabelStyle, margin: 0 }}>휴대폰 인증</label>
+            </div>
+            {otpVerified ? (
+              <div style={{
+                background: "#ECFDF5", border: "1.5px solid #A7F3D0",
+                borderRadius: 10, padding: "14px 16px",
+                display: "flex", justifyContent: "space-between", alignItems: "center",
+              }}>
+                <div>
+                  <div style={{ fontSize: 12, color: "#059669", fontWeight: 700, marginBottom: 3 }}>✓ 인증 완료</div>
+                  <div style={{ fontSize: 14, color: "#0F172A", fontWeight: 700, fontFeatureSettings: '"tnum"' }}>
+                    {phoneNumber.replace(/(\d{3})(\d{4})(\d{4})/, "$1-$2-$3")}
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => { setOtpVerified(false); setOtpSent(false); setOtpCode(""); }}
+                  style={{ fontSize: 11, color: "#64748B", background: "none", border: "1px solid #E2E8F0", borderRadius: 6, padding: "4px 10px", cursor: "pointer" }}
+                >다시 인증</button>
+              </div>
+            ) : (
+              <>
+                <div style={{ display: "flex", gap: 8 }}>
+                  <input
+                    type="tel" value={phoneNumber}
+                    onChange={(e) => setPhoneNumber(e.target.value.replace(/\D/g, "").slice(0, 11))}
+                    disabled={!kakaoVerified || loading || otpSending || otpSent}
+                    placeholder="010-0000-0000" className="naktal-input"
+                    style={{ flex: 1 }}
+                  />
+                  <button
+                    type="button"
+                    onClick={handleSendOtp}
+                    disabled={!kakaoVerified || phoneNumber.length !== 11 || otpSending || otpTimer > 0}
+                    style={{
+                      padding: "0 16px", height: 48, borderRadius: 10,
+                      background: (!kakaoVerified || phoneNumber.length !== 11 || otpTimer > 0) ? "#E2E8F0" : "#1B3A6B",
+                      color: "#fff", fontSize: 13, fontWeight: 700, border: "none",
+                      cursor: (otpSending || otpTimer > 0) ? "not-allowed" : "pointer",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    {otpSending ? "전송중..." : otpTimer > 0 ? `${otpTimer}초 후` : otpSent ? "재발송" : "인증번호 받기"}
+                  </button>
+                </div>
+                {otpSent && (
+                  <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
+                    <input
+                      type="text" value={otpCode}
+                      onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                      placeholder="6자리 인증번호" className="naktal-input"
+                      style={{ flex: 1, letterSpacing: "0.3em", fontFeatureSettings: '"tnum"', fontWeight: 700 }}
+                      maxLength={6}
+                    />
+                    <button
+                      type="button"
+                      onClick={handleVerifyOtp}
+                      disabled={otpCode.length !== 6 || otpVerifying}
+                      style={{
+                        padding: "0 16px", height: 48, borderRadius: 10,
+                        background: otpCode.length === 6 ? "#059669" : "#E2E8F0",
+                        color: "#fff", fontSize: 13, fontWeight: 700, border: "none",
+                        cursor: otpVerifying ? "wait" : "pointer", whiteSpace: "nowrap",
+                      }}
+                    >
+                      {otpVerifying ? "확인중..." : "확인"}
+                    </button>
+                  </div>
+                )}
+                {otpSent && !otpVerified && (
+                  <div style={{ fontSize: 11, color: "#94A3B8", marginTop: 6 }}>
+                    문자가 안 왔다면 60초 후 재발송 가능합니다
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+
+          {/* 3단계: 사업자번호 */}
+          <div>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+              <span style={{
+                background: otpVerified ? "#1B3A6B" : "#CBD5E1",
+                color: "#fff", width: 20, height: 20, borderRadius: 10,
+                display: "grid", placeItems: "center", fontSize: 11, fontWeight: 700,
+              }}>3</span>
               <label style={{ ...LabelStyle, margin: 0 }}>사업자번호</label>
             </div>
-            <BizNoInput value={form.bizNo} onChange={set("bizNo")} disabled={loading || !kakaoVerified} />
+            <BizNoInput value={form.bizNo} onChange={set("bizNo")} disabled={loading || !otpVerified} />
             {bizAutoFilled && (
               <div style={{
                 marginTop: 8, padding: "10px 12px",
@@ -334,21 +483,21 @@ export default function SignupPage() {
             )}
           </div>
 
-          {/* 3단계: 비밀번호 */}
+          {/* 4단계: 비밀번호 */}
           <div>
             <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
               <span style={{
-                background: kakaoVerified ? "#1B3A6B" : "#CBD5E1",
+                background: otpVerified ? "#1B3A6B" : "#CBD5E1",
                 color: "#fff", width: 20, height: 20, borderRadius: 10,
                 display: "grid", placeItems: "center", fontSize: 11, fontWeight: 700,
-              }}>3</span>
+              }}>4</span>
               <label style={{ ...LabelStyle, margin: 0 }}>비밀번호</label>
             </div>
-            <input type="password" required minLength={8} value={form.password} disabled={loading || !kakaoVerified}
+            <input type="password" required minLength={8} value={form.password} disabled={loading || !otpVerified}
               onChange={setE("password")} placeholder="8자 이상" className="naktal-input"
               style={{ marginBottom: 8 }}
             />
-            <input type="password" required value={form.passwordConfirm} disabled={loading || !kakaoVerified}
+            <input type="password" required value={form.passwordConfirm} disabled={loading || !otpVerified}
               onChange={setE("passwordConfirm")} placeholder="비밀번호 재입력" className="naktal-input" />
           </div>
 
@@ -392,13 +541,13 @@ export default function SignupPage() {
             </div>
           )}
 
-          <button type="submit" disabled={loading || !kakaoVerified} className="naktal-btn-primary" style={{ marginTop: 4 }}>
+          <button type="submit" disabled={loading || !kakaoVerified || !otpVerified} className="naktal-btn-primary" style={{ marginTop: 4 }}>
             {verifying ? "사업자 검증 중..." : loading ? "가입 중..." : "회원가입 완료"}
           </button>
 
-          {!kakaoVerified && (
+          {(!kakaoVerified || !otpVerified) && (
             <div style={{ fontSize: 11, color: "#94A3B8", textAlign: "center", marginTop: -4 }}>
-              먼저 카카오로 본인인증을 완료해주세요
+              {!kakaoVerified ? "먼저 카카오로 본인인증을 완료해주세요" : "휴대폰 인증을 완료해주세요"}
             </div>
           )}
         </form>
