@@ -73,7 +73,7 @@ export function AccuracyTriggers() {
         elapsedMs: Date.now() - startedAt,
         error: pullOk ? undefined : `G2B 수집 실패: ${JSON.stringify(pullDetail ?? {}).slice(0,200)}`,
       });
-      router.refresh();
+      // router.refresh() 제거 — 사용자가 결과 메시지 읽을 시간 확보. '결과 적용' 버튼으로 직접 새로고침.
       setRunning(false);
       setStageDetail("");
       return;
@@ -162,9 +162,14 @@ export function AccuracyTriggers() {
       elapsedMs: Date.now() - startedAt,
       error: errors.length > 0 ? errors.join(" / ") : undefined,
     });
-    router.refresh();
+    // router.refresh() 제거 — 사용자가 결과 메시지 읽을 시간 확보. '결과 적용' 버튼으로 직접 새로고침.
     setRunning(false);
     setStageDetail("");
+  }
+
+  function handleApplyResults() {
+    setSummary(null);
+    router.refresh();
   }
 
   return (
@@ -253,7 +258,31 @@ export function AccuracyTriggers() {
           color: summary.ok ? "#065F46" : "#DC2626",
           border: `1px solid ${summary.ok ? "#A7F3D0" : "#FECACA"}`,
           lineHeight: 1.6,
+          position: "relative",
         }}>
+          {/* 결과 적용 + 닫기 버튼 — 사용자가 읽고 직접 클릭 */}
+          <div style={{ position: "absolute", top: 8, right: 8, display: "flex", gap: 6 }}>
+            <button
+              onClick={handleApplyResults}
+              style={{
+                fontSize: 11, fontWeight: 700, padding: "4px 10px", borderRadius: 6,
+                background: "#1B3A6B", color: "#fff", border: "none", cursor: "pointer",
+                whiteSpace: "nowrap",
+              }}
+            >
+              결과 적용 (페이지 갱신)
+            </button>
+            <button
+              onClick={() => setSummary(null)}
+              style={{
+                fontSize: 11, padding: "4px 8px", borderRadius: 6,
+                background: "transparent", color: "#64748B",
+                border: "1px solid #CBD5E1", cursor: "pointer",
+              }}
+            >
+              닫기
+            </button>
+          </div>
           {summary.ok ? (
             <>
               <strong>✓ 동기화 완료</strong>
