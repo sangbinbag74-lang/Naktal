@@ -33,6 +33,55 @@ async function fetchFromG2B(konepsId: string, deadline: Date): Promise<any | nul
   return null;
 }
 
+// OpengResult 직접 폴백 (수의계약 포함 — BidOpeningDetail 이 비어있는 신선 공고)
+const OPENG_OPS = [
+  "getOpengResultListInfoCnstwk",
+  "getOpengResultListInfoServc",
+  "getOpengResultListInfoThng",
+  "getOpengResultListInfoFrgcpt",
+];
+const SCSBID_BASE_URL = "https://apis.data.go.kr/1230000/as/ScsbidInfoService";
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function fetchOpengFromG2B(konepsId: string, deadline: Date): Promise<any | null> {
+  const fromDate = toYMD(new Date(deadline.getTime() - 3 * 86400000)) + "0000";
+  const toDate = toYMD(new Date(deadline.getTime() + 7 * 86400000)) + "2359";
+  for (const op of OPENG_OPS) {
+    try {
+      const url = `${SCSBID_BASE_URL}/${op}?serviceKey=${process.env.G2B_API_KEY ?? process.env.KONEPS_API_KEY}&type=json&inqryDiv=1&inqryBgnDt=${fromDate}&inqryEndDt=${toDate}&bidNtceNo=${konepsId}&bidNtceOrd=000&numOfRows=999&pageNo=1`;
+      const res = await fetch(url, { signal: AbortSignal.timeout(15000) });
+      if (!res.ok) continue;
+      const data = await res.json();
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const body = (data as any)?.response?.body;
+      let items = body?.items ?? [];
+      if (!Array.isArray(items)) items = items?.item ? (Array.isArray(items.item) ? items.item : [items.item]) : [];
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const m = items.find((i: any) => i.bidNtceNo?.trim() === konepsId);
+      if (m && m.opengCorpInfo) {
+        // opengCorpInfo 파싱 → BidResult 호환 객체 반환
+        const parts = String(m.opengCorpInfo).split("^");
+        if (parts.length >= 5) {
+          const price = parseInt((parts[3] || "").replace(/\D/g, ""), 10) || 0;
+          const rate = parseFloat(parts[4] || "0") || 0;
+          if (price > 0 && rate > 0) {
+            return {
+              annId: konepsId,
+              bidRate: rate.toString(),
+              finalPrice: String(price),
+              numBidders: parseInt(String(m.prtcptCnum || "0").replace(/\D/g, ""), 10),
+              winnerName: parts[0]?.trim() || null,
+              openedAt: m.opengDt ? g2bParseDate(m.opengDt) : null,
+            };
+          }
+        }
+      }
+    } catch (e) {
+      console.error(`[refresh-outcomes] OpengResult ${op} 실패:`, (e as Error).message);
+    }
+  }
+  return null;
+}
+
 export async function POST(request: NextRequest): Promise<NextResponse> {
   const guard = await requireAdmin(request);
   if (guard instanceof NextResponse) return guard;
@@ -160,6 +209,17 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
           await (admin.from("BidResult") as any).upsert(res, { onConflict: "annId" });
           g2bFetched++;
         }
+      }
+    }
+    // BidResult/SCSBID 도 없으면 OpengResult 직접 호출 (수의계약 + bulk-opening cron 공백 메움)
+    if (!res && req.konepsId && req.deadline) {
+      const opengFound = await fetchOpengFromG2B(req.konepsId, new Date(req.deadline));
+      if (opengFound) {
+        res = opengFound;
+        // BidResult 에 upsert (다음 호출 캐시)
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        await (admin.from("BidResult") as any).upsert(res, { onConflict: "annId" });
+        g2bFetched++;
       }
     }
     if (!res) { skipped++; continue; }
