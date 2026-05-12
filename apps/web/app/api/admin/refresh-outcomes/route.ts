@@ -3,6 +3,13 @@ import { requireAdmin } from "@/lib/admin-guard";
 import { createAdminClient } from "@/lib/supabase/server";
 import { g2bFetchBidResultPage, g2bFetchOpengComptForBidNtceNo, g2bParseDate, toYMD } from "@/lib/g2b";
 
+export const maxDuration = 300; // Vercel Pro 한도 5분 (Hobby 60초)
+export const dynamic = "force-dynamic";
+
+// 한 번의 호출에서 G2B 직접 조회는 최대 N건만 처리 (504 방지)
+// 나머지는 다음 동기화에서 처리됨
+const AI_G2B_BATCH_LIMIT = 5;
+
 const SCSBID_OPS = [
   "getScsbidListSttusThng",
   "getScsbidListSttusCnstwk",
@@ -354,6 +361,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       const konepsToAnn: Record<string, any> = Object.fromEntries(((annRes.data ?? []) as any[]).map(a => [a.konepsId, a]));
 
       const nowDate = new Date();
+      let g2bCallsThisRun = 0;
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       for (const p of ((aiPending ?? []) as any[])) {
         const koneps = p.konepsId;
@@ -361,10 +369,15 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
         let res = konepsToResult[koneps];
 
-        // BidResult 매칭 실패 + 마감 지난 경우 → G2B 직접 조회 (BidRequest 처리부와 동일 로직)
-        if ((!res || !res.finalPrice || !res.bidRate) && p.deadline) {
+        // BidResult 매칭 실패 + 마감 지남 + 이번 배치 한도 미초과 → G2B 직접 조회
+        if (
+          (!res || !res.finalPrice || !res.bidRate) &&
+          p.deadline &&
+          g2bCallsThisRun < AI_G2B_BATCH_LIMIT
+        ) {
           const deadlineDate = new Date(p.deadline);
           if (deadlineDate < nowDate) {
+            g2bCallsThisRun++;
             // SCSBID 단건 조회
             const found = await fetchFromG2B(koneps, deadlineDate);
             if (found) {
