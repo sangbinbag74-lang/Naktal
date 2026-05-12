@@ -5,6 +5,10 @@ import { useRouter } from "next/navigation";
 
 interface RunSummary {
   ok: boolean;
+  pullElapsedMs: number;
+  pullOk: boolean;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  pullDetail: any;
   predFilled: number;
   predIterations: number;
   resultUpdated: number;
@@ -20,7 +24,7 @@ interface RunSummary {
   error?: string;
 }
 
-type Stage = "idle" | "pred" | "result" | "done";
+type Stage = "idle" | "pull" | "pred" | "result" | "done";
 
 export function AccuracyTriggers() {
   const router = useRouter();
@@ -33,6 +37,25 @@ export function AccuracyTriggers() {
     const startedAt = Date.now();
     setRunning(true);
     setSummary(null);
+
+    // STEP 0: G2B 에서 최근 2일치 공고 + 낙찰 결과 끌어오기
+    setStage("pull");
+    setStageDetail("G2B에서 최근 2일치 공고·낙찰 결과 수집 중… (1~2분)");
+    const pullStart = Date.now();
+    let pullOk = false;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let pullDetail: any = null;
+    try {
+      const pullRes = await fetch("/api/admin/g2b-pull", { method: "POST" });
+      const data = await pullRes.json().catch(() => ({})) as { ok?: boolean; error?: string; syncResult?: unknown };
+      pullOk = pullRes.ok && data.ok === true;
+      pullDetail = data.syncResult ?? data;
+      if (!pullOk) setStageDetail(`G2B 수집 실패: ${data.error ?? `HTTP ${pullRes.status}`} — 다음 단계로 계속`);
+    } catch (e) {
+      setStageDetail(`G2B 수집 오류: ${(e as Error).message} — 다음 단계로 계속`);
+    }
+    const pullElapsedMs = Date.now() - pullStart;
+
     setStage("pred");
     setStageDetail("예측 적재 시작…");
 
@@ -85,6 +108,7 @@ export function AccuracyTriggers() {
       setStage("done");
       setSummary({
         ok: true,
+        pullElapsedMs, pullOk, pullDetail,
         predFilled: pred.totalFilled,
         predIterations: pred.iterations,
         resultUpdated: result.updated ?? 0,
@@ -103,6 +127,7 @@ export function AccuracyTriggers() {
       setStage("done");
       setSummary({
         ok: false,
+        pullElapsedMs, pullOk, pullDetail,
         predFilled: 0, predIterations: 0,
         resultUpdated: 0, resultTotal: 0, resultG2bFetched: 0,
         aiUpdated: 0, aiScanned: 0, aiG2bFetched: 0, aiNoResult: 0, aiNoBase: 0, aiBadPredicted: 0,
@@ -119,9 +144,9 @@ export function AccuracyTriggers() {
     <div style={{ background: "#fff", borderRadius: 14, border: "1px solid #E8ECF2", padding: "18px 20px" }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: summary || running ? 12 : 0, gap: 16, flexWrap: "wrap" }}>
         <div>
-          <div style={{ fontSize: 14, fontWeight: 700, color: "#0F172A" }}>예측 + 결과 동시 갱신</div>
+          <div style={{ fontSize: 14, fontWeight: 700, color: "#0F172A" }}>G2B 수집 + 예측 + 결과 동시 갱신</div>
           <div style={{ fontSize: 11.5, color: "#94A3B8", marginTop: 3, lineHeight: 1.5 }}>
-            활성 공고 → BidPricePrediction 적재 (공사 우선) · 마감+1h 지난 BidRequest → 낙찰 결과 자동 채움 · AI 예측 결과 자동 채움
+            ① G2B에서 최근 2일치 공고·낙찰 결과 가져오기 · ② BidPricePrediction 적재 · ③ BidRequest·AI 예측 결과 자동 채움
           </div>
         </div>
         <button
@@ -157,11 +182,13 @@ export function AccuracyTriggers() {
           marginBottom: 6,
         }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-            <StageBadge label="1. 예측 적재"   active={stage === "pred"}   done={stage === "result" || stage === "done"} />
+            <StageBadge label="1. G2B 수집"     active={stage === "pull"}   done={stage === "pred" || stage === "result" || stage === "done"} />
             <span style={{ color: "#CBD5E1" }}>→</span>
-            <StageBadge label="2. 결과 채움"   active={stage === "result"} done={stage === "done"} />
+            <StageBadge label="2. 예측 적재"     active={stage === "pred"}   done={stage === "result" || stage === "done"} />
             <span style={{ color: "#CBD5E1" }}>→</span>
-            <StageBadge label="3. AI 예측 결과" active={stage === "result"} done={stage === "done"} />
+            <StageBadge label="3. 결과 채움"     active={stage === "result"} done={stage === "done"} />
+            <span style={{ color: "#CBD5E1" }}>→</span>
+            <StageBadge label="4. AI 예측 결과" active={stage === "result"} done={stage === "done"} />
           </div>
           {stageDetail && (
             <div style={{ marginTop: 6, fontSize: 11.5, color: "#1B3A6B" }}>{stageDetail}</div>
@@ -184,6 +211,22 @@ export function AccuracyTriggers() {
                 {(summary.elapsedMs / 1000).toFixed(1)}초 소요
               </span>
               <div style={{ marginTop: 4 }}>
+                G2B 수집 {summary.pullOk ? "✓" : "✗"} ({(summary.pullElapsedMs / 1000).toFixed(1)}초)
+                {summary.pullDetail && typeof summary.pullDetail === "object" && (
+                  <span style={{ marginLeft: 6, fontSize: 11, color: "#94A3B8" }}>
+                    {(() => {
+                      const d = summary.pullDetail as Record<string, unknown>;
+                      const parts: string[] = [];
+                      if (d.recentAnn != null) parts.push(`공고 ${d.recentAnn}건`);
+                      if (d.recentBid != null) parts.push(`낙찰 ${d.recentBid}건`);
+                      if (d.totalAnnouncements != null && d.recentAnn == null) parts.push(`공고 ${d.totalAnnouncements}건`);
+                      if (d.totalBidResults != null && d.recentBid == null) parts.push(`낙찰 ${d.totalBidResults}건`);
+                      return parts.length ? `(${parts.join(", ")})` : null;
+                    })()}
+                  </span>
+                )}
+              </div>
+              <div style={{ marginTop: 2 }}>
                 예측 적재 {summary.predFilled}건 ({summary.predIterations}회 반복)
               </div>
               <div style={{ marginTop: 2 }}>
