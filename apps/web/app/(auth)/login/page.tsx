@@ -101,10 +101,10 @@ export default function LoginPage() {
             </span>
           </div>
           <div style={{ fontSize: 22, fontWeight: 700, color: "#0F172A", marginBottom: 6 }}>
-            다시 만나서 반갑습니다
+            다시 오신 걸 환영합니다
           </div>
           <div style={{ fontSize: 14, color: "#64748B" }}>
-            사업자번호로 로그인하세요
+            사업자번호와 비밀번호로 로그인하세요
           </div>
         </div>
 
@@ -164,20 +164,21 @@ export default function LoginPage() {
           </Link>
         </div>
 
-        {/* 보안 문구 + 파트너 로그인 */}
-        <div style={{ marginTop: 20, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-          <div style={{ fontSize: 11, color: "#CBD5E1" }}>
-            국세청 인증 기반 · 256bit SSL 암호화
-          </div>
-          <button
-            onClick={() => { setShowPartner(true); setAdminError(null); setAdminId(""); setAdminPw(""); }}
-            style={{
-              fontSize: 11, color: "#CBD5E1", background: "none", border: "none",
-              cursor: "pointer", padding: "2px 0", textDecoration: "underline",
-            }}
-          >
-            파트너 로그인
-          </button>
+        {/* 보안 문구 */}
+        <div style={{ marginTop: 24, textAlign: "center", fontSize: 11, color: "#CBD5E1", lineHeight: 1.6 }}>
+          🔒 256bit SSL · 국세청 사업자 검증 기반 안전한 로그인
+        </div>
+
+        {/* 파트너 로그인 (숨은 트리거 — 더블클릭) */}
+        <div
+          onDoubleClick={() => { setShowPartner(true); setAdminError(null); setAdminId(""); setAdminPw(""); }}
+          style={{
+            marginTop: 8, textAlign: "center", fontSize: 10, color: "#E2E8F0",
+            cursor: "default", userSelect: "none",
+          }}
+          title="파트너용"
+        >
+          ·
         </div>
       </div>
 

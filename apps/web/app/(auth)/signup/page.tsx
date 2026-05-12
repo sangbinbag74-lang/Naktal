@@ -60,6 +60,7 @@ export default function SignupPage() {
   const [bizAutoFilled, setBizAutoFilled] = useState(false);
   const [kakaoVerified, setKakaoVerified] = useState<KakaoVerified | null>(null);
   const [kakaoLoading, setKakaoLoading] = useState(false);
+  const [showOptional, setShowOptional] = useState(false);
 
   // 카카오 SDK 로드
   useEffect(() => {
@@ -241,45 +242,52 @@ export default function SignupPage() {
         maxWidth: 440,
         boxShadow: "0 4px 24px rgba(15,30,60,0.06)",
       }}>
-        <div style={{ textAlign: "center", marginBottom: 28 }}>
-          <div style={{ display: "inline-flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
+        <div style={{ textAlign: "center", marginBottom: 24 }}>
+          <div style={{ display: "inline-flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
             <span style={{
-              width: 32, height: 32, borderRadius: 7,
+              width: 36, height: 36, borderRadius: 8,
               background: "#1B3A6B", color: "#fff",
               display: "grid", placeItems: "center",
-              fontWeight: 900, fontSize: 17, letterSpacing: "-0.04em",
+              fontWeight: 900, fontSize: 20, letterSpacing: "-0.04em",
             }}>낙</span>
             <span style={{ display: "inline-flex", flexDirection: "column", alignItems: "flex-start", lineHeight: 1.1 }}>
-              <span style={{ fontSize: 24, fontWeight: 800, color: "#1B3A6B", letterSpacing: "-0.025em" }}>낙비</span>
+              <span style={{ fontSize: 26, fontWeight: 800, color: "#1B3A6B", letterSpacing: "-0.025em" }}>낙비</span>
               <span style={{ fontSize: 11, color: "#94A3B8", marginTop: 2, fontWeight: 500 }}>
                 내 손안의 AI 낙찰비서
               </span>
             </span>
           </div>
-          <div style={{ fontSize: 20, fontWeight: 700, color: "#0F172A", marginBottom: 4 }}>회원가입</div>
-          <div style={{ fontSize: 13, color: "#64748B" }}>나라장터 공공입찰 AI 분석 서비스</div>
+          <div style={{ fontSize: 22, fontWeight: 700, color: "#0F172A", marginBottom: 6 }}>
+            1분이면 시작할 수 있어요
+          </div>
+          <div style={{ fontSize: 13, color: "#64748B" }}>
+            카카오 인증 + 사업자번호만 있으면 끝
+          </div>
         </div>
 
-        <form onSubmit={handleSignup} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-          {/* 카카오 본인인증 */}
+        <form onSubmit={handleSignup} style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+          {/* 1단계: 카카오 본인인증 */}
           <div>
-            <label style={LabelStyle}>본인인증 <span style={{ color: "#DC2626" }}>*</span></label>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+              <span style={{ background: "#1B3A6B", color: "#fff", width: 20, height: 20, borderRadius: 10, display: "grid", placeItems: "center", fontSize: 11, fontWeight: 700 }}>1</span>
+              <label style={{ ...LabelStyle, margin: 0 }}>본인인증</label>
+            </div>
             {kakaoVerified ? (
               <div style={{
-                background: "#ECFDF5", border: "1px solid #A7F3D0",
-                borderRadius: 10, padding: "12px 14px",
+                background: "#ECFDF5", border: "1.5px solid #A7F3D0",
+                borderRadius: 10, padding: "14px 16px",
                 display: "flex", justifyContent: "space-between", alignItems: "center",
               }}>
                 <div>
-                  <div style={{ fontSize: 12, color: "#059669", fontWeight: 700, marginBottom: 2 }}>
-                    ✅ 카카오 인증 완료
+                  <div style={{ fontSize: 12, color: "#059669", fontWeight: 700, marginBottom: 3 }}>
+                    ✓ 인증 완료
                   </div>
-                  <div style={{ fontSize: 13, color: "#0F172A", fontWeight: 600 }}>{kakaoVerified.name}</div>
+                  <div style={{ fontSize: 14, color: "#0F172A", fontWeight: 700 }}>{kakaoVerified.name}</div>
                 </div>
                 <button
                   type="button"
                   onClick={() => setKakaoVerified(null)}
-                  style={{ fontSize: 11, color: "#64748B", background: "none", border: "none", textDecoration: "underline", cursor: "pointer" }}
+                  style={{ fontSize: 11, color: "#64748B", background: "none", border: "1px solid #E2E8F0", borderRadius: 6, padding: "4px 10px", cursor: "pointer" }}
                 >다시 인증</button>
               </div>
             ) : (
@@ -288,62 +296,94 @@ export default function SignupPage() {
                 onClick={handleKakaoVerify}
                 disabled={kakaoLoading || loading}
                 style={{
-                  width: "100%", height: 48,
+                  width: "100%", height: 50,
                   background: kakaoLoading ? "#F9DD4A" : "#FEE500",
                   color: "#191600", border: "none", borderRadius: 10,
                   fontSize: 14, fontWeight: 700,
                   cursor: kakaoLoading ? "wait" : "pointer",
                   display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+                  boxShadow: "0 1px 2px rgba(0,0,0,0.05)",
                 }}
               >
                 <span style={{ fontSize: 16 }}>💬</span>
-                {kakaoLoading ? "인증 중..." : "카카오로 본인인증"}
+                {kakaoLoading ? "인증 중..." : "카카오로 시작하기"}
               </button>
             )}
-            <div style={{ fontSize: 11, color: "#94A3B8", marginTop: 5, lineHeight: 1.5 }}>
-              사업자 대표자 본인 명의의 카카오 계정으로 인증해주세요
-            </div>
           </div>
 
+          {/* 2단계: 사업자번호 */}
           <div>
-            <label style={LabelStyle}>사업자번호 <span style={{ color: "#DC2626" }}>*</span></label>
-            <BizNoInput value={form.bizNo} onChange={set("bizNo")} disabled={loading} />
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+              <span style={{
+                background: kakaoVerified ? "#1B3A6B" : "#CBD5E1",
+                color: "#fff", width: 20, height: 20, borderRadius: 10,
+                display: "grid", placeItems: "center", fontSize: 11, fontWeight: 700,
+              }}>2</span>
+              <label style={{ ...LabelStyle, margin: 0 }}>사업자번호</label>
+            </div>
+            <BizNoInput value={form.bizNo} onChange={set("bizNo")} disabled={loading || !kakaoVerified} />
+            {bizAutoFilled && (
+              <div style={{
+                marginTop: 8, padding: "10px 12px",
+                background: "#EFF6FF", border: "1px solid #BFDBFE", borderRadius: 8,
+                fontSize: 12, color: "#1E40AF", lineHeight: 1.6,
+              }}>
+                <strong>{form.bizName}</strong> · 대표자 {form.ownerName}
+                <div style={{ fontSize: 10.5, color: "#60A5FA", marginTop: 2 }}>나라장터 자동 조회됨</div>
+              </div>
+            )}
           </div>
+
+          {/* 3단계: 비밀번호 */}
           <div>
-            <label style={LabelStyle}>
-              상호명 <span style={{ color: "#DC2626" }}>*</span>
-              {bizAutoFilled && <span style={{ marginLeft: 6, fontSize: 11, color: "#16A34A", fontWeight: 400 }}>나라장터 자동 조회됨</span>}
-            </label>
-            <input type="text" required value={form.bizName} disabled={loading}
-              onChange={setE("bizName")} placeholder="(주)홍길동건설" className="naktal-input" />
-          </div>
-          <div>
-            <label style={LabelStyle}>
-              대표자명 <span style={{ color: "#DC2626" }}>*</span>
-              {bizAutoFilled && <span style={{ marginLeft: 6, fontSize: 11, color: "#16A34A", fontWeight: 400 }}>나라장터 자동 조회됨</span>}
-            </label>
-            <input type="text" required value={form.ownerName} disabled={loading}
-              onChange={setE("ownerName")} placeholder="홍길동" className="naktal-input" />
-          </div>
-          <div>
-            <label style={LabelStyle}>비밀번호 <span style={{ color: "#DC2626" }}>*</span></label>
-            <input type="password" required minLength={8} value={form.password} disabled={loading}
-              onChange={setE("password")} placeholder="8자 이상" className="naktal-input" />
-          </div>
-          <div>
-            <label style={LabelStyle}>비밀번호 확인 <span style={{ color: "#DC2626" }}>*</span></label>
-            <input type="password" required value={form.passwordConfirm} disabled={loading}
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+              <span style={{
+                background: kakaoVerified ? "#1B3A6B" : "#CBD5E1",
+                color: "#fff", width: 20, height: 20, borderRadius: 10,
+                display: "grid", placeItems: "center", fontSize: 11, fontWeight: 700,
+              }}>3</span>
+              <label style={{ ...LabelStyle, margin: 0 }}>비밀번호</label>
+            </div>
+            <input type="password" required minLength={8} value={form.password} disabled={loading || !kakaoVerified}
+              onChange={setE("password")} placeholder="8자 이상" className="naktal-input"
+              style={{ marginBottom: 8 }}
+            />
+            <input type="password" required value={form.passwordConfirm} disabled={loading || !kakaoVerified}
               onChange={setE("passwordConfirm")} placeholder="비밀번호 재입력" className="naktal-input" />
           </div>
+
+          {/* 추가 정보 (선택, 토글) */}
           <div>
-            <label style={{ ...LabelStyle, color: "#64748B" }}>알림 이메일 <span style={{ color: "#94A3B8", fontWeight: 400 }}>(선택)</span></label>
-            <input type="email" value={form.notifyEmail} disabled={loading}
-              onChange={setE("notifyEmail")} placeholder="notify@company.com" className="naktal-input" />
-          </div>
-          <div>
-            <label style={{ ...LabelStyle, color: "#64748B" }}>알림 전화번호 <span style={{ color: "#94A3B8", fontWeight: 400 }}>(선택)</span></label>
-            <input type="tel" value={form.notifyPhone} disabled={loading}
-              onChange={setE("notifyPhone")} placeholder="010-0000-0000" className="naktal-input" />
+            <button
+              type="button"
+              onClick={() => setShowOptional(!showOptional)}
+              style={{
+                width: "100%", padding: "10px 14px",
+                background: "transparent", border: "1px dashed #CBD5E1", borderRadius: 8,
+                fontSize: 12, color: "#64748B", cursor: "pointer",
+                display: "flex", alignItems: "center", justifyContent: "space-between",
+              }}
+            >
+              <span>알림 이메일·전화번호 (선택)</span>
+              <span style={{ transform: showOptional ? "rotate(180deg)" : "rotate(0deg)", transition: "transform 0.15s" }}>▼</span>
+            </button>
+            {showOptional && (
+              <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 10, padding: "12px 14px", background: "#F8FAFC", borderRadius: 8 }}>
+                <div>
+                  <label style={{ fontSize: 11, color: "#64748B", display: "block", marginBottom: 4 }}>알림 이메일</label>
+                  <input type="email" value={form.notifyEmail} disabled={loading}
+                    onChange={setE("notifyEmail")} placeholder="notify@company.com" className="naktal-input" />
+                </div>
+                <div>
+                  <label style={{ fontSize: 11, color: "#64748B", display: "block", marginBottom: 4 }}>알림 전화번호</label>
+                  <input type="tel" value={form.notifyPhone} disabled={loading}
+                    onChange={setE("notifyPhone")} placeholder="010-0000-0000" className="naktal-input" />
+                </div>
+                <div style={{ fontSize: 10.5, color: "#94A3B8", lineHeight: 1.5 }}>
+                  공고 알림·낙찰 결과 안내를 받으실 연락처입니다. 마케팅 발송 안 함.
+                </div>
+              </div>
+            )}
           </div>
 
           {error && (
@@ -352,9 +392,15 @@ export default function SignupPage() {
             </div>
           )}
 
-          <button type="submit" disabled={loading} className="naktal-btn-primary" style={{ marginTop: 4 }}>
-            {verifying ? "사업자 검증 중..." : loading ? "가입 중..." : "회원가입"}
+          <button type="submit" disabled={loading || !kakaoVerified} className="naktal-btn-primary" style={{ marginTop: 4 }}>
+            {verifying ? "사업자 검증 중..." : loading ? "가입 중..." : "회원가입 완료"}
           </button>
+
+          {!kakaoVerified && (
+            <div style={{ fontSize: 11, color: "#94A3B8", textAlign: "center", marginTop: -4 }}>
+              먼저 카카오로 본인인증을 완료해주세요
+            </div>
+          )}
         </form>
 
         <p style={{ textAlign: "center", fontSize: 13, color: "#64748B", marginTop: 16 }}>
