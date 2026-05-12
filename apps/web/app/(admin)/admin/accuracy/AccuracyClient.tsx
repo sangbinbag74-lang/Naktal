@@ -16,6 +16,12 @@ type BppItem = {
   expiresAt: string;
   createdAt: string;
   announcement: AnnInfo;
+  // 결과 데이터 (마감 후 채워짐)
+  actualSajungRate?: number | null;
+  actualFinalPrice?: string | null;
+  winnerName?: string | null;
+  deviationPct?: number | null;
+  isHit?: boolean | null;
 };
 
 interface Props {
@@ -198,7 +204,7 @@ export function AccuracyClient({ bppList, activeCount, predCount }: Props) {
             <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12.5 }}>
               <thead>
                 <tr style={{ background: "#F8FAFC" }}>
-                  {["구분", "공고명", "발주처", "마감일", "예산", "AI 추천금액", "예측사정율", "낙찰확률", "샘플수"].map((h) => (
+                  {["구분", "공고명", "발주처", "마감일", "예산", "AI 추천금액", "예측사정율", "실제결과", "낙찰확률", "샘플수"].map((h) => (
                     <th key={h} style={{ padding: "9px 12px", textAlign: "left", color: "#374151", fontWeight: 600, borderBottom: "2px solid #E8ECF2", whiteSpace: "nowrap" }}>{h}</th>
                   ))}
                 </tr>
@@ -268,6 +274,30 @@ export function AccuracyClient({ bppList, activeCount, predCount }: Props) {
                       {/* 예측사정율 */}
                       <td style={{ padding: "8px 12px", color: "#1B3A6B", fontWeight: 600, whiteSpace: "nowrap" }}>
                         {r.predictedSajungRate != null ? Number(r.predictedSajungRate).toFixed(2) + "%" : "-"}
+                      </td>
+                      {/* 실제결과 */}
+                      <td style={{ padding: "8px 12px", whiteSpace: "nowrap" }}>
+                        {r.actualSajungRate != null ? (
+                          <div>
+                            <div style={{ color: "#0F172A", fontWeight: 700, fontSize: 12 }}>
+                              {Number(r.actualSajungRate).toFixed(2)}%
+                            </div>
+                            {r.deviationPct != null && (
+                              <div style={{ fontSize: 10, marginTop: 1, color: r.isHit ? "#059669" : Number(r.deviationPct) <= 1.0 ? "#D97706" : "#DC2626", fontWeight: 600 }}>
+                                {r.isHit ? "✓ 적중" : `오차 ${Number(r.deviationPct).toFixed(3)}%p`}
+                              </div>
+                            )}
+                            {r.winnerName && (
+                              <div style={{ fontSize: 10, color: "#94A3B8", marginTop: 1, maxWidth: 120, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={r.winnerName}>
+                                {r.winnerName}
+                              </div>
+                            )}
+                          </div>
+                        ) : (
+                          <span style={{ fontSize: 10.5, color: "#94A3B8" }}>
+                            {ann?.deadline && new Date(ann.deadline) < new Date() ? "결과 대기" : "마감 전"}
+                          </span>
+                        )}
                       </td>
                       {/* 낙찰확률 */}
                       <td style={{ padding: "8px 12px", whiteSpace: "nowrap" }}>

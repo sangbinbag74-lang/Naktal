@@ -27,6 +27,11 @@ type BppItem = {
   expiresAt: string;
   createdAt: string;
   announcement: AnnInfo;
+  actualSajungRate?: number | null;
+  actualFinalPrice?: string | null;
+  winnerName?: string | null;
+  deviationPct?: number | null;
+  isHit?: boolean | null;
 };
 
 interface CatStats {
@@ -126,7 +131,62 @@ export default async function AdminAccuracyPage() {
     .limit(200);
 
   const bppListAll = (bppListRaw ?? []) as unknown as BppItem[];
-  const bppList = [...bppListAll].sort((a, b) => {
+
+  // 결과 데이터 JOIN — AIPrediction.actualSajungRate + BidResult (마감 후 채워진 row)
+  // BPP 의 annId 기반 (= Announcement.id)
+  const bppAnnIds = bppListAll.map((b) => b.annId).filter(Boolean);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const aiResRes = bppAnnIds.length > 0
+    ? await (admin.from("AIPrediction") as any)
+        .select("annId,actualSajungRate,actualFinalPrice,deviationPct,isHit")
+        .in("annId", bppAnnIds)
+    : { data: [] };
+  // konepsId 도 필요 — BidResult 는 annId 가 konepsId
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const annKonepsRes = bppAnnIds.length > 0
+    ? await (admin.from("Announcement") as any)
+        .select("id,konepsId")
+        .in("id", bppAnnIds)
+    : { data: [] };
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const annIdToKoneps: Record<string, string> = Object.fromEntries(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (annKonepsRes.data ?? []).map((a: any) => [a.id, a.konepsId])
+  );
+  const konepsIds = Object.values(annIdToKoneps);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const bidResRes = konepsIds.length > 0
+    ? await (admin.from("BidResult") as any)
+        .select("annId,winnerName,finalPrice,bidRate")
+        .in("annId", konepsIds)
+    : { data: [] };
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const aiResMap: Record<string, any> = Object.fromEntries(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (aiResRes.data ?? []).map((r: any) => [r.annId, r])
+  );
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const bidResMap: Record<string, any> = Object.fromEntries(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (bidResRes.data ?? []).map((r: any) => [r.annId, r])
+  );
+
+  // 결과 정보를 BppItem 에 병합
+  const bppListWithResult: BppItem[] = bppListAll.map((b) => {
+    const ai = aiResMap[b.annId];
+    const konepsId = annIdToKoneps[b.annId];
+    const br = konepsId ? bidResMap[konepsId] : null;
+    return {
+      ...b,
+      actualSajungRate: ai?.actualSajungRate != null ? Number(ai.actualSajungRate) : null,
+      actualFinalPrice: br?.finalPrice ?? ai?.actualFinalPrice ?? null,
+      winnerName: br?.winnerName ?? null,
+      deviationPct: ai?.deviationPct != null ? Number(ai.deviationPct) : null,
+      isHit: ai?.isHit ?? null,
+    };
+  });
+
+  const bppList = [...bppListWithResult].sort((a, b) => {
     const ac = isConstruction(a.announcement?.category) ? 0 : 1;
     const bc = isConstruction(b.announcement?.category) ? 0 : 1;
     if (ac !== bc) return ac - bc;
