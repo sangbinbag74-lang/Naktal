@@ -1,11 +1,11 @@
 "use client";
 
-import { useEffect } from "react";
+import { Suspense, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
 export const dynamic = "force-dynamic";
 
-export default function KakaoCallbackPage() {
+function KakaoCallbackInner() {
   const router = useRouter();
   const params = useSearchParams();
 
@@ -67,5 +67,21 @@ export default function KakaoCallbackPage() {
     }}>
       카카오 인증 처리 중...
     </div>
+  );
+}
+
+export default function KakaoCallbackPage() {
+  return (
+    <Suspense fallback={
+      <div style={{
+        minHeight: "100vh", background: "#F7F8FA",
+        display: "flex", alignItems: "center", justifyContent: "center",
+        fontSize: 14, color: "#64748B",
+      }}>
+        로딩 중...
+      </div>
+    }>
+      <KakaoCallbackInner />
+    </Suspense>
   );
 }
