@@ -17,18 +17,18 @@ const SCSBID_OPS = [
   "getScsbidListSttusFrgcpt",
 ];
 
-// G2B 직접 조회 (BidResult 미수집 공고용 — 단건)
-// inqryDiv=2 (개찰일자 기준) + 마감 ±15일 (30일 이내 = G2B 제한 내)
-// 개찰 = 마감일과 같은 날~며칠 후, 결과 등록 지연도 감안하여 +15일까지 검색
+// G2B 직접 조회 — fetch-result API 와 동일 방식 (검증된 매칭률)
+// 날짜 범위: 마감 -7일 ~ +60일 (개찰 게재 1~6주 지연 흡수)
+// inqryDiv 안 씀 (default=1, 공고일자 기준) — fetch-result 와 동일
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function fetchFromG2B(konepsId: string, deadline: Date): Promise<any | null> {
-  const fromDate = toYMD(new Date(deadline.getTime() - 3 * 86400000)) + "0000";
-  const toDate = toYMD(new Date(deadline.getTime() + 15 * 86400000)) + "2359";
+  const fromDate = toYMD(new Date(deadline.getTime() - 7 * 86400000)) + "0000";
+  const toDate = toYMD(new Date(deadline.getTime() + 60 * 86400000)) + "2359";
   for (const op of SCSBID_OPS) {
     try {
       const { items } = await g2bFetchBidResultPage({
-        pageNo: 1, numOfRows: 999, inqryBgnDt: fromDate, inqryEndDt: toDate,
-        operation: op, inqryDiv: "2", // 개찰일자 기준
+        pageNo: 1, numOfRows: 100, inqryBgnDt: fromDate, inqryEndDt: toDate,
+        operation: op, // inqryDiv 생략 → default 공고일자
       });
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const m = items.find((i: any) => i.bidNtceNo?.trim() === konepsId);
