@@ -55,7 +55,7 @@ async function fetchOpengFromG2B(konepsId: string, deadline: Date): Promise<any 
   for (const op of OPENG_OPS) {
     try {
       const url = `${SCSBID_BASE_URL}/${op}?serviceKey=${process.env.G2B_API_KEY ?? process.env.KONEPS_API_KEY}&type=json&inqryDiv=1&inqryBgnDt=${fromDate}&inqryEndDt=${toDate}&bidNtceNo=${konepsId}&bidNtceOrd=000&numOfRows=999&pageNo=1`;
-      const res = await fetch(url, { signal: AbortSignal.timeout(15000) });
+      const res = await fetch(url, { signal: AbortSignal.timeout(6000) });
       if (!res.ok) continue;
       const data = await res.json();
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -192,11 +192,14 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   let updated = 0;
   let skipped = 0;
   let g2bFetched = 0;
+  let bidReqG2bCalls = 0;
+  const BID_REQ_G2B_LIMIT = 3; // BidRequest 처리부 G2B 직접 조회 1회 호출당 최대 3건 (504 방지)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   for (const req of pendingList as any[]) {
     let res = resultMap[req.konepsId];
-    // BidResult 없으면 G2B 직접 조회 (단건, 4 op 순차)
-    if (!res && req.konepsId && req.deadline) {
+    // BidResult 없으면 G2B 직접 조회 — 배치 한도 내에서만
+    if (!res && req.konepsId && req.deadline && bidReqG2bCalls < BID_REQ_G2B_LIMIT) {
+      bidReqG2bCalls++;
       const found = await fetchFromG2B(req.konepsId, new Date(req.deadline));
       if (found) {
         const rateRaw = (found.sucsfbidRate || "").replace(/[^0-9.]/g, "");
@@ -210,22 +213,20 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
             winnerName: found.sucsfbidCorpNm?.trim() || found.bidwinnrNm?.trim() || null,
             openedAt: found.opengDt ? g2bParseDate(found.opengDt) : null,
           };
-          // BidResult 에 upsert (다음 호출부터는 캐시됨)
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           await (admin.from("BidResult") as any).upsert(res, { onConflict: "annId" });
           g2bFetched++;
         }
       }
-    }
-    // BidResult/SCSBID 도 없으면 OpengResult 직접 호출 (수의계약 + bulk-opening cron 공백 메움)
-    if (!res && req.konepsId && req.deadline) {
-      const opengFound = await fetchOpengFromG2B(req.konepsId, new Date(req.deadline));
-      if (opengFound) {
-        res = opengFound;
-        // BidResult 에 upsert (다음 호출 캐시)
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        await (admin.from("BidResult") as any).upsert(res, { onConflict: "annId" });
-        g2bFetched++;
+      // SCSBID 실패 시 OpengResult — 같은 row 의 2차 시도 (카운터 증가 X)
+      if (!res) {
+        const opengFound = await fetchOpengFromG2B(req.konepsId, new Date(req.deadline));
+        if (opengFound) {
+          res = opengFound;
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          await (admin.from("BidResult") as any).upsert(res, { onConflict: "annId" });
+          g2bFetched++;
+        }
       }
     }
     if (!res) { skipped++; continue; }

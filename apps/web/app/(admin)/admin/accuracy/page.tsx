@@ -132,17 +132,28 @@ export default async function AdminAccuracyPage() {
         .select("annId,actualSajungRate,actualFinalPrice,deviationPct,isHit")
         .in("annId", bppAnnIds)
     : { data: [] };
-  // konepsId 도 필요 — BidResult 는 annId 가 konepsId
+  // konepsId + 기초금액 — BidResult 는 annId 가 konepsId, 사정율 계산은 bsisAmt 기준
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const annKonepsRes = bppAnnIds.length > 0
     ? await (admin.from("Announcement") as any)
-        .select("id,konepsId")
+        .select("id,konepsId,bsisAmt,budget,aValueAmt")
         .in("id", bppAnnIds)
     : { data: [] };
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const annIdToKoneps: Record<string, string> = Object.fromEntries(
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (annKonepsRes.data ?? []).map((a: any) => [a.id, a.konepsId])
+  );
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const annIdToBase: Record<string, number> = Object.fromEntries(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (annKonepsRes.data ?? []).map((a: any) => {
+      const bsis = Number(a.bsisAmt ?? 0);
+      const avAmt = Number(a.aValueAmt ?? 0);
+      const bud = Number(a.budget ?? 0);
+      const base = bsis > 0 ? bsis : avAmt > 0 ? avAmt : Math.round(bud * 1.1);
+      return [a.id, base];
+    })
   );
   const konepsIds = Object.values(annIdToKoneps);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -163,17 +174,39 @@ export default async function AdminAccuracyPage() {
   );
 
   // 결과 정보를 BppItem 에 병합
+  // ⚠️ AIPrediction.actualSajungRate 가 없어도 BidResult + bsisAmt 로 직접 계산 (AIPrediction 의존 제거)
   const bppListWithResult: BppItem[] = bppListAll.map((b) => {
     const ai = aiResMap[b.annId];
     const konepsId = annIdToKoneps[b.annId];
     const br = konepsId ? bidResMap[konepsId] : null;
+
+    // 1차: AIPrediction.actualSajungRate (백필됐으면 우선 사용)
+    // 2차: BidResult + bsisAmt 직접 계산 — AIPrediction 누락된 row 도 결과 표시
+    let actualSajungRate: number | null = ai?.actualSajungRate != null ? Number(ai.actualSajungRate) : null;
+    let deviationPct: number | null = ai?.deviationPct != null ? Number(ai.deviationPct) : null;
+    let isHit: boolean | null = ai?.isHit ?? null;
+
+    if (actualSajungRate == null && br && br.finalPrice && br.bidRate) {
+      const base = annIdToBase[b.annId] ?? 0;
+      const finalPrice = Number(br.finalPrice);
+      const bidRate = Number(br.bidRate);
+      if (base > 0 && finalPrice > 0 && bidRate > 0) {
+        actualSajungRate = (finalPrice / (bidRate / 100) / base) * 100;
+        const predicted = Number(b.predictedSajungRate ?? 0);
+        if (predicted > 0) {
+          deviationPct = Math.abs(predicted - actualSajungRate);
+          isHit = deviationPct <= 0.5;
+        }
+      }
+    }
+
     return {
       ...b,
-      actualSajungRate: ai?.actualSajungRate != null ? Number(ai.actualSajungRate) : null,
+      actualSajungRate,
       actualFinalPrice: br?.finalPrice ?? ai?.actualFinalPrice ?? null,
       winnerName: br?.winnerName ?? null,
-      deviationPct: ai?.deviationPct != null ? Number(ai.deviationPct) : null,
-      isHit: ai?.isHit ?? null,
+      deviationPct,
+      isHit,
     };
   });
 
