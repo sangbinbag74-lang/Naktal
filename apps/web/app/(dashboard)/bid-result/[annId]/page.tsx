@@ -285,14 +285,14 @@ export default async function BidResultPage({
           {fmtPrice(price)}
         </div>
         <div style={{ fontSize: 12, color: "#BFDBFE", marginTop: 8 }}>
-          예측 사정율 {effectiveSajungRate.toFixed(3)}%
-          {effectiveDeviation !== null && (
+          예측 사정율 {sajungRate.toFixed(3)}%
+          {sajungDeviation !== null && (
             <span style={{
               marginLeft: 6,
-              color: effectiveDeviation >= 0 ? "#86EFAC" : "#FCA5A5",
+              color: sajungDeviation >= 0 ? "#86EFAC" : "#FCA5A5",
               fontWeight: 700,
             }}>
-              ({fmtDeviation(effectiveDeviation)})
+              ({fmtDeviation(sajungDeviation)})
             </span>
           )}
         </div>
@@ -429,9 +429,9 @@ export default async function BidResultPage({
             bidRate != null ? { label: "투찰률 (기초금액 대비)", value: `${bidRate.toFixed(4)}%` } : null,
             {
               label: "예측 사정율",
-              value: effectiveDeviation !== null
-                ? `${effectiveSajungRate.toFixed(3)}% (발주처 평균 ${fmtDeviation(effectiveDeviation)})`
-                : `${effectiveSajungRate.toFixed(3)}%`,
+              value: sajungDeviation !== null
+                ? `${sajungRate.toFixed(3)}% (발주처 평균 ${fmtDeviation(sajungDeviation)})`
+                : `${sajungRate.toFixed(3)}%`,
             },
           ].filter((x): x is { label: string; value: string; bold?: boolean } => x !== null).map(({ label, value, bold }) => (
             <div key={label} style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
