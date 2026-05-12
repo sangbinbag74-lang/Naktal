@@ -357,16 +357,24 @@ export function RequestsTable({ requests, userMap, bidResultMap, annOpengMap = {
                         <div style={{ color: "#9CA3AF", fontSize: 10, marginTop: 1 }}>예측사정율 {Number(r.predictedSajungRate).toFixed(3)}%</div>
                       )}
                     </td>
-                    {/* 실투찰금액 — 사정율 단위 통일 (추천=예측사정율, 실투찰=실제사정율) */}
+                    {/* 실투찰금액 — 본인 사정율 표시 (본인 실투찰가 기준 역산) */}
                     <td style={{ padding: "8px 12px", whiteSpace: "nowrap" }}>
                       {r.userBidPrice
                         ? <>
                             <div style={{ color: "#374151", fontWeight: 600 }}>{fmtPrice(r.userBidPrice)}</div>
-                            {r.actualSajungRate != null ? (
-                              <div style={{ color: "#9CA3AF", fontSize: 10, marginTop: 1 }}>실제사정율 {Number(r.actualSajungRate).toFixed(3)}%</div>
-                            ) : r.userBidRate != null && (
-                              <div style={{ color: "#9CA3AF", fontSize: 10, marginTop: 1 }}>투찰률 {Number(r.userBidRate).toFixed(3)}%</div>
-                            )}
+                            {(() => {
+                              const ub = Number(r.userBidPrice ?? 0);
+                              const ur = Number(r.userBidRate ?? 0);
+                              const bud = Number(r.budget ?? 0);
+                              if (ub > 0 && ur > 0 && bud > 0) {
+                                const mySajung = (ub / (ur / 100) / bud) * 100;
+                                return <div style={{ color: "#9CA3AF", fontSize: 10, marginTop: 1 }}>본인사정율 {mySajung.toFixed(3)}%</div>;
+                              }
+                              if (r.userBidRate != null) {
+                                return <div style={{ color: "#9CA3AF", fontSize: 10, marginTop: 1 }}>투찰률 {Number(r.userBidRate).toFixed(3)}%</div>;
+                              }
+                              return null;
+                            })()}
                           </>
                         : <span style={{ color: "#D1D5DB" }}>미입력</span>}
                     </td>
@@ -530,6 +538,20 @@ export function RequestsTable({ requests, userMap, bidResultMap, annOpengMap = {
                             <strong>{new Date(r.userBidAt).toLocaleString("ko-KR", { dateStyle: "short", timeStyle: "short" })}</strong>
                           </span>
                         )}
+                        {/* 본인 실제 사정율 = 본인 실투찰가 기준 역산 */}
+                        {(() => {
+                          const ub = Number(r.userBidPrice ?? 0);
+                          const ur = Number(r.userBidRate ?? 0);
+                          const bud = Number(r.budget ?? 0);
+                          if (ub <= 0 || ur <= 0 || bud <= 0) return null;
+                          const mySajung = (ub / (ur / 100) / bud) * 100;
+                          return (
+                            <span>
+                              <span style={{ color: "#94A3B8" }}>본인사정율 </span>
+                              <strong style={{ color: "#1B3A6B" }}>{mySajung.toFixed(3)}%</strong>
+                            </span>
+                          );
+                        })()}
                         {r.actualFinalPrice != null && Number(r.actualFinalPrice) > 0 && (
                           <span>
                             <span style={{ color: "#94A3B8" }}>낙찰금액 </span>
@@ -539,7 +561,7 @@ export function RequestsTable({ requests, userMap, bidResultMap, annOpengMap = {
                         {r.actualSajungRate != null && (
                           <span>
                             <span style={{ color: "#94A3B8" }}>낙찰사정율 </span>
-                            <strong>{Number(r.actualSajungRate).toFixed(3)}%</strong>
+                            <strong style={{ color: "#059669" }}>{Number(r.actualSajungRate).toFixed(3)}%</strong>
                           </span>
                         )}
                       </div>
