@@ -197,6 +197,80 @@ export async function g2bFetchBidResultPage(params: {
   };
 }
 
+// ─── 개찰결과 참여업체 상세 (전체 순위 + 투찰가) ─────────────────────────────
+export interface G2BOpengCompt {
+  bidNtceNo: string;
+  bidNtceOrd: string;
+  opengRank: string;        // 순위 (1, 2, 3...)
+  prcbdrBizno: string;      // 참여업체 사업자번호
+  prcbdrNm: string;         // 참여업체 회사명
+  prcbdrCeoNm: string;      // 대표자명
+  bidprcAmt: string;        // 투찰금액
+  bidprcrt: string;         // 투찰률
+  drwtNo1?: string;         // 추첨번호 1
+  drwtNo2?: string;         // 추첨번호 2
+  bidprcDt: string;         // 투찰일시
+  rmrk?: string;            // 비고 (정상/무효 등)
+  [key: string]: string | undefined;
+}
+
+const OPENG_COMPT_OPS = [
+  "getOpengResultListInfoOpengCompt",            // 공통 (대부분)
+  "getOpengResultListInfoCnstwkOpengCompt",      // 공사 변형
+  "getOpengResultListInfoServcOpengCompt",       // 용역 변형
+  "getOpengResultListInfoThngOpengCompt",        // 물품 변형
+];
+
+/**
+ * 단건 공고의 전체 참여업체 + 순위 + 투찰가 조회
+ * 응답에 사업자번호/투찰금액/순위/추첨번호 모두 포함
+ */
+export async function g2bFetchOpengComptForBidNtceNo(params: {
+  bidNtceNo: string;
+  bidNtceOrd?: string;
+  deadline?: Date;
+}): Promise<G2BOpengCompt[]> {
+  const ord = params.bidNtceOrd ?? "000";
+  // inqryDiv + 날짜 범위 같이 보내야 전체 페이지 응답
+  const deadline = params.deadline ?? new Date();
+  const from = toYMD(new Date(deadline.getTime() - 3 * 86400000)) + "0000";
+  const to   = toYMD(new Date(deadline.getTime() + 15 * 86400000)) + "2359";
+
+  for (const op of OPENG_COMPT_OPS) {
+    try {
+      const url = new URL(`${SCSBID_BASE}/${op}`);
+      url.searchParams.set("serviceKey", bidResultApiKey());
+      url.searchParams.set("type", "json");
+      url.searchParams.set("bidNtceNo", params.bidNtceNo);
+      url.searchParams.set("bidNtceOrd", ord);
+      url.searchParams.set("inqryDiv", "1");
+      url.searchParams.set("inqryBgnDt", from);
+      url.searchParams.set("inqryEndDt", to);
+      url.searchParams.set("numOfRows", "999");
+      url.searchParams.set("pageNo", "1");
+
+      const controller = new AbortController();
+      const tid = setTimeout(() => controller.abort(), 15000);
+      let res: Response;
+      try {
+        res = await fetch(url.toString(), { next: { revalidate: 0 }, signal: controller.signal });
+      } finally {
+        clearTimeout(tid);
+      }
+      if (!res.ok) continue;
+      const data = await res.json() as {
+        response?: { header: { resultCode: string; resultMsg: string }; body: { items: unknown; totalCount: number } };
+      };
+      if (!data.response || data.response.header.resultCode !== "00") continue;
+      const items = parseItems<G2BOpengCompt>(data.response.body.items);
+      // bidNtceNo 매칭 필터링 (응답에 다른 공고도 섞일 수 있음)
+      const filtered = items.filter(i => i.bidNtceNo?.trim() === params.bidNtceNo);
+      if (filtered.length > 0) return filtered;
+    } catch { /* 다음 op */ }
+  }
+  return [];
+}
+
 /** 낙찰결과 4개 카테고리 전체 조회 (cron용) */
 export async function g2bFetchAllBidResults(
   inqryBgnDt: string, inqryEndDt: string, numOfRows = 100

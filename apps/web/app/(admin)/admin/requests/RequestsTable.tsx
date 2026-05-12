@@ -300,7 +300,7 @@ export function RequestsTable({ requests, userMap, bidResultMap, annOpengMap = {
           <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12.5 }}>
             <thead>
               <tr style={{ background: "#F8FAFC" }}>
-                {["회사명", "공고명", "마감일", "추천금액", "실투찰금액", "개찰일", "낙찰", "수수료", "상태", ""].map((h) => (
+                {["회사명", "공고명", "마감일", "추천금액", "실투찰금액", "순위", "개찰일", "낙찰", "수수료", "상태", ""].map((h) => (
                   <th key={h} style={{ padding: "9px 12px", textAlign: "left", color: "#374151", fontWeight: 600, borderBottom: "2px solid #E8ECF2", whiteSpace: "nowrap" }}>{h}</th>
                 ))}
               </tr>
@@ -360,8 +360,31 @@ export function RequestsTable({ requests, userMap, bidResultMap, annOpengMap = {
                     {/* 실투찰금액 */}
                     <td style={{ padding: "8px 12px", whiteSpace: "nowrap" }}>
                       {r.userBidPrice
-                        ? <span style={{ color: "#374151" }}>{fmtPrice(r.userBidPrice)}</span>
+                        ? <>
+                            <div style={{ color: "#374151", fontWeight: 600 }}>{fmtPrice(r.userBidPrice)}</div>
+                            {r.userBidRate != null && (
+                              <div style={{ color: "#9CA3AF", fontSize: 10, marginTop: 1 }}>투찰률 {Number(r.userBidRate).toFixed(3)}%</div>
+                            )}
+                          </>
                         : <span style={{ color: "#D1D5DB" }}>미입력</span>}
+                    </td>
+                    {/* 순위 */}
+                    <td style={{ padding: "8px 12px", whiteSpace: "nowrap", textAlign: "center" }}>
+                      {r.userRank != null ? (
+                        <span style={{
+                          display: "inline-block",
+                          fontSize: 12,
+                          fontWeight: 700,
+                          color: r.userRank === 1 ? "#059669" : r.userRank <= 3 ? "#D97706" : "#64748B",
+                          background: r.userRank === 1 ? "#ECFDF5" : r.userRank <= 3 ? "#FFFBEB" : "#F1F5F9",
+                          padding: "3px 8px",
+                          borderRadius: 6,
+                        }}>
+                          {r.userRank}{r.totalBidders ? `/${r.totalBidders}` : ""}위
+                        </span>
+                      ) : (
+                        <span style={{ color: "#D1D5DB", fontSize: 11 }}>-</span>
+                      )}
                     </td>
                     {/* 개찰일 — 결과 입력값 우선, 없으면 공고 rawJson.opengDt fallback */}
                     <td style={{ padding: "8px 12px", color: "#6B7280", whiteSpace: "nowrap" }}>

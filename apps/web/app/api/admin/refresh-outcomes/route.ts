@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/admin-guard";
 import { createAdminClient } from "@/lib/supabase/server";
-import { g2bFetchBidResultPage, g2bParseDate, toYMD } from "@/lib/g2b";
+import { g2bFetchBidResultPage, g2bFetchOpengComptForBidNtceNo, g2bParseDate, toYMD } from "@/lib/g2b";
 
 const SCSBID_OPS = [
   "getScsbidListSttusThng",
@@ -101,16 +101,17 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     };
   }
 
-  // 3. userId 목록으로 User(회사명) 배치 조회
+  // 3. userId 목록으로 User(회사명+사업자번호) 배치 조회
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const userIds = [...new Set(pending.map((r: any) => r.userId).filter(Boolean))];
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data: users } = await (admin.from("User") as any)
-    .select("id,bizName")
+    .select("id,bizName,bizNo")
     .in("id", userIds);
-  const userMap: Record<string, string> = Object.fromEntries(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const userMap: Record<string, { bizName: string; bizNo: string }> = Object.fromEntries(
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (users ?? []).map((u: any) => [u.id, u.bizName ?? ""])
+    (users ?? []).map((u: any) => [u.id, { bizName: u.bizName ?? "", bizNo: String(u.bizNo ?? "").replace(/\D/g, "") }])
   );
 
   // 4. 각 BidRequest 업데이트
@@ -144,13 +145,42 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     }
     if (!res) { skipped++; continue; }
 
-    const bizName: string = userMap[req.userId] ?? "";
+    const userInfo = userMap[req.userId] ?? { bizName: "", bizNo: "" };
+    const bizName: string = userInfo.bizName;
+    const userBizNo: string = userInfo.bizNo;
     const winnerName: string = res.winnerName ?? "";
 
     const isWon: boolean =
       bizName.length > 1 && winnerName.length > 1
         ? winnerName.includes(bizName) || bizName.includes(winnerName)
         : false;
+
+    // 사용자 사업자번호로 OpengCompt 조회 → 순위·실투찰가·추첨번호 매칭
+    let userRank: number | null = null;
+    let userBidPriceFromG2B: number | null = null;
+    let userBidRate: number | null = null;
+    let userDrwtNo1: number | null = null;
+    let userDrwtNo2: number | null = null;
+    let userBidAtFromG2B: string | null = null;
+    if (userBizNo.length === 10 && req.konepsId && req.deadline) {
+      try {
+        const comptItems = await g2bFetchOpengComptForBidNtceNo({
+          bidNtceNo: req.konepsId,
+          deadline: new Date(req.deadline),
+        });
+        const me = comptItems.find(c => String(c.prcbdrBizno ?? "").replace(/\D/g, "") === userBizNo);
+        if (me) {
+          userRank = parseInt(me.opengRank ?? "0", 10) || null;
+          userBidPriceFromG2B = parseInt(String(me.bidprcAmt ?? "0").replace(/[^0-9]/g, ""), 10) || null;
+          userBidRate = parseFloat(String(me.bidprcrt ?? "0")) || null;
+          userDrwtNo1 = parseInt(String(me.drwtNo1 ?? "").trim(), 10) || null;
+          userDrwtNo2 = parseInt(String(me.drwtNo2 ?? "").trim(), 10) || null;
+          userBidAtFromG2B = me.bidprcDt ? g2bParseDate(me.bidprcDt) : null;
+        }
+      } catch (e) {
+        console.error(`[refresh-outcomes] OpengCompt 조회 실패 ${req.konepsId}:`, (e as Error).message);
+      }
+    }
 
     const budget = Number(req.budget ?? 0);
     const finalPrice = Number(res.finalPrice ?? 0);
@@ -187,6 +217,13 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         feeAmount: String(feeAmount),
         feeStatus,
         resultDetectedAt: now,
+        // 사용자 매칭 정보 (OpengCompt 응답)
+        ...(userRank != null ? { userRank } : {}),
+        ...(userBidPriceFromG2B != null ? { userBidPrice: String(userBidPriceFromG2B) } : {}),
+        ...(userBidRate != null ? { userBidRate: userBidRate.toFixed(4) } : {}),
+        ...(userDrwtNo1 != null ? { userDrwtNo1 } : {}),
+        ...(userDrwtNo2 != null ? { userDrwtNo2 } : {}),
+        ...(userBidAtFromG2B != null ? { userBidAt: userBidAtFromG2B } : {}),
       })
       .eq("id", req.id);
 
