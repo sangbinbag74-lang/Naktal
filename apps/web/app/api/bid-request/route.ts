@@ -253,6 +253,22 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     feeRate = finalRecommendedBidPrice < 100_000_000 ? 0.017 : 0.015;
     agreedFeeAmount = Math.round(finalRecommendedBidPrice * feeRate);
 
+    // INSERT 직전 일관성 검증 — 추천가/budget/lwlt/aValue 의 역산 사정율이 95~105% 범위인지
+    // 옛 코드 시점 4건 비정상 사례 재발 방지
+    const verifyEff = (((finalRecommendedBidPrice - (aValueTotal ?? 0)) * 100 / Number(lowerLimitRate ?? 1))
+                       + (aValueTotal ?? 0)) * 100 / serverBaseAmount;
+    if (verifyEff < 90 || verifyEff > 110) {
+      console.error("[BidRequest] 사정율 일관성 검증 실패", {
+        konepsId, finalRecommendedBidPrice, serverBaseAmount, lowerLimitRate, aValueTotal,
+        verifyEff: verifyEff.toFixed(4), expectedSajung: finalPredictedSajungRate,
+      });
+      return NextResponse.json({
+        error: "INCONSISTENT_PRICING",
+        message: "추천가/기초금액/낙찰하한율 조합의 역산 사정율이 비정상 범위입니다. 다시 분석 후 재시도해주세요.",
+        verifyEff: Number(verifyEff.toFixed(4)),
+      }, { status: 500 });
+    }
+
     const { data: inserted, error } = await admin
       .from("BidRequest")
       .insert({
