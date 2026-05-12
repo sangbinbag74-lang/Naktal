@@ -12,20 +12,30 @@ interface RunSummary {
   resultG2bFetched: number;
   aiUpdated: number;
   aiScanned: number;
+  aiNoResult: number;
+  aiNoBase: number;
+  aiBadPredicted: number;
+  elapsedMs: number;
   error?: string;
 }
+
+type Stage = "idle" | "pred" | "result" | "done";
 
 export function AccuracyTriggers() {
   const router = useRouter();
   const [running, setRunning] = useState(false);
+  const [stage, setStage] = useState<Stage>("idle");
+  const [stageDetail, setStageDetail] = useState<string>("");
   const [summary, setSummary] = useState<RunSummary | null>(null);
 
   async function handleSync() {
+    const startedAt = Date.now();
     setRunning(true);
     setSummary(null);
+    setStage("pred");
+    setStageDetail("예측 적재 시작…");
 
-    // 분석(run-predictions)과 결과 수집(refresh-outcomes) 동시 실행
-    // 분석은 반복 호출 — 최대 30회 (50건 × 30 = 1500건)
+    // 분석(run-predictions) — 반복 호출 최대 30회 (단계 표시 위해 await)
     const predTask = (async () => {
       let totalFilled = 0;
       let iterations = 0;
@@ -43,6 +53,7 @@ export function AccuracyTriggers() {
         const filled = data.filled ?? 0;
         totalFilled += filled;
         iterations = i + 1;
+        setStageDetail(`예측 적재 ${totalFilled}건 (${iterations}회차)…`);
         if (filled === 0) break;
       }
       return { totalFilled, iterations };
@@ -57,11 +68,20 @@ export function AccuracyTriggers() {
       return await res.json() as {
         updated?: number; total?: number; g2bFetched?: number;
         aiUpdated?: number; aiScanned?: number;
+        aiNoResult?: number; aiNoBase?: number; aiBadPredicted?: number;
       };
     })();
 
+    // 결과 갱신은 백그라운드로 시작하지만, 단계 표시는 예측 끝난 뒤 결과 단계로 전환
+    let resultFinished = false;
+    resultTask.finally(() => { resultFinished = true; });
+
     try {
-      const [pred, result] = await Promise.all([predTask, resultTask]);
+      const pred = await predTask;
+      setStage("result");
+      setStageDetail(resultFinished ? "결과 정리 중…" : "결과 채움 진행 중…");
+      const result = await resultTask;
+      setStage("done");
       setSummary({
         ok: true,
         predFilled: pred.totalFilled,
@@ -71,28 +91,35 @@ export function AccuracyTriggers() {
         resultG2bFetched: result.g2bFetched ?? 0,
         aiUpdated: result.aiUpdated ?? 0,
         aiScanned: result.aiScanned ?? 0,
+        aiNoResult: result.aiNoResult ?? 0,
+        aiNoBase: result.aiNoBase ?? 0,
+        aiBadPredicted: result.aiBadPredicted ?? 0,
+        elapsedMs: Date.now() - startedAt,
       });
       router.refresh();
     } catch (e) {
+      setStage("done");
       setSummary({
         ok: false,
         predFilled: 0, predIterations: 0,
         resultUpdated: 0, resultTotal: 0, resultG2bFetched: 0,
-        aiUpdated: 0, aiScanned: 0,
+        aiUpdated: 0, aiScanned: 0, aiNoResult: 0, aiNoBase: 0, aiBadPredicted: 0,
+        elapsedMs: Date.now() - startedAt,
         error: (e as Error).message,
       });
     } finally {
       setRunning(false);
+      setStageDetail("");
     }
   }
 
   return (
     <div style={{ background: "#fff", borderRadius: 14, border: "1px solid #E8ECF2", padding: "18px 20px" }}>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: summary ? 12 : 0, gap: 16, flexWrap: "wrap" }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: summary || running ? 12 : 0, gap: 16, flexWrap: "wrap" }}>
         <div>
           <div style={{ fontSize: 14, fontWeight: 700, color: "#0F172A" }}>예측 + 결과 동시 갱신</div>
           <div style={{ fontSize: 11.5, color: "#94A3B8", marginTop: 3, lineHeight: 1.5 }}>
-            활성 공고 → BidPricePrediction 적재 (공사 우선) · 마감+1h 지난 BidRequest → 낙찰 결과 자동 채움
+            활성 공고 → BidPricePrediction 적재 (공사 우선) · 마감+1h 지난 BidRequest → 낙찰 결과 자동 채움 · AI 예측 결과 자동 채움
           </div>
         </div>
         <button
@@ -104,11 +131,42 @@ export function AccuracyTriggers() {
             color: "#fff", fontWeight: 700, fontSize: 13,
             cursor: running ? "not-allowed" : "pointer",
             whiteSpace: "nowrap",
+            display: "flex", alignItems: "center", gap: 8,
           }}
         >
+          {running && (
+            <span style={{
+              display: "inline-block", width: 12, height: 12, borderRadius: "50%",
+              border: "2px solid rgba(255,255,255,0.3)", borderTopColor: "#fff",
+              animation: "naktal-spin 0.7s linear infinite",
+            }} />
+          )}
           {running ? "동기화 중…" : "⚡ 지금 동기화"}
         </button>
       </div>
+
+      <style>{`@keyframes naktal-spin { to { transform: rotate(360deg); } }`}</style>
+
+      {/* 진행 단계 표시 */}
+      {running && (
+        <div style={{
+          padding: "10px 12px", borderRadius: 8, fontSize: 12,
+          background: "#EFF6FF", color: "#1E40AF", border: "1px solid #BFDBFE",
+          marginBottom: 6,
+        }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+            <StageBadge label="1. 예측 적재"   active={stage === "pred"}   done={stage === "result" || stage === "done"} />
+            <span style={{ color: "#CBD5E1" }}>→</span>
+            <StageBadge label="2. 결과 채움"   active={stage === "result"} done={stage === "done"} />
+            <span style={{ color: "#CBD5E1" }}>→</span>
+            <StageBadge label="3. AI 예측 결과" active={stage === "result"} done={stage === "done"} />
+          </div>
+          {stageDetail && (
+            <div style={{ marginTop: 6, fontSize: 11.5, color: "#1B3A6B" }}>{stageDetail}</div>
+          )}
+        </div>
+      )}
+
       {summary && (
         <div style={{
           padding: "10px 12px", borderRadius: 8, fontSize: 12,
@@ -120,6 +178,9 @@ export function AccuracyTriggers() {
           {summary.ok ? (
             <>
               <strong>✓ 동기화 완료</strong>
+              <span style={{ marginLeft: 8, fontSize: 10.5, color: "#94A3B8" }}>
+                {(summary.elapsedMs / 1000).toFixed(1)}초 소요
+              </span>
               <div style={{ marginTop: 4 }}>
                 예측 적재 {summary.predFilled}건 ({summary.predIterations}회 반복)
               </div>
@@ -127,7 +188,12 @@ export function AccuracyTriggers() {
                 BidRequest 결과 채움 {summary.resultUpdated}/{summary.resultTotal}건 (G2B 직접 조회 {summary.resultG2bFetched}건)
               </div>
               <div style={{ marginTop: 2 }}>
-                AI 예측 결과 채움 <strong>{summary.aiUpdated}건</strong> / 미입력 스캔 {summary.aiScanned}건
+                AI 예측 결과 채움 <strong>{summary.aiUpdated}건</strong> / 스캔 {summary.aiScanned}건
+                {(summary.aiNoResult > 0 || summary.aiNoBase > 0 || summary.aiBadPredicted > 0) && (
+                  <span style={{ marginLeft: 6, fontSize: 11, color: "#94A3B8" }}>
+                    (결과 미수집 {summary.aiNoResult} · 기초금액 없음 {summary.aiNoBase} · 예측값 0 {summary.aiBadPredicted})
+                  </span>
+                )}
               </div>
             </>
           ) : (
@@ -136,5 +202,29 @@ export function AccuracyTriggers() {
         </div>
       )}
     </div>
+  );
+}
+
+function StageBadge({ label, active, done }: { label: string; active: boolean; done: boolean }) {
+  const bg = done ? "#059669" : active ? "#1B3A6B" : "#E2E8F0";
+  const fg = done || active ? "#fff" : "#94A3B8";
+  return (
+    <span style={{
+      fontSize: 11, fontWeight: 700, padding: "3px 9px", borderRadius: 6,
+      background: bg, color: fg, whiteSpace: "nowrap",
+      display: "inline-flex", alignItems: "center", gap: 5,
+    }}>
+      {done ? "✓" : active ? <Spinner /> : "○"} {label}
+    </span>
+  );
+}
+
+function Spinner() {
+  return (
+    <span style={{
+      display: "inline-block", width: 9, height: 9, borderRadius: "50%",
+      border: "2px solid rgba(255,255,255,0.35)", borderTopColor: "#fff",
+      animation: "naktal-spin 0.7s linear infinite",
+    }} />
   );
 }
