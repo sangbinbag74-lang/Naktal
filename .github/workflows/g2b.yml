@@ -78,7 +78,7 @@ jobs:
       - uses: actions/setup-node@v4
         with: { node-version: "20", cache: pnpm }
       - run: pnpm install --no-frozen-lockfile
-      - name: 공고/낙찰 신규 수집
+      - name: 공고 신규 수집 (Announcement)
         working-directory: apps/crawler
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
@@ -90,6 +90,21 @@ jobs:
           if [ -z "$FROM" ]; then FROM=$(date -d '30 days ago' +%Y%m%d); fi
           TO="${{ needs.setup.outputs.to }}"
           CMD="pnpm ts-node src/index.ts --type announcement --pages 999 --from $FROM"
+          if [ -n "$TO" ]; then CMD="$CMD --to $TO"; fi
+          echo "실행: $CMD"
+          eval $CMD
+      - name: 낙찰 결과 신규 수집 (BidResult) — 2026-04-29 g2b.yml 통합 시 누락 복원
+        working-directory: apps/crawler
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          G2B_API_KEY: ${{ secrets.G2B_API_KEY }}
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          FROM="${{ needs.setup.outputs.from }}"
+          if [ -z "$FROM" ]; then FROM=$(date -d '30 days ago' +%Y%m%d); fi
+          TO="${{ needs.setup.outputs.to }}"
+          CMD="pnpm ts-node src/index.ts --type bid-result --pages 999 --from $FROM"
           if [ -n "$TO" ]; then CMD="$CMD --to $TO"; fi
           echo "실행: $CMD"
           eval $CMD
