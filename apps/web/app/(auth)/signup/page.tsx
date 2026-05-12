@@ -229,39 +229,9 @@ export default function SignupPage() {
       alignItems: "center",
       justifyContent: "center",
       padding: "24px 16px",
-      gap: 24,
-      flexWrap: "wrap",
+      position: "relative",
+      overflowX: "hidden",
     }}>
-      {/* 좌측: 수집 항목 안내 (카카오 비즈앱 심사 대응) */}
-      <aside style={{
-        background: "#fff", border: "1px solid #EAECF0", borderRadius: 16,
-        padding: "20px 22px", width: "100%", maxWidth: 280,
-        fontSize: 12.5, lineHeight: 1.7, alignSelf: "center",
-        boxShadow: "0 2px 12px rgba(15,30,60,0.04)",
-      }}>
-        <div style={{ fontWeight: 700, color: "#0F172A", marginBottom: 12, fontSize: 13.5 }}>
-          📋 수집하는 회원정보
-        </div>
-        <div style={{ color: "#1B3A6B", fontWeight: 700, marginBottom: 4 }}>
-          [필수] 카카오 인증 자동 수집
-        </div>
-        <div style={{ color: "#64748B", paddingLeft: 8, marginBottom: 10 }}>
-          ✓ 이름<br/>✓ 휴대폰 번호<br/>✓ CI(연계정보)
-        </div>
-        <div style={{ color: "#1B3A6B", fontWeight: 700, marginBottom: 4 }}>
-          [필수] 직접 입력
-        </div>
-        <div style={{ color: "#64748B", paddingLeft: 8, marginBottom: 10 }}>
-          ✓ 사업자등록번호<br/>✓ 비밀번호
-        </div>
-        <div style={{ color: "#94A3B8", fontWeight: 700, marginBottom: 4 }}>
-          [선택]
-        </div>
-        <div style={{ color: "#94A3B8", paddingLeft: 8 }}>
-          ○ 알림 이메일<br/>○ 알림 전화번호
-        </div>
-      </aside>
-
       <div style={{
         background: "#fff",
         borderRadius: 20,
@@ -437,6 +407,44 @@ export default function SignupPage() {
           <Link href="/login" style={{ color: "#1B3A6B", fontWeight: 600 }}>로그인</Link>
         </p>
       </div>
+
+      {/* 우측: 수집 항목 안내 (데스크탑 한정, 카카오 비즈앱 심사 대응) */}
+      <aside style={{
+        position: "absolute",
+        top: "50%",
+        left: "calc(50% + 252px)",
+        transform: "translateY(-50%)",
+        width: 280,
+        background: "#fff",
+        border: "1px solid #EAECF0",
+        borderRadius: 16,
+        padding: "20px 22px",
+        fontSize: 12.5,
+        lineHeight: 1.7,
+        boxShadow: "0 2px 12px rgba(15,30,60,0.04)",
+      }}>
+        <div style={{ fontWeight: 700, color: "#0F172A", marginBottom: 12, fontSize: 13.5 }}>
+          📋 수집하는 회원정보
+        </div>
+        <div style={{ color: "#1B3A6B", fontWeight: 700, marginBottom: 4 }}>
+          [필수] 카카오 인증 자동 수집
+        </div>
+        <div style={{ color: "#64748B", paddingLeft: 8, marginBottom: 10 }}>
+          ✓ 이름<br/>✓ 휴대폰 번호<br/>✓ CI(연계정보)
+        </div>
+        <div style={{ color: "#1B3A6B", fontWeight: 700, marginBottom: 4 }}>
+          [필수] 직접 입력
+        </div>
+        <div style={{ color: "#64748B", paddingLeft: 8, marginBottom: 10 }}>
+          ✓ 사업자등록번호<br/>✓ 비밀번호
+        </div>
+        <div style={{ color: "#94A3B8", fontWeight: 700, marginBottom: 4 }}>
+          [선택]
+        </div>
+        <div style={{ color: "#94A3B8", paddingLeft: 8 }}>
+          ○ 알림 이메일<br/>○ 알림 전화번호
+        </div>
+      </aside>
     </div>
   );
 }
