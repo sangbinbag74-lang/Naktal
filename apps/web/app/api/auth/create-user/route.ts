@@ -20,7 +20,6 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     kakaoId?: string;
     kakaoVerifiedName?: string;
     kakaoVerifiedPhone?: string | null;
-    kakaoVerifiedBirth?: string | null;
   };
   try {
     body = await request.json();
@@ -44,7 +43,6 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     userRow.kakaoId = body.kakaoId;
     userRow.kakaoVerifiedName = body.kakaoVerifiedName ?? null;
     userRow.kakaoVerifiedPhone = body.kakaoVerifiedPhone ?? null;
-    userRow.kakaoVerifiedBirth = body.kakaoVerifiedBirth ?? null;
     userRow.kakaoVerifiedAt = new Date().toISOString();
   }
   const { error } = await admin.from("User").upsert(userRow, { onConflict: "supabaseId" });

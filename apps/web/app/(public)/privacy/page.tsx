@@ -18,7 +18,6 @@ export default function PrivacyPage() {
 • 카카오 회원번호 (CI 대체)
 • 이름 (실명)
 • 휴대폰 번호
-• 생년월일
 • 카카오 계정 이메일
 
 [선택 — 추가 정보]

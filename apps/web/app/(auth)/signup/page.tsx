@@ -20,7 +20,6 @@ interface KakaoVerified {
   kakaoId: string;
   name: string;
   phone: string | null;
-  birthday: string | null;
   email: string | null;
 }
 
@@ -88,7 +87,7 @@ export default function SignupPage() {
     setKakaoLoading(true);
     setError(null);
     window.Kakao.Auth.login({
-      scope: "profile_nickname,account_email,name,phone_number,birthday",
+      scope: "profile_nickname,account_email,name,phone_number",
       success: () => {
         window.Kakao!.API.request({
           url: "/v2/user/me",
@@ -100,7 +99,6 @@ export default function SignupPage() {
               kakaoId: String(data.id),
               name: account.name ?? account.profile?.nickname ?? "",
               phone: account.phone_number ?? null,
-              birthday: account.birthday ?? null,
               email: account.email ?? null,
             };
             if (!verified.name) {
@@ -215,7 +213,6 @@ export default function SignupPage() {
           kakaoId: kakaoVerified.kakaoId,
           kakaoVerifiedName: kakaoVerified.name,
           kakaoVerifiedPhone: kakaoVerified.phone,
-          kakaoVerifiedBirth: kakaoVerified.birthday,
         }),
       });
     } catch { console.error("User 프로필 저장 실패"); }
