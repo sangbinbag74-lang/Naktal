@@ -106,7 +106,7 @@ export default async function BidResultPage({
   // 계약 완료된 BidRequest 조회 (snapshot 컬럼 포함 — 계약 시점 값 고정)
   const { data: req } = await admin
     .from("BidRequest")
-    .select("recommendedBidPrice,lowerLimitPrice,estimatedPrice,budget,predictedSajungRate,agreedFeeRate,agreedFeeAmount,contractAt,winProbability,competitionScore,aValueYn,aValueTotal,lowerLimitRate,userBidPrice,actualFinalPrice,totalBidders,isWon,winnerName,actualSajungRate,numberStrategy,snapshotAvgSajungRate,snapshotSampleSize,snapshotConfidence,snapshotCategoryAvg,snapshotCategoryTotal")
+    .select("recommendedBidPrice,lowerLimitPrice,estimatedPrice,budget,predictedSajungRate,agreedFeeRate,agreedFeeAmount,contractAt,winProbability,competitionScore,aValueYn,aValueTotal,lowerLimitRate,userBidPrice,userBidAt,userRank,userBidRate,userDrwtNo1,userDrwtNo2,actualFinalPrice,totalBidders,isWon,winnerName,actualSajungRate,numberStrategy,snapshotAvgSajungRate,snapshotSampleSize,snapshotConfidence,snapshotCategoryAvg,snapshotCategoryTotal")
     .eq("userId", dbUser.id as string)
     .eq("annId", ann.id as string)
     .not("contractAt", "is", null)
@@ -310,6 +310,75 @@ export default async function BidResultPage({
           <div style={{ fontSize: 11, color: "#B45309", lineHeight: 1.6 }}>
             투찰가 공식: (예정가 - A값) × 낙찰하한율 + A값
           </div>
+        </div>
+      )}
+
+      {/* 내 투찰 결과 (G2B 매칭 — userBidPrice 있을 때만) */}
+      {req.userBidPrice != null && (
+        <div style={{
+          background: "#fff",
+          borderRadius: 14,
+          border: "2px solid #1B3A6B",
+          padding: "20px 24px",
+        }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}>
+            <span style={{ fontSize: 14, fontWeight: 800, color: "#1B3A6B" }}>📋 내 투찰 결과</span>
+            <span style={{ fontSize: 10, fontWeight: 700, background: "#EFF6FF", color: "#1B3A6B", padding: "2px 7px", borderRadius: 4 }}>
+              G2B 자동 매칭
+            </span>
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 12, marginBottom: 12 }}>
+            <div style={{ background: "#F8FAFC", borderRadius: 10, padding: "12px 14px" }}>
+              <div style={{ fontSize: 11, color: "#94A3B8", marginBottom: 4 }}>내 순위</div>
+              {req.userRank != null ? (
+                <div style={{
+                  fontSize: 20, fontWeight: 800,
+                  color: Number(req.userRank) === 1 ? "#059669" : Number(req.userRank) <= 3 ? "#D97706" : "#374151",
+                }}>
+                  {String(req.userRank)}위{totalBiddersN > 0 ? ` / ${totalBiddersN}` : ""}
+                </div>
+              ) : (
+                <div style={{ fontSize: 16, fontWeight: 700, color: "#DC2626" }}>
+                  부적격
+                </div>
+              )}
+            </div>
+            <div style={{ background: "#F8FAFC", borderRadius: 10, padding: "12px 14px" }}>
+              <div style={{ fontSize: 11, color: "#94A3B8", marginBottom: 4 }}>AI 추천 투찰가</div>
+              <div style={{ fontSize: 17, fontWeight: 700, color: "#1B3A6B" }}>{fmtPrice(price)}</div>
+            </div>
+            <div style={{ background: "#F8FAFC", borderRadius: 10, padding: "12px 14px" }}>
+              <div style={{ fontSize: 11, color: "#94A3B8", marginBottom: 4 }}>내 실제 투찰가</div>
+              <div style={{ fontSize: 17, fontWeight: 700, color: "#0F172A" }}>{fmtPrice(Number(req.userBidPrice))}</div>
+              {req.userBidRate != null && (
+                <div style={{ fontSize: 10, color: "#64748B", marginTop: 2 }}>투찰률 {Number(req.userBidRate).toFixed(3)}%</div>
+              )}
+            </div>
+            <div style={{ background: "#F8FAFC", borderRadius: 10, padding: "12px 14px" }}>
+              <div style={{ fontSize: 11, color: "#94A3B8", marginBottom: 4 }}>낙찰 여부</div>
+              <div style={{
+                fontSize: 18, fontWeight: 800,
+                color: isWonVal === true ? "#059669" : isWonVal === false ? "#94A3B8" : "#60A5FA",
+              }}>
+                {isWonVal === true ? "✅ 낙찰" : isWonVal === false ? "미낙찰" : "확인중"}
+              </div>
+            </div>
+          </div>
+          {(req.userDrwtNo1 != null || req.userDrwtNo2 != null) && (
+            <div style={{ padding: "10px 14px", background: "#F5F3FF", borderRadius: 8, fontSize: 13 }}>
+              <span style={{ color: "#64748B" }}>추첨번호 </span>
+              <strong style={{ color: "#7C3AED", fontSize: 15 }}>
+                {req.userDrwtNo1 != null ? String(req.userDrwtNo1).padStart(2, "0") : "-"}
+                {" · "}
+                {req.userDrwtNo2 != null ? String(req.userDrwtNo2).padStart(2, "0") : "-"}
+              </strong>
+            </div>
+          )}
+          {req.userBidAt && (
+            <div style={{ marginTop: 10, fontSize: 11, color: "#94A3B8" }}>
+              투찰일시: {new Date(req.userBidAt as string).toLocaleString("ko-KR", { dateStyle: "short", timeStyle: "short" })}
+            </div>
+          )}
         </div>
       )}
 
