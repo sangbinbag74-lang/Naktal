@@ -1,0 +1,33 @@
+name: 의뢰 결과 자동 채우기
+
+# 마감 지난 BidRequest 의 결과를 매시간 자동 채움
+# BidResult + BidOpeningDetail 양쪽 폴백 (수의계약 포함)
+
+on:
+  schedule:
+    - cron: "5 * * * *"   # 매시간 5분 (G2B 정시 트래픽 회피)
+  workflow_dispatch:
+
+concurrency:
+  group: fill-bid-results
+  cancel-in-progress: false
+
+jobs:
+  fill:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: BidRequest 결과 자동 채우기
+        env:
+          SITE_URL: ${{ secrets.SITE_URL || 'https://naktal.me' }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          if [ -z "$CRON_SECRET" ]; then
+            echo "::warning::CRON_SECRET 미설정 — 건너뜀"
+            exit 0
+          fi
+          echo "[$(date -u +%FT%TZ)] 호출: $SITE_URL/api/cron/fill-bid-results"
+          RESPONSE=$(curl -s -X GET "$SITE_URL/api/cron/fill-bid-results" \
+            -H "Authorization: Bearer $CRON_SECRET" \
+            --max-time 120)
+          echo "응답: $RESPONSE"

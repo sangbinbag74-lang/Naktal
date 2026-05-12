@@ -7,6 +7,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/server";
+import { g2bParseDate } from "@/lib/g2b";
 
 export const maxDuration = 120;
 
@@ -50,18 +51,49 @@ async function runFillBidResults(): Promise<NextResponse> {
     return NextResponse.json({ ok: true, updated: 0, message: "처리 대상 없음" });
   }
 
-  // 2. konepsId 목록으로 BidResult 배치 조회
+  // 2. konepsId 목록으로 BidResult + BidOpeningDetail 병렬 배치 조회
+  // BidResult: getScsbidListSttus* (일반 입찰)
+  // BidOpeningDetail: getOpengResultListInfo* (수의계약 포함 모든 개찰)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const konepsIds = [...new Set(pending.map((r: any) => r.konepsId).filter(Boolean))];
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: results } = await (admin.from("BidResult") as any)
-    .select("annId,bidRate,finalPrice,numBidders,winnerName,openedAt")
-    .in("annId", konepsIds);
+  const [bidResultRes, openingRes] = await Promise.all([
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (admin.from("BidResult") as any)
+      .select("annId,bidRate,finalPrice,numBidders,winnerName,openedAt")
+      .in("annId", konepsIds),
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (admin.from("BidOpeningDetail") as any)
+      .select("annId,sucsfbidRate,bidCount,openingDate,rawJson")
+      .in("annId", konepsIds),
+  ]);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const resultMap: Record<string, any> = Object.fromEntries(
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (results ?? []).map((r: any) => [r.annId, r])
+    (bidResultRes.data ?? []).map((r: any) => [r.annId, r])
   );
+  // BidOpeningDetail 폴백 — opengCorpInfo 파싱
+  // 형식: "회사명^사업자번호^대표명^금액^낙찰률"
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  for (const o of (openingRes.data ?? []) as any[]) {
+    if (resultMap[o.annId]) continue;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const arr = (o.rawJson || []) as any[];
+    if (!arr.length) continue;
+    const first = arr[0];
+    const info = String(first.opengCorpInfo || "");
+    const parts = info.split("^");
+    if (parts.length < 5) continue;
+    const finalPrice = parts[3]?.replace(/[^0-9]/g, "") || "0";
+    if (finalPrice === "0") continue;
+    resultMap[o.annId] = {
+      annId: o.annId,
+      bidRate: (o.sucsfbidRate ?? parseFloat(parts[4] || "0") ?? 0).toString(),
+      finalPrice,
+      numBidders: parseInt((first.prtcptCnum || o.bidCount || "0").toString().replace(/[^0-9]/g, ""), 10),
+      winnerName: parts[0]?.trim() || null,
+      openedAt: o.openingDate ? new Date(o.openingDate).toISOString() : (first.opengDt ? g2bParseDate(first.opengDt) : null),
+    };
+  }
 
   // 3. userId 목록으로 User(회사명) 배치 조회
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
