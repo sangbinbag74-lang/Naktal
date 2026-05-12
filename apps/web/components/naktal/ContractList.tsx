@@ -47,9 +47,8 @@ function ContractCard({ c }: { c: ContractListItem }) {
     window.open(href, "_blank", "noopener,noreferrer");
   }
 
-  // 미낙찰 시 — 순위만 표시 (사정율·실투찰가 등 다른 보조정보 숨김)
-  const showDetailMetrics = won || pending; // 낙찰·대기만 상세 표시
-  const showRankOnly = lost && userRank != null;
+  // 보조행: 모든 상태에서 풀 정보 표시 (사용자 명시)
+  const showDetailMetrics = userBid != null;
 
   return (
     <div
@@ -108,7 +107,7 @@ function ContractCard({ c }: { c: ContractListItem }) {
           {dday.label}
         </span>
         <div style={{ flexShrink: 0, minWidth: 130, textAlign: "right" }}>
-          <WonBadge isWon={c.isWon} />
+          <WonBadge isWon={c.isWon} userRank={userRank} totalBidders={totalBidders} userBidPrice={userBid} />
         </div>
       </div>
 
@@ -155,35 +154,41 @@ function ContractCard({ c }: { c: ContractListItem }) {
           )}
         </div>
       )}
-      {/* 미낙찰 — 순위만 (다른 정보 숨김) */}
-      {showRankOnly && (
-        <div style={{
-          marginTop: 14, paddingTop: 12, borderTop: "1px solid #F1F5F9",
-          fontSize: 12.5,
-        }}>
-          <span>
-            <span style={{ color: "#94A3B8" }}>내 순위 </span>
-            <strong style={{ color: "#374151" }}>
-              {userRank}{totalBidders ? ` / ${totalBidders}` : ""}위
-            </strong>
-          </span>
-        </div>
-      )}
     </div>
   );
 }
 
-function WonBadge({ isWon }: { isWon: boolean | null }) {
+function WonBadge({
+  isWon, userRank, totalBidders, userBidPrice,
+}: {
+  isWon: boolean | null;
+  userRank: number | null;
+  totalBidders: number | null;
+  userBidPrice: number | null;
+}) {
   if (isWon === true) return (
     <span style={{ fontSize: 13, fontWeight: 700, color: "#059669", background: "#ECFDF5", padding: "6px 14px", borderRadius: 7, border: "1px solid #86EFAC" }}>
       ✅ 낙찰 (1순위)
     </span>
   );
-  if (isWon === false) return (
-    <span style={{ fontSize: 13, fontWeight: 700, color: "#DC2626", background: "#FEF2F2", padding: "6px 14px", borderRadius: 7, border: "1px solid #FECACA" }}>
-      ❌ 미낙찰
-    </span>
-  );
+  if (isWon === false) {
+    // 미낙찰 — 작고 평범하게 + 아래에 순위
+    const rankLabel = userRank != null
+      ? `${userRank}${totalBidders ? ` / ${totalBidders}` : ""}위`
+      : userBidPrice != null ? "부적격" : null;
+    return (
+      <div style={{ display: "inline-flex", flexDirection: "column", alignItems: "flex-end", gap: 3 }}>
+        <span style={{ fontSize: 12, fontWeight: 500, color: "#64748B", background: "#F1F5F9", padding: "4px 10px", borderRadius: 6 }}>
+          미낙찰
+        </span>
+        {rankLabel && (
+          <span style={{ fontSize: 11, color: "#94A3B8" }}>
+            내 순위 <strong style={{ color: "#475569" }}>{rankLabel}</strong>
+          </span>
+        )}
+      </div>
+    );
+  }
   return (
     <span style={{ fontSize: 13, fontWeight: 600, color: "#60A5FA", background: "#EFF6FF", padding: "6px 14px", borderRadius: 7 }}>
       결과 수집 중
