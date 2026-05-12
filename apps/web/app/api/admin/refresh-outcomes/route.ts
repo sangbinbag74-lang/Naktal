@@ -39,12 +39,14 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
   const admin = createAdminClient();
   const now = new Date().toISOString();
+  // 마감 + 1시간 지난 BidRequest 만 처리 (개찰 직후 결과 등록 지연 감안)
+  const deadlineCutoff = new Date(Date.now() - 60 * 60 * 1000).toISOString();
 
-  // 1. 마감 지났으나 결과 미입력 BidRequest 조회 (최대 50건 — G2B 호출 부담)
+  // 1. 마감 + 1시간 지났으나 결과 미입력 BidRequest 조회 (최대 50건)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data: pending, error: pendingErr } = await (admin.from("BidRequest") as any)
     .select("id,userId,konepsId,budget,recommendedBidPrice,predictedSajungRate,deadline")
-    .lt("deadline", now)
+    .lt("deadline", deadlineCutoff)
     .is("isWon", null)
     .limit(50);
 

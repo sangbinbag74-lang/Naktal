@@ -1,5 +1,6 @@
 import { createAdminClient } from "@/lib/supabase/server";
 import { RequestsTable } from "./RequestsTable";
+import { AutoRefreshTrigger } from "./AutoRefreshTrigger";
 
 export const dynamic = "force-dynamic";
 
@@ -133,6 +134,7 @@ export default async function AdminRequestsPage() {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+      <AutoRefreshTrigger />
       <div>
         <h2 style={{ fontSize: 22, fontWeight: 700, color: "#0F172A", margin: "0 0 4px" }}>투찰 요청 관리</h2>
         <p style={{ fontSize: 13, color: "#64748B", margin: 0 }}>AI 추천 의뢰 · 개찰 결과 · 수수료 현황</p>
