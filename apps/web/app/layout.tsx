@@ -3,6 +3,7 @@ import { Geist } from "next/font/google";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import { Analytics } from "@vercel/analytics/next";
 import { cn } from "@/lib/utils";
+import { MobileNotice } from "@/components/common/MobileNotice";
 import "./globals.css";
 
 const geist = Geist({ subsets: ["latin"], variable: "--font-sans" });
@@ -188,6 +189,7 @@ export default function RootLayout({
       </head>
       <body>
         {children}
+        <MobileNotice />
         <SpeedInsights />
         <Analytics />
       </body>
