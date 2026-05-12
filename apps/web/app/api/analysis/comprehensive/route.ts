@@ -221,25 +221,30 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     console.warn("[comprehensive] 데이터 부족으로 BidPricePrediction 미저장:", { annId, sampleSize: sajung.sampleSize, isFallback: sajung.isFallback });
   }
 
-  // ─── AIPrediction 영구 저장 (캐시 만료 후에도 예측 이력 보존) ─────────────
-  try {
-    await admin.from("AIPrediction").upsert({
-      annId,
-      konepsId: ann.konepsId as string,
-      title: (ann.title as string) ?? "",
-      orgName: ann.orgName as string,
-      deadline: ann.deadline as string,
-      budget: String(ann.budget ?? 0),
-      predictedSajungRate: sajung.predictedSajungRate,
-      optimalBidPrice: String(sajung.optimalBidPrice),
-      lowerLimitRate: lowerLimitRate,
-      winProbability: Math.round(((sajung.winProbability as number) ?? 0) * 100),
-      competitionScore: competition.competitionScore ?? 0,
-      predictedAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    }, { onConflict: "annId" });
-  } catch (e) {
-    console.error("[AIPrediction] 저장 실패:", e);
+  // ─── AIPrediction 영구 저장 — fallback 차단 (BidPricePrediction 과 동일 정책)
+  // 데이터 부족(sampleSize=0 or isFallback) 시 적재 차단 — 적중률 통계 오염 방지
+  if (!isUnreliable) {
+    try {
+      await admin.from("AIPrediction").upsert({
+        annId,
+        konepsId: ann.konepsId as string,
+        title: (ann.title as string) ?? "",
+        orgName: ann.orgName as string,
+        deadline: ann.deadline as string,
+        budget: String(ann.budget ?? 0),
+        predictedSajungRate: sajung.predictedSajungRate,
+        optimalBidPrice: String(sajung.optimalBidPrice),
+        lowerLimitRate: lowerLimitRate,
+        winProbability: Math.round(((sajung.winProbability as number) ?? 0) * 100),
+        competitionScore: competition.competitionScore ?? 0,
+        predictedAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      }, { onConflict: "annId" });
+    } catch (e) {
+      console.error("[AIPrediction] 저장 실패:", e);
+    }
+  } else {
+    console.warn("[comprehensive] 데이터 부족으로 AIPrediction 미저장:", { annId, sampleSize: sajung.sampleSize, isFallback: sajung.isFallback });
   }
 
   const trendMeta: TrendMeta = {
