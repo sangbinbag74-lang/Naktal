@@ -224,10 +224,22 @@ export function AccuracyClient({ bppList, activeCount, predCount }: Props) {
                         {ann?.deadline ? (
                           <div>
                             <div style={{ color: "#6B7280", fontSize: 11.5 }}>
-                              {new Date(ann.deadline).toLocaleDateString("ko-KR", { timeZone: "Asia/Seoul" })}{" "}
-                              <span style={{ color: "#94A3B8", fontSize: 10.5 }}>
-                                {new Date(ann.deadline).toLocaleTimeString("ko-KR", { timeZone: "Asia/Seoul", hour: "2-digit", minute: "2-digit", hour12: false })}
-                              </span>
+                              {(() => {
+                                // DB의 deadline 이 timezone 없는 naive timestamp (UTC 값) 인 경우
+                                // 끝에 'Z' 강제 추가해서 UTC 로 명시. KST 변환 정확.
+                                const raw = String(ann.deadline);
+                                const iso = raw.includes("T") ? (raw.endsWith("Z") || /[+-]\d{2}:?\d{2}$/.test(raw) ? raw : raw + "Z")
+                                                              : raw.replace(" ", "T") + "Z";
+                                const d = new Date(iso);
+                                return (
+                                  <>
+                                    {d.toLocaleDateString("ko-KR", { timeZone: "Asia/Seoul" })}{" "}
+                                    <span style={{ color: "#94A3B8", fontSize: 10.5 }}>
+                                      {d.toLocaleTimeString("ko-KR", { timeZone: "Asia/Seoul", hour: "2-digit", minute: "2-digit", hour12: false })}
+                                    </span>
+                                  </>
+                                );
+                              })()}
                             </div>
                             {dd && (
                               <span style={{ fontSize: 10, fontWeight: 700, color: dd.color, background: dd.color + "1a", padding: "1px 5px", borderRadius: 4 }}>
