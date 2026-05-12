@@ -156,6 +156,7 @@ export async function g2bFetchBidResultPage(params: {
   inqryBgnDt: string; // YYYYMMDD0000
   inqryEndDt: string; // YYYYMMDD2359
   operation?: string; // 기본: getScsbidListSttusThng
+  inqryDiv?: "1" | "2"; // 1=공고일자(기본, 대량수집용), 2=개찰일자(단건조회용)
 }): Promise<{ items: G2BBidResult[]; totalCount: number }> {
   const op = params.operation ?? SCSBID_OPS[0];
   const url = new URL(`${SCSBID_BASE}/${op}`);
@@ -163,7 +164,7 @@ export async function g2bFetchBidResultPage(params: {
   url.searchParams.set("numOfRows", String(params.numOfRows));
   url.searchParams.set("pageNo", String(params.pageNo));
   url.searchParams.set("type", "json");
-  url.searchParams.set("inqryDiv", "1");
+  url.searchParams.set("inqryDiv", params.inqryDiv ?? "1");
   url.searchParams.set("inqryBgnDt", params.inqryBgnDt);
   url.searchParams.set("inqryEndDt", params.inqryEndDt);
 
