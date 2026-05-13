@@ -66,7 +66,7 @@ export default function FaqPage() {
 
       <footer style={{ textAlign: "center", padding: "32px 16px", color: "#94A3B8", fontSize: 11.5, lineHeight: 1.7 }}>
         <div>주식회사 호라이즌 · 대표 박상빈 · 사업자등록번호 398-87-03453</div>
-        <div>대전광역시 유성구 장대로 106, 2층 제이321호 · 전화 063-831-9882</div>
+        <div>대전광역시 유성구 장대로 106, 2층 제이321호 · 전화 0505-007-9882</div>
         <div style={{ marginTop: 4 }}>
           © 2025 낙비 · <Link href="/terms" style={{ color: "#94A3B8" }}>이용약관</Link> · <Link href="/privacy" style={{ color: "#94A3B8" }}>개인정보처리방침</Link>
         </div>
