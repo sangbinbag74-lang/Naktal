@@ -222,6 +222,20 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       ...(snapshotCategoryTotal != null ? { snapshotCategoryTotal } : {}),
     };
     if (!alreadyContracted) {
+      // ⚠️ UPDATE path 에도 INSERT 와 동일한 사정율 일관성 검증 (옛 코드로 인한 비정상값 저장 차단)
+      const verifyEffUpd = (((finalRecommendedBidPrice - (aValueTotal ?? 0)) * 100 / Number(lowerLimitRate ?? 1))
+                            + (aValueTotal ?? 0)) * 100 / serverBaseAmount;
+      if (verifyEffUpd < 90 || verifyEffUpd > 110) {
+        console.error("[BidRequest] UPDATE 사정율 일관성 검증 실패", {
+          konepsId, finalRecommendedBidPrice, serverBaseAmount, lowerLimitRate, aValueTotal,
+          verifyEff: verifyEffUpd.toFixed(4), expectedSajung: finalPredictedSajungRate,
+        });
+        return NextResponse.json({
+          error: "INCONSISTENT_PRICING",
+          message: "추천가/기초금액/낙찰하한율 조합의 역산 사정율이 비정상 범위입니다. 다시 분석 후 재시도해주세요.",
+          verifyEff: Number(verifyEffUpd.toFixed(4)),
+        }, { status: 500 });
+      }
       // 계약 전: 금액·사정율 갱신 허용
       Object.assign(updatePayload, {
         recommendedBidPrice: String(finalRecommendedBidPrice),
@@ -233,6 +247,8 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         agreedFeeRate: feeRate,
         agreedFeeAmount: String(agreedFeeAmount),
         agreedAt: new Date().toISOString(),
+        // ⚠️ budget 도 serverBaseAmount 로 강제 — INSERT 와 일관성 유지 (옛 잘못된 budget 정정)
+        budget: String(serverBaseAmount),
         ...(bizRegNo ? { bizRegNo } : {}),
         ...(repName ? { repName } : {}),
         ...(bizRegNo ? { contractAt: new Date().toISOString(), contractIp } : {}),

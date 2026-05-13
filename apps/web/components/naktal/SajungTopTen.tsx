@@ -46,7 +46,7 @@ export function SajungTopTen({ annId, predictedSajungRate, budget: _budget, peri
   if (loading) {
     return (
       <div style={{ padding: "24px 0", textAlign: "center", color: "#94A3B8", fontSize: 13 }}>
-        낙찰 확률 구간을 분석하는 중...
+        사정율 분포 구간을 분석하는 중...
       </div>
     );
   }

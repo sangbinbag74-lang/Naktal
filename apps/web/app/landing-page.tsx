@@ -363,7 +363,7 @@ function Hero() {
               </div>
               <div style={{ height: 14, width: 1, background: "rgba(255,255,255,0.15)" }} />
               <div style={{ display: "flex", gap: 24 }}>
-                {[["사정율 분포", "σ"], ["낙찰 확률", "P"], ["수렴 곡선", "μ"]].map(([l, k]) => (
+                {[["사정율 분포", "σ"], ["추천 점수", "P"], ["수렴 곡선", "μ"]].map(([l, k]) => (
                   <div key={l} style={{ display: "flex", alignItems: "center", gap: 6 }}>
                     <span className="nk-en nk-num" style={{ fontSize: 11, color: "var(--blue-400)", fontWeight: 700 }}>{k}</span>
                     <span style={{ fontSize: 11.5, color: "rgba(255,255,255,0.62)" }}>{l}</span>

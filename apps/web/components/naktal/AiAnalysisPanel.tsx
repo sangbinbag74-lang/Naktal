@@ -222,12 +222,12 @@ export function AiAnalysisPanel({ annDbId, budget, g2bUrl, konepsId, onRefresh, 
             {/* ② 핵심 지표 2×1 */}
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
               <div style={{ background: "#F8FAFC", borderRadius: 10, padding: "12px 8px", textAlign: "center" }}>
-                <div style={{ fontSize: 11, color: "#94A3B8", marginBottom: 4 }}>낙찰 확률</div>
+                <div style={{ fontSize: 11, color: "#94A3B8", marginBottom: 4 }}>추천 점수</div>
                 <div style={{
                   fontSize: 18, fontWeight: 800,
                   color: isNegotiated || cl === "LOW" ? "#94A3B8" : bs.winProbability >= 0.6 ? "#16A34A" : bs.winProbability >= 0.35 ? "#D97706" : "#DC2626",
                 }}>
-                  {isNegotiated ? "N/A" : cl === "LOW" ? "-" : `${Math.round(bs.winProbability * 100)}%`}
+                  {isNegotiated ? "N/A" : cl === "LOW" ? "-" : `${Math.round(bs.winProbability * 100)}점`}
                 </div>
                 <div style={{ fontSize: 10, color: "#94A3B8", marginTop: 2 }}>
                   {isNegotiated ? "협상 계약 — 가격 외 평가" : `${bs.sampleSize}건 기반`}

@@ -107,7 +107,7 @@ export function PredictionsClient() {
                 <th style={th}>기초금액</th>
                 <th style={thHi}>AI 예측 사정율</th>
                 <th style={thHi}>AI 추천 투찰가</th>
-                <th style={thHi}>낙찰확률</th>
+                <th style={thHi}>추천점수</th>
                 {status === "closed" && (
                   <>
                     <th style={thOk}>실제 사정율</th>
@@ -132,7 +132,7 @@ export function PredictionsClient() {
                   <td style={td}>{fmtPrice(r.bsisAmt || r.budget)}원</td>
                   <td style={tdHi}>{fmtPct(r.predictedSajungRate)}</td>
                   <td style={tdHi}>{fmtPrice(r.predOptimalBid)}원</td>
-                  <td style={tdHi}>{r.winProbability != null ? `${(r.winProbability * 100).toFixed(1)}%` : "-"}</td>
+                  <td style={tdHi}>{r.winProbability != null ? `${(r.winProbability * 100).toFixed(1)}점` : "-"}</td>
                   {status === "closed" && (
                     <>
                       <td style={tdOk}>{fmtPct(r.actualBidRate)}</td>

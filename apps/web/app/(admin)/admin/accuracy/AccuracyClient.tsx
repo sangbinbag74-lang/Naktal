@@ -149,7 +149,7 @@ export function AccuracyClient({ bppList, activeCount, predCount }: Props) {
           <option value="deadline-desc">마감 먼 순</option>
           <option value="bid-desc">추천 금액 높은 순</option>
           <option value="rate-desc">예측 사정율 높은 순</option>
-          <option value="winprob-desc">낙찰 확률 높은 순</option>
+          <option value="winprob-desc">추천 점수 높은 순</option>
         </select>
         <span style={{ fontSize: 12, color: "#9CA3AF", whiteSpace: "nowrap", marginLeft: "auto" }}>{filtered.length}건</span>
       </div>
@@ -178,7 +178,7 @@ export function AccuracyClient({ bppList, activeCount, predCount }: Props) {
             <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12.5 }}>
               <thead>
                 <tr style={{ background: "#F8FAFC" }}>
-                  {["구분", "공고명", "발주처", "마감일", "예산", "AI 추천금액", "예측사정율", "실제결과", "낙찰확률", "샘플수"].map((h) => (
+                  {["구분", "공고명", "발주처", "마감일", "예산", "AI 추천금액", "예측사정율", "실제결과", "추천점수", "샘플수"].map((h) => (
                     <th key={h} style={{ padding: "9px 12px", textAlign: "left", color: "#374151", fontWeight: 600, borderBottom: "2px solid #E8ECF2", whiteSpace: "nowrap" }}>{h}</th>
                   ))}
                 </tr>
@@ -314,11 +314,11 @@ export function AccuracyClient({ bppList, activeCount, predCount }: Props) {
                           })()
                         )}
                       </td>
-                      {/* 낙찰확률 */}
+                      {/* 추천점수 */}
                       <td style={{ padding: "8px 12px", whiteSpace: "nowrap" }}>
                         {winProb ? (
                           <span style={{ fontSize: 12, fontWeight: 700, color: probColor }}>
-                            {winProb}%
+                            {winProb}점
                           </span>
                         ) : <span style={{ color: "#D1D5DB" }}>-</span>}
                       </td>
