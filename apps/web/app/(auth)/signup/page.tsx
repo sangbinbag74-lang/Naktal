@@ -266,7 +266,8 @@ export default function SignupPage() {
 
         {/* Step 1 — 카카오 본인인증 */}
         {KAKAO_AUTH_ENABLED && step === 1 && (
-          <StepWrap title="본인인증" subtitle="카카오 계정으로 1초 만에 시작">
+          <StepWrap title="본인인증" subtitle="카카오 계정으로 1초 만에 시작"
+            notice="카카오에서 이름·휴대폰·이메일을 받아와요. CI(연계정보)는 수집하지 않아요.">
             {kakaoVerified ? (
               <div style={{ background: "#ECFDF5", border: "1.5px solid #A7F3D0", borderRadius: 10, padding: "14px 16px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                 <div>
@@ -297,7 +298,8 @@ export default function SignupPage() {
 
         {/* Step 2 — 사업자 확인 */}
         {step === (KAKAO_AUTH_ENABLED ? 2 : 1) && (
-          <StepWrap title="사업자 확인" subtitle="사업자등록번호와 대표자 정보를 입력해주세요">
+          <StepWrap title="사업자 확인" subtitle="사업자등록번호와 대표자 정보를 입력해주세요"
+            notice="사업자등록증의 대표자명과 동일한 성함이어야 가입할 수 있어요. (나라장터 자동 대조)">
             <Field label="사업자번호">
               <BizNoInput value={form.bizNo} onChange={(v) => set("bizNo", v)} disabled={verifying} />
               {bizAutoFilled && form.bizName && (
@@ -328,7 +330,8 @@ export default function SignupPage() {
 
         {/* Step 3 — 연락처·주소 */}
         {step === (KAKAO_AUTH_ENABLED ? 3 : 2) && (
-          <StepWrap title="연락처·주소" subtitle="계산서·우편물 발송에 사용됩니다">
+          <StepWrap title="연락처·주소" subtitle="계산서·우편물 발송에 사용됩니다"
+            notice="이메일은 결과 리포트, 주소는 세금계산서 발송에 사용돼요. 정확히 입력해 주세요.">
             <Field label="이메일" hint="계산서·결과 리포트 발송용">
               <input type="email" value={form.notifyEmail}
                 onChange={(e) => set("notifyEmail", e.target.value)} placeholder="contact@company.com"
@@ -349,7 +352,8 @@ export default function SignupPage() {
 
         {/* Step 4 — 비밀번호 + 동의 + 가입 완료 */}
         {step === TOTAL_STEPS && (
-          <StepWrap title="비밀번호 설정" subtitle="마지막 단계입니다">
+          <StepWrap title="비밀번호 설정" subtitle="마지막 단계입니다"
+            notice="비밀번호는 8자 이상이어야 해요. 마케팅 동의는 선택이지만, 거래 안내(낙찰 결과·계산서)는 무조건 발송돼요.">
             <Field label="비밀번호" hint="8자 이상">
               <input type="password" value={form.password} disabled={loading}
                 onChange={(e) => set("password", e.target.value)} placeholder="8자 이상"
@@ -430,13 +434,30 @@ function ProgressBar({ step, total, labels }: { step: number; total: number; lab
   );
 }
 
-function StepWrap({ title, subtitle, children }: { title: string; subtitle: string; children: React.ReactNode }) {
+function StepWrap({ title, subtitle, notice, children }: { title: string; subtitle: string; notice?: string; children: React.ReactNode }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
       <div style={{ marginBottom: 4 }}>
         <div style={{ fontSize: 20, fontWeight: 800, color: "#0F172A", marginBottom: 4 }}>{title}</div>
         <div style={{ fontSize: 12.5, color: "#64748B" }}>{subtitle}</div>
       </div>
+      {notice && (
+        <div style={{
+          background: "#EFF6FF",
+          border: "1px solid #BFDBFE",
+          borderRadius: 10,
+          padding: "11px 14px",
+          fontSize: 12.5,
+          color: "#1E40AF",
+          lineHeight: 1.6,
+          display: "flex",
+          gap: 8,
+          alignItems: "flex-start",
+        }}>
+          <span style={{ fontSize: 14, flexShrink: 0 }}>💡</span>
+          <span>{notice}</span>
+        </div>
+      )}
       {children}
     </div>
   );
