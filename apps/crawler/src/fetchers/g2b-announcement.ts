@@ -5,23 +5,69 @@ import { logger } from "../utils/logger";
 import { MAIN_CNSTWK_MAP, parseSubCategories } from "../category-map";
 
 // ─── 지역 추출 ────────────────────────────────────────────────────────────────
+// 우선순위: rawJson.cnstrtsiteRgnNm (공사현장 지역) > ntceInsttAddr (기관주소)
+//          > orgName (지방조달청·시도풀네임·시군구·약어) > 매칭 안 되면 빈 값
+// ⚠️ 옛 버전 버그: orgName 의 첫 2글자를 fallback 으로 사용 → "조달청" → "조달" 등 215만 row 누적.
+//                 본 버전은 매칭 실패 시 빈 값 반환 — sajung-engine 카테고리 가중평균 폴백 작동.
+
 const REGION_PREFIXES: [string, string][] = [
+  // 시도 풀네임 (긴 패턴 우선)
+  ["서울특별시", "서울"], ["부산광역시", "부산"], ["대구광역시", "대구"],
+  ["인천광역시", "인천"], ["광주광역시", "광주"], ["대전광역시", "대전"],
+  ["울산광역시", "울산"], ["세종특별자치시", "세종"],
+  ["경기도", "경기"],
+  ["강원특별자치도", "강원"], ["강원도", "강원"],
+  ["충청북도", "충북"], ["충청남도", "충남"],
+  ["전북특별자치도", "전북"], ["전라북도", "전북"], ["전라남도", "전남"],
+  ["경상북도", "경북"], ["경상남도", "경남"],
+  ["제주특별자치도", "제주"], ["제주도", "제주"],
+  // 시도 약어 (시도 풀네임 뒤로 — startsWith 매칭 우선순위)
   ["서울", "서울"], ["부산", "부산"], ["대구", "대구"], ["인천", "인천"],
   ["광주", "광주"], ["대전", "대전"], ["울산", "울산"], ["세종", "세종"],
   ["경기", "경기"], ["강원", "강원"],
-  ["충청북도", "충북"], ["충청남도", "충남"], ["충북", "충북"], ["충남", "충남"],
-  ["전라북도", "전북"], ["전라남도", "전남"], ["전북", "전북"], ["전남", "전남"],
-  ["경상북도", "경북"], ["경상남도", "경남"], ["경북", "경북"], ["경남", "경남"],
+  ["충북", "충북"], ["충남", "충남"],
+  ["전북", "전북"], ["전남", "전남"],
+  ["경북", "경북"], ["경남", "경남"],
   ["제주", "제주"],
 ];
 
-function extractRegion(addr: string): string {
+function regionFromAddrPrefix(addr: string): string {
   if (!addr) return "";
   const trimmed = addr.trim();
   for (const [prefix, label] of REGION_PREFIXES) {
     if (trimmed.startsWith(prefix)) return label;
   }
-  return trimmed.slice(0, 2);
+  return "";
+}
+
+function regionFromOrgName(orgName: string): string {
+  if (!orgName) return "";
+  // 1. 지방조달청
+  const m1 = orgName.match(/(서울|부산|대구|인천|광주|대전|울산|세종|경기|강원|충북|충남|전북|전남|경북|경남|제주)지방조달청/);
+  if (m1 && m1[1]) return m1[1];
+  // 2. 시도 풀네임 anywhere
+  for (const [prefix, label] of REGION_PREFIXES) {
+    if (orgName.includes(prefix)) return label;
+  }
+  return "";
+}
+
+function extractRegion(item: G2BAnnouncement): string {
+  // 1. rawJson.cnstrtsiteRgnNm (가장 정확)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const siteRgn = (item as any).cnstrtsiteRgnNm as string | undefined;
+  if (siteRgn) {
+    const r = regionFromAddrPrefix(siteRgn);
+    if (r) return r;
+  }
+  // 2. ntceInsttAddr 접두사
+  if (item.ntceInsttAddr) {
+    const r = regionFromAddrPrefix(item.ntceInsttAddr);
+    if (r) return r;
+  }
+  // 3. orgName 정규식
+  const orgName = item.ntceInsttNm || item.demInsttNm || "";
+  return regionFromOrgName(orgName);
 }
 
 // ─── G2B 날짜 → Date ─────────────────────────────────────────────────────────
@@ -69,7 +115,7 @@ export function mapToRow(item: G2BAnnouncement, operation: string): Announcement
     const category = operation === "getBidPblancListInfoCnstwk"
       ? (MAIN_CNSTWK_MAP[item.mainCnsttyNm ?? ""] || "시설공사")
       : (item.pubPrcrmntMidClsfcNm || item.pubPrcrmntLrgClsfcNm || OP_TO_CATEGORY[operation] || item.ntceKindNm || "");
-    const region   = extractRegion(item.ntceInsttAddr || item.ntceInsttNm || item.demInsttNm || "");
+    const region   = extractRegion(item);
 
     const rawJson: Record<string, string> = {};
     for (const [k, v] of Object.entries(item)) rawJson[k] = String(v ?? "");
