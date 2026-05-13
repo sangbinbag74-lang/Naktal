@@ -325,7 +325,7 @@ export function RequestsTable({ requests, userMap, bidResultMap, annOpengMap = {
           <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12.5 }}>
             <thead>
               <tr style={{ background: "#F8FAFC" }}>
-                {["회사명", "공고명", "마감일", "추천금액", "실투찰금액", "순위", "개찰일", "낙찰", "수수료", "상태", ""].map((h) => (
+                {["회사명", "공고명", "마감/개찰", "추천금액", "실투찰금액", "순위", "G2B", "낙찰", "수수료", "상태", ""].map((h) => (
                   <th key={h} style={{ padding: "9px 12px", textAlign: "left", color: "#374151", fontWeight: 600, borderBottom: "2px solid #E8ECF2", whiteSpace: "nowrap" }}>{h}</th>
                 ))}
               </tr>
@@ -370,10 +370,30 @@ export function RequestsTable({ requests, userMap, bidResultMap, annOpengMap = {
                       </Link>
                       <div style={{ color: "#9CA3AF", fontSize: 10, marginTop: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.orgName}</div>
                     </td>
-                    {/* 마감일 */}
-                    <td style={{ padding: "8px 12px", color: isPast ? "#DC2626" : "#6B7280", whiteSpace: "nowrap", fontWeight: isPast ? 600 : 400 }}>
-                      {new Date(r.deadline).toLocaleDateString("ko-KR")}
-                      {isPast && <span style={{ fontSize: 9, marginLeft: 4 }}>(마감)</span>}
+                    {/* 마감 (마감일시 + 개찰일시 통합) */}
+                    <td style={{ padding: "8px 12px", whiteSpace: "nowrap" }}>
+                      {/* 마감일시 */}
+                      <div style={{ color: isPast ? "#DC2626" : "#374151", fontWeight: isPast ? 700 : 600, fontSize: 12 }}>
+                        {new Date(String(r.deadline).endsWith("Z") ? r.deadline : r.deadline + "Z")
+                          .toLocaleString("ko-KR", { timeZone: "Asia/Seoul", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hour12: false })}
+                        {isPast && <span style={{ fontSize: 9, marginLeft: 4, color: "#DC2626" }}>(마감)</span>}
+                      </div>
+                      {/* 개찰일시 — 실제 개찰값 우선, 없으면 예정값 */}
+                      {(() => {
+                        const actualDt = r.openingDt;
+                        const planDt = annOpengMap[r.annId];
+                        const src = actualDt ?? planDt;
+                        if (!src) return null;
+                        const d = new Date(String(src).endsWith("Z") || String(src).includes("T") ? String(src) : String(src).replace(" ", "T") + "Z");
+                        if (isNaN(d.getTime())) return null;
+                        const isPlan = !actualDt;
+                        return (
+                          <div style={{ fontSize: 10.5, color: isPlan ? "#94A3B8" : "#0F766E", marginTop: 2 }}>
+                            개찰 {d.toLocaleString("ko-KR", { timeZone: "Asia/Seoul", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hour12: false })}
+                            {isPlan && <span style={{ fontSize: 9, marginLeft: 4 }}>(예정)</span>}
+                          </div>
+                        );
+                      })()}
                     </td>
                     {/* 추천금액 */}
                     <td style={{ padding: "8px 12px", whiteSpace: "nowrap" }}>
@@ -419,38 +439,17 @@ export function RequestsTable({ requests, userMap, bidResultMap, annOpengMap = {
                         <span style={{ color: "#D1D5DB", fontSize: 11 }}>-</span>
                       )}
                     </td>
-                    {/* 개찰일 — 결과 입력값 우선, 없으면 공고 rawJson.opengDt fallback */}
-                    <td style={{ padding: "8px 12px", color: "#6B7280", whiteSpace: "nowrap" }}>
-                      {(() => {
-                        const actualDt = r.openingDt;
-                        const planDt = annOpengMap[r.annId];
-                        if (actualDt) {
-                          // 실제 개찰 결과 입력됨
-                          return <span style={{ color: "#374151", fontWeight: 500 }}>{new Date(actualDt).toLocaleDateString("ko-KR")}</span>;
-                        }
-                        if (planDt) {
-                          // 예정 개찰일시 (공고 rawJson) — 회색 + 표시
-                          const d = new Date(String(planDt).replace(" ", "T"));
-                          if (!isNaN(d.getTime())) {
-                            const past = d.getTime() < Date.now();
-                            return (
-                              <div style={{ fontSize: 11, color: past ? "#D97706" : "#94A3B8" }}>
-                                <div>{d.toLocaleDateString("ko-KR")}</div>
-                                <div style={{ fontSize: 9 }}>{past ? "예정 (지남)" : "예정"}</div>
-                              </div>
-                            );
-                          }
-                        }
-                        return noResult ? (
-                          <button
-                            onClick={() => handleFetchResult(r)}
-                            disabled={fetchingId === r.id}
-                            style={{ fontSize: 10, padding: "3px 7px", borderRadius: 5, border: "1px solid #CBD5E1", background: fetchingId === r.id ? "#F1F5F9" : "#fff", cursor: "pointer", color: "#1B3A6B", fontWeight: 600, opacity: fetchingId === r.id ? 0.7 : 1 }}
-                          >
-                            {fetchingId === r.id ? "조회중..." : "G2B 조회"}
-                          </button>
-                        ) : <span style={{ color: "#D1D5DB" }}>-</span>;
-                      })()}
+                    {/* G2B 조회 — 마감 지났는데 결과 없을 때만 */}
+                    <td style={{ padding: "8px 12px", whiteSpace: "nowrap", textAlign: "center" }}>
+                      {noResult ? (
+                        <button
+                          onClick={() => handleFetchResult(r)}
+                          disabled={fetchingId === r.id}
+                          style={{ fontSize: 10, padding: "3px 7px", borderRadius: 5, border: "1px solid #CBD5E1", background: fetchingId === r.id ? "#F1F5F9" : "#fff", cursor: "pointer", color: "#1B3A6B", fontWeight: 600, opacity: fetchingId === r.id ? 0.7 : 1 }}
+                        >
+                          {fetchingId === r.id ? "조회중..." : "G2B 조회"}
+                        </button>
+                      ) : <span style={{ color: "#D1D5DB", fontSize: 11 }}>-</span>}
                     </td>
                     {/* 낙찰 결과 (G2B 자동 확인) */}
                     <td style={{ padding: "8px 12px", minWidth: 110 }}>
@@ -516,29 +515,21 @@ export function RequestsTable({ requests, userMap, bidResultMap, annOpengMap = {
               }).flatMap((tr, i) => {
                 const r = filtered[i];
                 if (!r) return [tr];
-                // 매칭 데이터 없으면 보조행 자동 숨김
-                const hasMatch = r.userRank != null || r.userBidPrice != null || r.userDrwtNo1 != null || r.userBidAt;
-                if (!hasMatch) return [tr];
+                // 보조행에는 메인에 없는 정보만 — 추첨번호 / 투찰일시 / 투찰률 / 낙찰금액 / 낙찰사정율 / 결과사정율
+                const info = annInfoMap[r.annId];
+                const winSajung = reverseSajung(Number(r.actualFinalPrice ?? 0), info, Number(r.budget ?? 0));
+                const hasExtra =
+                  r.userDrwtNo1 != null || r.userDrwtNo2 != null || r.userBidAt ||
+                  r.userBidRate != null ||
+                  (r.actualFinalPrice != null && Number(r.actualFinalPrice) > 0) ||
+                  winSajung != null || r.actualSajungRate != null;
+                if (!hasExtra) return [tr];
                 return [
                   tr,
                   <tr key={(r.id ?? i) + "-detail"} style={{ background: "#F8FAFC", borderBottom: "1px solid #E8ECF2" }}>
                     <td colSpan={11} style={{ padding: "6px 18px", fontSize: 11.5, color: "#475569" }}>
                       <div style={{ display: "flex", flexWrap: "wrap", gap: 18, alignItems: "center" }}>
-                        <span style={{ fontSize: 10, color: "#94A3B8", fontWeight: 600 }}>📊 매칭상세</span>
-                        {r.userRank != null && (
-                          <span>
-                            <span style={{ color: "#94A3B8" }}>순위 </span>
-                            <strong style={{ color: r.userRank === 1 ? "#059669" : r.userRank <= 3 ? "#D97706" : "#374151" }}>
-                              {r.userRank}{r.totalBidders ? ` / ${r.totalBidders}` : ""}위
-                            </strong>
-                          </span>
-                        )}
-                        {r.userBidPrice != null && (
-                          <span>
-                            <span style={{ color: "#94A3B8" }}>실투찰가 </span>
-                            <strong style={{ color: "#1B3A6B" }}>{fmtPrice(r.userBidPrice)}</strong>
-                          </span>
-                        )}
+                        <span style={{ fontSize: 10, color: "#94A3B8", fontWeight: 600 }}>📊 상세</span>
                         {r.userBidRate != null && (
                           <span>
                             <span style={{ color: "#94A3B8" }}>투찰률 </span>
@@ -558,21 +549,9 @@ export function RequestsTable({ requests, userMap, bidResultMap, annOpengMap = {
                         {r.userBidAt && (
                           <span>
                             <span style={{ color: "#94A3B8" }}>투찰일시 </span>
-                            <strong>{new Date(r.userBidAt).toLocaleString("ko-KR", { dateStyle: "short", timeStyle: "short" })}</strong>
+                            <strong>{new Date(String(r.userBidAt).endsWith("Z") ? r.userBidAt : r.userBidAt + "Z").toLocaleString("ko-KR", { timeZone: "Asia/Seoul", dateStyle: "short", timeStyle: "short" })}</strong>
                           </span>
                         )}
-                        {/* 본인 사정율 = 본인 실투찰가 역산 */}
-                        {(() => {
-                          const info = annInfoMap[r.annId];
-                          const mySajung = reverseSajung(Number(r.userBidPrice ?? 0), info, Number(r.budget ?? 0));
-                          if (mySajung == null) return null;
-                          return (
-                            <span>
-                              <span style={{ color: "#94A3B8" }}>본인사정율 </span>
-                              <strong style={{ color: "#1B3A6B" }}>{mySajung.toFixed(3)}%</strong>
-                            </span>
-                          );
-                        })()}
                         {r.actualFinalPrice != null && Number(r.actualFinalPrice) > 0 && (
                           <span>
                             <span style={{ color: "#94A3B8" }}>낙찰금액 </span>
@@ -580,17 +559,12 @@ export function RequestsTable({ requests, userMap, bidResultMap, annOpengMap = {
                           </span>
                         )}
                         {/* 낙찰사정율 = 낙찰가 역산 */}
-                        {(() => {
-                          const info = annInfoMap[r.annId];
-                          const winSajung = reverseSajung(Number(r.actualFinalPrice ?? 0), info, Number(r.budget ?? 0));
-                          if (winSajung == null) return null;
-                          return (
-                            <span>
-                              <span style={{ color: "#94A3B8" }}>낙찰사정율 </span>
-                              <strong style={{ color: "#059669" }}>{winSajung.toFixed(3)}%</strong>
-                            </span>
-                          );
-                        })()}
+                        {winSajung != null && (
+                          <span>
+                            <span style={{ color: "#94A3B8" }}>낙찰사정율 </span>
+                            <strong style={{ color: "#059669" }}>{winSajung.toFixed(3)}%</strong>
+                          </span>
+                        )}
                         {/* 결과 사정율 (G2B 공식, 비교용) */}
                         {r.actualSajungRate != null && (
                           <span>
