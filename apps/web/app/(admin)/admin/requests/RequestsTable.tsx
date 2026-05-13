@@ -58,6 +58,32 @@ const feeStatusStyle: Record<string, { label: string; color: string }> = {
 const fmtPrice = (n: unknown) =>
   n != null && n !== "" ? Number(n).toLocaleString("ko-KR") + "원" : "-";
 
+/**
+ * 안전한 Date 파싱
+ * - 이미 timezone 정보 (Z 또는 ±HH:MM) 있으면 그대로
+ * - 없으면 UTC 강제(Z 추가)
+ * - 공백 구분("2026-05-13 11:00:00")도 T로 치환
+ * - 실패 시 invalid Date 반환 (호출자가 isNaN 체크)
+ */
+function parseDt(v: unknown): Date {
+  if (v == null || v === "") return new Date(NaN);
+  const s = String(v).trim();
+  // 이미 timezone 정보 있음 — 그대로 파싱
+  if (/Z$/i.test(s) || /[+-]\d{2}:?\d{2}$/.test(s)) {
+    const d = new Date(s);
+    if (!isNaN(d.getTime())) return d;
+  }
+  // naive timestamp — UTC 로 가정해서 Z 추가
+  const iso = s.includes("T") ? s : s.replace(" ", "T");
+  return new Date(iso + "Z");
+}
+
+const fmtKstDateTime = (v: unknown): string => {
+  const d = parseDt(v);
+  if (isNaN(d.getTime())) return "-";
+  return d.toLocaleString("ko-KR", { timeZone: "Asia/Seoul", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hour12: false });
+};
+
 const planLabel: Record<string, string> = { FREE: "무료", STANDARD: "스탠다드", PRO: "프로" };
 
 function calcFee(isWon: string, actualFinalPrice: string, recommendedBidPrice: string | number | null) {
@@ -374,8 +400,7 @@ export function RequestsTable({ requests, userMap, bidResultMap, annOpengMap = {
                     <td style={{ padding: "8px 12px", whiteSpace: "nowrap" }}>
                       {/* 마감일시 */}
                       <div style={{ color: isPast ? "#DC2626" : "#374151", fontWeight: isPast ? 700 : 600, fontSize: 12 }}>
-                        {new Date(String(r.deadline).endsWith("Z") ? r.deadline : r.deadline + "Z")
-                          .toLocaleString("ko-KR", { timeZone: "Asia/Seoul", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hour12: false })}
+                        {fmtKstDateTime(r.deadline)}
                         {isPast && <span style={{ fontSize: 9, marginLeft: 4, color: "#DC2626" }}>(마감)</span>}
                       </div>
                       {/* 개찰일시 — 실제 개찰값 우선, 없으면 예정값 */}
@@ -384,12 +409,12 @@ export function RequestsTable({ requests, userMap, bidResultMap, annOpengMap = {
                         const planDt = annOpengMap[r.annId];
                         const src = actualDt ?? planDt;
                         if (!src) return null;
-                        const d = new Date(String(src).endsWith("Z") || String(src).includes("T") ? String(src) : String(src).replace(" ", "T") + "Z");
-                        if (isNaN(d.getTime())) return null;
+                        const txt = fmtKstDateTime(src);
+                        if (txt === "-") return null;
                         const isPlan = !actualDt;
                         return (
                           <div style={{ fontSize: 10.5, color: isPlan ? "#94A3B8" : "#0F766E", marginTop: 2 }}>
-                            개찰 {d.toLocaleString("ko-KR", { timeZone: "Asia/Seoul", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hour12: false })}
+                            개찰 {txt}
                             {isPlan && <span style={{ fontSize: 9, marginLeft: 4 }}>(예정)</span>}
                           </div>
                         );
@@ -546,12 +571,16 @@ export function RequestsTable({ requests, userMap, bidResultMap, annOpengMap = {
                             </strong>
                           </span>
                         )}
-                        {r.userBidAt && (
-                          <span>
-                            <span style={{ color: "#94A3B8" }}>투찰일시 </span>
-                            <strong>{new Date(String(r.userBidAt).endsWith("Z") ? r.userBidAt : r.userBidAt + "Z").toLocaleString("ko-KR", { timeZone: "Asia/Seoul", dateStyle: "short", timeStyle: "short" })}</strong>
-                          </span>
-                        )}
+                        {r.userBidAt && (() => {
+                          const d = parseDt(r.userBidAt);
+                          if (isNaN(d.getTime())) return null;
+                          return (
+                            <span>
+                              <span style={{ color: "#94A3B8" }}>투찰일시 </span>
+                              <strong>{d.toLocaleString("ko-KR", { timeZone: "Asia/Seoul", dateStyle: "short", timeStyle: "short" })}</strong>
+                            </span>
+                          );
+                        })()}
                         {r.actualFinalPrice != null && Number(r.actualFinalPrice) > 0 && (
                           <span>
                             <span style={{ color: "#94A3B8" }}>낙찰금액 </span>
