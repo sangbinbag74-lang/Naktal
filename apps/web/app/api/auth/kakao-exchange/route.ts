@@ -25,6 +25,8 @@ type KakaoUserResponse = {
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
   const REST_API_KEY = process.env.KAKAO_REST_API_KEY;
+  // 비즈앱 심사 통과 후 카카오에서 "Client Secret 사용" 활성화 시 필수
+  const CLIENT_SECRET = process.env.KAKAO_CLIENT_SECRET;
   if (!REST_API_KEY) {
     return NextResponse.json({ ok: false, error: "KAKAO_REST_API_KEY 미설정" }, { status: 500 });
   }
@@ -41,21 +43,38 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   }
 
   // 1. authorization code → access_token
+  const tokenParams: Record<string, string> = {
+    grant_type: "authorization_code",
+    client_id: REST_API_KEY,
+    redirect_uri: body.redirectUri,
+    code: body.code,
+  };
+  if (CLIENT_SECRET) tokenParams.client_secret = CLIENT_SECRET;
+
   const tokenRes = await fetch("https://kauth.kakao.com/oauth/token", {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded;charset=utf-8" },
-    body: new URLSearchParams({
-      grant_type: "authorization_code",
-      client_id: REST_API_KEY,
-      redirect_uri: body.redirectUri,
-      code: body.code,
-    }),
+    body: new URLSearchParams(tokenParams),
   });
   const tokenData = (await tokenRes.json()) as KakaoTokenResponse;
   if (!tokenData.access_token) {
-    console.error("[kakao-exchange] token failed", tokenData);
+    console.error("[kakao-exchange] token failed", {
+      kakao_error: tokenData.error,
+      kakao_error_description: tokenData.error_description,
+      rest_api_key_prefix: REST_API_KEY.slice(0, 6),
+      rest_api_key_len: REST_API_KEY.length,
+      client_secret_set: Boolean(CLIENT_SECRET),
+      redirect_uri: body.redirectUri,
+    });
+    // Bad client credentials 진단 메시지
+    let userMessage = tokenData.error_description ?? "카카오 토큰 발급 실패";
+    if (tokenData.error === "invalid_client" || /bad client credentials/i.test(tokenData.error_description ?? "")) {
+      userMessage = CLIENT_SECRET
+        ? "카카오 인증 실패: REST API 키가 잘못되었거나 Client Secret 값이 맞지 않습니다. 관리자에게 문의해주세요."
+        : "카카오 인증 실패: Client Secret 설정이 필요합니다. 관리자에게 문의해주세요.";
+    }
     return NextResponse.json(
-      { ok: false, error: tokenData.error_description ?? "카카오 토큰 발급 실패" },
+      { ok: false, error: userMessage, kakaoError: tokenData.error },
       { status: 400 }
     );
   }
