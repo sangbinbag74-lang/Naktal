@@ -109,8 +109,8 @@ export function SajungTrendOverlay({ annId, userId, predictedSajungRate, budget,
   // 발주처 점 + 내 투찰 병합
   const mergedData = useMemo(() => {
     if (!data) return [];
-    return data.orgPoints.map((p: OrgPoint) => {
-      const mine = data.myPoints.find((m) =>
+    return (data.orgPoints ?? []).map((p: OrgPoint) => {
+      const mine = (data.myPoints ?? []).find((m) =>
         Math.abs(new Date(m.date + "-01").getTime() - new Date(p.date + "-01").getTime()) < 30 * 24 * 3600 * 1000
       );
       return {

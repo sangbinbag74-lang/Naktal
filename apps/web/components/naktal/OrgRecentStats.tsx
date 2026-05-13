@@ -47,8 +47,11 @@ export function OrgRecentStats({ orgName, months = 3, category }: Props) {
   }
 
   // 분포 최댓값 (막대 정규화용)
-  const maxCount = Math.max(1, ...data.distribution.map((d) => d.count));
-  const peakRate = data.distribution.reduce((a, b) => (b.count > a.count ? b : a)).rate;
+  const distribution = data.distribution ?? [];
+  const maxCount = Math.max(1, ...distribution.map((d) => d.count));
+  const peakRate = distribution.length > 0
+    ? distribution.reduce((a, b) => (b.count > a.count ? b : a)).rate
+    : 0;
 
   return (
     <div style={{ background: "#fff", borderRadius: 12, border: "1px solid #E8ECF2", padding: "16px 18px" }}>
@@ -84,7 +87,7 @@ export function OrgRecentStats({ orgName, months = 3, category }: Props) {
           )}
         </div>
         <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
-          {data.distribution.slice().reverse().map((d) => {
+          {distribution.slice().reverse().map((d) => {
             const pct = (d.count / maxCount) * 100;
             const isPeak = d.rate === peakRate && d.count > 0;
             const label = `${d.rate >= 0 ? "+" : ""}${d.rate.toFixed(1)}`;

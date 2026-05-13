@@ -102,7 +102,7 @@ export function SajungTopTen({ annId, predictedSajungRate, budget: _budget, peri
             </tr>
           </thead>
           <tbody>
-            {data.topTen.map((item) => {
+            {(data.topTen ?? []).map((item) => {
               const isAiMatch = predictedSajungRate != null
                 && Math.abs(item.bucket - predictedSajungRate) <= 0.15;
               return (
