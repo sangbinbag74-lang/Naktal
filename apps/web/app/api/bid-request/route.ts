@@ -78,7 +78,9 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     snapshotAvgSajungRate, snapshotSampleSize, snapshotConfidence,
   } = body;
 
-  // 데이터 부족(fallback) 의뢰 차단 + ML 원본 사정율 조회 (서버 재계산 기준)
+  // ML 원본 사정율 조회 (서버 재계산 기준)
+  // sampleSize<5 발주처 데이터 부족 케이스는 차단 X — 카테고리 전체 평균으로 폴백 진행
+  // (sajung-engine 의 카테고리 가중평균 폴백 단계가 이미 처리, 신뢰도는 LOW 표기)
   const { data: pred } = await admin
     .from("BidPricePrediction")
     .select("sampleSize,predictedSajungRate")
@@ -86,11 +88,10 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     .gt("expiresAt", new Date().toISOString())
     .maybeSingle();
   const sampleSize = Number((pred as { sampleSize?: number } | null)?.sampleSize ?? 0);
-  if (!pred || sampleSize < 5) {
+  if (!pred) {
     return NextResponse.json({
-      error: "INSUFFICIENT_DATA",
-      message: "발주처·업종 학습 데이터가 부족하여 의뢰를 받을 수 없습니다. 충분한 입찰 이력이 쌓인 후 재시도 부탁드립니다.",
-      sampleSize,
+      error: "PREDICTION_MISSING",
+      message: "AI 분석이 아직 완료되지 않은 공고입니다. 잠시 후 다시 시도해주세요.",
     }, { status: 400 });
   }
   // 서버에서 노이즈 + 추천금액 재계산 (클라이언트 입력 무시)

@@ -528,6 +528,41 @@ export async function predictOptimalBid(params: {
     isFallback = true;
   }
 
+  // 3-b. (신규) 카테고리 전체 가중평균 폴백 — ALL row 자체가 없을 때 (region 비정상 등)
+  //      모든 발주처·예산구간·지역 통합. 박상빈님 천안골프장 케이스 대응.
+  if (!stat || stat.sampleSize < 5) {
+    const supabase = createAdminClient();
+    const { data: catRows } = await supabase
+      .from("SajungRateStat")
+      .select("avg,stddev,p25,p50,p75,min,max,mode,monthlyAvg,sampleSize")
+      .eq("category", params.category)
+      .gt("sampleSize", 0)
+      .order("sampleSize", { ascending: false })
+      .limit(5000);
+    const rows = (catRows ?? []) as SajungStatRow[];
+    const totalN = rows.reduce((s, r) => s + Number(r.sampleSize ?? 0), 0);
+    if (totalN >= 5) {
+      // 샘플 크기 가중 평균 계산
+      const wAvg = (key: keyof SajungStatRow) =>
+        rows.reduce((s, r) => s + Number(r[key] ?? 0) * Number(r.sampleSize ?? 0), 0) / totalN;
+      // monthlyAvg 는 객체 — 간단히 첫 row 사용
+      const firstMonthly = rows[0]?.monthlyAvg ?? {};
+      stat = {
+        avg:    wAvg("avg"),
+        stddev: wAvg("stddev"),
+        p25:    wAvg("p25"),
+        p50:    wAvg("p50"),
+        p75:    wAvg("p75"),
+        min:    Math.min(...rows.map(r => Number(r.min ?? 0)).filter(v => v > 0)) || wAvg("p25"),
+        max:    Math.max(...rows.map(r => Number(r.max ?? 0))) || wAvg("p75"),
+        mode:   wAvg("mode") || wAvg("avg"),
+        monthlyAvg: firstMonthly as Record<string, number>,
+        sampleSize: totalN,
+      } as SajungStatRow;
+    }
+    isFallback = true;
+  }
+
   // 시계열 메타 계산 (raw 데이터 기반)
   const hasRaw = rawPoints.length >= 5;
   const _sd = DEFAULT_SAJUNG_BY_KIND[classifyCategory(params.category)];
