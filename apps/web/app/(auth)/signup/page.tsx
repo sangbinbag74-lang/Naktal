@@ -18,8 +18,8 @@ interface FormState {
   address: string;
 }
 
-// 카카오 비즈앱 심사 통과 시 true 로 변경 → 카카오 인증 흐름 자동 활성화
-const KAKAO_AUTH_ENABLED = false;
+// 카카오 비즈앱 심사 통과 (2026-05-13) — 필수동의 4개: profile_nickname / account_email / name / phone_number
+const KAKAO_AUTH_ENABLED = true;
 
 interface KakaoVerified {
   kakaoId: string;
@@ -466,14 +466,17 @@ export default function SignupPage() {
         <div style={{ color: "#64748B", paddingLeft: 8, marginBottom: 10 }}>
           ✓ 사업자등록번호<br/>✓ 대표자 이름<br/>✓ 휴대폰<br/>✓ 이메일<br/>✓ 사업장 주소<br/>✓ 비밀번호
         </div>
+        <div style={{ color: "#1B3A6B", fontWeight: 700, marginBottom: 4 }}>
+          [필수] 카카오 본인인증
+        </div>
+        <div style={{ color: "#64748B", paddingLeft: 8, marginBottom: 10 }}>
+          ✓ 닉네임<br/>✓ 이름 (실명)<br/>✓ 카카오 계정 이메일<br/>✓ 카카오 계정 전화번호
+        </div>
         <div style={{ color: "#94A3B8", fontWeight: 700, marginBottom: 4 }}>
           [선택]
         </div>
         <div style={{ color: "#94A3B8", paddingLeft: 8, marginBottom: 10 }}>
           ○ 마케팅·이벤트 수신 동의
-        </div>
-        <div style={{ fontSize: 11, color: "#92400E", background: "#FFFBEB", border: "1px dashed #FCD34D", borderRadius: 8, padding: "8px 10px", lineHeight: 1.5 }}>
-          카카오 본인인증은 현재 점검 중입니다. 점검 완료 후 자동으로 활성화됩니다.
         </div>
       </aside>
     </div>
