@@ -56,6 +56,7 @@ export default function SignupPage() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [verifying, setVerifying] = useState(false);
+  const [verifyStage, setVerifyStage] = useState<"bizno" | "g2b" | "match" | null>(null);
   const [bizAutoFilled, setBizAutoFilled] = useState(false);
   const [kakaoVerified, setKakaoVerified] = useState<KakaoVerified | null>(null);
   const [kakaoLoading, setKakaoLoading] = useState(false);
@@ -125,6 +126,40 @@ export default function SignupPage() {
     setForm(prev => ({ ...prev, [key]: value }));
   }
 
+  // 이름 비교용 정규화
+  //  - 공백 / 괄호 / 하이픈 / 점 / 한자 한글 변환 시 부산물 제거
+  //  - 한자(괄호 안), 영문(괄호 안) 등 부가표기 제거 후 남는 한글로 비교
+  //  - 영문은 대소문자 무시
+  function normalizeName(raw: string): string {
+    if (!raw) return "";
+    let s = raw;
+    // 괄호와 그 안 내용 모두 제거 ("홍길동(洪吉童)" → "홍길동", "홍길동(HONG)" → "홍길동")
+    s = s.replace(/[\(（［\[][^\)）］\]]*[\)）］\]]/g, "");
+    // 공백·점·하이픈·중점·콤마·슬래시 등 제거
+    s = s.replace(/[\s\.\-·,/]+/g, "");
+    // 영문은 소문자 통일
+    return s.toLowerCase();
+  }
+
+  // 공동대표일 수 있으니 split 후 각각 비교
+  function splitCoCeos(raw: string): string[] {
+    if (!raw) return [];
+    // "홍길동, 김철수" / "홍길동·김철수" / "홍길동/김철수" / "홍길동 외 N명" → split
+    const stripped = raw.replace(/외\s*\d+\s*명/g, "");
+    return stripped
+      .split(/[,·/、､]|\s외\s/)
+      .map(s => s.trim())
+      .filter(Boolean);
+  }
+
+  // 사용자 입력 이름이 G2B 대표자명(들) 중 하나라도 일치하면 OK
+  function isCeoMatch(userName: string, g2bCeoName: string): boolean {
+    const userN = normalizeName(userName);
+    if (!userN) return false;
+    const candidates = splitCoCeos(g2bCeoName);
+    return candidates.some(c => normalizeName(c) === userN);
+  }
+
   // Step 2 검증 + G2B 대조 후 Step 3로
   async function goFromStep2() {
     setError(null);
@@ -133,6 +168,9 @@ export default function SignupPage() {
     if (!form.ownerPhone.trim()) { setError("대표자 휴대폰 번호를 입력해주세요."); return; }
 
     setVerifying(true);
+    setVerifyStage("bizno");
+
+    // 1. 사업자번호 국세청 검증
     try {
       const res = await fetch("/api/auth/verify-bizno", {
         method: "POST",
@@ -143,35 +181,63 @@ export default function SignupPage() {
       if (!data.valid) {
         setError(data.message ?? "유효하지 않은 사업자번호입니다.");
         setVerifying(false);
+        setVerifyStage(null);
         return;
       }
     } catch {
       console.error("사업자 검증 API 호출 실패 — 진행");
     }
 
-    // G2B 자동 조회 + 대표자명 대조
+    // 2. 나라장터(G2B) 조회
+    setVerifyStage("g2b");
+    let g2bBizName: string | null = null;
     let g2bCeoName: string | null = null;
     try {
       const g2bRes = await fetch(`/api/auth/lookup-biz?bizNo=${form.bizNo}`);
-      const g2b = await g2bRes.json() as { ok: boolean; bizName?: string; ceoName?: string };
+      const g2b = await g2bRes.json() as { ok: boolean; bizName?: string; ceoName?: string; error?: string };
       if (g2b.ok && g2b.bizName) {
+        g2bBizName = g2b.bizName ?? null;
         g2bCeoName = g2b.ceoName ?? null;
         setForm(prev => ({ ...prev, bizName: g2b.bizName ?? prev.bizName }));
         setBizAutoFilled(true);
+      } else if (!g2b.ok) {
+        setError(g2b.error ?? "나라장터에 등록되지 않은 사업자입니다. 나라장터 가입 후 다시 시도해주세요.");
+        setVerifying(false);
+        setVerifyStage(null);
+        return;
       }
     } catch {
-      console.error("G2B 조회 실패 — 수동 진행");
-    }
-
-    setVerifying(false);
-
-    // 대표자명 대조
-    const norm = (s: string) => (s || "").replace(/\s+/g, "").replace(/[()-]/g, "");
-    if (g2bCeoName && norm(form.ownerName) !== norm(g2bCeoName)) {
-      setError(`입력하신 대표자명(${form.ownerName})과 사업자등록증의 대표자명(${g2bCeoName})이 일치하지 않습니다.`);
+      console.error("G2B 조회 실패");
+      setError("나라장터 조회에 실패했습니다. 잠시 후 다시 시도해주세요.");
+      setVerifying(false);
+      setVerifyStage(null);
       return;
     }
 
+    // 3. 대표자명 대조 (공동대표·한자·영문 등 다양한 형태 처리)
+    setVerifyStage("match");
+    await new Promise(r => setTimeout(r, 300)); // UI 단계 표시용 짧은 지연
+
+    if (g2bCeoName && !isCeoMatch(form.ownerName, g2bCeoName)) {
+      setError(`입력하신 대표자명(${form.ownerName})과 사업자등록증의 대표자명(${g2bCeoName})이 일치하지 않습니다.`);
+      setVerifying(false);
+      setVerifyStage(null);
+      return;
+    }
+
+    // 4. (선택) 카카오 인증 명의 vs 사업자등록증 대표자명 대조
+    if (KAKAO_AUTH_ENABLED && kakaoVerified && g2bCeoName) {
+      if (!isCeoMatch(kakaoVerified.name, g2bCeoName)) {
+        setError(`카카오 인증 명의(${kakaoVerified.name})와 사업자등록증의 대표자명(${g2bCeoName})이 일치하지 않습니다.`);
+        setVerifying(false);
+        setVerifyStage(null);
+        return;
+      }
+    }
+
+    setVerifying(false);
+    setVerifyStage(null);
+    void g2bBizName; // 미사용 변수 경고 방지
     setStep(KAKAO_AUTH_ENABLED ? 3 : 2);
   }
 
@@ -267,7 +333,7 @@ export default function SignupPage() {
         {/* Step 1 — 카카오 본인인증 */}
         {KAKAO_AUTH_ENABLED && step === 1 && (
           <StepWrap title="본인인증" subtitle="카카오 계정으로 1초 만에 시작"
-            notice="카카오에서 이름·휴대폰·이메일을 받아와요. CI(연계정보)는 수집하지 않아요.">
+            notice="사업자등록증의 대표자명과 동일한 성함이어야 가입할 수 있어요.">
             {kakaoVerified ? (
               <div style={{ background: "#ECFDF5", border: "1.5px solid #A7F3D0", borderRadius: 10, padding: "14px 16px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                 <div>
@@ -403,7 +469,93 @@ export default function SignupPage() {
           <Link href="/login" style={{ color: "#1B3A6B", fontWeight: 600 }}>로그인</Link>
         </p>
       </div>
+
+      {/* 검증 진행 오버레이 */}
+      {verifying && <VerifyOverlay stage={verifyStage} />}
     </div>
+  );
+}
+
+function VerifyOverlay({ stage }: { stage: "bizno" | "g2b" | "match" | null }) {
+  const steps = [
+    { key: "bizno", label: "사업자번호 국세청 검증" },
+    { key: "g2b",   label: "나라장터(G2B) 조회" },
+    { key: "match", label: "대표자명 대조" },
+  ] as const;
+  const currentIdx = steps.findIndex(s => s.key === stage);
+  return (
+    <div style={{
+      position: "fixed", inset: 0,
+      background: "rgba(15,30,60,0.55)",
+      display: "flex", alignItems: "center", justifyContent: "center",
+      zIndex: 1000, padding: 24,
+      backdropFilter: "blur(2px)",
+    }}>
+      <div style={{
+        background: "#fff", borderRadius: 16,
+        padding: "28px 32px",
+        width: "100%", maxWidth: 360,
+        boxShadow: "0 20px 60px rgba(0,0,0,0.25)",
+      }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 18 }}>
+          <Spinner />
+          <div>
+            <div style={{ fontSize: 15, fontWeight: 700, color: "#0F172A" }}>사업자 정보 검증 중</div>
+            <div style={{ fontSize: 11.5, color: "#94A3B8", marginTop: 2 }}>5~10초 정도 걸려요. 잠시만요.</div>
+          </div>
+        </div>
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          {steps.map((s, i) => {
+            const done = currentIdx > i;
+            const active = currentIdx === i;
+            return (
+              <div key={s.key} style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 13 }}>
+                <span style={{
+                  width: 20, height: 20, borderRadius: 10,
+                  display: "grid", placeItems: "center",
+                  fontSize: 11, fontWeight: 700,
+                  background: done ? "#059669" : active ? "#1B3A6B" : "#E2E8F0",
+                  color: done || active ? "#fff" : "#94A3B8",
+                  flexShrink: 0,
+                }}>{done ? "✓" : i + 1}</span>
+                <span style={{
+                  color: done ? "#059669" : active ? "#0F172A" : "#94A3B8",
+                  fontWeight: active ? 600 : 400,
+                }}>{s.label}</span>
+                {active && <span style={{ marginLeft: "auto" }}><MiniDot /></span>}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function Spinner() {
+  return (
+    <div style={{
+      width: 28, height: 28,
+      border: "3px solid #E2E8F0",
+      borderTopColor: "#1B3A6B",
+      borderRadius: "50%",
+      animation: "naktal-spin 0.8s linear infinite",
+    }}>
+      <style>{`@keyframes naktal-spin { to { transform: rotate(360deg); } }`}</style>
+    </div>
+  );
+}
+
+function MiniDot() {
+  return (
+    <span style={{
+      display: "inline-block",
+      width: 8, height: 8, borderRadius: 4,
+      background: "#1B3A6B",
+      animation: "naktal-blink 0.9s ease-in-out infinite",
+    }}>
+      <style>{`@keyframes naktal-blink { 0%,100% { opacity: 0.3; } 50% { opacity: 1; } }`}</style>
+    </span>
   );
 }
 
