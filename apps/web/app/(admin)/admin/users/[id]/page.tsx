@@ -15,6 +15,9 @@ interface UserDetail {
   createdAt: string;
   notifyEmail: string | null;
   notifyPhone: string | null;
+  address: string | null;
+  marketingConsent: boolean;
+  marketingConsentAt: string | null;
 }
 interface AlertRow { id: string; keywords: string[]; active: boolean }
 interface SubRow { plan: string; status: string; currentPeriodEnd: string }
@@ -104,6 +107,31 @@ export default function AdminUserDetailPage({ params }: { params: Promise<{ id: 
               <p style={{ fontSize: 13, color: "#0F172A", marginTop: 3 }}>{val}</p>
             </div>
           ))}
+          {/* 주소 (전체 폭) */}
+          <div style={{ gridColumn: "span 2" }}>
+            <span style={{ fontSize: 11, color: "#94A3B8", fontWeight: 500 }}>사업장 주소</span>
+            <p style={{ fontSize: 13, color: user.address ? "#0F172A" : "#CBD5E1", marginTop: 3, wordBreak: "break-all" }}>
+              {user.address ?? "미입력"}
+            </p>
+          </div>
+          {/* 마케팅 수신동의 */}
+          <div style={{ gridColumn: "span 2" }}>
+            <span style={{ fontSize: 11, color: "#94A3B8", fontWeight: 500 }}>마케팅·이벤트 수신동의</span>
+            <p style={{ fontSize: 13, marginTop: 3 }}>
+              {user.marketingConsent ? (
+                <>
+                  <span style={{ fontSize: 11, fontWeight: 700, color: "#059669", background: "#ECFDF5", padding: "2px 8px", borderRadius: 5 }}>동의</span>
+                  {user.marketingConsentAt && (
+                    <span style={{ fontSize: 11, color: "#64748B", marginLeft: 8 }}>
+                      {user.marketingConsentAt.slice(0, 10)}
+                    </span>
+                  )}
+                </>
+              ) : (
+                <span style={{ fontSize: 11, fontWeight: 600, color: "#94A3B8", background: "#F1F5F9", padding: "2px 8px", borderRadius: 5 }}>미동의</span>
+              )}
+            </p>
+          </div>
         </div>
       </div>
 

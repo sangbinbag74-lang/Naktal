@@ -13,6 +13,11 @@ interface UserRow {
   plan: string;
   isActive: boolean;
   createdAt: string;
+  address: string | null;
+  marketingConsent: boolean;
+  marketingConsentAt: string | null;
+  notifyEmail: string | null;
+  notifyPhone: string | null;
 }
 
 const PLAN_LABELS: Record<string, string> = { FREE: "무료", STANDARD: "스탠다드", PRO: "프로" };
@@ -99,6 +104,19 @@ export default function AdminUsersPage() {
     { key: "bizNo", label: "사업자번호" },
     { key: "bizName", label: "상호명" },
     { key: "ownerName", label: "대표자" },
+    {
+      key: "address", label: "주소",
+      render: (r: UserRow) => r.address
+        ? <span style={{ fontSize: 12, color: "#0F172A", maxWidth: 240, display: "inline-block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={r.address}>{r.address}</span>
+        : <span style={{ fontSize: 12, color: "#CBD5E1" }}>미입력</span>,
+    },
+    {
+      key: "marketingConsent", label: "수신동의",
+      render: (r: UserRow) => r.marketingConsent
+        ? <span title={r.marketingConsentAt ? `동의일: ${r.marketingConsentAt.slice(0, 10)}` : undefined}
+                style={{ fontSize: 11, fontWeight: 700, color: "#059669", background: "#ECFDF5", padding: "2px 8px", borderRadius: 5 }}>동의</span>
+        : <span style={{ fontSize: 11, fontWeight: 600, color: "#94A3B8", background: "#F1F5F9", padding: "2px 8px", borderRadius: 5 }}>미동의</span>,
+    },
     {
       key: "isActive", label: "상태",
       render: (r: UserRow) => r.isActive

@@ -15,6 +15,7 @@ interface FormState {
   passwordConfirm: string;
   notifyEmail: string;
   notifyPhone: string;
+  address: string;
 }
 
 // 카카오 비즈앱 심사 통과 시 true 로 변경 → 카카오 인증 흐름 자동 활성화
@@ -53,6 +54,7 @@ export default function SignupPage() {
     bizNo: "", bizName: "", ownerName: "", ownerPhone: "",
     password: "", passwordConfirm: "",
     notifyEmail: "", notifyPhone: "",
+    address: "",
   });
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -141,6 +143,7 @@ export default function SignupPage() {
     if (!form.ownerPhone.trim()) { setError("대표자 휴대폰 번호를 입력해주세요."); return; }
     if (!form.notifyEmail.trim()) { setError("이메일을 입력해주세요."); return; }
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.notifyEmail.trim())) { setError("올바른 이메일 형식이 아닙니다."); return; }
+    if (!form.address.trim()) { setError("주소를 입력해주세요."); return; }
     if (form.password.length < 8) { setError("비밀번호는 8자 이상이어야 합니다."); return; }
     if (form.password !== form.passwordConfirm) { setError("비밀번호가 일치하지 않습니다."); return; }
     if (KAKAO_AUTH_ENABLED && !kakaoVerified) { setError("카카오 본인인증을 먼저 완료해주세요."); return; }
@@ -206,6 +209,7 @@ export default function SignupPage() {
         bizNo: form.bizNo, bizName: form.bizName, ownerName: form.ownerName,
         notifyEmail: form.notifyEmail,
         notifyPhone: form.ownerPhone,
+        address: form.address.trim(),
         marketingConsent,
       };
       if (KAKAO_AUTH_ENABLED && kakaoVerified) {
@@ -370,10 +374,26 @@ export default function SignupPage() {
             </div>
           </div>
 
-          {/* 5단계: 비밀번호 */}
+          {/* 5단계: 주소 */}
           <div>
             <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
               <span style={{ background: "#1B3A6B", color: "#fff", width: 20, height: 20, borderRadius: 10, display: "grid", placeItems: "center", fontSize: 11, fontWeight: 700 }}>5</span>
+              <label style={{ ...LabelStyle, margin: 0 }}>사업장 주소</label>
+            </div>
+            <input
+              type="text" required value={form.address} disabled={loading}
+              onChange={setE("address")} placeholder="예: 서울특별시 강남구 테헤란로 123, 4층"
+              className="naktal-input" autoComplete="street-address"
+            />
+            <div style={{ fontSize: 10.5, color: "#94A3B8", marginTop: 4, lineHeight: 1.5 }}>
+              계산서·우편물 발송 및 사업자 신원 확인용
+            </div>
+          </div>
+
+          {/* 6단계: 비밀번호 */}
+          <div>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+              <span style={{ background: "#1B3A6B", color: "#fff", width: 20, height: 20, borderRadius: 10, display: "grid", placeItems: "center", fontSize: 11, fontWeight: 700 }}>6</span>
               <label style={{ ...LabelStyle, margin: 0 }}>비밀번호</label>
             </div>
             <input type="password" required minLength={8} value={form.password} disabled={loading}
@@ -444,7 +464,7 @@ export default function SignupPage() {
           [필수] 직접 입력
         </div>
         <div style={{ color: "#64748B", paddingLeft: 8, marginBottom: 10 }}>
-          ✓ 사업자등록번호<br/>✓ 대표자 이름<br/>✓ 휴대폰<br/>✓ 이메일<br/>✓ 비밀번호
+          ✓ 사업자등록번호<br/>✓ 대표자 이름<br/>✓ 휴대폰<br/>✓ 이메일<br/>✓ 사업장 주소<br/>✓ 비밀번호
         </div>
         <div style={{ color: "#94A3B8", fontWeight: 700, marginBottom: 4 }}>
           [선택]

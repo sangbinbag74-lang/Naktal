@@ -16,6 +16,7 @@ model User {
   ownerName       String
   notifyEmail     String?
   notifyPhone     String?
+  address         String?                // 회원가입 시 직접 입력한 주소 (G2B 자동조회는 CompanyProfile.address)
   plan            Plan                   @default(PRO)
   isAdmin         Boolean                @default(false)
   isActive        Boolean                @default(true)

@@ -16,7 +16,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
 
   let query = supabase
     .from("User")
-    .select("id,bizNo,bizName,ownerName,plan,isAdmin,isActive,createdAt,adminMemo", { count: "exact" })
+    .select("id,bizNo,bizName,ownerName,plan,isAdmin,isActive,createdAt,adminMemo,address,marketingConsent,marketingConsentAt,notifyEmail,notifyPhone", { count: "exact" })
     .order("createdAt", { ascending: false })
     .range(offset, offset + limit - 1);
 

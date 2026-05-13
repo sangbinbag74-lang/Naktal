@@ -17,6 +17,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     ownerName: string;
     notifyEmail?: string | null;
     notifyPhone?: string | null;
+    address?: string | null;
     marketingConsent?: boolean;
     kakaoId?: string;
     kakaoVerifiedName?: string;
@@ -39,6 +40,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     ownerName:         body.ownerName,
     notifyEmail:       body.notifyEmail ?? null,
     notifyPhone:       body.notifyPhone ?? null,
+    address:           body.address ?? null,
     marketingConsent:  body.marketingConsent === true,
     marketingConsentAt: body.marketingConsent === true ? new Date().toISOString() : null,
   };
