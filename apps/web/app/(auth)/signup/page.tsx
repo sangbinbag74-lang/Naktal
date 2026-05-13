@@ -58,6 +58,7 @@ export default function SignupPage() {
   const [verifying, setVerifying] = useState(false);
   const [verifyStage, setVerifyStage] = useState<"bizno" | "g2b" | "match" | null>(null);
   const [bizAutoFilled, setBizAutoFilled] = useState(false);
+  const [alreadyExists, setAlreadyExists] = useState(false);
   const [kakaoVerified, setKakaoVerified] = useState<KakaoVerified | null>(null);
   const [kakaoLoading, setKakaoLoading] = useState(false);
   const [marketingConsent, setMarketingConsent] = useState(false);
@@ -262,7 +263,13 @@ export default function SignupPage() {
     const { error: authError } = await supabase.auth.signUp({ email, password: form.password });
 
     if (authError) {
-      setError(authError.message);
+      const msg = authError.message.toLowerCase();
+      if (msg.includes("already registered") || msg.includes("already exists") || msg.includes("user already")) {
+        setError("이미 가입된 사업자번호입니다. 로그인 페이지에서 진행해 주세요.");
+        setAlreadyExists(true);
+      } else {
+        setError(authError.message);
+      }
       setLoading(false);
       return;
     }
@@ -460,7 +467,17 @@ export default function SignupPage() {
 
         {error && (
           <div style={{ background: "#FEF2F2", border: "1px solid #FECACA", borderRadius: 8, padding: "10px 12px", fontSize: 13, color: "#DC2626", marginTop: 14 }}>
-            {error}
+            <div>{error}</div>
+            {alreadyExists && (
+              <Link href="/login" style={{
+                display: "inline-block", marginTop: 8,
+                padding: "7px 14px", borderRadius: 8,
+                background: "#1B3A6B", color: "#fff",
+                fontSize: 12.5, fontWeight: 700, textDecoration: "none",
+              }}>
+                로그인하러 가기 →
+              </Link>
+            )}
           </div>
         )}
 

@@ -18,6 +18,9 @@ interface UserRow {
   marketingConsentAt: string | null;
   notifyEmail: string | null;
   notifyPhone: string | null;
+  kakaoId: string | null;
+  kakaoVerifiedName: string | null;
+  kakaoVerifiedAt: string | null;
 }
 
 const PLAN_LABELS: Record<string, string> = { FREE: "무료", STANDARD: "스탠다드", PRO: "프로" };
@@ -116,6 +119,15 @@ export default function AdminUsersPage() {
         ? <span title={r.marketingConsentAt ? `동의일: ${r.marketingConsentAt.slice(0, 10)}` : undefined}
                 style={{ fontSize: 11, fontWeight: 700, color: "#059669", background: "#ECFDF5", padding: "2px 8px", borderRadius: 5 }}>동의</span>
         : <span style={{ fontSize: 11, fontWeight: 600, color: "#94A3B8", background: "#F1F5F9", padding: "2px 8px", borderRadius: 5 }}>미동의</span>,
+    },
+    {
+      key: "kakaoId", label: "카카오",
+      render: (r: UserRow) => r.kakaoId
+        ? <span title={r.kakaoVerifiedAt ? `인증일: ${r.kakaoVerifiedAt.slice(0, 10)}` : undefined}
+                style={{ fontSize: 11, fontWeight: 700, color: "#191600", background: "#FEE500", padding: "2px 8px", borderRadius: 5 }}>
+            💬 {r.kakaoVerifiedName ?? "인증"}
+          </span>
+        : <span style={{ fontSize: 11, fontWeight: 600, color: "#94A3B8", background: "#F1F5F9", padding: "2px 8px", borderRadius: 5 }}>미인증</span>,
     },
     {
       key: "isActive", label: "상태",

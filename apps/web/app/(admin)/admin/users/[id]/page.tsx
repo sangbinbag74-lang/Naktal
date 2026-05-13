@@ -18,6 +18,11 @@ interface UserDetail {
   address: string | null;
   marketingConsent: boolean;
   marketingConsentAt: string | null;
+  // 카카오 본인인증
+  kakaoId: string | null;
+  kakaoVerifiedName: string | null;
+  kakaoVerifiedPhone: string | null;
+  kakaoVerifiedAt: string | null;
 }
 interface AlertRow { id: string; keywords: string[]; active: boolean }
 interface SubRow { plan: string; status: string; currentPeriodEnd: string }
@@ -133,6 +138,53 @@ export default function AdminUserDetailPage({ params }: { params: Promise<{ id: 
             </p>
           </div>
         </div>
+      </div>
+
+      {/* 카카오 본인인증 */}
+      <div style={sectionStyle}>
+        <h2 style={{ fontSize: 13, fontWeight: 600, color: "#64748B", marginBottom: 12, display: "flex", alignItems: "center", gap: 8 }}>
+          카카오 본인인증
+          {user.kakaoId ? (
+            <span style={{ fontSize: 10.5, fontWeight: 700, color: "#FEE500", background: "#191600", padding: "2px 7px", borderRadius: 5 }}>
+              💬 인증 완료
+            </span>
+          ) : (
+            <span style={{ fontSize: 10.5, fontWeight: 600, color: "#94A3B8", background: "#F1F5F9", padding: "2px 7px", borderRadius: 5 }}>
+              미인증
+            </span>
+          )}
+        </h2>
+        {user.kakaoId ? (
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+            <div>
+              <span style={{ fontSize: 11, color: "#94A3B8", fontWeight: 500 }}>카카오 실명</span>
+              <p style={{ fontSize: 13, color: "#0F172A", marginTop: 3 }}>{user.kakaoVerifiedName ?? "-"}</p>
+            </div>
+            <div>
+              <span style={{ fontSize: 11, color: "#94A3B8", fontWeight: 500 }}>카카오 휴대폰</span>
+              <p style={{ fontSize: 13, color: "#0F172A", marginTop: 3 }}>{user.kakaoVerifiedPhone ?? "-"}</p>
+            </div>
+            <div>
+              <span style={{ fontSize: 11, color: "#94A3B8", fontWeight: 500 }}>카카오 회원번호</span>
+              <p style={{ fontSize: 12, color: "#64748B", marginTop: 3, fontFamily: "monospace" }}>{user.kakaoId}</p>
+            </div>
+            <div>
+              <span style={{ fontSize: 11, color: "#94A3B8", fontWeight: 500 }}>인증일시</span>
+              <p style={{ fontSize: 13, color: "#0F172A", marginTop: 3 }}>
+                {user.kakaoVerifiedAt
+                  ? new Date(user.kakaoVerifiedAt).toLocaleString("ko-KR", { timeZone: "Asia/Seoul", dateStyle: "short", timeStyle: "short" })
+                  : "-"}
+              </p>
+            </div>
+            <div style={{ gridColumn: "span 2", fontSize: 11, color: "#94A3B8", marginTop: 4, lineHeight: 1.5 }}>
+              ※ CI(연계정보)는 수집하지 않습니다. 카카오 닉네임은 별도 저장하지 않으며, 카카오 계정 이메일은 알림 이메일 칸에 자동 채워졌습니다.
+            </div>
+          </div>
+        ) : (
+          <p style={{ fontSize: 12.5, color: "#94A3B8" }}>
+            카카오 본인인증을 거치지 않은 회원입니다. (구버전 가입자 또는 카카오 인증 활성화 이전 가입)
+          </p>
+        )}
       </div>
 
       {/* 플랜 / 구독 */}
