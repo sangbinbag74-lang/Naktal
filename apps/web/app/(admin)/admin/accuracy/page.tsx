@@ -74,17 +74,99 @@ export default async function AdminAccuracyPage() {
   const admin = createAdminClient();
   const now = new Date().toISOString();
 
-  // ─── AIPrediction 전체 + 카테고리 매핑 ─────────────────────────────────────
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: aiPredsRaw } = await (admin.from("AIPrediction") as any)
-    .select("annId,isExact,isHit,isNearHit,deviationPct,resultFilledAt")
-    .limit(2000);
+  // ─── Step A: 독립 쿼리 6개 동시 실행 (Promise.all 병렬) ─────────────────────
+  // 박상빈님 명시 (2026-05-14 C 분할 2단계): 직렬 11개 await → 3 step 병렬화
+  const [
+    aiPredsRawRes,
+    bppListRawRes,
+    extraAiRowsRes,
+    activeCountRes,
+    predCountRes,
+    statSummaryRes,
+  ] = await Promise.all([
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (admin.from("AIPrediction") as any)
+      .select("annId,isExact,isHit,isNearHit,deviationPct,resultFilledAt")
+      .limit(2000),
+    admin
+      .from("BidPricePrediction")
+      .select(`
+        annId,
+        predictedSajungRate,
+        optimalBidPrice,
+        bidPriceRangeLow,
+        bidPriceRangeHigh,
+        winProbability,
+        sampleSize,
+        expiresAt,
+        createdAt,
+        announcement:Announcement(id, title, orgName, deadline, budget, category)
+      `)
+      .order("createdAt", { ascending: false })
+      .limit(300),
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (admin.from("AIPrediction") as any)
+      .select("annId,konepsId,title,orgName,deadline,budget,predictedSajungRate,actualSajungRate,actualFinalPrice,deviationPct,isHit,resultFilledAt")
+      .not("resultFilledAt", "is", null)
+      .order("resultFilledAt", { ascending: false })
+      .limit(500),
+    admin
+      .from("Announcement")
+      .select("id", { count: "exact", head: true })
+      .gt("deadline", now)
+      .ilike("category", "%공사%"),
+    admin
+      .from("BidPricePrediction")
+      .select("annId", { count: "exact", head: true })
+      .gt("expiresAt", now),
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (admin.from("SajungRateStat") as any)
+      .select("sampleSize,stddev")
+      .neq("orgName", "ALL")
+      .limit(100000),
+  ]);
+
+  const aiPredsRaw = aiPredsRawRes.data;
+  const bppListRaw = bppListRawRes.data;
+  const extraAiRows = extraAiRowsRes.data;
+  const activeCount = activeCountRes.count;
+  const predCount = predCountRes.count;
+  const statSummary = statSummaryRes.data;
+
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const aiAnnIds = (aiPredsRaw ?? []).map((p: any) => p.annId).filter(Boolean);
+  const bppListAll = (bppListRaw ?? []) as unknown as BppItem[];
+  const bppAnnIds = bppListAll.map((b) => b.annId).filter(Boolean);
+  const bppAnnIdSet = new Set(bppAnnIds);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: aiAnns } = aiAnnIds.length > 0
-    ? await (admin.from("Announcement") as any).select("id,category").in("id", aiAnnIds)
-    : { data: [] };
+  const extraOnlyAi = (extraAiRows ?? []).filter((r: any) => !bppAnnIdSet.has(r.annId));
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const extraAnnIds = extraOnlyAi.map((r: any) => r.annId);
+
+  // ─── Step B: 의존 쿼리 4개 동시 실행 (Step A 결과 의존) ─────────────────────
+  const [aiAnnsRes, aiResRes, annKonepsRes, extraAnnsRes] = await Promise.all([
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    aiAnnIds.length > 0
+      ? (admin.from("Announcement") as any).select("id,category").in("id", aiAnnIds)
+      : Promise.resolve({ data: [] }),
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    bppAnnIds.length > 0
+      ? (admin.from("AIPrediction") as any)
+          .select("annId,actualSajungRate,actualFinalPrice,deviationPct,isHit")
+          .in("annId", bppAnnIds)
+      : Promise.resolve({ data: [] }),
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    bppAnnIds.length > 0
+      ? (admin.from("Announcement") as any)
+          .select("id,konepsId,bsisAmt,budget,aValueAmt")
+          .in("id", bppAnnIds)
+      : Promise.resolve({ data: [] }),
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    extraAnnIds.length > 0
+      ? (admin.from("Announcement") as any).select("id,category").in("id", extraAnnIds)
+      : Promise.resolve({ data: [] }),
+  ]);
+  const aiAnns = aiAnnsRes.data;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const aiCatMap: Record<string, string> = Object.fromEntries((aiAnns ?? []).map((a: any) => [a.id, a.category ?? "기타"]));
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -102,43 +184,7 @@ export default async function AdminAccuracyPage() {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const statsOther = computeStats(aiPreds.filter((p: any) => !isConstruction(p.category) && !isService(p.category) && !isGoods(p.category)) as any);
 
-  // ─── 통합 예측 목록 — 활성 + 만료(결과확정) 모두 ──────────────────────────
-  // expiresAt 필터 제거 → 결과 완료된 예측도 같이 표시
-  const { data: bppListRaw } = await admin
-    .from("BidPricePrediction")
-    .select(`
-      annId,
-      predictedSajungRate,
-      optimalBidPrice,
-      bidPriceRangeLow,
-      bidPriceRangeHigh,
-      winProbability,
-      sampleSize,
-      expiresAt,
-      createdAt,
-      announcement:Announcement(id, title, orgName, deadline, budget, category)
-    `)
-    .order("createdAt", { ascending: false })
-    .limit(300);
-
-  const bppListAll = (bppListRaw ?? []) as unknown as BppItem[];
-
-  // 결과 데이터 JOIN — AIPrediction.actualSajungRate + BidResult (마감 후 채워진 row)
-  // BPP 의 annId 기반 (= Announcement.id)
-  const bppAnnIds = bppListAll.map((b) => b.annId).filter(Boolean);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const aiResRes = bppAnnIds.length > 0
-    ? await (admin.from("AIPrediction") as any)
-        .select("annId,actualSajungRate,actualFinalPrice,deviationPct,isHit")
-        .in("annId", bppAnnIds)
-    : { data: [] };
-  // konepsId + 기초금액 — BidResult 는 annId 가 konepsId, 사정율 계산은 bsisAmt 기준
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const annKonepsRes = bppAnnIds.length > 0
-    ? await (admin.from("Announcement") as any)
-        .select("id,konepsId,bsisAmt,budget,aValueAmt")
-        .in("id", bppAnnIds)
-    : { data: [] };
+  // ─── 통합 예측 목록 — Step A 에서 bppListRaw 미리 가져옴, Step B 에서 의존 쿼리 병렬 실행 완료 ─
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const annIdToKoneps: Record<string, string> = Object.fromEntries(
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -156,6 +202,8 @@ export default async function AdminAccuracyPage() {
     })
   );
   const konepsIds = Object.values(annIdToKoneps);
+
+  // ─── Step C: BidResult (konepsId 의존, 단독 1개 쿼리) ─────────────────────
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const bidResRes = konepsIds.length > 0
     ? await (admin.from("BidResult") as any)
@@ -210,28 +258,13 @@ export default async function AdminAccuracyPage() {
     };
   });
 
-  // BPP에 없지만 AIPrediction에 결과가 채워진 row 추가 — 어떤 결과도 누락 없이 표시
+  // BPP에 없지만 AIPrediction에 결과가 채워진 row 추가 — Step A·B 에서 이미 fetch 완료
+  // extraAiRows, extraOnlyAi, extraAnnIds, bppAnnIdSet, extraAnnsRes 는 Step A·B 에서 정의됨
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: extraAiRows } = await (admin.from("AIPrediction") as any)
-    .select("annId,konepsId,title,orgName,deadline,budget,predictedSajungRate,actualSajungRate,actualFinalPrice,deviationPct,isHit,resultFilledAt")
-    .not("resultFilledAt", "is", null)
-    .order("resultFilledAt", { ascending: false })
-    .limit(500);
-
-  const bppAnnIdSet = new Set(bppAnnIds);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const extraOnlyAi = (extraAiRows ?? []).filter((r: any) => !bppAnnIdSet.has(r.annId));
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const extraAnnIds = extraOnlyAi.map((r: any) => r.annId);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let extraCatMap: Record<string, string> = {};
-  if (extraAnnIds.length > 0) {
+  const extraCatMap: Record<string, string> = Object.fromEntries(
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: extraAnns } = await (admin.from("Announcement") as any)
-      .select("id,category").in("id", extraAnnIds);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    extraCatMap = Object.fromEntries((extraAnns ?? []).map((a: any) => [a.id, a.category ?? "기타"]));
-  }
+    (extraAnnsRes.data ?? []).map((a: any) => [a.id, a.category ?? "기타"])
+  );
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const aiOnlyAsBpp: BppItem[] = extraOnlyAi.map((r: any) => ({
     annId: r.annId,
@@ -265,24 +298,7 @@ export default async function AdminAccuracyPage() {
     return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
   });
 
-  const { count: activeCount } = await admin
-    .from("Announcement")
-    .select("id", { count: "exact", head: true })
-    .gt("deadline", now)
-    .ilike("category", "%공사%");
-
-  const { count: predCount } = await admin
-    .from("BidPricePrediction")
-    .select("annId", { count: "exact", head: true })
-    .gt("expiresAt", now);
-
-  // ─── SajungRateStat 신뢰도 분포 (사이드 정보) ──────────────────────────────
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: statSummary } = await (admin.from("SajungRateStat") as any)
-    .select("sampleSize,stddev")
-    .neq("orgName", "ALL")
-    .limit(100000);
-
+  // activeCount, predCount, statSummary — Step A 에서 이미 fetch 완료
   let highCount = 0, mediumCount = 0, lowCount = 0;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   for (const r of statSummary ?? []) {
