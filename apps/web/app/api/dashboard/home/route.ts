@@ -78,7 +78,7 @@ export async function GET(_req: NextRequest): Promise<NextResponse> {
 
   // 3. AI 추천 공고 (활성 + 사용자 매칭, 없으면 mostRecent)
   let recommendedQuery = admin
-    .from("Announcement")
+    .from("AnnouncementActive")
     .select("id,konepsId,title,orgName,category,region,budget,deadline")
     .gt("deadline", now.toISOString())
     .order("deadline", { ascending: true })
@@ -107,7 +107,7 @@ export async function GET(_req: NextRequest): Promise<NextResponse> {
 
   // 4. 마감 임박 D-3 (활성)
   const { data: urgentRaw } = await admin
-    .from("Announcement")
+    .from("AnnouncementActive")
     .select("id,konepsId,title,orgName,category,budget,deadline")
     .gt("deadline", now.toISOString())
     .lt("deadline", d3later)
@@ -122,12 +122,10 @@ export async function GET(_req: NextRequest): Promise<NextResponse> {
       .eq("userId", userId)
       .is("cancelledAt", null)
       .gte("createdAt", monthStart),
-    admin.from("Announcement")
+    admin.from("AnnouncementActive")
+      .select("id", { count: "exact", head: true }),
+    admin.from("AnnouncementActive")
       .select("id", { count: "exact", head: true })
-      .gt("deadline", now.toISOString()),
-    admin.from("Announcement")
-      .select("id", { count: "exact", head: true })
-      .gt("deadline", now.toISOString())
       .gte("createdAt", new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString()),
   ]);
 

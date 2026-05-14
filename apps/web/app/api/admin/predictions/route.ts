@@ -51,9 +51,8 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
   let annQuery;
   if (status === "active") {
     annQuery = admin
-      .from("Announcement")
+      .from("AnnouncementActive")
       .select("id,konepsId,title,orgName,category,region,budget,deadline,bsisAmt")
-      .gt("deadline", new Date().toISOString())
       .order("deadline", { ascending: true });
   } else {
     // 최근 30일 마감

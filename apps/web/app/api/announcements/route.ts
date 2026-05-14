@@ -181,12 +181,12 @@ async function fetchFromDB(opts: Record<string, string | number>): Promise<NextR
     // RPC 실패 시 체인 쿼리로 폴백
   }
 
-  // ── 체인 쿼리 (활성 공고 전용 — Announcement + deadline DESC 인덱스) ────────
-  // 2026-05-15: AnnouncementActive MV 폐기 (REFRESH 좀비 원인). idx_ann_deadline_active 인덱스 활용
+  // ── 체인 쿼리 (활성 공고 전용 — AnnouncementActive MV) ──────────────────────
+  // 2026-05-09: 749만 → 14k row, Micro IO 에서 13ms 도달
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let q: any = admin.from("Announcement").select(
+  let q: any = admin.from("AnnouncementActive").select(
     "id,konepsId,title,orgName,budget,deadline,category,subCategories,region,createdAt,rawJson,aValueYn,pdfRgnLimit"
-  ).gt("deadline", new Date().toISOString());
+  );
 
   // 다중 카테고리: category(주종) OR subCategories(부종) OR 유사 업종 확장
   if (cats.length > 0) {

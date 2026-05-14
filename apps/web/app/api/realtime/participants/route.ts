@@ -15,9 +15,8 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
 
   // Announcement.id (cuid) 조회 — 활성 우선 + 마감 폴백
   let { data: ann } = await supabase
-    .from("Announcement")
+    .from("AnnouncementActive")
     .select("id,title,deadline,budget")
-    .gt("deadline", new Date().toISOString())
     .eq("konepsId", annId)
     .maybeSingle();
   if (!ann) {
