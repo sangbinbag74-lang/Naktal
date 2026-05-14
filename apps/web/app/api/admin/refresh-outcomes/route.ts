@@ -110,8 +110,14 @@ async function fetchOpengFromG2B(konepsId: string, deadline: Date): Promise<any 
 }
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
-  const guard = await requireAdmin(request);
-  if (guard instanceof NextResponse) return guard;
+  // 인증: CRON_SECRET (GH Actions cron) 또는 admin (어드민 페이지 AutoRefreshTrigger)
+  const cronSecret = process.env.CRON_SECRET;
+  const authHeader = request.headers.get("authorization");
+  const isCron = cronSecret && authHeader === `Bearer ${cronSecret}`;
+  if (!isCron) {
+    const guard = await requireAdmin(request);
+    if (guard instanceof NextResponse) return guard;
+  }
 
   const admin = createAdminClient();
   const now = new Date().toISOString();
