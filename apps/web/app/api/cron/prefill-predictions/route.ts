@@ -36,7 +36,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   // 공사 카테고리만 분석 (Model 1 학습 데이터가 사정율 97~103 필터로 공사 전용)
   const now = new Date().toISOString();
   const { data: announcements, error } = await admin
-    .from("AnnouncementActive")
+    .from("Announcement")
     .select("id, orgName, category, budget, region, deadline, rawJson, bsisAmt, aValueAmt, subCategories, aValueTotal")
     .gt("deadline", now)
     .ilike("category", "%공사%")

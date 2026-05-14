@@ -51,8 +51,9 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   // 공고 조회 (UUID 또는 konepsId 모두 허용) — 활성 우선 + 마감 폴백
   const COLS = "id,konepsId,title,orgName,budget,deadline,category,region,rawJson,bsisAmt,sucsfbidLwltRate,subCategories,aValueTotal";
   let { data: ann } = await admin
-    .from("AnnouncementActive")
+    .from("Announcement")
     .select(COLS)
+    .gt("deadline", new Date().toISOString())
     .or(`id.eq.${body.annId},konepsId.eq.${body.annId}`)
     .maybeSingle();
 

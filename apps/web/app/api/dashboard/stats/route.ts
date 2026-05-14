@@ -47,10 +47,11 @@ export async function GET(): Promise<NextResponse> {
           .eq("userId", dbUserId)
           .gte("createdAt", monthStart)
       : Promise.resolve({ count: 0 }),
-    admin.from("AnnouncementActive")
+    admin.from("Announcement")
       .select("*", { count: "exact", head: true })
+      .gt("deadline", now.toISOString())
       .gte("createdAt", todayStart),
-    admin.from("AnnouncementActive")
+    admin.from("Announcement")
       .select("*", { count: "exact", head: true })
       .gte("deadline", now.toISOString())
       .lte("deadline", d3later),
