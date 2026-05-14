@@ -248,7 +248,8 @@ jobs:
       (needs.setup.outputs.job == 'daily' || needs.setup.outputs.job == 'audit') &&
       (needs.opening.result == 'success' || needs.opening.result == 'skipped')
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    # 박상빈님 명시 (2026-05-15): 30 → 15 단축 — 좀비 발생 시 자동 cancel
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v3

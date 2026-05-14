@@ -115,16 +115,21 @@ const CHECKS: Check[] = [
   },
 
   // AnnouncementChgHst (chgItemNm — 실제 G2B 응답 필드)
+  // 박상빈님 명시 (2026-05-15): 3,118만 row COUNT 가 Supabase Micro IO 한계로 좀비 발생 → 어드민 페이지 lock 영향
+  // total 만 pg_class.reltuples 추정값 사용 (PostgreSQL ANALYZE 통계, ±5% 범위)
+  // filled 는 chgItemNm 인덱스 있으므로 정확 COUNT 가능 — 단 LIMIT 100만으로 안전망
   {
-    table: "AnnouncementChgHst", field: "chgItemNm (변경 항목명)",
-    totalSql: `SELECT COUNT(*)::bigint AS n FROM "AnnouncementChgHst"`,
-    filledSql: `SELECT COUNT(*)::bigint AS n FROM "AnnouncementChgHst" WHERE "chgItemNm" IS NOT NULL AND "chgItemNm" != ''`,
+    table: "AnnouncementChgHst", field: "chgItemNm (변경 항목명, total=reltuples 추정)",
+    totalSql: `SELECT reltuples::bigint AS n FROM pg_class WHERE relname = 'AnnouncementChgHst' AND relkind = 'r'`,
+    filledSql: `SELECT COUNT(*)::bigint AS n FROM (SELECT 1 FROM "AnnouncementChgHst" WHERE "chgItemNm" IS NOT NULL AND "chgItemNm" != '' LIMIT 1000000) sub`,
     sampleSql: `SELECT "chgItemNm" FROM "AnnouncementChgHst" WHERE "chgItemNm" != '' LIMIT 3`,
   },
 ];
 
 (async () => {
-  const pool = new Pool({ connectionString: loadDbUrl(), statement_timeout: 45000 });
+  // statement_timeout 45초 → 15초 (박상빈님 명시 2026-05-15)
+  // 무거운 쿼리는 빨리 fail → 좀비 자동 cancel, 다른 검증은 그대로 진행
+  const pool = new Pool({ connectionString: loadDbUrl(), statement_timeout: 15000 });
   console.log("=".repeat(70));
   console.log("데이터 품질 감사 (타겟 필드 채움율 + 샘플)");
   console.log("=".repeat(70));
