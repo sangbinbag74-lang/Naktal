@@ -5,7 +5,7 @@ export async function GET(): Promise<NextResponse> {
   const admin = createAdminClient();
   try {
     const { data, error } = await admin
-      .from("AnnouncementActive")
+      .from("Announcement")
       .select("id,title,orgName,budget,deadline,rawJson")
       .filter("rawJson->>bidMthdNm", "ilike", "%복수예가%")
       .gte("deadline", new Date().toISOString())

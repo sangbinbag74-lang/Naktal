@@ -46,8 +46,9 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   // ─── 공고 조회 (활성 우선, 마감 공고 폴백) ────────────────────────────────
   // 2026-05-09: AnnouncementActive MV (14k row) 활용 — 749만 → 14k
   let { data: ann } = await admin
-    .from("AnnouncementActive")
+    .from("Announcement")
     .select("id,konepsId,title,orgName,budget,deadline,category,region,rawJson,aValueYn,aValueAmt,aValueTotal,bsisAmt,subCategories")
+    .gt("deadline", new Date().toISOString())
     .or(`id.eq.${body.annId},konepsId.eq.${body.annId}`)
     .maybeSingle();
 
