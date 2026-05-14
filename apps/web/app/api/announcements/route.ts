@@ -14,6 +14,9 @@ import { REGION_ALIASES, normalizeRegion } from "@/lib/region-alias";
 export const maxDuration = 60;
 export const runtime = "nodejs";
 export const preferredRegion = ["icn1"]; // Seoul — Supabase 와 같은 region 으로 latency 최소화
+// 박상빈님 명시 (2026-05-15): Vercel ISR 캐싱 — DB 부담 95% 감소 (Micro 유지, 인프라 변경 X)
+// 5분마다 갱신 — 신규 공고 표시 최대 5분 지연 (현재 30초 timeout 보다 훨씬 나음)
+export const revalidate = 300;
 
 // ─── G2B API 직접 조회 (실시간) ───────────────────────────────────────────────
 // 최근 3일치 공고 조회 — 용역/시설공사/물품 3개 타입 모두 수집
