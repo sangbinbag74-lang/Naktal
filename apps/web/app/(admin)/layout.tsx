@@ -41,14 +41,17 @@ export default async function AdminLayout({
 }: {
   children: React.ReactNode;
 }) {
-  // 1. HMAC 쿠키 검증
-  const cookieOk = await verifyAdminSession();
+  // 1. HMAC 쿠키 검증 + Supabase 클라이언트 동시 시작 (병렬화)
+  // cookieOk=true 면 supabase 사용 안 함 (낭비 작음), cookieOk=false 면 createClient 이미 완료 상태
+  const [cookieOk, supabase] = await Promise.all([
+    verifyAdminSession(),
+    createClient(),
+  ]);
 
-  // 2. Supabase isAdmin=true 검증
+  // 2. Supabase isAdmin=true 검증 (cookieOk=false 일 때만)
   let supabaseAdminOk = false;
   if (!cookieOk) {
     try {
-      const supabase = await createClient();
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
         const admin = createAdminClient();
