@@ -7,7 +7,7 @@ import { fetchAnnouncements } from "./fetchers/g2b-announcement";
 import { fetchBidResults } from "./fetchers/g2b-bid-result";
 import {
   upsertAnnouncementBatch,
-  upsertBidResult,
+  upsertBidResultBatch,
   logCrawl,
 } from "./db/upsert";
 import { logger } from "./utils/logger";
@@ -124,15 +124,12 @@ async function runBidResultCrawl(args: CliArgs): Promise<void> {
     rows = [];
   }
 
-  for (const row of rows) {
-    try {
-      await upsertBidResult(row);
-      count++;
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      logger.error(`upsert 실패: ${row.annId}`, err);
-      errorMsgs.push(msg);
-    }
+  try {
+    count = await upsertBidResultBatch(rows);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    logger.error("upsertBidResultBatch 실패", err);
+    errorMsgs.push(msg);
   }
 
   const status = errorMsgs.length === 0 ? "SUCCESS" : count > 0 ? "PARTIAL" : "FAILED";
