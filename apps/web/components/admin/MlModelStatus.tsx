@@ -41,7 +41,8 @@ export function MlModelStatus() {
     Promise.all(
       MODELS.map(async (m) => {
         try {
-          const r = await fetch(m.endpoint, { method: "GET", signal: AbortSignal.timeout(5000) });
+          // 박상빈님 명시 (2026-05-15): 5초 → 20초 — Vercel cold start 시 ONNX 초기 로딩 ~13초 소요
+          const r = await fetch(m.endpoint, { method: "GET", signal: AbortSignal.timeout(20000) });
           const data = (await r.json()) as ModelStatus;
           return { ...data, endpoint: m.endpoint };
         } catch (e) {
