@@ -20,7 +20,9 @@ export async function ProductionAccuracy() {
     .from("BidOutcome")
     .select("bidRate,actualBidRate,actualSajungRate,actualBidders,numBidders,actualOpeningIdx,recommendHit,result,bidAt")
     .neq("result", "PENDING")
-    .gte("bidAt", sinceIso);
+    .gte("bidAt", sinceIso)
+    .order("bidAt", { ascending: false })
+    .limit(1000);
 
   if (error) {
     return (
