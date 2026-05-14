@@ -9,8 +9,9 @@ on:
         type: choice
         default: daily
         options:
-          - daily            # announcement → extras → opening → pdf-region → audit 순차 (cron 동일)
-          - announcement     # 공고/낙찰 신규 (crawl.yml)
+          - daily            # announcement + bid-result(병렬) → extras → opening → pdf-region → audit 순차 (cron 동일)
+          - announcement     # 공고 신규만
+          - bid-result       # 낙찰 결과 신규만 (2026-05-14 분리 — announcement timeout 회피)
           - extras           # 보조정보 v2 (bulk-extras.yml)
           - opening          # 개찰결과 (bulk-opening.yml)
           - pdf-region       # 활성 공고 PDF/HWP 자격 추출 (pdfRgnLimit)
@@ -93,21 +94,6 @@ jobs:
           if [ -n "$TO" ]; then CMD="$CMD --to $TO"; fi
           echo "실행: $CMD"
           eval $CMD
-      - name: 낙찰 결과 신규 수집 (BidResult) — 2026-04-29 g2b.yml 통합 시 누락 복원
-        working-directory: apps/crawler
-        env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
-          G2B_API_KEY: ${{ secrets.G2B_API_KEY }}
-          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
-          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-        run: |
-          FROM="${{ needs.setup.outputs.from }}"
-          if [ -z "$FROM" ]; then FROM=$(date -d '30 days ago' +%Y%m%d); fi
-          TO="${{ needs.setup.outputs.to }}"
-          CMD="pnpm ts-node src/index.ts --type bid-result --pages 999 --from $FROM"
-          if [ -n "$TO" ]; then CMD="$CMD --to $TO"; fi
-          echo "실행: $CMD"
-          eval $CMD
       - name: 부종공종 채우기
         working-directory: apps/crawler
         env:
@@ -124,6 +110,34 @@ jobs:
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
         run: pnpm ts-node src/index.ts --type fill-avalue
+
+  bid-result:
+    needs: setup
+    if: needs.setup.outputs.job == 'bid-result' || needs.setup.outputs.job == 'daily'
+    runs-on: ubuntu-latest
+    timeout-minutes: 355
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v3
+        with: { version: "9.0.0" }
+      - uses: actions/setup-node@v4
+        with: { node-version: "20", cache: pnpm }
+      - run: pnpm install --no-frozen-lockfile
+      - name: 낙찰 결과 신규 수집 (BidResult) — 2026-05-14 announcement 와 분리
+        working-directory: apps/crawler
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          G2B_API_KEY: ${{ secrets.G2B_API_KEY }}
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          FROM="${{ needs.setup.outputs.from }}"
+          if [ -z "$FROM" ]; then FROM=$(date -d '30 days ago' +%Y%m%d); fi
+          TO="${{ needs.setup.outputs.to }}"
+          CMD="pnpm ts-node src/index.ts --type bid-result --pages 999 --from $FROM"
+          if [ -n "$TO" ]; then CMD="$CMD --to $TO"; fi
+          echo "실행: $CMD"
+          eval $CMD
 
   extras:
     needs: [setup, announcement]
