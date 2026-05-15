@@ -87,7 +87,7 @@ async function getSession(modelKey: string): Promise<ort.InferenceSession> {
       // Vercel Blob private store — token 헤더 + 같은 Vercel 인프라라 매우 빠름 (1~5초)
       const blobToken = process.env.BLOB_READ_WRITE_TOKEN;
       const res = await fetch(remote, {
-        signal: AbortSignal.timeout(20000),
+        signal: AbortSignal.timeout(50000),
         headers: blobToken ? { authorization: `Bearer ${blobToken}` } : {},
       });
       if (!res.ok) throw new Error(`Failed to fetch ${modelKey}: HTTP ${res.status}`);
