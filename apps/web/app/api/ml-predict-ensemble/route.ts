@@ -212,8 +212,35 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   }
 }
 
-export async function GET(): Promise<NextResponse> {
+export async function GET(request: NextRequest): Promise<NextResponse> {
   const manifest = getManifest();
+  const url = new URL(request.url);
+  // ?debug=1 — 환경변수 + remote fetch 1건 테스트
+  if (url.searchParams.get("debug") === "1") {
+    const token = process.env.BLOB_READ_WRITE_TOKEN;
+    const testUrl = manifest.remote_models["lowerlimit_q95"];
+    let fetchResult = "skipped";
+    if (testUrl) {
+      try {
+        const t0 = Date.now();
+        const res = await fetch(testUrl, {
+          signal: AbortSignal.timeout(15000),
+          headers: token ? { authorization: `Bearer ${token}` } : {},
+        });
+        const ms = Date.now() - t0;
+        fetchResult = `HTTP ${res.status} in ${ms}ms (size=${res.headers.get("content-length") ?? "?"})`;
+      } catch (e) {
+        fetchResult = `ERROR: ${(e as Error).message}`;
+      }
+    }
+    return NextResponse.json({
+      status: "debug",
+      has_blob_token: !!token,
+      token_prefix: token ? token.slice(0, 20) + "..." : null,
+      test_fetch_url: testUrl,
+      test_fetch_result: fetchResult,
+    });
+  }
   return NextResponse.json({
     status: "ok",
     version: manifest.version,
