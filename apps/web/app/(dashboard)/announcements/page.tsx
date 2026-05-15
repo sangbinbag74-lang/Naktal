@@ -503,6 +503,11 @@ export default function AnnouncementsPage() {
   }, [hydrated]);
 
   const handleSearch = () => {
+    // 진행 중인 debounce 타이머 즉시 취소 — 클릭 결과를 옛 콜백이 덮어쓰는 race condition 방지
+    if (searchTimerRef.current) {
+      clearTimeout(searchTimerRef.current);
+      searchTimerRef.current = null;
+    }
     saveFilters({ keyword, categories, regions, sort, contractMethod, deadlineRange, minBudget, maxBudget, budgetPreset, rgnType, ntceKind, cnclsType, myProvince, myCity, onlyMyRegion });
     setPage(1);
     setItems([]);
