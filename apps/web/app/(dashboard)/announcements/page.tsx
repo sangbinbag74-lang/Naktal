@@ -5,6 +5,7 @@ import { isMultiplePriceBid } from "@/lib/bid-utils";
 import { CATEGORY_GROUPS } from "@/lib/category-map";
 import { normalizeRegion } from "@/lib/region-alias";
 import { KOREA_REGIONS, findProvince } from "@/lib/korea-regions";
+import { MaintenanceNotice } from "@/components/common/MaintenanceNotice";
 
 const FOLDER_KEY = "naktal_folder";
 function getFolderIds(): string[] {
@@ -559,6 +560,7 @@ export default function AnnouncementsPage() {
         @keyframes spin { to { transform: rotate(360deg); } }
         .ann-card-spinner { animation: spin 0.7s linear infinite; }
       `}</style>
+      <MaintenanceNotice />
       {/* 헤더 */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <div>

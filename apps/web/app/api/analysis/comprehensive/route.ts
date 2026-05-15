@@ -13,7 +13,7 @@ import {
 import { recommendNumbers } from "@/lib/core1/frequency-engine";
 import { isMultiplePriceBid } from "@/lib/bid-utils";
 import { calcBaseBudget } from "@/lib/analysis/sajung-utils";
-import { classifyCategory, DEFAULT_SAJUNG_BY_KIND, DEFAULT_LWLT_BY_KIND } from "@/lib/analysis/category-config";
+import { classifyCategory, DEFAULT_SAJUNG_BY_KIND, DEFAULT_LWLT_BY_KIND, FALLBACK_STDDEV_BY_KIND, getDefaultLwlt } from "@/lib/analysis/category-config";
 import { applySajungNoise, calcBidPrice } from "@/lib/core1/noise";
 
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24시간
@@ -82,11 +82,12 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     .eq("annId", annId)
     .is("cancelledAt", null);
 
-  // ─── 낙찰하한율 파싱 (캐시·분석 공통) — 카테고리별 fallback ────────────────
+  // ─── 낙찰하한율 파싱 (캐시·분석 공통) — 2026.1.30 개정 반영 ────────────────
+  // 예산구간별 폴백 (공사 10억 미만 89.745% / 10~50억 88.745% / 50~100억 87.495%)
   const rawJsonEarly = (ann.rawJson as Record<string, string>) ?? {};
   const annCategory = ann.category as string;
   const annKind = classifyCategory(annCategory);
-  const defaultLwlt = DEFAULT_LWLT_BY_KIND[annKind];
+  const defaultLwlt = getDefaultLwlt(annCategory, budgetNum);
   const defaultSajung = DEFAULT_SAJUNG_BY_KIND[annKind];
   const lwltRaw = rawJsonEarly.sucsfbidLwltRate ?? "";
   const lowerLimitRateEarly = parseFloat(lwltRaw.replace(/[^0-9.]/g, "")) || defaultLwlt;
@@ -147,6 +148,10 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   const rawJson = (ann.rawJson as Record<string, string>) ?? {};
   const lowerLimitRateRaw = rawJson.sucsfbidLwltRate ?? "";
   const lowerLimitRate = parseFloat(lowerLimitRateRaw.replace(/[^0-9.]/g, "")) || defaultLwlt;
+  if (lowerLimitRate <= 0) {
+    console.warn("[comprehensive] 낙찰하한율 미상 (종합심사 또는 100억+ 공사) — 분석 거부:", annId);
+    return NextResponse.json({ error: "ANALYSIS_NOT_SUPPORTED", message: "이 공고는 적격심사 대상이 아닙니다." }, { status: 422 });
+  }
 
   const deadline = new Date(ann.deadline as string);
   const deadlineMonth = deadline.getMonth() + 1;
@@ -306,33 +311,43 @@ function buildResponse(
       })(),
       sampleSize: pred.sampleSize,
       optimalBidPrice: (() => {
-        // 표준 공식만 사용. 안전 마진·seq 모두 제거.
-        // 화면 사정율 → 추천금액 100% 일치 → G2B 계산기 검증 통과
+        // 2026-05-15 재설계: σ × z 안전 quantile + Hard clamp
+        // calcBidPrice 가 stddev 기반 안전 quantile 자동 적용 + 하한 아래 금지 강제
         const budget = budgetNum ?? Number(ann.budget) ?? 0;
         const llRate = lowerLimitRate ?? dl;
         const aVal   = aValueTotal ?? 0;
-        const { lowerLimit } = calcBidPrice(budget, effRate, llRate, aVal);
-        return lowerLimit;
+        // stddev 추정: sajungRateRange (p75-p25)/1.35 ≈ σ, 없으면 카테고리 폴백
+        const rng    = pred.sajungRateRange as { p25?: number; p75?: number } | null | undefined;
+        const iqrStddev = rng?.p25 != null && rng?.p75 != null && rng.p75 > rng.p25
+          ? (rng.p75 - rng.p25) / 1.35
+          : FALLBACK_STDDEV_BY_KIND[annKind];
+        const { safeBid } = calcBidPrice(budget, effRate, llRate, aVal, iqrStddev);
+        return safeBid;
       })(),
       bidPriceRangeLow: (() => {
-        // IQR 하단 (p25, 분포 25% 분위) — 실제 데이터 분포 반영
+        // 공격형 옵션 — 예측 평균값 그대로 (점 추정, 적격 50% 통과). Hard clamp만 적용.
         const budget = budgetNum ?? Number(ann.budget) ?? 0;
-        const rng    = pred.sajungRateRange as { p25?: number; p75?: number; min?: number; max?: number } | null | undefined;
-        const rate   = rng?.p25 ?? (Number(pred.predictedSajungRate) || sd.p25);
         const llRate = lowerLimitRate ?? dl;
         const aVal   = aValueTotal ?? 0;
-        const estPrice = budget * (rate / 100);
-        return Math.ceil((estPrice - aVal) * (llRate / 100) + aVal);
+        const estPrice = budget * (effRate / 100);
+        const raw = Math.ceil((estPrice - aVal) * (llRate / 100) + aVal);
+        const realLower = Math.ceil((budget - aVal) * (llRate / 100) + aVal);
+        return Math.max(raw, realLower + 1);
       })(),
       bidPriceRangeHigh: (() => {
-        // IQR 상단 (p75, 분포 75% 분위) — 실제 데이터 분포 반영
+        // 초안전 옵션 — z=2.0 quantile (적격 97.5% 통과)
         const budget = budgetNum ?? Number(ann.budget) ?? 0;
-        const rng    = pred.sajungRateRange as { p25?: number; p75?: number; min?: number; max?: number } | null | undefined;
-        const rate   = rng?.p75 ?? (Number(pred.predictedSajungRate) || sd.p75);
         const llRate = lowerLimitRate ?? dl;
         const aVal   = aValueTotal ?? 0;
-        const estPrice = budget * (rate / 100);
-        return Math.ceil((estPrice - aVal) * (llRate / 100) + aVal);
+        const rng    = pred.sajungRateRange as { p25?: number; p75?: number } | null | undefined;
+        const iqrStddev = rng?.p25 != null && rng?.p75 != null && rng.p75 > rng.p25
+          ? (rng.p75 - rng.p25) / 1.35
+          : FALLBACK_STDDEV_BY_KIND[annKind];
+        const veryRate = effRate + iqrStddev * 2.0;
+        const estPrice = budget * (veryRate / 100);
+        const raw = Math.ceil((estPrice - aVal) * (llRate / 100) + aVal);
+        const realLower = Math.ceil((budget - aVal) * (llRate / 100) + aVal);
+        return Math.max(raw, realLower + 1);
       })(),
       lowerLimitPrice: aLowerLimit != null ? aLowerLimit : Number(pred.lowerLimitPrice),
       winProbability: pred.winProbability,

@@ -15,6 +15,8 @@ import {
   SAJUNG_FILTER_BY_KIND,
   DEFAULT_SAJUNG_BY_KIND,
   DEFAULT_LWLT_BY_KIND,
+  FALLBACK_STDDEV_BY_KIND,
+  SAFETY_Z_SCORE,
 } from "@/lib/analysis/category-config";
 
 // ─── 타입 ─────────────────────────────────────────────────────────────────────
@@ -583,12 +585,20 @@ export async function predictOptimalBid(params: {
     const fallbackRate = sd.center;
     const aValF = params.aValueTotal ?? 0;
     const lwltF = params.lowerLimitRate / 100;
-    const estimatedF      = params.budget * (fallbackRate / 100);
-    const estimatedFLow   = params.budget * (sd.p25 / 100);
-    const estimatedFHigh  = params.budget * (sd.p75 / 100);
-    const optimalBidF = (estimatedF     - aValF) * lwltF + aValF;
-    const rangeLowF   = (estimatedFLow  - aValF) * lwltF + aValF;
-    const rangeHighF  = (estimatedFHigh - aValF) * lwltF + aValF;
+    // 폴백도 동일 정책 — σ × z 안전 quantile + Hard clamp
+    const fbStddev = FALLBACK_STDDEV_BY_KIND[classifyCategory(params.category)];
+    const safeSajF = fallbackRate + fbStddev * SAFETY_Z_SCORE;
+    const estimatedF      = params.budget * (safeSajF / 100);
+    const estimatedFLow   = params.budget * (fallbackRate / 100);
+    const estimatedFHigh  = params.budget * ((safeSajF + 0.5) / 100);
+    let optimalBidF = (estimatedF     - aValF) * lwltF + aValF;
+    let rangeLowF   = (estimatedFLow  - aValF) * lwltF + aValF;
+    let rangeHighF  = (estimatedFHigh - aValF) * lwltF + aValF;
+    // Hard clamp
+    const realLowerF = (params.budget - aValF) * lwltF + aValF;
+    optimalBidF = Math.max(optimalBidF, realLowerF + 1);
+    rangeLowF   = Math.max(rangeLowF,   realLowerF + 1);
+    rangeHighF  = Math.max(rangeHighF,  realLowerF + 1);
     return {
       predictedSajungRate: fallbackRate,
       sajungRateRange: { min: sd.min, max: sd.max, p25: sd.p25, p75: sd.p75 },
@@ -596,7 +606,7 @@ export async function predictOptimalBid(params: {
       optimalBidPrice: Math.ceil(optimalBidF),
       bidPriceRangeLow: Math.ceil(rangeLowF),
       bidPriceRangeHigh: Math.ceil(rangeHighF),
-      lowerLimitPrice: Math.ceil(optimalBidF),
+      lowerLimitPrice: Math.ceil(realLowerF),
       winProbability: 0, // 0 = 데이터 부족 (UI 에서 "-" 표시)
       isFallback: true,
       confidenceLevel: "LOW" as ConfidenceLevel,
@@ -680,18 +690,38 @@ export async function predictOptimalBid(params: {
     : Math.max(85, Math.min(115, statPred));
   const usedMl = mlPred !== null;
 
-  // 6. 투찰가 역산 — 표준 공식: ROUNDUP((예정가 - A) × 투찰률 + A)
-  // optimalBid = 예측 사정율 기반 낙찰하한가 (사정율 정확 시 최적)
-  // rangeLow / rangeHigh = 예측 사정율 ±0.5%p 범위 (보수/공격 옵션)
+  // 6. 투찰가 역산 — 방법 1 (σ × z 안전 quantile) + Hard clamp 적용
+  //
+  // 이전: optimalBid = predictedRate × lwlt  (점 추정 → 사정율 빗나가면 미달 50%)
+  // 현재: optimalBid = (predictedRate + stddev × z) × lwlt  → 적격 통과 95% 보장
+  //
+  // 변수 의미:
+  // - stddev: 발주처별 사정율 표준편차 (DB 학습값 우선, 없으면 카테고리 폴백)
+  // - SAFETY_Z_SCORE = 1.645 → 정규분포 상단 95% 백분위
+  // - safeSajungRate: 예측 평균 + 안전 quantile = 95% 확률로 실제 사정율 ≤ safeSajungRate
+  // - 결과적으로 낙찰하한가는 95% 확률로 추천가 이하 → 적격 통과
   const aVal       = params.aValueTotal ?? 0;
   const lwlt       = params.lowerLimitRate / 100;
-  const estimated      = params.budget * (predictedRate / 100);
-  const estimatedLow   = params.budget * ((predictedRate - 0.5) / 100);
-  const estimatedHigh  = params.budget * ((predictedRate + 0.5) / 100);
-  const optimalBid = (estimated     - aVal) * lwlt + aVal;
-  const rangeLow   = (estimatedLow  - aVal) * lwlt + aVal;
-  const rangeHigh  = (estimatedHigh - aVal) * lwlt + aVal;
-  const lowerLimit = optimalBid; // UI 표시용 (낙찰하한가 = 추천)
+
+  // 안전 quantile 계산 — stddev 기반 자동 적응 (인위적 상수 마진 X)
+  const effStddev = stat.stddev > 0
+    ? stat.stddev
+    : FALLBACK_STDDEV_BY_KIND[classifyCategory(params.category)];
+  const safeSajungRate = predictedRate + effStddev * SAFETY_Z_SCORE;
+
+  const estimated      = params.budget * (safeSajungRate / 100);
+  const estimatedLow   = params.budget * (predictedRate / 100);              // 50% quantile (공격형)
+  const estimatedHigh  = params.budget * ((safeSajungRate + 0.5) / 100);     // 97.5% quantile (초안전)
+  let   optimalBid     = (estimated     - aVal) * lwlt + aVal;
+  let   rangeLow       = (estimatedLow  - aVal) * lwlt + aVal;
+  let   rangeHigh      = (estimatedHigh - aVal) * lwlt + aVal;
+
+  // Hard clamp — 어떤 경우에도 실제 낙찰하한가 (사정율 100% 가정) 아래로 추천 금지
+  const realLowerLimit = (params.budget - aVal) * lwlt + aVal;
+  optimalBid = Math.max(optimalBid, realLowerLimit + 1);
+  rangeLow   = Math.max(rangeLow,   realLowerLimit + 1);
+  rangeHigh  = Math.max(rangeHigh,  realLowerLimit + 1);
+  const lowerLimit = realLowerLimit; // UI 표시용 (실제 G2B 하한가 — 추천과 무관한 기준선)
 
   // 7. 몬테카를로 낙찰 확률 (다른 회사 분포 포함)
   // numBidders 가 인자에 없으면 30명 기본 (한국 공공조달 평균)

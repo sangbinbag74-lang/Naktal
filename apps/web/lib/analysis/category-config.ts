@@ -43,14 +43,50 @@ export const DEFAULT_SAJUNG_BY_KIND: Record<BidCategoryKind, {
   other:        { center: 100,  min: 90,  max: 110, p25: 95,  p75: 105 },
 };
 
-/** 카테고리별 낙찰하한율 default (rawJson.sucsfbidLwltRate 우선 사용, 누락 시 폴백) */
+/** 카테고리별 낙찰하한율 default — 2026-01-30 개정 반영 (구간별 2%p 일괄 상향)
+ *  국가 (기재부·조달청) + 지자체 (행안부 예규 325호, 2025-07-01 시행) 모두 적용
+ *  rawJson.sucsfbidLwltRate 우선 사용, 누락 시 polyfill로 사용
+ */
 export const DEFAULT_LWLT_BY_KIND: Record<BidCategoryKind, number> = {
-  construction: 87.745, // 지자체 종합건설 표준
-  service:      80.0,   // 지자체 용역 표준
-  goods:        80.0,   // 일반 물품 표준
-  foreign:      80.0,
-  other:        87.745, // 안전 fallback (공사 가정)
+  construction: 89.745, // 공사 표준 (10억 미만, 2026-01-30 ↑)
+  service:      87.995, // 용역 표준 (중기간경쟁)
+  goods:        84.245, // 물품 표준 (고시미만)
+  foreign:      80.495, // 외자
+  other:        89.745, // 안전 fallback (공사 가정)
 };
+
+/** 예산 구간별 공사 낙찰하한율 — 2026-01-30 개정 표준 */
+export function getConstructionLwlt(budget: number): number {
+  if (budget < 1_000_000_000)  return 89.745; // 10억 미만
+  if (budget < 5_000_000_000)  return 88.745; // 10~50억
+  if (budget < 10_000_000_000) return 87.495; // 50~100억
+  return 0; // 100억 이상은 종합심사 (적격심사 미적용)
+}
+
+/** 카테고리·예산 종합 폴백 — sucsfbidLwltRate 누락 시 사용 */
+export function getDefaultLwlt(category: string | null | undefined, budget: number): number {
+  const kind = classifyCategory(category);
+  if (kind === "construction") {
+    const c = getConstructionLwlt(budget);
+    if (c > 0) return c;
+    return 0; // 종합심사
+  }
+  return DEFAULT_LWLT_BY_KIND[kind];
+}
+
+/** 카테고리별 사정율 표준편차 폴백 (SajungRateStat.stddev 없을 때) — 안전 quantile 계산용
+ *  실측 추정: 공사 0.7%p / 용역 1.2%p / 물품 1.5%p
+ */
+export const FALLBACK_STDDEV_BY_KIND: Record<BidCategoryKind, number> = {
+  construction: 0.7,
+  service:      1.2,
+  goods:        1.5,
+  foreign:      1.0,
+  other:        1.0,
+};
+
+/** 안전 quantile z-score — z=1.645 → 적격 통과 95% 보장 */
+export const SAFETY_Z_SCORE = 1.645;
 
 /** 추정가격(부가세 별도) → 기초금액(부가세 포함) 환산 배율 */
 export function vatMultiplier(kind: BidCategoryKind): number {
