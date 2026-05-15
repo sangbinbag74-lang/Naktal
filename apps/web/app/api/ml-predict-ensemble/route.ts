@@ -84,8 +84,12 @@ async function getSession(modelKey: string): Promise<ort.InferenceSession> {
     } else if (remote) {
       console.log(`[Ensemble] fetching remote: ${modelKey} from ${remote}`);
       const t0 = Date.now();
-      // 큰 모델 (185MB) → 50초 timeout (Vercel maxDuration 60s 내 여유)
-      const res = await fetch(remote, { signal: AbortSignal.timeout(50000) });
+      // Vercel Blob private store — token 헤더 + 같은 Vercel 인프라라 매우 빠름 (1~5초)
+      const blobToken = process.env.BLOB_READ_WRITE_TOKEN;
+      const res = await fetch(remote, {
+        signal: AbortSignal.timeout(20000),
+        headers: blobToken ? { authorization: `Bearer ${blobToken}` } : {},
+      });
       if (!res.ok) throw new Error(`Failed to fetch ${modelKey}: HTTP ${res.status}`);
       buffer = await res.arrayBuffer();
       console.log(`[Ensemble] ${modelKey} fetched (${(buffer.byteLength / 1024 / 1024).toFixed(1)}MB, ${Date.now() - t0}ms)`);
