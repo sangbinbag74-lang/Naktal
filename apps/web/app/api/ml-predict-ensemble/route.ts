@@ -230,32 +230,62 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 export async function GET(request: NextRequest): Promise<NextResponse> {
   const manifest = getManifest();
   const url = new URL(request.url);
-  // ?debug=timing — 각 모델 fetch + session create 단계별 시간 측정
+  // ?debug=timing — 각 모델 단계별 시간 측정 (수동 — getSession 우회)
   if (url.searchParams.get("debug") === "timing") {
-    const allModels = [
-      ...Object.keys(manifest.bundled_models),
-      ...Object.keys(manifest.remote_models),
-    ];
-    const timings: Record<string, { fetch_ms?: number; gunzip_ms?: number; init_ms?: number; total_ms?: number; size_mb?: number; error?: string }> = {};
-    const overall0 = Date.now();
-    // 캐시 비우기 — 진짜 cold start 측정
-    sessionCache.clear();
-    for (const key of allModels) {
-      const t0 = Date.now();
-      try {
-        await getSession(key);
-        const total = Date.now() - t0;
-        timings[key] = { total_ms: total };
-      } catch (e) {
-        timings[key] = { error: (e as Error).message };
+    const model = url.searchParams.get("model") ?? "sajung_quantile_q05";
+    const result: Record<string, unknown> = { model };
+    try {
+      const overall0 = Date.now();
+
+      // 1. 모델 buffer 확보
+      const fetch0 = Date.now();
+      let buffer: ArrayBuffer;
+      const bundled = manifest.bundled_models[model];
+      const remote = manifest.remote_models[model];
+      if (bundled) {
+        const fname = bundled.replace("/ml/", "");
+        const fullPath = path.join(ML_DIR, fname);
+        const data = fs.readFileSync(fullPath);
+        buffer = new ArrayBuffer(data.byteLength);
+        new Uint8Array(buffer).set(data);
+        result.source = "bundled";
+        result.fetch_ms = Date.now() - fetch0;
+      } else if (remote) {
+        const blobToken = process.env.BLOB_READ_WRITE_TOKEN;
+        const res = await fetch(remote, {
+          signal: AbortSignal.timeout(20000),
+          headers: blobToken ? { authorization: `Bearer ${blobToken}` } : {},
+        });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const fetched = await res.arrayBuffer();
+        result.fetch_ms = Date.now() - fetch0;
+        result.fetched_mb = +(fetched.byteLength / 1024 / 1024).toFixed(2);
+
+        if (manifest.remote_compression === "gzip") {
+          const gz0 = Date.now();
+          const decomp = zlib.gunzipSync(Buffer.from(fetched));
+          buffer = new ArrayBuffer(decomp.byteLength);
+          new Uint8Array(buffer).set(decomp);
+          result.gunzip_ms = Date.now() - gz0;
+          result.decompressed_mb = +(buffer.byteLength / 1024 / 1024).toFixed(2);
+        } else {
+          buffer = fetched;
+        }
+        result.source = "remote";
+      } else {
+        throw new Error("Unknown model");
       }
+
+      // 2. InferenceSession.create
+      const init0 = Date.now();
+      await ort.InferenceSession.create(buffer);
+      result.session_init_ms = Date.now() - init0;
+      result.total_ms = Date.now() - overall0;
+      result.buffer_mb = +(buffer.byteLength / 1024 / 1024).toFixed(2);
+    } catch (e) {
+      result.error = (e as Error).message;
     }
-    return NextResponse.json({
-      status: "timing",
-      total_ms: Date.now() - overall0,
-      models: timings,
-      note: "각 모델 sequential getSession() = fetch + (gunzip) + InferenceSession.create",
-    });
+    return NextResponse.json(result);
   }
   // ?debug=1 — 환경변수 + remote fetch 1건 테스트
   if (url.searchParams.get("debug") === "1") {
