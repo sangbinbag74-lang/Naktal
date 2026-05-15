@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { createClient } from "@/lib/supabase/client";
 import type { ComprehensiveResult } from "./AnnouncementTabs";
+import { AnalysisLoader } from "./AnalysisLoader";
 
 interface AiAnalysisPanelProps {
   annDbId: string;
@@ -174,12 +175,7 @@ export function AiAnalysisPanel({ annDbId, budget, g2bUrl, konepsId, onRefresh, 
 
       <div style={{ padding: "16px" }}>
         {loading ? (
-          <div style={{ textAlign: "center", padding: "40px 0", color: "#94A3B8", fontSize: 13 }}>
-            AI 분석 중...
-            <div style={{ fontSize: 11, marginTop: 6 }}>
-              사정율·구간 분석은 <strong style={{ color: "#059669" }}>무제한 무료</strong>
-            </div>
-          </div>
+          <AnalysisLoader />
         ) : !bs ? (
           <div style={{ textAlign: "center", padding: "40px 0", color: "#94A3B8", fontSize: 13 }}>
             분석 데이터를 불러올 수 없습니다.
