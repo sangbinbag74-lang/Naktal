@@ -5,8 +5,9 @@
  * 결과: 각 operation 별 페이지 수, fetch 시간, upsert 시간
  */
 import { NextRequest, NextResponse } from "next/server";
+import { randomUUID } from "crypto";
 import { requireAdmin } from "@/lib/admin-guard";
-import { g2bFetchAnnouncementPage, g2bFetchAllBidResults, toYMD, daysAgo, type G2BAnnouncement, g2bExtractRegion, g2bParseDate, g2bGetCategory } from "@/lib/g2b";
+import { g2bFetchAnnouncementPage, toYMD, daysAgo, type G2BAnnouncement, g2bExtractRegion, g2bParseDate, g2bGetCategory } from "@/lib/g2b";
 
 export const maxDuration = 300;
 export const dynamic = "force-dynamic";
@@ -16,7 +17,7 @@ const NTCE_OPS = [
   "getBidPblancListInfoCnstwk",
   "getBidPblancListInfoThng",
 ] as const;
-const NUM_OF_ROWS = 100;
+const NUM_OF_ROWS = 999;
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
   const guard = await requireAdmin(request);
@@ -59,7 +60,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
           if (!konepsId || !title || !orgName || isNaN(budgetNum) || !deadline) return null;
           const rawJson: Record<string, string> = {};
           for (const [k, v] of Object.entries(item)) rawJson[k] = String(v ?? "");
-          return { konepsId, title, orgName, budget: budgetNum, deadline,
+          return { id: randomUUID(), konepsId, title, orgName, budget: budgetNum, deadline,
             category: g2bGetCategory(item, op),
             region: g2bExtractRegion(item.ntceInsttAddr || ""), rawJson };
         }).filter(Boolean);
