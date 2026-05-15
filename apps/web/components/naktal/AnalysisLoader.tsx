@@ -20,7 +20,7 @@ const STEPS: Step[] = [
   { label: "사정율 분포 학습",     detail: "LightGBM Quantile 모델 — 발주처별 변동성 추정", duration: 5000 },
   { label: "낙찰하한가 직접 예측", detail: "1순위 투찰률 분포 모델로 안전 구간 계산", duration: 6000 },
   { label: "Ensemble 메타 결합",   detail: "사정율 + 낙찰하한 + 1순위 위치 6개 모델 결합", duration: 7000 },
-  { label: "안전 quantile 검증",   detail: "적격 통과 95% 보장선 + 발주처 변동성 적응", duration: 5000 },
+  { label: "안전 quantile 검증",   detail: "적격 통과 안전선 + 발주처 변동성 적응", duration: 5000 },
   { label: "최적 투찰가 산출",     detail: "노이즈 시뮬레이션 + 하한가 검증 + 최종 추천", duration: 4000 },
 ];
 
@@ -174,10 +174,10 @@ export function AnalysisLoader() {
         textAlign: "center",
         maxWidth: 380, lineHeight: 1.5,
       }}>
-        ⚡ <strong style={{ color: "#475569" }}>136만건 학습 데이터</strong> +
-        <strong style={{ color: "#475569" }}> Quantile Regression</strong> +
-        <strong style={{ color: "#475569" }}> XGBoost Stacking</strong><br />
-        적격 통과 95% 보장선 자동 계산 중 ({elapsedSec}s)
+        ⚡ <strong style={{ color: "#475569" }}>Quantile Regression</strong> +
+        <strong style={{ color: "#475569" }}> XGBoost Stacking</strong> +
+        <strong style={{ color: "#475569" }}> 메타 Ensemble</strong><br />
+        적격 통과 안전선 자동 계산 중 ({elapsedSec}s)
       </div>
     </div>
   );
