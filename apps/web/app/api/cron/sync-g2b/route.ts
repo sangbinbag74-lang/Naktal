@@ -83,7 +83,10 @@ async function importAnnouncementsOp(
       if (r.ok) saved += rows.length;
       else {
         const errText = await r.text();
+        const firstRow = rows[0] as Record<string, unknown>;
         console.error(`[importAnnouncements:${operation}] upsert 실패 ${r.status}:`, errText);
+        console.error(`[importAnnouncements:${operation}] first row keys:`, Object.keys(firstRow));
+        console.error(`[importAnnouncements:${operation}] first row id:`, firstRow.id);
       }
     }
     if (page * NUM_OF_ROWS >= totalCount) break;
@@ -209,6 +212,8 @@ export async function GET(request: NextRequest) {
     log.recent = { announcements: recentAnn, bidResults: recentBid, from: twoDaysAgo, to: today };
 
     if (isRecentOnly) {
+      // 디버그: rows의 id 필드 확인용 — 빌드 적용 후 id 들어가는지 확인
+      log.codeVersion = "id-randomUUID-applied-2026-05-15";
       return NextResponse.json({ ok: true, ...log });
     }
 
