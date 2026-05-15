@@ -9,7 +9,7 @@ import { SaveButton } from "@/components/naktal/SaveButton";
 import { BidRequestButton } from "@/components/naktal/BidRequestButton";
 import { AnnouncementTimeline } from "@/components/naktal/AnnouncementTimeline";
 import { OrgRecentStats } from "@/components/naktal/OrgRecentStats";
-import { MaintenanceNotice } from "@/components/common/MaintenanceNotice";
+// MaintenanceNotice 제거 — Ensemble 배포 검증 후 (2026-05-15)
 import { extractBidSchedule, extractMetadata, formatPrearngPrceMethod } from "@/lib/g2b-fields";
 import {
   g2bFetchAnnouncementByNo,
@@ -223,8 +223,6 @@ export default async function AnnouncementDetailPage({
           ← 공고 목록으로
         </Link>
       </div>
-
-      <MaintenanceNotice />
 
       {/* PDF 자격 요약 — 공고문 본문에서 추출한 자격 정보 (전국/시·군 + 자격 키워드) */}
       {a.pdfRgnLimit && (
