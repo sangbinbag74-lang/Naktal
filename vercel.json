@@ -8,7 +8,7 @@
     "apps/web/app/api/realtime/recommend-live/route.ts": { "maxDuration": 30 },
     "apps/web/app/api/analysis/qualification/route.ts": { "maxDuration": 20 },
     "apps/web/app/api/analysis/comprehensive/route.ts": { "maxDuration": 60 },
-    "apps/web/app/api/ml-predict-ensemble/route.ts": { "maxDuration": 60 },
+    "apps/web/app/api/ml-predict-ensemble/route.ts": { "maxDuration": 60, "memory": 3008 },
     "apps/web/app/api/cron/sync-g2b/route.ts": { "maxDuration": 300 },
     "apps/web/app/api/cron/collect-sajung-stat/route.ts": { "maxDuration": 300 },
     "apps/web/app/api/cron/prefill-predictions/route.ts": { "maxDuration": 120 },
