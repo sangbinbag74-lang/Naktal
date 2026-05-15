@@ -21,7 +21,7 @@ import {
 
 export const maxDuration = 300;
 
-const NUM_OF_ROWS = 100;
+const NUM_OF_ROWS = 999; // G2B 최대 — 페이지 수 1/10 축소 (rate limit 없음)
 const MONTHS_PER_RUN = 3;
 const G2B_OLDEST = "201201";
 
