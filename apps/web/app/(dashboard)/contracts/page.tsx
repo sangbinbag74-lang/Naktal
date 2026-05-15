@@ -19,7 +19,7 @@ export default async function ContractsPage() {
     .select([
       "id,annId,title,orgName,deadline,contractAt",
       "recommendedBidPrice,predictedSajungRate",
-      "userBidPrice,userRank,userBidRate",
+      "userBidPrice,userRank,userBidRate,userRemark",
       "actualSajungRate,actualFinalPrice,deviationPct,isHit,isWon,winnerName,totalBidders,openingDt",
       "agreedFeeRate,feeStatus,feeAmount",
     ].join(","))
@@ -71,6 +71,7 @@ export interface ContractListItem {
   userBidPrice: string | number | null;
   userRank: number | null;
   userBidRate: string | number | null;
+  userRemark: string | null;
   actualSajungRate: string | number | null;
   actualFinalPrice: string | number | null;
   deviationPct: string | number | null;

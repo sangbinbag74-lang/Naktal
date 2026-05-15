@@ -274,6 +274,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     let userDrwtNo1: number | null = null;
     let userDrwtNo2: number | null = null;
     let userBidAtFromG2B: string | null = null;
+    let userRemark: string | null = null;
     if (userBizNo.length === 10 && req.konepsId && req.deadline) {
       try {
         const comptItems = await g2bFetchOpengComptForBidNtceNo({
@@ -302,6 +303,10 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
           userDrwtNo1 = parseInt(String(me.drwtNo1 ?? "").trim(), 10) || null;
           userDrwtNo2 = parseInt(String(me.drwtNo2 ?? "").trim(), 10) || null;
           userBidAtFromG2B = me.bidprcDt ? g2bParseDate(me.bidprcDt) : null;
+          // G2B 사유 (낙찰하한선 미달 / 무효 / 적격 미달 등) — 순위 빈 행의 사유 노출용
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const rmrk = String((me as any).rmrk ?? "").trim();
+          userRemark = rmrk.length > 0 ? rmrk : null;
         }
       } catch (e) {
         console.error(`[refresh-outcomes] OpengCompt 조회 실패 ${req.konepsId}:`, (e as Error).message);
@@ -360,6 +365,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         ...(userDrwtNo2 != null ? { userDrwtNo2 } : {}),
         ...(userBidAtFromG2B != null ? { userBidAt: userBidAtFromG2B } : {}),
         ...(userFollowedRecommendation != null ? { userFollowedRecommendation } : {}),
+        ...(userRemark != null ? { userRemark } : {}),
       })
       .eq("id", req.id);
 

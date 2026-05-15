@@ -5,7 +5,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/admin-guard";
 import { createAdminClient } from "@/lib/supabase/server";
-import { g2bFetchBidResultPage, g2bParseDate, toYMD } from "@/lib/g2b";
+import { g2bFetchBidResultPage, g2bFetchOpengComptForBidNtceNo, g2bParseDate, toYMD } from "@/lib/g2b";
 
 const SCSBID_OPS = [
   "getScsbidListSttusThng",
@@ -111,19 +111,63 @@ export async function POST(
       ? (finalPrice / (bidRate / 100) / base) * 100
       : null;
 
-  // User 조회 (낙찰 여부 판별)
+  // User 조회 (낙찰 여부 판별 + 사업자번호 — OpengCompt 매칭용)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data: user } = await (admin.from("User") as any)
-    .select("bizName")
+    .select("bizName,bizNo")
     .eq("id", bidReq.userId)
     .single();
 
   const bizName: string = user?.bizName ?? "";
+  const userBizNo: string = String(user?.bizNo ?? "").replace(/\D/g, "");
   const winnerName: string = bidResultRow.winnerName ?? "";
   const isWon: boolean =
     bizName.length > 1 && winnerName.length > 1
       ? winnerName.includes(bizName) || bizName.includes(winnerName)
       : false;
+
+  // OpengCompt 단건 조회 → 사용자 사업자번호 매칭으로 순위·투찰가·추첨번호·G2B 사유(rmrk) 채움
+  let userRank: number | null = null;
+  let userBidPriceFromG2B: number | null = null;
+  let userBidRate: number | null = null;
+  let userDrwtNo1: number | null = null;
+  let userDrwtNo2: number | null = null;
+  let userBidAtFromG2B: string | null = null;
+  let userRemark: string | null = null;
+  if (userBizNo.length === 10) {
+    try {
+      const comptItems = await g2bFetchOpengComptForBidNtceNo({
+        bidNtceNo: bidReq.konepsId,
+        deadline,
+      });
+      const userBizNoLast10 = userBizNo.slice(-10);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const normalizeBiz = (raw: any): string => {
+        const s = String(raw ?? "").replace(/\D/g, "");
+        return s.length >= 10 ? s.slice(-10) : s.padStart(10, "0");
+      };
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const getCandidateBiznos = (c: any): string[] => [
+        c.prcbdrBizno, c.bizno, c.bizNo, c.prtcptCorpBizno,
+        c.prcbdrCeoBizno, c.bidprrBizno,
+      ].filter(Boolean).map(normalizeBiz);
+
+      const me = comptItems.find(c => getCandidateBiznos(c).includes(userBizNoLast10));
+      if (me) {
+        userRank = parseInt(me.opengRank ?? "0", 10) || null;
+        userBidPriceFromG2B = parseInt(String(me.bidprcAmt ?? "0").replace(/[^0-9]/g, ""), 10) || null;
+        userBidRate = parseFloat(String(me.bidprcrt ?? "0")) || null;
+        userDrwtNo1 = parseInt(String(me.drwtNo1 ?? "").trim(), 10) || null;
+        userDrwtNo2 = parseInt(String(me.drwtNo2 ?? "").trim(), 10) || null;
+        userBidAtFromG2B = me.bidprcDt ? g2bParseDate(me.bidprcDt) : null;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const rmrk = String((me as any).rmrk ?? "").trim();
+        userRemark = rmrk.length > 0 ? rmrk : null;
+      }
+    } catch (e) {
+      console.error(`[fetch-result] OpengCompt 조회 실패 ${bidReq.konepsId}:`, (e as Error).message);
+    }
+  }
 
   const predictedSajung = Number(bidReq.predictedSajungRate ?? 0);
   const deviationPct =
@@ -136,6 +180,13 @@ export async function POST(
   const feeRate = recPrice > 0 && recPrice < 100_000_000 ? 0.017 : 0.015;
   const feeAmount = isWon ? Math.round(finalPrice * feeRate) : 0;
   const feeStatus = isWon ? "invoiced" : "waived";
+
+  // 추천 따름 자동 판정 (±0.5% 이내)
+  let userFollowedRecommendation: boolean | null = null;
+  if (userBidPriceFromG2B != null && recPrice > 0) {
+    const diff = Math.abs(userBidPriceFromG2B - recPrice) / recPrice;
+    userFollowedRecommendation = diff <= 0.005;
+  }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   await (admin.from("BidRequest") as any).update({
@@ -151,6 +202,14 @@ export async function POST(
     feeAmount: String(feeAmount),
     feeStatus,
     resultDetectedAt: now,
+    ...(userRank != null ? { userRank } : {}),
+    ...(userBidPriceFromG2B != null ? { userBidPrice: String(userBidPriceFromG2B) } : {}),
+    ...(userBidRate != null ? { userBidRate: userBidRate.toFixed(4) } : {}),
+    ...(userDrwtNo1 != null ? { userDrwtNo1 } : {}),
+    ...(userDrwtNo2 != null ? { userDrwtNo2 } : {}),
+    ...(userBidAtFromG2B != null ? { userBidAt: userBidAtFromG2B } : {}),
+    ...(userFollowedRecommendation != null ? { userFollowedRecommendation } : {}),
+    ...(userRemark != null ? { userRemark } : {}),
   }).eq("id", id);
 
   return NextResponse.json({ ok: true });

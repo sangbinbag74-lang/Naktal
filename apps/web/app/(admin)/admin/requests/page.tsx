@@ -83,7 +83,7 @@ export default async function AdminRequestsPage() {
         "id,title,orgName,deadline,budget",
         "recommendedBidPrice,predictedSajungRate,winProbability",
         "userBidPrice,userBidAt,userFollowedRecommendation",
-        "userRank,userBidRate,userDrwtNo1,userDrwtNo2",
+        "userRank,userBidRate,userDrwtNo1,userDrwtNo2,userRemark",
         "openingDt,isWon,actualFinalPrice,actualSajungRate",
         "winnerName,totalBidders",
         "feeAmount,feeStatus,agreedFeeRate,agreedFeeAmount",

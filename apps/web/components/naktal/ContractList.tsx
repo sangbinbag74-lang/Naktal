@@ -107,7 +107,7 @@ function ContractCard({ c }: { c: ContractListItem }) {
           {dday.label}
         </span>
         <div style={{ flexShrink: 0, minWidth: 130, textAlign: "right" }}>
-          <WonBadge isWon={c.isWon} userRank={userRank} totalBidders={totalBidders} userBidPrice={userBid} />
+          <WonBadge isWon={c.isWon} userRank={userRank} totalBidders={totalBidders} userBidPrice={userBid} userRemark={c.userRemark} userBidRate={c.userBidRate != null ? Number(c.userBidRate) : null} />
         </div>
       </div>
 
@@ -159,12 +159,14 @@ function ContractCard({ c }: { c: ContractListItem }) {
 }
 
 function WonBadge({
-  isWon, userRank, totalBidders, userBidPrice,
+  isWon, userRank, totalBidders, userBidPrice, userRemark, userBidRate,
 }: {
   isWon: boolean | null;
   userRank: number | null;
   totalBidders: number | null;
   userBidPrice: number | null;
+  userRemark: string | null;
+  userBidRate: number | null;
 }) {
   if (isWon === true) return (
     <span style={{ fontSize: 13, fontWeight: 700, color: "#059669", background: "#ECFDF5", padding: "6px 14px", borderRadius: 7, border: "1px solid #86EFAC" }}>
@@ -172,20 +174,33 @@ function WonBadge({
     </span>
   );
   if (isWon === false) {
-    // 미낙찰 — 작고 평범하게 + 아래에 순위
+    // 미낙찰 — 작고 평범하게 + 아래에 (1) 순위 or (2) G2B 사유(낙찰하한선 미달 등)
     const rankLabel = userRank != null
       ? `${userRank}${totalBidders ? ` / ${totalBidders}` : ""}위`
-      : userBidPrice != null ? "부적격" : null;
+      : null;
     return (
       <div style={{ display: "inline-flex", flexDirection: "column", alignItems: "flex-end", gap: 3 }}>
         <span style={{ fontSize: 12, fontWeight: 500, color: "#64748B", background: "#F1F5F9", padding: "4px 10px", borderRadius: 6 }}>
           미낙찰
         </span>
-        {rankLabel && (
+        {rankLabel ? (
           <span style={{ fontSize: 11, color: "#94A3B8" }}>
             내 순위 <strong style={{ color: "#475569" }}>{rankLabel}</strong>
           </span>
-        )}
+        ) : userRemark ? (
+          <span style={{ fontSize: 11, color: "#DC2626", maxWidth: 160, textAlign: "right", lineHeight: 1.35 }} title={userRemark}>
+            {userRemark}
+            {userBidRate != null && (
+              <span style={{ display: "block", color: "#94A3B8", fontSize: 10.5, marginTop: 1 }}>
+                투찰률 {userBidRate.toFixed(3)}%
+              </span>
+            )}
+          </span>
+        ) : userBidPrice != null ? (
+          <span style={{ fontSize: 11, color: "#94A3B8" }}>
+            결과 확인 중
+          </span>
+        ) : null}
       </div>
     );
   }
