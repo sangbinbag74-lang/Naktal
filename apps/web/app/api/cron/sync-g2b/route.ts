@@ -6,6 +6,7 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
+import { randomUUID } from "crypto";
 import {
   g2bFetchAnnouncementPage,
   g2bFetchAllBidResults,
@@ -65,6 +66,7 @@ async function importAnnouncementsOp(
       const rawJson: Record<string, string> = {};
       for (const [k, v] of Object.entries(item)) rawJson[k] = String(v ?? "");
       return {
+        id: randomUUID(),  // Prisma @default(cuid()) → supabase REST 에서는 클라이언트 ID 명시 필수
         konepsId, title, orgName,
         budget: budgetNum,
         deadline,
@@ -114,6 +116,7 @@ async function importBidResults(
     const priceRaw = (item.sucsfbidAmt  || "").replace(/[^0-9]/g, "");
     if (!annId || !rateRaw || !priceRaw) return null;
     return {
+      id: randomUUID(),  // Prisma @default(cuid()) → supabase REST id 명시
       annId,
       bidRate: parseFloat(rateRaw).toFixed(3),
       finalPrice: String(parseInt(priceRaw, 10)),
