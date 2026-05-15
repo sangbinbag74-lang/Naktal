@@ -18,6 +18,7 @@ import { NextRequest, NextResponse } from "next/server";
 import * as ort from "onnxruntime-web";
 import path from "path";
 import fs from "fs";
+import * as zlib from "zlib";
 import { captureError } from "@/lib/observability/sentry";
 
 export const runtime = "nodejs";
@@ -32,6 +33,7 @@ interface Manifest {
   version: string;
   bundled_models: Record<string, string>;
   remote_models: Record<string, string>;
+  remote_compression?: string;  // "gzip" 이면 fetch 후 gunzip
 }
 
 interface EncodersJson {
@@ -84,15 +86,28 @@ async function getSession(modelKey: string): Promise<ort.InferenceSession> {
     } else if (remote) {
       console.log(`[Ensemble] fetching remote: ${modelKey} from ${remote}`);
       const t0 = Date.now();
-      // Vercel Blob private store — token 헤더 + 같은 Vercel 인프라라 매우 빠름 (1~5초)
       const blobToken = process.env.BLOB_READ_WRITE_TOKEN;
       const res = await fetch(remote, {
-        signal: AbortSignal.timeout(50000),
+        signal: AbortSignal.timeout(20000),  // 압축본 ≤16MB → fetch 2~5초로 충분
         headers: blobToken ? { authorization: `Bearer ${blobToken}` } : {},
       });
       if (!res.ok) throw new Error(`Failed to fetch ${modelKey}: HTTP ${res.status}`);
-      buffer = await res.arrayBuffer();
-      console.log(`[Ensemble] ${modelKey} fetched (${(buffer.byteLength / 1024 / 1024).toFixed(1)}MB, ${Date.now() - t0}ms)`);
+      let fetched = await res.arrayBuffer();
+      const fetchedMB = (fetched.byteLength / 1024 / 1024).toFixed(2);
+      const fetchMs = Date.now() - t0;
+
+      // gzip 압축본이면 gunzip — 정확도 0 손실 (byte 단위 복원)
+      if (manifest.remote_compression === "gzip") {
+        const t1 = Date.now();
+        const decompressed = zlib.gunzipSync(Buffer.from(fetched));
+        buffer = new ArrayBuffer(decompressed.byteLength);
+        new Uint8Array(buffer).set(decompressed);
+        const decompMB = (buffer.byteLength / 1024 / 1024).toFixed(1);
+        console.log(`[Ensemble] ${modelKey} fetched ${fetchedMB}MB (${fetchMs}ms) + gunzip → ${decompMB}MB (${Date.now() - t1}ms)`);
+      } else {
+        buffer = fetched;
+        console.log(`[Ensemble] ${modelKey} fetched (${fetchedMB}MB, ${fetchMs}ms)`);
+      }
     } else {
       throw new Error(`Unknown model: ${modelKey}`);
     }

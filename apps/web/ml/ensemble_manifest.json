@@ -9,11 +9,12 @@
     "ensemble_meta_q95": "/ml/ensemble_meta_q95.onnx"
   },
   "remote_models": {
-    "lowerlimit_q05": "https://awk0keo9fr0lqijn.private.blob.vercel-storage.com/ml-models/lowerlimit_q05.onnx",
-    "lowerlimit_q50": "https://awk0keo9fr0lqijn.private.blob.vercel-storage.com/ml-models/lowerlimit_q50.onnx",
-    "lowerlimit_q95": "https://awk0keo9fr0lqijn.private.blob.vercel-storage.com/ml-models/lowerlimit_q95.onnx"
+    "lowerlimit_q05": "https://awk0keo9fr0lqijn.private.blob.vercel-storage.com/ml-models/lowerlimit_q05.onnx.gz",
+    "lowerlimit_q50": "https://awk0keo9fr0lqijn.private.blob.vercel-storage.com/ml-models/lowerlimit_q50.onnx.gz",
+    "lowerlimit_q95": "https://awk0keo9fr0lqijn.private.blob.vercel-storage.com/ml-models/lowerlimit_q95.onnx.gz"
   },
   "notes": "lowerlimit 3개는 best_iter=2999/2998 로 ONNX 사이즈 큰 모델. Vercel 50MB 한도 우회 위해 GitHub Release 호스팅. 첫 추론 시 fetch 후 in-memory cache.",
   "host": "vercel-blob",
-  "uploaded_at": "2026-05-15T08:05:34.363Z"
+  "uploaded_at": "2026-05-15T08:24:11.272Z",
+  "remote_compression": "gzip"
 }
