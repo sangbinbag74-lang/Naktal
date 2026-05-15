@@ -446,7 +446,7 @@ export function RequestsTable({ requests, userMap, bidResultMap, annOpengMap = {
                           </>
                         : <span style={{ color: "#D1D5DB" }}>미입력</span>}
                     </td>
-                    {/* 순위 */}
+                    {/* 순위 — null 이면 마감 지난 경우 조회 버튼 표시 */}
                     <td style={{ padding: "8px 12px", whiteSpace: "nowrap", textAlign: "center" }}>
                       {r.userRank != null ? (
                         <span style={{
@@ -460,6 +460,14 @@ export function RequestsTable({ requests, userMap, bidResultMap, annOpengMap = {
                         }}>
                           {r.userRank}{r.totalBidders ? `/${r.totalBidders}` : ""}위
                         </span>
+                      ) : isPast ? (
+                        <button
+                          onClick={() => handleFetchResult(r)}
+                          disabled={fetchingId === r.id}
+                          style={{ fontSize: 10, padding: "3px 8px", borderRadius: 5, border: "1px solid #1B3A6B", background: fetchingId === r.id ? "#F1F5F9" : "#fff", cursor: "pointer", color: "#1B3A6B", fontWeight: 700, opacity: fetchingId === r.id ? 0.7 : 1 }}
+                        >
+                          {fetchingId === r.id ? "조회중…" : "🔄 조회"}
+                        </button>
                       ) : (
                         <span style={{ color: "#D1D5DB", fontSize: 11 }}>-</span>
                       )}
