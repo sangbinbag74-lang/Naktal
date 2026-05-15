@@ -33,7 +33,14 @@
     python pipelines/train_lowerlimit_direct.py      # Phase 3 학습
     python pipelines/train_ensemble_meta.py          # Phase 4 학습 (본 스크립트)
 """
-import sys
+import sys, io
+try:
+    sys.stdout.reconfigure(encoding="utf-8")
+    sys.stderr.reconfigure(encoding="utf-8")
+except Exception:
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
+    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding="utf-8", errors="replace")
+
 from pathlib import Path
 import numpy as np
 import pandas as pd

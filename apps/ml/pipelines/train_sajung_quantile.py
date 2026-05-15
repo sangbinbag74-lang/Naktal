@@ -23,7 +23,15 @@
     .venv\\Scripts\\activate
     python pipelines/train_sajung_quantile.py
 """
-import sys
+import sys, io
+# Windows cp949 환경에서 한글·em-dash 출력 안전화
+try:
+    sys.stdout.reconfigure(encoding="utf-8")
+    sys.stderr.reconfigure(encoding="utf-8")
+except Exception:
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
+    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding="utf-8", errors="replace")
+
 from pathlib import Path
 import numpy as np
 import pandas as pd

@@ -168,6 +168,46 @@ export async function fetchMlOpening(features: OpeningMlFeatures): Promise<Openi
   }
 }
 
+// ─── Ensemble 추천 사정율 (Phase 2+3+4, 2026-05-15 신규) ─────────────────────
+// 응답값 recommended_sajung_rate = 메타 q95 = 적격 95% 통과 안전선
+// 실패 시 null 반환 → 호출측 (sajung-engine) 에서 Phase 1 σ × z 폴백
+
+export interface EnsemblePrediction {
+  ensemble_sajung_q05: number;
+  ensemble_sajung_q50: number;
+  ensemble_sajung_q95: number;
+  ensemble_lwlt_q05: number;
+  ensemble_lwlt_q50: number;
+  ensemble_lwlt_q95: number;
+  recommended_sajung_rate: number;
+  model_version: string;
+}
+
+export async function fetchMlEnsemble(features: MlFeatures): Promise<EnsemblePrediction | null> {
+  if (!ML_ENABLED) return null;
+  const cat = (features.category ?? "").trim();
+  if (!cat.includes("공사")) return null;
+  const url = `${getBaseUrl()}/api/ml-predict-ensemble`;
+  try {
+    const res = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...(ML_API_KEY ? { "X-API-Key": ML_API_KEY } : {}),
+      },
+      body: JSON.stringify(features),
+      signal: AbortSignal.timeout(25000), // 첫 호출 시 lowerlimit fetch 시간 포함
+    });
+    if (!res.ok) return null;
+    const data = (await res.json()) as EnsemblePrediction & { error?: string };
+    if (data.error || !Number.isFinite(data.recommended_sajung_rate)) return null;
+    if (data.recommended_sajung_rate < 85 || data.recommended_sajung_rate > 115) return null;
+    return data;
+  } catch {
+    return null;
+  }
+}
+
 // ─── Model 3: 참여자수 예측 (DEPRECATED 2026-04-24) ──────────────────────────
 // RMSE 59명, 실용 불가로 배포 포기.
 // memory/project_ml_model3_abandoned.md 참조. 코드 보존, UI 미호출.

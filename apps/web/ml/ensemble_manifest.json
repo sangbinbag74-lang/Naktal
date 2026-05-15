@@ -1,0 +1,17 @@
+{
+  "version": "ensemble-v1.0-2026-05-15",
+  "training_date": "2026-05-15",
+  "bundled_models": {
+    "sajung_quantile_q05": "/ml/sajung_quantile_q05.onnx",
+    "sajung_quantile_q50": "/ml/sajung_quantile_q50.onnx",
+    "sajung_quantile_q95": "/ml/sajung_quantile_q95.onnx",
+    "ensemble_meta_q50": "/ml/ensemble_meta_q50.onnx",
+    "ensemble_meta_q95": "/ml/ensemble_meta_q95.onnx"
+  },
+  "remote_models": {
+    "lowerlimit_q05": "https://github.com/sangbinbag74-lang/Naktal/releases/download/ml-models-v1-2026-05-15/lowerlimit_q05.onnx",
+    "lowerlimit_q50": "https://github.com/sangbinbag74-lang/Naktal/releases/download/ml-models-v1-2026-05-15/lowerlimit_q50.onnx",
+    "lowerlimit_q95": "https://github.com/sangbinbag74-lang/Naktal/releases/download/ml-models-v1-2026-05-15/lowerlimit_q95.onnx"
+  },
+  "notes": "lowerlimit 3개는 best_iter=2999/2998 로 ONNX 사이즈 큰 모델. Vercel 50MB 한도 우회 위해 GitHub Release 호스팅. 첫 추론 시 fetch 후 in-memory cache."
+}

@@ -9,7 +9,7 @@
 import { createAdminClient } from "@/lib/supabase/server";
 import { extractCoreOrgName } from "@/lib/analysis/sajung-utils";
 import { SIMILAR_CATEGORIES } from "@/lib/category-map";
-import { fetchMlSajung } from "./ml-client";
+import { fetchMlSajung, fetchMlEnsemble } from "./ml-client";
 import {
   classifyCategory,
   SAJUNG_FILTER_BY_KIND,
@@ -630,13 +630,12 @@ export async function predictOptimalBid(params: {
     ? weightedAvg + trendResult.adjustment
     : stat.avg * 0.7 + monthAdj * 0.3;
 
-  // 5-b. ML 예측 (LightGBM v2, 54 피처). 실패 시 null.
+  // 5-b. ML 예측 (LightGBM v2+tuned, 54 피처). 실패 시 null.
   const mlStddev = stat.stddev ?? 2;
   const month = params.deadlineMonth;
   const deadlineDate = new Date(params.deadlineDate ?? Date.now());
   // SajungRateStat 값을 v2 expanding mean 피처 프록시로 매핑
-  // (실시간 expanding mean 계산은 DB 부담 → 이미 집계된 stat을 재활용)
-  const mlPred = await fetchMlSajung({
+  const mlFeatures = {
     category: params.category,
     orgName: params.orgName,
     budgetRange,
@@ -657,14 +656,12 @@ export async function predictOptimalBid(params: {
     sampleSize: stat.sampleSize,
     bidder_volatility: stat.avg > 0 ? mlStddev / stat.avg : 0,
     is_sparse_org: stat.sampleSize < 30 ? 1 : 0,
-    // v2 신규 (공고 본문 피처)
     aValueTotal_log: params.aValueTotal && params.aValueTotal > 0 ? Math.log(params.aValueTotal + 1) : 0,
     aValue_ratio: params.aValueTotal && params.budget > 0 ? params.aValueTotal / params.budget : 0,
     has_avalue: params.aValueTotal && params.aValueTotal > 0 ? 1 : 0,
     bsisAmt_log: params.bsisAmt && params.bsisAmt > 0 ? Math.log(params.bsisAmt) : 0,
     bsis_to_budget: params.bsisAmt && params.budget > 0 ? params.bsisAmt / params.budget : 0,
     lwltRate: params.lowerLimitRate ?? DEFAULT_LWLT_BY_KIND[classifyCategory(params.category)],
-    // expanding mean 프록시: SajungRateStat 집계값 매핑
     org_past_mean: stat.avg,
     org_past_std: mlStddev,
     org_past_cnt: stat.sampleSize,
@@ -674,20 +671,33 @@ export async function predictOptimalBid(params: {
     orgbud_past_mean: stat.avg,
     orgbud_past_std: mlStddev,
     orgbud_past_cnt: stat.sampleSize,
-    // v3 신규 — 공고 시점에는 실제 개찰시간 미상이므로 deadline 기준 근사
-    // (대다수 공고: deadline 익일 10시 KST 개찰)
     opened_month: month,
     opened_weekday: (deadlineDate.getDay() + 1) % 7,
     opened_hour: 10,
     opened_season_q: Math.ceil(month / 3),
     days_deadline_to_open: 1,
     is_morning_open: 1,
-  });
+  };
 
-  // 5-c. 앙상블: ML 성공 시 0.4×stat + 0.6×ML, 실패 시 통계 단독
-  const predictedRate = mlPred !== null
-    ? Math.max(85, Math.min(115, 0.4 * statPred + 0.6 * mlPred))
-    : Math.max(85, Math.min(115, statPred));
+  // 5-b-1. Ensemble (Phase 2+3+4) 우선 시도 — recommended_sajung_rate = 메타 q95 (적격 95% 보장)
+  // 실패 시 v2+tuned 단독으로 폴백 → 그것도 실패 시 통계 단독
+  const ensemblePred = await fetchMlEnsemble(mlFeatures);
+  const mlPred = ensemblePred
+    ? ensemblePred.recommended_sajung_rate
+    : await fetchMlSajung(mlFeatures);
+  const usedEnsemble = ensemblePred !== null;
+
+  // 5-c. 사정율 예측 통합
+  // - Ensemble 성공 시: recommended_sajung_rate (메타 q95) 그대로 사용 → 이미 안전 quantile 적용된 값
+  //   → 아래 6단계의 σ × z 추가 안전선은 중복 적용이 되므로 z=0 으로 우회 (effStddev × 0)
+  // - Ensemble 실패 + v2+tuned 성공: 0.4 × stat + 0.6 × ML 앙상블 (기존 로직)
+  //   → 아래 6단계 σ × z 안전선 정상 적용
+  // - 둘 다 실패: 통계 단독 + σ × z
+  const predictedRate = usedEnsemble && mlPred !== null
+    ? Math.max(85, Math.min(115, mlPred))
+    : mlPred !== null
+      ? Math.max(85, Math.min(115, 0.4 * statPred + 0.6 * mlPred))
+      : Math.max(85, Math.min(115, statPred));
   const usedMl = mlPred !== null;
 
   // 6. 투찰가 역산 — 방법 1 (σ × z 안전 quantile) + Hard clamp 적용
@@ -704,10 +714,13 @@ export async function predictOptimalBid(params: {
   const lwlt       = params.lowerLimitRate / 100;
 
   // 안전 quantile 계산 — stddev 기반 자동 적응 (인위적 상수 마진 X)
+  // Ensemble 사용 시: predictedRate 가 이미 메타 q95 (적격 95% 보장값) → 추가 마진 0
+  // 비-Ensemble 시: 평균값 + σ × z 적용
   const effStddev = stat.stddev > 0
     ? stat.stddev
     : FALLBACK_STDDEV_BY_KIND[classifyCategory(params.category)];
-  const safeSajungRate = predictedRate + effStddev * SAFETY_Z_SCORE;
+  const effZ = usedEnsemble ? 0 : SAFETY_Z_SCORE;
+  const safeSajungRate = predictedRate + effStddev * effZ;
 
   const estimated      = params.budget * (safeSajungRate / 100);
   const estimatedLow   = params.budget * (predictedRate / 100);              // 50% quantile (공격형)
