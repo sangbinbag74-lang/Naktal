@@ -196,7 +196,7 @@ export async function fetchMlEnsemble(features: MlFeatures): Promise<EnsemblePre
         ...(ML_API_KEY ? { "X-API-Key": ML_API_KEY } : {}),
       },
       body: JSON.stringify(features),
-      signal: AbortSignal.timeout(25000), // 첫 호출 시 lowerlimit fetch 시간 포함
+      signal: AbortSignal.timeout(55000), // 첫 호출 시 lowerlimit 3개 fetch (50s) + 메타 추론 (5s)
     });
     if (!res.ok) return null;
     const data = (await res.json()) as EnsemblePrediction & { error?: string };

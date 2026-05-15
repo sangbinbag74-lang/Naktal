@@ -22,7 +22,7 @@ import { captureError } from "@/lib/observability/sentry";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-export const maxDuration = 30; // 첫 호출 시 lowerlimit 3개 fetch (185+188+59MB ≈ 8~20초)
+export const maxDuration = 60; // 첫 호출 시 lowerlimit 3개 fetch + ONNX init (185+188+59MB ≈ 30~50초)
 
 const ML_DIR = path.join(process.cwd(), "ml");
 const MANIFEST_PATH = path.join(ML_DIR, "ensemble_manifest.json");
@@ -79,13 +79,13 @@ async function getSession(modelKey: string): Promise<ort.InferenceSession> {
       const fname = bundled.replace("/ml/", "");
       const fullPath = path.join(ML_DIR, fname);
       const data = fs.readFileSync(fullPath);
-      // Buffer → 새 ArrayBuffer 로 복사 (SharedArrayBuffer 회피)
       buffer = new ArrayBuffer(data.byteLength);
       new Uint8Array(buffer).set(data);
     } else if (remote) {
       console.log(`[Ensemble] fetching remote: ${modelKey} from ${remote}`);
       const t0 = Date.now();
-      const res = await fetch(remote, { signal: AbortSignal.timeout(20000) });
+      // 큰 모델 (185MB) → 50초 timeout (Vercel maxDuration 60s 내 여유)
+      const res = await fetch(remote, { signal: AbortSignal.timeout(50000) });
       if (!res.ok) throw new Error(`Failed to fetch ${modelKey}: HTTP ${res.status}`);
       buffer = await res.arrayBuffer();
       console.log(`[Ensemble] ${modelKey} fetched (${(buffer.byteLength / 1024 / 1024).toFixed(1)}MB, ${Date.now() - t0}ms)`);
@@ -94,6 +94,10 @@ async function getSession(modelKey: string): Promise<ort.InferenceSession> {
     }
     return await ort.InferenceSession.create(buffer);
   })();
+  // 실패한 Promise 는 cache 에서 제거 (재시도 가능하게) — Vercel cold start 회복용
+  promise.catch(() => {
+    sessionCache.delete(modelKey);
+  });
   sessionCache.set(modelKey, promise);
   return promise;
 }
