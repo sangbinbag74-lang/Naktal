@@ -8,7 +8,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/admin-guard";
 import { g2bFetchAnnouncementPage, g2bFetchAllBidResults, toYMD, daysAgo, type G2BAnnouncement, g2bExtractRegion, g2bParseDate, g2bGetCategory } from "@/lib/g2b";
 
-export const maxDuration = 60;
+export const maxDuration = 300;
 export const dynamic = "force-dynamic";
 
 const NTCE_OPS = [
@@ -87,8 +87,8 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     } catch (e) {
       results.push({ op, error: (e as Error).message, elapsedMs: Date.now() - opStart, page });
     }
-    if (Date.now() - overallStart > 50000) {
-      results.push({ note: "50s 한도 도달 — 측정 중단" });
+    if (Date.now() - overallStart > 270000) {
+      results.push({ note: "270s 한도 도달 — 측정 중단" });
       break;
     }
   }
