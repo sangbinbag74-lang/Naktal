@@ -183,9 +183,10 @@ export function AiAnalysisPanel({ annDbId, budget, g2bUrl, konepsId, onRefresh, 
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
 
-            {/* ① AI 추천 투찰가 */}
+            {/* ① AI 추천 투찰가 — 1순위 우선 모드 */}
             <div style={{ textAlign: "center", padding: "16px 12px", background: "#F8FAFC", borderRadius: 10 }}>
-              <div style={{ fontSize: 11, color: "#94A3B8", marginBottom: 6 }}>AI 추천 투찰가</div>
+              <div style={{ fontSize: 11, color: "#1B3A6B", marginBottom: 4, fontWeight: 700 }}>🎯 1순위 우선 추천</div>
+              <div style={{ fontSize: 10, color: "#94A3B8", marginBottom: 6 }}>적격 통과 구간 내 최저가 — 1순위 가능성 우선</div>
               <div style={{ fontSize: 22, fontWeight: 800, color: cl === "LOW" ? "#94A3B8" : "#1B3A6B", lineHeight: 1.2 }}>
                 {cl === "LOW" ? "데이터 부족" : (
                   isContracted
