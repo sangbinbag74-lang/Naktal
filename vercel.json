@@ -11,6 +11,7 @@
     "apps/web/app/api/ml-predict-ensemble/route.ts": { "maxDuration": 60, "memory": 3008 },
     "apps/web/app/api/cron/sync-g2b/route.ts": { "maxDuration": 300 },
     "apps/web/app/api/admin/g2b-pull/route.ts": { "maxDuration": 300 },
+    "apps/web/app/api/admin/sync-g2b-timing/route.ts": { "maxDuration": 60 },
     "apps/web/app/api/admin/run-predictions/route.ts": { "maxDuration": 60 },
     "apps/web/app/api/admin/refresh-outcomes/route.ts": { "maxDuration": 60 },
     "apps/web/app/api/cron/collect-sajung-stat/route.ts": { "maxDuration": 300 },
