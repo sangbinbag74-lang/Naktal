@@ -85,8 +85,11 @@ export const FALLBACK_STDDEV_BY_KIND: Record<BidCategoryKind, number> = {
   other:        1.0,
 };
 
-/** 안전 quantile z-score — z=1.645 → 적격 통과 95% 보장 */
-export const SAFETY_Z_SCORE = 1.645;
+/** 안전 quantile z-score — z=1.0 → 1순위 가능성 우선 (적격 통과 약 84%)
+ *  박상빈님 결정 2026-05-15: 1순위 적격 통과보다 최저가 도전 우선
+ *  trade-off: z=1.0 (1순위↑) vs z=1.645 (적격95%) — 1순위 선택
+ */
+export const SAFETY_Z_SCORE = 1.0;
 
 /** 추정가격(부가세 별도) → 기초금액(부가세 포함) 환산 배율 */
 export function vatMultiplier(kind: BidCategoryKind): number {

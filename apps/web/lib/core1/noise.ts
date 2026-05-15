@@ -44,7 +44,7 @@ export function applySajungNoise(
  * 사정율 → 추천 투찰금액 계산
  *
  * ⚠️ 2026-05-15 재설계: σ × z 안전 quantile + Hard clamp 내장
- *   - safeBid (추천가): predictedRate + stddev × z=1.645 → 적격 95% 통과
+ *   - safeBid (추천가): predictedRate + stddev × z=1.0 → 1순위 우선 (적격 ~84%)
  *   - lowerLimit (실제 G2B 하한가): 사정율 100% 가정 시 = realLowerLimit. clamp 기준선
  *   - safeBid 는 어떤 경우에도 realLowerLimit + 1 이상 보장
  *
@@ -63,7 +63,7 @@ export function calcBidPrice(
   stddev?: number,
 ): { estimatedPrice: number; lowerLimit: number; safeBid: number } {
   const effStddev = stddev != null && stddev > 0 ? stddev : 0.7; // 공사 폴백
-  const SAFETY_Z = 1.645;
+  const SAFETY_Z = 1.0;  // 박상빈님 결정 2026-05-15: 1순위 우선 (적격 ~84%, 1순위 가능성↑)
   const safeSajung = sajungRate + effStddev * SAFETY_Z;
 
   const estimatedPrice = budget * (sajungRate / 100);
