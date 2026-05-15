@@ -35,6 +35,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   for (const op of NTCE_OPS) {
     const opStart = Date.now();
     let page = 1, fetched = 0, upserted = 0, fetchMs = 0, upsertMs = 0;
+    let firstUpsertErr: string | null = null;
     try {
       while (true) {
         const f0 = Date.now();
@@ -74,7 +75,13 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
             body: JSON.stringify(rows),
           });
           if (r.ok) upserted += rows.length;
-          else upserted += -1;
+          else {
+            upserted += -1;
+            if (!firstUpsertErr) {
+              const t = await r.text().catch(() => "");
+              firstUpsertErr = `HTTP ${r.status}: ${t.slice(0, 300)}`;
+            }
+          }
         }
         upsertMs += Date.now() - u0;
         page++;
@@ -83,6 +90,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       results.push({
         op, pages: page - 1, fetched, upserted,
         fetchMs, upsertMs, totalMs: Date.now() - opStart,
+        firstUpsertErr,
       });
     } catch (e) {
       results.push({ op, error: (e as Error).message, elapsedMs: Date.now() - opStart, page });
