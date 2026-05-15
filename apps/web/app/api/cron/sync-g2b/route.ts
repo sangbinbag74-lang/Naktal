@@ -43,6 +43,9 @@ const NTCE_OPS_CRON = [
   "getBidPblancListInfoThng",     // 물품
 ] as const;
 
+// 에러 샘플 전역 (debug 응답용)
+const errorSamples: Array<{ op: string; status: number; err: string; firstRowKeys?: string[]; firstRowId?: string }> = [];
+
 async function importAnnouncementsOp(
   url: string, key: string, fromDate: string, toDate: string,
   operation: typeof NTCE_OPS_CRON[number],
@@ -85,8 +88,16 @@ async function importAnnouncementsOp(
         const errText = await r.text();
         const firstRow = rows[0] as Record<string, unknown>;
         console.error(`[importAnnouncements:${operation}] upsert 실패 ${r.status}:`, errText);
-        console.error(`[importAnnouncements:${operation}] first row keys:`, Object.keys(firstRow));
-        console.error(`[importAnnouncements:${operation}] first row id:`, firstRow.id);
+        // 응답에 포함 — 첫 에러만
+        if (errorSamples.length < 5) {
+          errorSamples.push({
+            op: operation,
+            status: r.status,
+            err: errText.slice(0, 500),
+            firstRowKeys: Object.keys(firstRow),
+            firstRowId: String(firstRow.id ?? "NULL"),
+          });
+        }
       }
     }
     if (page * NUM_OF_ROWS >= totalCount) break;
@@ -212,8 +223,8 @@ export async function GET(request: NextRequest) {
     log.recent = { announcements: recentAnn, bidResults: recentBid, from: twoDaysAgo, to: today };
 
     if (isRecentOnly) {
-      // 디버그: rows의 id 필드 확인용 — 빌드 적용 후 id 들어가는지 확인
-      log.codeVersion = "id-randomUUID-applied-2026-05-15";
+      log.codeVersion = "id-randomUUID-applied-2026-05-15-v2";
+      log.errorSamples = errorSamples;
       return NextResponse.json({ ok: true, ...log });
     }
 
