@@ -230,6 +230,33 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 export async function GET(request: NextRequest): Promise<NextResponse> {
   const manifest = getManifest();
   const url = new URL(request.url);
+  // ?debug=timing — 각 모델 fetch + session create 단계별 시간 측정
+  if (url.searchParams.get("debug") === "timing") {
+    const allModels = [
+      ...Object.keys(manifest.bundled_models),
+      ...Object.keys(manifest.remote_models),
+    ];
+    const timings: Record<string, { fetch_ms?: number; gunzip_ms?: number; init_ms?: number; total_ms?: number; size_mb?: number; error?: string }> = {};
+    const overall0 = Date.now();
+    // 캐시 비우기 — 진짜 cold start 측정
+    sessionCache.clear();
+    for (const key of allModels) {
+      const t0 = Date.now();
+      try {
+        await getSession(key);
+        const total = Date.now() - t0;
+        timings[key] = { total_ms: total };
+      } catch (e) {
+        timings[key] = { error: (e as Error).message };
+      }
+    }
+    return NextResponse.json({
+      status: "timing",
+      total_ms: Date.now() - overall0,
+      models: timings,
+      note: "각 모델 sequential getSession() = fetch + (gunzip) + InferenceSession.create",
+    });
+  }
   // ?debug=1 — 환경변수 + remote fetch 1건 테스트
   if (url.searchParams.get("debug") === "1") {
     const token = process.env.BLOB_READ_WRITE_TOKEN;
