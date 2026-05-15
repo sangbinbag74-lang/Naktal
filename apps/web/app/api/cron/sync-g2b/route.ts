@@ -79,14 +79,24 @@ async function importAnnouncementsOp(
       };
     }).filter(Boolean);
 
-    if (rows.length > 0) {
+    // konepsId 중복 제거 (G2B 응답에 동일 공고 다회 등장 시 PG ON CONFLICT 에러 회피)
+    // "ON CONFLICT DO UPDATE command cannot affect row a second time" 차단
+    const seenIds = new Set<string>();
+    const dedup = rows.filter((r): r is NonNullable<typeof r> => {
+      if (!r || !r.konepsId) return false;
+      if (seenIds.has(r.konepsId)) return false;
+      seenIds.add(r.konepsId);
+      return true;
+    });
+
+    if (dedup.length > 0) {
       const r = await fetch(`${url}/rest/v1/Announcement?on_conflict=konepsId`, {
-        method: "POST", headers: supabaseHeaders(key), body: JSON.stringify(rows),
+        method: "POST", headers: supabaseHeaders(key), body: JSON.stringify(dedup),
       });
-      if (r.ok) saved += rows.length;
+      if (r.ok) saved += dedup.length;
       else {
         const errText = await r.text();
-        const firstRow = rows[0] as Record<string, unknown>;
+        const firstRow = dedup[0] as Record<string, unknown>;
         console.error(`[importAnnouncements:${operation}] upsert 실패 ${r.status}:`, errText);
         // 응답에 포함 — 첫 에러만
         if (errorSamples.length < 5) {
@@ -140,13 +150,22 @@ async function importBidResults(
     };
   }).filter(Boolean);
 
+  // annId 중복 제거 (BidResult @@unique annId — PG ON CONFLICT 에러 회피)
+  const seenAnnIds = new Set<string>();
+  const dedup = rows.filter((r): r is NonNullable<typeof r> => {
+    if (!r || !r.annId) return false;
+    if (seenAnnIds.has(r.annId)) return false;
+    seenAnnIds.add(r.annId);
+    return true;
+  });
+
   let saved = 0;
   const BATCH = 500;
-  for (let i = 0; i < rows.length; i += BATCH) {
-    const r = await fetch(`${url}/rest/v1/BidResult`, {
-      method: "POST", headers: supabaseHeaders(key), body: JSON.stringify(rows.slice(i, i + BATCH)),
+  for (let i = 0; i < dedup.length; i += BATCH) {
+    const r = await fetch(`${url}/rest/v1/BidResult?on_conflict=annId`, {
+      method: "POST", headers: supabaseHeaders(key), body: JSON.stringify(dedup.slice(i, i + BATCH)),
     });
-    if (r.ok) saved += Math.min(BATCH, rows.length - i);
+    if (r.ok) saved += Math.min(BATCH, dedup.length - i);
     else console.error(`[importBidResults] upsert 실패 ${r.status}:`, await r.text());
     await sleep(100);
   }
