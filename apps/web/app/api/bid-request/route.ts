@@ -114,17 +114,19 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     : annAValueAmt > 0 ? annAValueAmt
     : annBudget > 0 ? Math.round(annBudget * 1.1)
     : Number(budget ?? 0);
-  const { estimatedPrice: srvEstPrice, lowerLimit: srvLowerLimit } = calcBidPrice(
+  // calcBidPrice — safeBid: 안전 quantile + hard clamp (하한 미만 금지)
+  // 2026-05-15 변경: lowerLimit (사정율 100% 기준) 대신 safeBid (안전 추천가) 사용
+  const { estimatedPrice: srvEstPrice, lowerLimit: srvLowerLimit, safeBid: srvSafeBid } = calcBidPrice(
     serverBaseAmount,
     effRate,
     Number(lowerLimitRate ?? 0),
     Number(aValueTotal ?? 0),
   );
-  // 계약 시점 고정: 노이즈 적용 사정율 + 그 사정율로 재계산한 모든 금액
+  // 계약 시점 고정: 노이즈 적용 사정율 + safeBid (1순위 우선 적격 ~84%)
   const finalPredictedSajungRate = effRate;
-  const finalRecommendedBidPrice = srvLowerLimit;
+  const finalRecommendedBidPrice = srvSafeBid; // 추천 = safeBid (하한 미만 보호)
   const finalEstimatedPrice = srvEstPrice;
-  const finalLowerLimitPrice = srvLowerLimit; // 안전 마진 제거됨 → 추천금액과 동일
+  const finalLowerLimitPrice = srvLowerLimit;  // 실제 하한가 (UI 표시·검증 기준)
 
   // 전자서명 검증 — 본인 사업자번호/대표자명 일치 강제 (계약 위조 방지)
   if (bizRegNo || repName) {
