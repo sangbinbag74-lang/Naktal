@@ -106,7 +106,7 @@ export default async function AdminAccuracyPage() {
       .limit(300),
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (admin.from("AIPrediction") as any)
-      .select("annId,konepsId,title,orgName,deadline,budget,predictedSajungRate,actualSajungRate,actualFinalPrice,deviationPct,isHit,resultFilledAt")
+      .select("annId,konepsId,title,orgName,deadline,budget,predictedSajungRate,optimalBidPrice,bidPriceRangeLow,bidPriceRangeHigh,winProbability,sampleSize,actualSajungRate,actualFinalPrice,deviationPct,isHit,resultFilledAt,predictedAt")
       .not("resultFilledAt", "is", null)
       .order("resultFilledAt", { ascending: false })
       .limit(500),
@@ -269,13 +269,14 @@ export default async function AdminAccuracyPage() {
   const aiOnlyAsBpp: BppItem[] = extraOnlyAi.map((r: any) => ({
     annId: r.annId,
     predictedSajungRate: Number(r.predictedSajungRate ?? 0),
-    optimalBidPrice: null,
-    bidPriceRangeLow: null,
-    bidPriceRangeHigh: null,
-    winProbability: null,
-    sampleSize: null,
+    // AIPrediction 영구 저장값 우선 사용 (BPP 만료돼도 화면 표시 보장)
+    optimalBidPrice: r.optimalBidPrice != null ? String(r.optimalBidPrice) : null,
+    bidPriceRangeLow: r.bidPriceRangeLow != null ? String(r.bidPriceRangeLow) : null,
+    bidPriceRangeHigh: r.bidPriceRangeHigh != null ? String(r.bidPriceRangeHigh) : null,
+    winProbability: r.winProbability != null ? Number(r.winProbability) : null,
+    sampleSize: r.sampleSize != null ? Number(r.sampleSize) : null,
     expiresAt: r.resultFilledAt ?? new Date(0).toISOString(),
-    createdAt: r.resultFilledAt ?? new Date(0).toISOString(),
+    createdAt: r.predictedAt ?? r.resultFilledAt ?? new Date(0).toISOString(),
     announcement: {
       id: r.annId,
       title: r.title ?? "",

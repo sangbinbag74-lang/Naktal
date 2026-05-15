@@ -235,9 +235,12 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         budget: String(ann.budget ?? 0),
         predictedSajungRate: sajung.predictedSajungRate,
         optimalBidPrice: String(sajung.optimalBidPrice),
+        bidPriceRangeLow: String(sajung.bidPriceRangeLow),
+        bidPriceRangeHigh: String(sajung.bidPriceRangeHigh),
         lowerLimitRate: lowerLimitRate,
         winProbability: Math.round(((sajung.winProbability as number) ?? 0) * 100),
         competitionScore: competition.competitionScore ?? 0,
+        sampleSize: sajung.sampleSize ?? 0,
         predictedAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       }, { onConflict: "annId" });

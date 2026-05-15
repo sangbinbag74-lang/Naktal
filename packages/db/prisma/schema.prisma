@@ -360,12 +360,15 @@ model AIPrediction {
   deadline             DateTime
   budget               BigInt    @default(0)
 
-  // AI 예측값
+  // AI 예측값 (BidPricePrediction 캐시 만료돼도 영구 보관)
   predictedSajungRate  Decimal   @db.Decimal(10, 4)
   optimalBidPrice      BigInt
+  bidPriceRangeLow     BigInt?
+  bidPriceRangeHigh    BigInt?
   lowerLimitRate       Decimal   @db.Decimal(10, 4) @default(0)
   winProbability       Int       @default(0)
   competitionScore     Int       @default(0)
+  sampleSize           Int       @default(0)
   predictedAt          DateTime  @default(now())
 
   // 실제 결과 (개찰 후 채워짐)
