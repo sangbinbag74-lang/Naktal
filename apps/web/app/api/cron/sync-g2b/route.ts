@@ -214,13 +214,37 @@ function currentMonth(): string {
 
 // ─── Cron 진입점 ──────────────────────────────────────────────────────────────
 export async function GET(request: NextRequest) {
-  // ⚠️ 2026-05-16 좀비 curl loop 차단 (박상빈님 PC IP + curl UA)
-  //   20초 간격 무한 호출 source 식별됨. 출장 후 PC 정리 시 이 블록 삭제.
+  // ⚠️ 2026-05-16 좀비 curl loop 차단 + 트레이스 동시
   const ua = request.headers.get("user-agent") ?? "";
   const ip = request.headers.get("x-forwarded-for") ?? request.headers.get("x-real-ip") ?? "";
-  if (ua.startsWith("curl/") && ip.includes("182.229.121.70")) {
+  const isZombie = ua.startsWith("curl/") && ip.includes("182.229.121.70");
+
+  try {
+    const supabaseUrl0 = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const serviceKey0  = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    if (supabaseUrl0 && serviceKey0) {
+      const trace = {
+        url: request.url, method: request.method,
+        userAgent: ua, forwardedFor: ip,
+        realIp: request.headers.get("x-real-ip") ?? "",
+        cfIp: request.headers.get("cf-connecting-ip") ?? "",
+        vercelCron: request.headers.get("x-vercel-cron") ?? "",
+        vercelId: request.headers.get("x-vercel-id") ?? "",
+        referer: request.headers.get("referer") ?? "",
+        authPresent: !!request.headers.get("authorization"),
+        blocked: isZombie,
+      };
+      await fetch(`${supabaseUrl0}/rest/v1/RequestTrace`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "apikey": serviceKey0, "Authorization": `Bearer ${serviceKey0}` },
+        body: JSON.stringify({ id: randomUUID(), endpoint: "sync-g2b", payload: trace }),
+      }).catch(() => {});
+    }
+  } catch {}
+
+  if (isZombie) {
     return NextResponse.json(
-      { ok: false, blocked: true, reason: "Zombie curl loop blocked. Stop the local script." },
+      { ok: false, blocked: true, reason: "Zombie curl loop blocked." },
       { status: 429 }
     );
   }
