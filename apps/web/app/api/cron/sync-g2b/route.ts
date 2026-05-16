@@ -214,6 +214,17 @@ function currentMonth(): string {
 
 // ─── Cron 진입점 ──────────────────────────────────────────────────────────────
 export async function GET(request: NextRequest) {
+  // ⚠️ 2026-05-16 좀비 curl loop 차단 (박상빈님 PC IP + curl UA)
+  //   20초 간격 무한 호출 source 식별됨. 출장 후 PC 정리 시 이 블록 삭제.
+  const ua = request.headers.get("user-agent") ?? "";
+  const ip = request.headers.get("x-forwarded-for") ?? request.headers.get("x-real-ip") ?? "";
+  if (ua.startsWith("curl/") && ip.includes("182.229.121.70")) {
+    return NextResponse.json(
+      { ok: false, blocked: true, reason: "Zombie curl loop blocked. Stop the local script." },
+      { status: 429 }
+    );
+  }
+
   const authHeader = request.headers.get("authorization");
   const token = authHeader?.replace("Bearer ", "");
   const validTokens = [process.env.CRON_SECRET, process.env.ADMIN_SECRET_KEY].filter(Boolean);
