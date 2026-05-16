@@ -25,10 +25,10 @@ export function deterministicGaussian(seed: string, sigma = 0.05): number {
  * ML 예측 사정율에 사용자별 노이즈를 더한 "실 적용 사정율" 반환
  * 같은 사용자가 같은 공고를 다시 조회해도 동일한 값 보장
  *
- * ⚠️ 2026-05-15: 양수 방향만 (위쪽으로만) 노이즈 → 미달 위험 0
- *   기존: ±σ 양방향 → 음수 노이즈 시 추천가 < 하한가 가능 (50% 위험)
- *   현재: |gaussian| (절대값) → 항상 ≥ 0 → 추천가는 평균보다 위로만 분산
- *   100명 동시 분석 시 충돌 회피 효과 그대로 유지 (deterministic seed)
+ * ⚠️ 2026-05-16 박상빈님 지시 적용:
+ *   - "안전마진 넣으면 AI 의미 없다" → 양수 강제 마진 (Math.abs) 제거
+ *   - 양방향 노이즈 복구 → 평균 0, AI 예측 그대로 (5/11 박상빈님 "현재 방식 효과적" OK)
+ *   - 미달 위험은 calcBidPrice 의 Hard clamp (realLowerLimit + 1) 가 차단
  */
 export function applySajungNoise(
   mlPredictedRate: number,
@@ -37,7 +37,7 @@ export function applySajungNoise(
   sigma = 0.05,
 ): number {
   const noise = deterministicGaussian(`${userId}:${annId}`, sigma);
-  return mlPredictedRate + Math.abs(noise);
+  return mlPredictedRate + noise;
 }
 
 /**

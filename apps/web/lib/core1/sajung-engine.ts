@@ -586,7 +586,7 @@ export async function predictOptimalBid(params: {
     // 박상빈님 지시 (2026-05-16): 안전마진 제거. 예측 사정율 그대로 사용. Hard clamp 만 유지.
     const estimatedF      = params.budget * (fallbackRate / 100);
     const estimatedFLow   = params.budget * (fallbackRate / 100);
-    const estimatedFHigh  = params.budget * ((fallbackRate + 0.5) / 100);
+    const estimatedFHigh  = params.budget * (fallbackRate / 100);
     let optimalBidF = (estimatedF     - aValF) * lwltF + aValF;
     let rangeLowF   = (estimatedFLow  - aValF) * lwltF + aValF;
     let rangeHighF  = (estimatedFHigh - aValF) * lwltF + aValF;
@@ -709,7 +709,7 @@ export async function predictOptimalBid(params: {
 
   const estimated      = params.budget * (predictedRate / 100);
   const estimatedLow   = params.budget * (predictedRate / 100);
-  const estimatedHigh  = params.budget * ((predictedRate + 0.5) / 100);     // 참고용 상단 (적용 X)
+  const estimatedHigh  = params.budget * (predictedRate / 100);
   let   optimalBid     = (estimated     - aVal) * lwlt + aVal;
   let   rangeLow       = (estimatedLow  - aVal) * lwlt + aVal;
   let   rangeHigh      = (estimatedHigh - aVal) * lwlt + aVal;

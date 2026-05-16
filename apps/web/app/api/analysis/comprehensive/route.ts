@@ -335,16 +335,11 @@ function buildResponse(
         return Math.max(raw, realLower + 1);
       })(),
       bidPriceRangeHigh: (() => {
-        // 초안전 옵션 — z=2.0 quantile (적격 97.5% 통과)
+        // 박상빈님 지시 (2026-05-16): 안전마진 제거. AI 예측 사정율 그대로.
         const budget = budgetNum ?? Number(ann.budget) ?? 0;
         const llRate = lowerLimitRate ?? dl;
         const aVal   = aValueTotal ?? 0;
-        const rng    = pred.sajungRateRange as { p25?: number; p75?: number } | null | undefined;
-        const iqrStddev = rng?.p25 != null && rng?.p75 != null && rng.p75 > rng.p25
-          ? (rng.p75 - rng.p25) / 1.35
-          : FALLBACK_STDDEV_BY_KIND[annKind];
-        const veryRate = effRate + iqrStddev * 2.0;
-        const estPrice = budget * (veryRate / 100);
+        const estPrice = budget * (effRate / 100);
         const raw = Math.ceil((estPrice - aVal) * (llRate / 100) + aVal);
         const realLower = Math.ceil((budget - aVal) * (llRate / 100) + aVal);
         return Math.max(raw, realLower + 1);
