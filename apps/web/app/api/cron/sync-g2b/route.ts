@@ -214,40 +214,6 @@ function currentMonth(): string {
 
 // ─── Cron 진입점 ──────────────────────────────────────────────────────────────
 export async function GET(request: NextRequest) {
-  // ⚠️ 임시 추적 (2026-05-16) — sync-g2b 호출 source 식별
-  // VACUUM 후 안정성 강화 단계 — INSERT 폭주 source 찾는 중
-  try {
-    const supabaseUrl0 = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const serviceKey0  = process.env.SUPABASE_SERVICE_ROLE_KEY;
-    if (supabaseUrl0 && serviceKey0) {
-      const trace = {
-        url: request.url,
-        method: request.method,
-        userAgent: request.headers.get("user-agent") ?? "",
-        forwardedFor: request.headers.get("x-forwarded-for") ?? "",
-        realIp: request.headers.get("x-real-ip") ?? "",
-        cfIp: request.headers.get("cf-connecting-ip") ?? "",
-        vercelCron: request.headers.get("x-vercel-cron") ?? "",
-        vercelId: request.headers.get("x-vercel-id") ?? "",
-        referer: request.headers.get("referer") ?? "",
-        authPresent: !!request.headers.get("authorization"),
-      };
-      await fetch(`${supabaseUrl0}/rest/v1/RequestTrace`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "apikey": serviceKey0,
-          "Authorization": `Bearer ${serviceKey0}`,
-        },
-        body: JSON.stringify({
-          id: randomUUID(),
-          endpoint: "sync-g2b",
-          payload: trace,
-        }),
-      }).catch(() => { /* ignore trace errors */ });
-    }
-  } catch { /* ignore */ }
-
   const authHeader = request.headers.get("authorization");
   const token = authHeader?.replace("Bearer ", "");
   const validTokens = [process.env.CRON_SECRET, process.env.ADMIN_SECRET_KEY].filter(Boolean);
