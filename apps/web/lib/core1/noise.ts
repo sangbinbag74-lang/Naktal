@@ -43,43 +43,42 @@ export function applySajungNoise(
 /**
  * 사정율 → 추천 투찰금액 계산
  *
- * ⚠️ 2026-05-15 재설계: σ × z 안전 quantile + Hard clamp 내장
- *   - safeBid (추천가): predictedRate + stddev × z=1.0 → 1순위 우선 (적격 ~84%)
- *   - lowerLimit (실제 G2B 하한가): 사정율 100% 가정 시 = realLowerLimit. clamp 기준선
- *   - safeBid 는 어떤 경우에도 realLowerLimit + 1 이상 보장
+ * ⚠️ 2026-05-16 재설계 — 박상빈님 명시 지시 적용:
+ *   "안전마진 넣으면 AI 의미 없다. 강제로 돈을 추가한 경우에 한해서다."
  *
- * stddev 미전달 시 공사 표준 0.7%p 폴백 (FALLBACK_STDDEV_BY_KIND.construction)
+ *   - σ × z 안전마진 완전 제거 (5/15 잘못 도입된 0.7%p 마진 폐기)
+ *   - AI 예측 사정율 (predictedRate) 그대로 사용
+ *   - 안전망: realLowerLimit + 1 hard clamp 만 유지 (절대 하한 미만 금지)
+ *
+ * 4개 값 일관성:
+ *   사정율(predictedRate) → 예정가(budget × predictedRate) → 추천금액((예정가 - A) × lwlt + A)
+ *   → 사용자가 G2B 계산기에 사정율 그대로 넣어 검증 가능
  *
  * 반환값:
- *   - estimatedPrice: 예정가 = budget × sajungRate (참고용)
+ *   - estimatedPrice: 예정가 = budget × sajungRate
  *   - lowerLimit: 실제 G2B 낙찰하한가 (사정율 100%) — UI 표시·검증 기준
- *   - safeBid: 안전 추천가 (적격 95%, hard-clamped) — 사용자에게 표시할 값
+ *   - recommendedBid: AI 예측 사정율 그대로의 추천가 (hard-clamped)
  */
 export function calcBidPrice(
   budget: number,
   sajungRate: number,
   lowerLimitRate: number,
   aValueTotal: number,
-  stddev?: number,
+  _stddev?: number,
 ): { estimatedPrice: number; lowerLimit: number; safeBid: number } {
-  const effStddev = stddev != null && stddev > 0 ? stddev : 0.7; // 공사 폴백
-  const SAFETY_Z = 1.0;  // 박상빈님 결정 2026-05-15: 1순위 우선 (적격 ~84%, 1순위 가능성↑)
-  const safeSajung = sajungRate + effStddev * SAFETY_Z;
-
   const estimatedPrice = budget * (sajungRate / 100);
-  const safeEstimated  = budget * (safeSajung / 100);
   const lwltF          = lowerLimitRate / 100;
 
-  // 실제 G2B 낙찰하한가 (사정율 100% 가정) — clamp 최저선
+  // 실제 G2B 낙찰하한가 (사정율 100% 가정) — hard clamp 최저선
   const realLowerLimit = Math.ceil((budget - aValueTotal) * lwltF + aValueTotal);
-  // 안전 추천가 (50→95% quantile)
-  const safeBid_raw    = Math.ceil((safeEstimated - aValueTotal) * lwltF + aValueTotal);
-  // Hard clamp — 절대 하한가 아래 금지
-  const safeBid        = Math.max(safeBid_raw, realLowerLimit + 1);
+  // AI 예측 사정율 그대로 추천가 산출 (안전마진 X)
+  const recommendedBid_raw = Math.ceil((estimatedPrice - aValueTotal) * lwltF + aValueTotal);
+  // Hard clamp — 절대 하한가 아래 금지 (AI 예측이 100% 미만이면 발동)
+  const recommendedBid     = Math.max(recommendedBid_raw, realLowerLimit + 1);
 
   return {
     estimatedPrice: Math.round(estimatedPrice),
     lowerLimit: realLowerLimit,
-    safeBid,
+    safeBid: recommendedBid, // 변수명 호환성 유지 (호출자가 srvSafeBid 로 받음)
   };
 }

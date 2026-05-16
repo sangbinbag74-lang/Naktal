@@ -202,10 +202,9 @@ export default async function BidResultPage({
   // 예정가 = 기초금액(budget) × 예측사정율
   const estimatedPriceCalc = budget * (sajungRate / 100);
 
-  // 추천 적용 사정율 (역산) — 화면 금액(price) 을 G2B 계산기에 그대로 검증할 수 있는 값
-  // price = (budget × r/100 - A) × L/100 + A 를 r 에 대해 풀면:
-  //   r = ((price - A) × 100/L + A) × 100/budget
-  // ML 예측(sajungRate) 에 안전 마진이 더해진 결과를 사정율 표기로 환산
+  // 추천 적용 사정율 (역산) — 화면 금액(price) 으로 G2B 계산기 검증용
+  // 2026-05-16 박상빈님 지시로 안전마진 제거 후: effectiveSajungRate == predictedSajungRate (이론상 동일)
+  // 옛 BidRequest (안전마진 포함 시점) 호환 위해 역산 유지
   const effectiveSajungRate = budget > 0 && lowerLimitRateNum > 0
     ? (((price - aValueTotal) * 100 / lowerLimitRateNum) + aValueTotal) * 100 / budget
     : sajungRate;

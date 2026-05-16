@@ -15,8 +15,6 @@ import {
   SAJUNG_FILTER_BY_KIND,
   DEFAULT_SAJUNG_BY_KIND,
   DEFAULT_LWLT_BY_KIND,
-  FALLBACK_STDDEV_BY_KIND,
-  SAFETY_Z_SCORE,
 } from "@/lib/analysis/category-config";
 
 // ─── 타입 ─────────────────────────────────────────────────────────────────────
@@ -585,12 +583,10 @@ export async function predictOptimalBid(params: {
     const fallbackRate = sd.center;
     const aValF = params.aValueTotal ?? 0;
     const lwltF = params.lowerLimitRate / 100;
-    // 폴백도 동일 정책 — σ × z 안전 quantile + Hard clamp
-    const fbStddev = FALLBACK_STDDEV_BY_KIND[classifyCategory(params.category)];
-    const safeSajF = fallbackRate + fbStddev * SAFETY_Z_SCORE;
-    const estimatedF      = params.budget * (safeSajF / 100);
+    // 박상빈님 지시 (2026-05-16): 안전마진 제거. 예측 사정율 그대로 사용. Hard clamp 만 유지.
+    const estimatedF      = params.budget * (fallbackRate / 100);
     const estimatedFLow   = params.budget * (fallbackRate / 100);
-    const estimatedFHigh  = params.budget * ((safeSajF + 0.5) / 100);
+    const estimatedFHigh  = params.budget * ((fallbackRate + 0.5) / 100);
     let optimalBidF = (estimatedF     - aValF) * lwltF + aValF;
     let rangeLowF   = (estimatedFLow  - aValF) * lwltF + aValF;
     let rangeHighF  = (estimatedFHigh - aValF) * lwltF + aValF;
@@ -700,31 +696,20 @@ export async function predictOptimalBid(params: {
       : Math.max(85, Math.min(115, statPred));
   const usedMl = mlPred !== null;
 
-  // 6. 투찰가 역산 — 방법 1 (σ × z 안전 quantile) + Hard clamp 적용
+  // 6. 투찰가 역산 — 박상빈님 지시 (2026-05-16): 안전마진 완전 제거
   //
-  // 이전: optimalBid = predictedRate × lwlt  (점 추정 → 사정율 빗나가면 미달 50%)
-  // 현재: optimalBid = (predictedRate + stddev × z) × lwlt  → 적격 통과 95% 보장
+  // "안전마진 넣으면 AI 의미 없다. 강제로 돈을 추가한 경우에 한해서다."
   //
-  // 변수 의미:
-  // - stddev: 발주처별 사정율 표준편차 (DB 학습값 우선, 없으면 카테고리 폴백)
-  // - SAFETY_Z_SCORE = 1.645 → 정규분포 상단 95% 백분위
-  // - safeSajungRate: 예측 평균 + 안전 quantile = 95% 확률로 실제 사정율 ≤ safeSajungRate
-  // - 결과적으로 낙찰하한가는 95% 확률로 추천가 이하 → 적격 통과
+  // - σ × z 안전 quantile 제거 — AI 예측 사정율 그대로 사용
+  // - optimalBid = predictedRate × budget × lwlt (점 추정)
+  // - Hard clamp (realLowerLimit + 1) 만 유지 = 절대 하한 미만 금지
+  // - 4개 값 (사정율·예정가·추천금액·하한가) 모두 같은 사정율 기준 → G2B 검증 가능
   const aVal       = params.aValueTotal ?? 0;
   const lwlt       = params.lowerLimitRate / 100;
 
-  // 안전 quantile 계산 — stddev 기반 자동 적응 (인위적 상수 마진 X)
-  // Ensemble 사용 시: predictedRate 가 이미 메타 q95 (적격 95% 보장값) → 추가 마진 0
-  // 비-Ensemble 시: 평균값 + σ × z 적용
-  const effStddev = stat.stddev > 0
-    ? stat.stddev
-    : FALLBACK_STDDEV_BY_KIND[classifyCategory(params.category)];
-  const effZ = usedEnsemble ? 0 : SAFETY_Z_SCORE;
-  const safeSajungRate = predictedRate + effStddev * effZ;
-
-  const estimated      = params.budget * (safeSajungRate / 100);
-  const estimatedLow   = params.budget * (predictedRate / 100);              // 50% quantile (공격형)
-  const estimatedHigh  = params.budget * ((safeSajungRate + 0.5) / 100);     // 97.5% quantile (초안전)
+  const estimated      = params.budget * (predictedRate / 100);
+  const estimatedLow   = params.budget * (predictedRate / 100);
+  const estimatedHigh  = params.budget * ((predictedRate + 0.5) / 100);     // 참고용 상단 (적용 X)
   let   optimalBid     = (estimated     - aVal) * lwlt + aVal;
   let   rangeLow       = (estimatedLow  - aVal) * lwlt + aVal;
   let   rangeHigh      = (estimatedHigh - aVal) * lwlt + aVal;
