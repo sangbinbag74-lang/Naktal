@@ -20,12 +20,6 @@ const NTCE_OPS = [
 const NUM_OF_ROWS = 999;
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
-  // ⚠️ 임시 KILL SWITCH (2026-05-16) — VACUUM 진행 중
-  return NextResponse.json(
-    { ok: false, killed: true, reason: "임시 차단 — VACUUM ANALYZE 진행 중" },
-    { status: 503 }
-  );
-
   const guard = await requireAdmin(request);
   if (guard instanceof NextResponse) return guard;
 
