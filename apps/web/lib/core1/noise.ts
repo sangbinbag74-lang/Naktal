@@ -43,12 +43,16 @@ export function applySajungNoise(
 /**
  * 사정율 → 추천 투찰금액 계산
  *
- * ⚠️ 2026-05-16 재설계 — 박상빈님 명시 지시 적용:
- *   "안전마진 넣으면 AI 의미 없다. 강제로 돈을 추가한 경우에 한해서다."
+ * ⚠️ 2026-05-17 박상빈님 명시 정정:
+ *   "사정율 100% ≠ 낙찰하한가" — realLowerLimit (사정율 100% 가정) 자체가 잘못된 개념.
+ *   진짜 낙찰하한가 = G2B 가 정한 진짜 사정율 × bsisAmt × 낙찰하한율 (사후만 확인 가능).
+ *   = Hard clamp (realLowerLimit + 1) 도 박상빈님 명시 위반 → 완전 제거.
  *
- *   - σ × z 안전마진 완전 제거 (5/15 잘못 도입된 0.7%p 마진 폐기)
- *   - AI 예측 사정율 (predictedRate) 그대로 사용
- *   - 안전망: realLowerLimit + 1 hard clamp 만 유지 (절대 하한 미만 금지)
+ * 박상빈님 명시 (5/12·5/15·5/16·5/17 종합):
+ *   - "안전마진 넣으면 AI 의미 없다. 강제로 돈을 추가한 경우에 한해서다."
+ *   - 사정율 97~103% 정상 (CLAUDE.md)
+ *   - Hard clamp = 사정율 100% 기준 가정 = 잘못된 보정
+ *   - AI 예측 사정율 (predictedRate) 그대로, 어떤 clamp/마진도 X
  *
  * 4개 값 일관성:
  *   사정율(predictedRate) → 예정가(budget × predictedRate) → 추천금액((예정가 - A) × lwlt + A)
@@ -56,8 +60,8 @@ export function applySajungNoise(
  *
  * 반환값:
  *   - estimatedPrice: 예정가 = budget × sajungRate
- *   - lowerLimit: 실제 G2B 낙찰하한가 (사정율 100%) — UI 표시·검증 기준
- *   - recommendedBid: AI 예측 사정율 그대로의 추천가 (hard-clamped)
+ *   - lowerLimit: 사정율 100% 기준 참조 가격 (UI 표시용, 진짜 낙찰하한가 아님)
+ *   - recommendedBid: AI 예측 사정율 그대로의 추천가 (no clamp, no margin)
  */
 export function calcBidPrice(
   budget: number,
@@ -69,16 +73,14 @@ export function calcBidPrice(
   const estimatedPrice = budget * (sajungRate / 100);
   const lwltF          = lowerLimitRate / 100;
 
-  // 실제 G2B 낙찰하한가 (사정율 100% 가정) — hard clamp 최저선
-  const realLowerLimit = Math.ceil((budget - aValueTotal) * lwltF + aValueTotal);
-  // AI 예측 사정율 그대로 추천가 산출 (안전마진 X)
-  const recommendedBid_raw = Math.ceil((estimatedPrice - aValueTotal) * lwltF + aValueTotal);
-  // Hard clamp — 절대 하한가 아래 금지 (AI 예측이 100% 미만이면 발동)
-  const recommendedBid     = Math.max(recommendedBid_raw, realLowerLimit + 1);
+  // UI 표시용 참조 가격 (사정율 100% 기준) — 진짜 낙찰하한가 아님
+  const refLowerLimit = Math.ceil((budget - aValueTotal) * lwltF + aValueTotal);
+  // AI 예측 사정율 그대로 추천가 산출 (Hard clamp 제거, 박상빈님 5/17 명시)
+  const recommendedBid = Math.ceil((estimatedPrice - aValueTotal) * lwltF + aValueTotal);
 
   return {
     estimatedPrice: Math.round(estimatedPrice),
-    lowerLimit: realLowerLimit,
+    lowerLimit: refLowerLimit,
     safeBid: recommendedBid, // 변수명 호환성 유지 (호출자가 srvSafeBid 로 받음)
   };
 }
