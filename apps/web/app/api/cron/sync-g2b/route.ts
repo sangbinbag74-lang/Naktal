@@ -232,7 +232,7 @@ export async function GET(request: NextRequest) {
         referer: request.headers.get("referer") ?? "",
         authPresent: !!request.headers.get("authorization"),
       };
-      await fetch(`${supabaseUrl0}/rest/v1/CrawlLog`, {
+      await fetch(`${supabaseUrl0}/rest/v1/RequestTrace`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -241,10 +241,8 @@ export async function GET(request: NextRequest) {
         },
         body: JSON.stringify({
           id: randomUUID(),
-          type: "SYNC_TRACE",
-          status: "TRACE",
-          count: 0,
-          errors: JSON.stringify(trace).slice(0, 1500),
+          endpoint: "sync-g2b",
+          payload: trace,
         }),
       }).catch(() => { /* ignore trace errors */ });
     }
