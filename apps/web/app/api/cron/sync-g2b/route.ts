@@ -214,6 +214,13 @@ function currentMonth(): string {
 
 // ─── Cron 진입점 ──────────────────────────────────────────────────────────────
 export async function GET(request: NextRequest) {
+  // ⚠️ 임시 KILL SWITCH (2026-05-16) — VACUUM ANALYZE 진행 중, sync 일시 중단
+  // VACUUM 끝나면 즉시 revert
+  return NextResponse.json(
+    { ok: false, killed: true, reason: "임시 차단 — VACUUM ANALYZE 진행 중. 데이터 수집은 자동 재개됩니다." },
+    { status: 503 }
+  );
+
   const authHeader = request.headers.get("authorization");
   const token = authHeader?.replace("Bearer ", "");
   const validTokens = [process.env.CRON_SECRET, process.env.ADMIN_SECRET_KEY].filter(Boolean);
