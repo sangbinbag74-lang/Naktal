@@ -425,7 +425,7 @@ export default async function BidResultPage({
             { label: "예정가 (예측)", value: fmtPrice(effectiveEstPrice) },
             isAValue && aValueTotal > 0 ? { label: "A값", value: fmtPrice(aValueTotal) } : null,
             { label: "낙찰하한율", value: `${lowerLimitRateNum.toFixed(3)}%` },
-            { label: "낙찰하한가", value: fmtPrice(price) },
+            { label: "낙찰하한가", value: fmtPrice(lowerLimit) },
             bidRate != null ? { label: "투찰률 (기초금액 대비)", value: `${bidRate.toFixed(4)}%` } : null,
             {
               label: "예측 사정율",
