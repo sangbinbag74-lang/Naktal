@@ -12,7 +12,7 @@ import { classifyCategory, DEFAULT_LWLT_BY_KIND } from "@/lib/analysis/category-
 export const dynamic = "force-dynamic";
 
 const BATCH_LIMIT = 30;
-const DEFAULT_LOWER_LIMIT_RATE = 87.745;
+const DEFAULT_LOWER_LIMIT_RATE = 89.745; // 2026-01-30 공사 표준 상향 (10억 미만)
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
   // 인증: Vercel Cron Bearer 또는 x-admin-secret
@@ -74,7 +74,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     const budget = calcBaseBudget(ann as { budget: number; aValueAmt: number; bsisAmt: bigint | number });
 
     const rawJson = (ann.rawJson ?? {}) as Record<string, string>;
-    // 카테고리별 낙찰하한율 default (공사 87.745 / 용역·물품 80)
+    // 카테고리별 낙찰하한율 default (공사 89.745, 2026-01-30 ↑ / 용역·물품 별도)
     const lwltDefault = DEFAULT_LWLT_BY_KIND[classifyCategory(ann.category as string)] ?? DEFAULT_LOWER_LIMIT_RATE;
     const lowerLimitRate = rawJson.sucsfbidLwltRate
       ? Number(rawJson.sucsfbidLwltRate)

@@ -396,7 +396,7 @@ export async function predictOptimalBid(params: {
   category: string;
   budget: number;        // 기초금액 (원)
   region: string;
-  lowerLimitRate: number; // 낙찰하한율 % (예: 87.745)
+  lowerLimitRate: number; // 낙찰하한율 % (예: 89.745, 공사 2026-01-30 ↑)
   deadlineMonth: number;  // 1~12
   aValueTotal?: number;   // A값 합산 (원, A값 공고만. 없으면 0)
   // v2 선택 피처 (호출자 제공 시 ML 정확도 향상)

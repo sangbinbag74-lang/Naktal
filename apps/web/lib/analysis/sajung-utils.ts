@@ -24,7 +24,7 @@ export function calcBaseBudget(ann: {
 export function calcBidPrice(params: {
   baseBudget: number;
   sajungPct: number;       // 99~103 등
-  lowerLimitRate: number;  // 87.745 등
+  lowerLimitRate: number;  // 89.745 등 (공사 2026-01-30 ↑)
   aValueTotal?: number;    // 0이면 A값 미적용
 }): number {
   const aVal = params.aValueTotal ?? 0;

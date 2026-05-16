@@ -27,7 +27,7 @@ interface Props {
  */
 function reverseSajung(price: number, info: AnnInfo | undefined, budget: number): number | null {
   if (!info || price <= 0) return null;
-  const lwlt = info.lowerLimitRate > 0 ? info.lowerLimitRate : 87.745;
+  const lwlt = info.lowerLimitRate > 0 ? info.lowerLimitRate : 89.745;
   const aVal = info.aValueTotal > 0 ? info.aValueTotal : 0;
   const base = info.bsisAmt > 0
     ? info.bsisAmt

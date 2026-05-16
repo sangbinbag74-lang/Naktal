@@ -167,7 +167,7 @@ export async function GET(req: NextRequest) {
 
   const rawJson = (ann.rawJson ?? {}) as Record<string, string>;
   const lwltStr = rawJson.sucsfbidLwltRate ?? "";
-  const lowerLimitRate = parseFloat(lwltStr.replace(/[^0-9.]/g, "")) || 87.745;
+  const lowerLimitRate = parseFloat(lwltStr.replace(/[^0-9.]/g, "")) || 89.745;
   const bidMethod = rawJson.bidMthdNm ?? rawJson.cntrctMthdNm ?? "";
   const currentBudget = Number(ann.budget);
 

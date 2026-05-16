@@ -41,8 +41,8 @@ function featureDefault(col: string): number {
   if (col.endsWith("_std")) return GLOBAL_SAJUNG_STD;
   if (col.endsWith("_cnt")) return 0;
   // lwltRate fallback — 모델이 공사 전용으로 학습됨 (fetchMlSajung 에서 비공사 차단).
-  // 호출이 여기까지 도달했다면 공사 가정 — 87.745% 종합건설 표준값.
-  if (col === "lwltRate") return 87.745;
+  // 호출이 여기까지 도달했다면 공사 가정 — 89.745% 공사 표준 (2026-01-30 ↑, 10억 미만).
+  if (col === "lwltRate") return 89.745;
   return 0;
 }
 

@@ -198,7 +198,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       pred_lwlt_q50:   lw_q50,
       pred_lwlt_q95:   lw_q95,
       budget_log:    Number(features.budget_log ?? 0),
-      lwltRate:      Number(features.lwltRate ?? 87.745),
+      lwltRate:      Number(features.lwltRate ?? 89.745),
       stat_stddev:   Number(features.stat_stddev ?? 0.7),
       sampleSize:    Number(features.sampleSize ?? 0),
       numBidders:    Number(features.numBidders ?? 30),

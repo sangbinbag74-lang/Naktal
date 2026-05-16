@@ -157,7 +157,7 @@ export default async function AnnouncementDetailPage({
   const rawJson = (a.rawJson ?? {}) as Record<string, unknown>;
   const bidMethodDisplay = String(rawJson.bidMthdNm ?? rawJson.cntrctMthdNm ?? rawJson.ntceKindNm ?? "");
   const sucsfbidLwltRate = String(rawJson.sucsfbidLwltRate ?? "");
-  const lowerLimitRate = parseFloat(sucsfbidLwltRate.replace(/[^0-9.]/g, "")) || 87.745;
+  const lowerLimitRate = parseFloat(sucsfbidLwltRate.replace(/[^0-9.]/g, "")) || 89.745;
   const participationConditions = extractParticipationConditions(a.rawJson);
   const prtcptnLmtNm = String(rawJson.prtcptnLmtNm ?? "");
   const aValueYn = a.aValueYn ?? "";

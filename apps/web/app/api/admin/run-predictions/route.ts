@@ -16,7 +16,7 @@ import { calcBaseBudget } from "@/lib/analysis/sajung-utils";
 import { classifyCategory, DEFAULT_LWLT_BY_KIND } from "@/lib/analysis/category-config";
 
 const BATCH_LIMIT = 50;
-const DEFAULT_LOWER_LIMIT_RATE = 87.745;
+const DEFAULT_LOWER_LIMIT_RATE = 89.745; // 2026-01-30 공사 표준 상향 (10억 미만)
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
   const guard = await requireAdmin(request);
