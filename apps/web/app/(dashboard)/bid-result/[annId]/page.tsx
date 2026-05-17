@@ -94,7 +94,7 @@ export default async function BidResultPage({
     admin.from("User").select("id").eq("supabaseId", user.id).single(),
     admin
       .from("Announcement")
-      .select("id,title,orgName,deadline,category,region,budget")
+      .select("id,title,orgName,deadline,category,region,budget,bsisAmt,aValueAmt")
       .or(`id.eq.${annId},konepsId.eq.${annId}`)
       .maybeSingle(),
   ]);
@@ -117,7 +117,14 @@ export default async function BidResultPage({
 
   const price = Number(req.recommendedBidPrice ?? 0);
   const lowerLimit = Number(req.lowerLimitPrice ?? 0);
-  const budget = Number(req.budget ?? 0);
+  // 사정율 분모 = Announcement.bsisAmt 우선 (박상빈님 5/17 명시).
+  // BidRequest.budget 은 옛 의뢰 (5/10 이전) 가 추정가격으로 저장돼 있어 부정확.
+  const annBsisAmt = Number((ann as unknown as Record<string, unknown>).bsisAmt ?? 0);
+  const annAValueAmt = Number((ann as unknown as Record<string, unknown>).aValueAmt ?? 0);
+  const annBudgetRaw = Number(ann.budget ?? 0);
+  const annBaseAmount = annBsisAmt > 0 ? annBsisAmt : annAValueAmt > 0 ? annAValueAmt : annBudgetRaw * 1.1;
+  const reqBudget = Number(req.budget ?? 0);
+  const budget = annBaseAmount > 0 ? annBaseAmount : reqBudget;
   const sajungRate = Number(req.predictedSajungRate ?? 0);
   const feeRate = Number(req.agreedFeeRate ?? 0);
   const feeAmount = Number(req.agreedFeeAmount ?? 0);

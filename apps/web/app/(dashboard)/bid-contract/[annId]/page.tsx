@@ -31,7 +31,7 @@ export default async function BidContractPage({
     admin.from("User").select("id,bizNo,bizName,ownerName").eq("supabaseId", user.id).single(),
     admin
       .from("Announcement")
-      .select("id,konepsId,title,orgName,deadline,budget,category,rawJson,aValueYn,aValueTotal")
+      .select("id,konepsId,title,orgName,deadline,budget,bsisAmt,aValueAmt,category,rawJson,aValueYn,aValueTotal")
       .or(`id.eq.${annId},konepsId.eq.${annId}`)
       .maybeSingle(),
   ]);
@@ -41,7 +41,11 @@ export default async function BidContractPage({
   if (!ann) notFound();
 
   const rawJson = (ann.rawJson as Record<string, string>) ?? {};
-  const budgetNum = Number(rawJson.bdgtAmt) || Number(ann.budget);
+  // 사정율 분모 우선순위 (박상빈님 5/17 명시): bsisAmt (기초금액) > aValueAmt > 추정가격×1.1
+  const bsisAmtNum = Number((ann as unknown as Record<string, unknown>).bsisAmt ?? 0);
+  const aValueAmtNum = Number((ann as unknown as Record<string, unknown>).aValueAmt ?? 0);
+  const rawBudget = Number(rawJson.bdgtAmt) || Number(ann.budget);
+  const budgetNum = bsisAmtNum > 0 ? bsisAmtNum : aValueAmtNum > 0 ? aValueAmtNum : rawBudget * 1.1;
   const annCategory = String(ann.category ?? "");
   const annKind = classifyCategory(annCategory);
   const defaultLwlt = DEFAULT_LWLT_BY_KIND[annKind];
