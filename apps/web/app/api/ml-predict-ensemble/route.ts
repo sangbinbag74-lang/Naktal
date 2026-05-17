@@ -101,10 +101,12 @@ function encodeCat(value: unknown, enc: string[] | Record<string, number> | unde
 }
 
 function buildInput(features: Record<string, unknown>, meta: ModelMeta): Float32Array {
+  // fallback: xgb/cat meta 에 categorical_cols 누락 시 encoders keys 사용
+  const catCols = meta.categorical_cols ?? Object.keys(meta.encoders ?? {});
   const arr = new Float32Array(meta.feature_names.length);
   for (let i = 0; i < meta.feature_names.length; i++) {
     const col = meta.feature_names[i] ?? "";
-    if (meta.categorical_cols.includes(col)) {
+    if (catCols.includes(col)) {
       arr[i] = encodeCat(features[col], meta.encoders[col]);
     } else {
       const v = features[col];
