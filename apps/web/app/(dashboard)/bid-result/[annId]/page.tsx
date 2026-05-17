@@ -481,18 +481,7 @@ export default async function BidResultPage({
                 sub: sampleSize > 0 ? `최근 ${sampleSize}건 기준` : "샘플 부족",
                 color: "#1B3A6B",
               },
-              {
-                label: "ML 예측 사정율",
-                value: `${sajungRate.toFixed(3)}%`,
-                sub: "노이즈 적용 전 원본값",
-                color: "#1B3A6B",
-              },
-              {
-                label: `${kindLabel} 일반 평균 사정율`,
-                value: categoryAvgSajungRate > 0 ? `${categoryAvgSajungRate.toFixed(3)}%` : "데이터 부족",
-                sub: catTotal > 0 ? `${kindLabel} 카테고리 ${catTotal.toLocaleString()}건` : "샘플 부족",
-                color: "#1B3A6B",
-              },
+              // 박상빈님 5/17 명시 삭제: "ML 예측 사정율 (노이즈 적용 전 원본값)" / "공사 일반 평균 사정율"
             ];
             return cards.map((m) => (
               <div key={m.label} style={{ background: "#F8FAFC", borderRadius: 10, padding: "12px 14px" }}>

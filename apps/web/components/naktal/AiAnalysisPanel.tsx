@@ -203,6 +203,8 @@ export function AiAnalysisPanel({ annDbId, budget, g2bUrl, konepsId, onRefresh, 
               {cl !== "LOW" && !isContracted && (
                 <a
                   href={`/bid-contract/${annDbId}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
                   style={{
                     display: "inline-block", marginTop: 10,
                     fontSize: 12, fontWeight: 700,

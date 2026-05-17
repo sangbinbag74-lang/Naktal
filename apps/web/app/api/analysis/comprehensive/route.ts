@@ -223,15 +223,16 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     expiresAt: new Date(Date.now() + CACHE_TTL_MS).toISOString(),
   };
 
-  // 데이터 부족 (sampleSize=0 + isFallback) 시 BidPricePrediction 적재 차단
-  // 의미 없는 fallback 값 (공사 100% 등) 캐시되어 다른 사용자에게 노출되는 것 방지
+  // 박상빈님 5/17 명시: 박상빈님 계약 진입 보장 — isFallback 도 BidPricePrediction 저장
+  // (ML ensemble v2+xgb+cat 결과는 sampleSize 무관하게 신뢰 가능, 노이즈 미러 적용)
+  // fallback 표시는 modelVersion 에 [fallback] suffix 로 표기 → bid-request 등 호출자가 식별 가능
   const isUnreliable = sajung.sampleSize === 0 || sajung.isFallback;
-  if (!isUnreliable) {
-    const { error: upsertErr } = await admin.from("BidPricePrediction").upsert(predRecord, { onConflict: "annId" });
-    if (upsertErr) console.error("[BidPricePrediction] upsert 실패:", upsertErr.message);
-  } else {
-    console.warn("[comprehensive] 데이터 부족으로 BidPricePrediction 미저장:", { annId, sampleSize: sajung.sampleSize, isFallback: sajung.isFallback });
+  if (isUnreliable) {
+    predRecord.modelVersion = `${predRecord.modelVersion ?? ""}[fallback]`;
+    console.warn("[comprehensive] fallback 으로 BidPricePrediction 저장:", { annId, sampleSize: sajung.sampleSize, isFallback: sajung.isFallback });
   }
+  const { error: upsertErr } = await admin.from("BidPricePrediction").upsert(predRecord, { onConflict: "annId" });
+  if (upsertErr) console.error("[BidPricePrediction] upsert 실패:", upsertErr.message);
 
   // ─── AIPrediction 영구 저장 — fallback 차단 (BidPricePrediction 과 동일 정책)
   // 데이터 부족(sampleSize=0 or isFallback) 시 적재 차단 — 적중률 통계 오염 방지
