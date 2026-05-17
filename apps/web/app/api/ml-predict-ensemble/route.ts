@@ -19,7 +19,7 @@ import { captureError } from "@/lib/observability/sentry";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-export const maxDuration = 30;
+export const maxDuration = 60;  // 첫 호출 cold start (onnx 22MB 로드) 여유
 
 const ML_DIR = path.join(process.cwd(), "ml");
 const MANIFEST_PATH = path.join(ML_DIR, "ensemble_manifest.json");
