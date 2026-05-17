@@ -583,18 +583,15 @@ export async function predictOptimalBid(params: {
     const fallbackRate = sd.center;
     const aValF = params.aValueTotal ?? 0;
     const lwltF = params.lowerLimitRate / 100;
-    // 박상빈님 지시 (2026-05-16): 안전마진 제거. 예측 사정율 그대로 사용. Hard clamp 만 유지.
+    // 박상빈님 지시 (2026-05-17): 안전마진 + Hard clamp 모두 제거. 예측 사정율 그대로 사용.
     const estimatedF      = params.budget * (fallbackRate / 100);
     const estimatedFLow   = params.budget * (fallbackRate / 100);
     const estimatedFHigh  = params.budget * (fallbackRate / 100);
-    let optimalBidF = (estimatedF     - aValF) * lwltF + aValF;
-    let rangeLowF   = (estimatedFLow  - aValF) * lwltF + aValF;
-    let rangeHighF  = (estimatedFHigh - aValF) * lwltF + aValF;
-    // Hard clamp
-    const realLowerF = (params.budget - aValF) * lwltF + aValF;
-    optimalBidF = Math.max(optimalBidF, realLowerF + 1);
-    rangeLowF   = Math.max(rangeLowF,   realLowerF + 1);
-    rangeHighF  = Math.max(rangeHighF,  realLowerF + 1);
+    const optimalBidF = Math.ceil((estimatedF     - aValF) * lwltF + aValF);
+    const rangeLowF   = Math.ceil((estimatedFLow  - aValF) * lwltF + aValF);
+    const rangeHighF  = Math.ceil((estimatedFHigh - aValF) * lwltF + aValF);
+    // UI 표시용 참조 가격 (사정율 100% 기준) — 진짜 낙찰하한가 아님
+    const realLowerF = Math.ceil((params.budget - aValF) * lwltF + aValF);
     return {
       predictedSajungRate: fallbackRate,
       sajungRateRange: { min: sd.min, max: sd.max, p25: sd.p25, p75: sd.p75 },
@@ -696,30 +693,29 @@ export async function predictOptimalBid(params: {
       : Math.max(85, Math.min(115, statPred));
   const usedMl = mlPred !== null;
 
-  // 6. 투찰가 역산 — 박상빈님 지시 (2026-05-16): 안전마진 완전 제거
+  // 6. 투찰가 역산 — 박상빈님 지시 (2026-05-17): Hard clamp 완전 제거
   //
-  // "안전마진 넣으면 AI 의미 없다. 강제로 돈을 추가한 경우에 한해서다."
+  // 박상빈님 5/17 명시:
+  //   "사정율 100% ≠ 낙찰하한가" — realLowerLimit (사정율 100% 가정) 자체가 잘못된 개념.
+  //   진짜 낙찰하한가 = G2B 가 정한 진짜 사정율 × bsisAmt × 낙찰하한율 (사후만 확인 가능).
+  //   = Hard clamp 완전 제거.
   //
   // - σ × z 안전 quantile 제거 — AI 예측 사정율 그대로 사용
-  // - optimalBid = predictedRate × budget × lwlt (점 추정)
-  // - Hard clamp (realLowerLimit + 1) 만 유지 = 절대 하한 미만 금지
-  // - 4개 값 (사정율·예정가·추천금액·하한가) 모두 같은 사정율 기준 → G2B 검증 가능
+  // - Hard clamp 제거 — AI 예측 그대로
+  // - optimalBid = (predictedRate × budget - A) × lwlt + A (점 추정)
+  // - 4개 값 (사정율·예정가·추천금액·참조하한) 모두 같은 사정율 기준 → G2B 검증 가능
   const aVal       = params.aValueTotal ?? 0;
   const lwlt       = params.lowerLimitRate / 100;
 
   const estimated      = params.budget * (predictedRate / 100);
   const estimatedLow   = params.budget * (predictedRate / 100);
   const estimatedHigh  = params.budget * (predictedRate / 100);
-  let   optimalBid     = (estimated     - aVal) * lwlt + aVal;
-  let   rangeLow       = (estimatedLow  - aVal) * lwlt + aVal;
-  let   rangeHigh      = (estimatedHigh - aVal) * lwlt + aVal;
+  const optimalBid     = Math.ceil((estimated     - aVal) * lwlt + aVal);
+  const rangeLow       = Math.ceil((estimatedLow  - aVal) * lwlt + aVal);
+  const rangeHigh      = Math.ceil((estimatedHigh - aVal) * lwlt + aVal);
 
-  // Hard clamp — 어떤 경우에도 실제 낙찰하한가 (사정율 100% 가정) 아래로 추천 금지
-  const realLowerLimit = (params.budget - aVal) * lwlt + aVal;
-  optimalBid = Math.max(optimalBid, realLowerLimit + 1);
-  rangeLow   = Math.max(rangeLow,   realLowerLimit + 1);
-  rangeHigh  = Math.max(rangeHigh,  realLowerLimit + 1);
-  const lowerLimit = realLowerLimit; // UI 표시용 (실제 G2B 하한가 — 추천과 무관한 기준선)
+  // UI 표시용 참조 가격 (사정율 100% 기준) — 진짜 낙찰하한가 아님 (G2B 사후만 확인 가능)
+  const lowerLimit = Math.ceil((params.budget - aVal) * lwlt + aVal);
 
   // 7. 몬테카를로 낙찰 확률 (다른 회사 분포 포함)
   // numBidders 가 인자에 없으면 30명 기본 (한국 공공조달 평균)

@@ -13,7 +13,7 @@ import {
 import { recommendNumbers } from "@/lib/core1/frequency-engine";
 import { isMultiplePriceBid } from "@/lib/bid-utils";
 import { calcBaseBudget } from "@/lib/analysis/sajung-utils";
-import { classifyCategory, DEFAULT_SAJUNG_BY_KIND, DEFAULT_LWLT_BY_KIND, FALLBACK_STDDEV_BY_KIND, getDefaultLwlt } from "@/lib/analysis/category-config";
+import { classifyCategory, DEFAULT_SAJUNG_BY_KIND, DEFAULT_LWLT_BY_KIND, getDefaultLwlt } from "@/lib/analysis/category-config";
 import { applySajungNoise, calcBidPrice } from "@/lib/core1/noise";
 
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24시간
@@ -311,38 +311,29 @@ function buildResponse(
       })(),
       sampleSize: pred.sampleSize,
       optimalBidPrice: (() => {
-        // 2026-05-15 재설계: σ × z 안전 quantile + Hard clamp
-        // calcBidPrice 가 stddev 기반 안전 quantile 자동 적용 + 하한 아래 금지 강제
+        // 박상빈님 지시 (2026-05-17): 안전마진 + Hard clamp 완전 제거. AI 예측 사정율 그대로.
+        // calcBidPrice 가 noise.ts 에서 마진/clamp 없는 단순 역산만 수행
         const budget = budgetNum ?? Number(ann.budget) ?? 0;
         const llRate = lowerLimitRate ?? dl;
         const aVal   = aValueTotal ?? 0;
-        // stddev 추정: sajungRateRange (p75-p25)/1.35 ≈ σ, 없으면 카테고리 폴백
-        const rng    = pred.sajungRateRange as { p25?: number; p75?: number } | null | undefined;
-        const iqrStddev = rng?.p25 != null && rng?.p75 != null && rng.p75 > rng.p25
-          ? (rng.p75 - rng.p25) / 1.35
-          : FALLBACK_STDDEV_BY_KIND[annKind];
-        const { safeBid } = calcBidPrice(budget, effRate, llRate, aVal, iqrStddev);
+        const { safeBid } = calcBidPrice(budget, effRate, llRate, aVal);
         return safeBid;
       })(),
       bidPriceRangeLow: (() => {
-        // 공격형 옵션 — 예측 평균값 그대로 (점 추정, 적격 50% 통과). Hard clamp만 적용.
+        // 박상빈님 지시 (2026-05-17): 안전마진 + Hard clamp 완전 제거. AI 예측 사정율 그대로.
         const budget = budgetNum ?? Number(ann.budget) ?? 0;
         const llRate = lowerLimitRate ?? dl;
         const aVal   = aValueTotal ?? 0;
         const estPrice = budget * (effRate / 100);
-        const raw = Math.ceil((estPrice - aVal) * (llRate / 100) + aVal);
-        const realLower = Math.ceil((budget - aVal) * (llRate / 100) + aVal);
-        return Math.max(raw, realLower + 1);
+        return Math.ceil((estPrice - aVal) * (llRate / 100) + aVal);
       })(),
       bidPriceRangeHigh: (() => {
-        // 박상빈님 지시 (2026-05-16): 안전마진 제거. AI 예측 사정율 그대로.
+        // 박상빈님 지시 (2026-05-17): 안전마진 + Hard clamp 완전 제거. AI 예측 사정율 그대로.
         const budget = budgetNum ?? Number(ann.budget) ?? 0;
         const llRate = lowerLimitRate ?? dl;
         const aVal   = aValueTotal ?? 0;
         const estPrice = budget * (effRate / 100);
-        const raw = Math.ceil((estPrice - aVal) * (llRate / 100) + aVal);
-        const realLower = Math.ceil((budget - aVal) * (llRate / 100) + aVal);
-        return Math.max(raw, realLower + 1);
+        return Math.ceil((estPrice - aVal) * (llRate / 100) + aVal);
       })(),
       lowerLimitPrice: aLowerLimit != null ? aLowerLimit : Number(pred.lowerLimitPrice),
       winProbability: pred.winProbability,
