@@ -20,7 +20,7 @@ import fs from "fs";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-export const maxDuration = 15;
+export const maxDuration = 60;  // 첫 호출 cold start (onnx 로드) 여유
 
 const ML_DIR = path.join(process.cwd(), "ml", "opening");
 const META_PATH = path.join(ML_DIR, "meta.json");

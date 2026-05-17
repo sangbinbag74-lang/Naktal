@@ -109,7 +109,7 @@ export async function fetchMlSajung(features: MlFeatures): Promise<number | null
         ...(ML_API_KEY ? { "X-API-Key": ML_API_KEY } : {}),
       },
       body: JSON.stringify(features),
-      signal: AbortSignal.timeout(3000),
+      signal: AbortSignal.timeout(55000),  // cold start onnx 로드 여유 (박상빈님 5/17)
     });
     if (!res.ok) return null;
     const data = (await res.json()) as { predicted_sajung_rate?: number };
@@ -157,7 +157,7 @@ export async function fetchMlOpening(features: OpeningMlFeatures): Promise<Openi
         ...(ML_API_KEY ? { "X-API-Key": ML_API_KEY } : {}),
       },
       body: JSON.stringify(features),
-      signal: AbortSignal.timeout(5000),
+      signal: AbortSignal.timeout(55000),  // cold start onnx 로드 여유 (박상빈님 5/17)
     });
     if (!res.ok) return null;
     const data = (await res.json()) as OpeningPrediction & { error?: string };
