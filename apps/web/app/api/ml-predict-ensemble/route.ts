@@ -1,67 +1,72 @@
 /**
- * Ensemble 사정율 예측 API — v2 + xgb + cat 가중평균 (박상빈님 5/17 명시)
+ * Ensemble 사정율 예측 API — Phase 2+3+4 결합
  *
- * 구조 (단순):
- *   1) sajung_lgbm_v2.onnx     — LightGBM v2 (1.84M 학습, MAE 0.5844)
- *   2) sajung_xgboost.onnx     — XGBoost   (1.84M 학습, MAE 0.5836)
- *   3) sajung_catboost.onnx    — CatBoost ONNX-compat (1.84M 학습, MAE 0.5837)
+ * 구조:
+ *   1) 사정율 quantile q05/q50/q95 (Phase 2, LightGBM) — 번들 로드
+ *   2) 1순위 lowerlimit q05/q50/q95 (Phase 3, LightGBM) — GitHub Release fetch + cache
+ *   3) 메타 q95 (Phase 4, XGBoost) — 위 6개 결과 + 11개 피처 → 최종 사정율
  *
- * 모두 54 피처 동일 구조, 각 모델 자체 encoders 사용.
- * recommended_sajung_rate = (v2 + xgb + cat) / 3
+ * 응답:
+ *   {
+ *     ensemble_sajung_q05, ensemble_sajung_q50, ensemble_sajung_q95,
+ *     recommended_sajung_rate (= q95, 적격 95% 통과 안전선)
+ *   }
  *
- * 모델 손실 시 호출측 (sajung-engine) σ × z 폴백 자동 발동.
+ * 모델 손실 시 호출측 (sajung-engine)에서 Phase 1 σ × z 폴백 자동 발동.
  */
 import { NextRequest, NextResponse } from "next/server";
 import * as ort from "onnxruntime-web";
 import path from "path";
 import fs from "fs";
+import * as zlib from "zlib";
 import { captureError } from "@/lib/observability/sentry";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-export const maxDuration = 30;
+export const maxDuration = 60; // 첫 호출 시 lowerlimit 3개 fetch + ONNX init (185+188+59MB ≈ 30~50초)
 
 const ML_DIR = path.join(process.cwd(), "ml");
 const MANIFEST_PATH = path.join(ML_DIR, "ensemble_manifest.json");
+const ENCODERS_PATH = path.join(ML_DIR, "ensemble_encoders.json");
 
 interface Manifest {
   version: string;
   bundled_models: Record<string, string>;
   remote_models: Record<string, string>;
-  weights: Record<string, number>;
+  remote_compression?: string;  // "gzip" 이면 fetch 후 gunzip
 }
 
-interface ModelMeta {
-  feature_names: string[];
-  categorical_cols: string[];
-  numeric_cols?: string[];
-  // v2: {col: {className: idx}} (dict)
-  // xgb/cat: {col: [class1, class2, ...]} (list)
-  encoders: Record<string, string[] | Record<string, number>>;
+interface EncodersJson {
+  encoders: Record<string, Record<string, number>>;
+  models: {
+    sajung_quantile: { feature_names: string[]; categorical_cols: string[] };
+    lowerlimit: { feature_names: string[]; categorical_cols: string[] };
+    ensemble_meta: { feature_names: string[]; categorical_cols: string[] };
+  };
 }
 
+// onnxruntime-web WASM 경로 (기존 ml-predict 패턴 동일)
 ort.env.wasm.wasmPaths = {
   wasm: `file://${path.join(ML_DIR, "ort-wasm-simd-threaded.wasm").replace(/\\/g, "/")}`,
-  mjs:  `file://${path.join(ML_DIR, "ort-wasm-simd-threaded.mjs").replace(/\\/g, "/")}`,
+  mjs: `file://${path.join(ML_DIR, "ort-wasm-simd-threaded.mjs").replace(/\\/g, "/")}`,
 };
 ort.env.wasm.numThreads = 1;
 
+// 모듈 레벨 캐시 (warm start 재사용)
 const sessionCache = new Map<string, Promise<ort.InferenceSession>>();
-const metaCache    = new Map<string, ModelMeta>();
 let manifestCache: Manifest | null = null;
+let encodersCache: EncodersJson | null = null;
 
 function getManifest(): Manifest {
-  if (!manifestCache) manifestCache = JSON.parse(fs.readFileSync(MANIFEST_PATH, "utf-8"));
+  if (manifestCache) return manifestCache;
+  manifestCache = JSON.parse(fs.readFileSync(MANIFEST_PATH, "utf-8"));
   return manifestCache!;
 }
 
-function getMeta(modelKey: string): ModelMeta {
-  const cached = metaCache.get(modelKey);
-  if (cached) return cached;
-  const metaPath = path.join(ML_DIR, `${modelKey}_meta.json`);
-  const meta = JSON.parse(fs.readFileSync(metaPath, "utf-8")) as ModelMeta;
-  metaCache.set(modelKey, meta);
-  return meta;
+function getEncoders(): EncodersJson {
+  if (encodersCache) return encodersCache;
+  encodersCache = JSON.parse(fs.readFileSync(ENCODERS_PATH, "utf-8"));
+  return encodersCache!;
 }
 
 async function getSession(modelKey: string): Promise<ort.InferenceSession> {
@@ -69,43 +74,66 @@ async function getSession(modelKey: string): Promise<ort.InferenceSession> {
   if (cached) return cached;
   const manifest = getManifest();
   const promise = (async () => {
+    let buffer: ArrayBuffer;
     const bundled = manifest.bundled_models[modelKey];
-    if (!bundled) throw new Error(`Unknown model: ${modelKey}`);
-    const fname = bundled.replace("/ml/", "");
-    const fullPath = path.join(ML_DIR, fname);
-    const data = fs.readFileSync(fullPath);
-    const buffer = new ArrayBuffer(data.byteLength);
-    new Uint8Array(buffer).set(data);
+    const remote  = manifest.remote_models[modelKey];
+    if (bundled) {
+      const fname = bundled.replace("/ml/", "");
+      const fullPath = path.join(ML_DIR, fname);
+      const data = fs.readFileSync(fullPath);
+      buffer = new ArrayBuffer(data.byteLength);
+      new Uint8Array(buffer).set(data);
+    } else if (remote) {
+      console.log(`[Ensemble] fetching remote: ${modelKey} from ${remote}`);
+      const t0 = Date.now();
+      const blobToken = process.env.BLOB_READ_WRITE_TOKEN;
+      const res = await fetch(remote, {
+        signal: AbortSignal.timeout(20000),  // 압축본 ≤16MB → fetch 2~5초로 충분
+        headers: blobToken ? { authorization: `Bearer ${blobToken}` } : {},
+      });
+      if (!res.ok) throw new Error(`Failed to fetch ${modelKey}: HTTP ${res.status}`);
+      let fetched = await res.arrayBuffer();
+      const fetchedMB = (fetched.byteLength / 1024 / 1024).toFixed(2);
+      const fetchMs = Date.now() - t0;
+
+      // gzip 압축본이면 gunzip — 정확도 0 손실 (byte 단위 복원)
+      if (manifest.remote_compression === "gzip") {
+        const t1 = Date.now();
+        const decompressed = zlib.gunzipSync(Buffer.from(fetched));
+        buffer = new ArrayBuffer(decompressed.byteLength);
+        new Uint8Array(buffer).set(decompressed);
+        const decompMB = (buffer.byteLength / 1024 / 1024).toFixed(1);
+        console.log(`[Ensemble] ${modelKey} fetched ${fetchedMB}MB (${fetchMs}ms) + gunzip → ${decompMB}MB (${Date.now() - t1}ms)`);
+      } else {
+        buffer = fetched;
+        console.log(`[Ensemble] ${modelKey} fetched (${fetchedMB}MB, ${fetchMs}ms)`);
+      }
+    } else {
+      throw new Error(`Unknown model: ${modelKey}`);
+    }
     return await ort.InferenceSession.create(buffer);
   })();
-  promise.catch(() => sessionCache.delete(modelKey));
+  // 실패한 Promise 는 cache 에서 제거 (재시도 가능하게) — Vercel cold start 회복용
+  promise.catch(() => {
+    sessionCache.delete(modelKey);
+  });
   sessionCache.set(modelKey, promise);
   return promise;
 }
 
-/** label encoder 매핑 — v2 dict {className:idx} / xgb·cat list [classes_] 양쪽 지원 */
-function encodeCat(value: unknown, enc: string[] | Record<string, number> | undefined): number {
-  if (!enc) return 0;
+function encodeFeature(value: unknown, encoder: Record<string, number> | undefined): number {
+  if (!encoder) return 0;
   const v = String(value ?? "");
-  if (Array.isArray(enc)) {
-    if (enc.length === 0) return 0;
-    const idx = enc.indexOf(v);
-    if (idx >= 0) return idx;
-    const unkIdx = enc.indexOf("UNK");
-    return unkIdx >= 0 ? unkIdx : 0;
-  }
-  // dict
-  if (Object.prototype.hasOwnProperty.call(enc, v)) return Number(enc[v] ?? 0);
-  if (Object.prototype.hasOwnProperty.call(enc, "UNK")) return Number(enc["UNK"] ?? 0);
-  return 0;
+  return encoder[v] ?? 0;
 }
 
-function buildInput(features: Record<string, unknown>, meta: ModelMeta): Float32Array {
-  const arr = new Float32Array(meta.feature_names.length);
-  for (let i = 0; i < meta.feature_names.length; i++) {
-    const col = meta.feature_names[i] ?? "";
-    if (meta.categorical_cols.includes(col)) {
-      arr[i] = encodeCat(features[col], meta.encoders[col]);
+function buildSajungInput(features: Record<string, unknown>, featureNames: string[], categoricalCols: string[]): Float32Array {
+  const encs = getEncoders().encoders;
+  const arr = new Float32Array(featureNames.length);
+  for (let i = 0; i < featureNames.length; i++) {
+    const col = featureNames[i] ?? "";
+    if (categoricalCols.includes(col)) {
+      arr[i] = encodeFeature(features[col], encs[col]);
     } else {
       const v = features[col];
       arr[i] = typeof v === "number" && Number.isFinite(v) ? v : 0;
@@ -114,11 +142,9 @@ function buildInput(features: Record<string, unknown>, meta: ModelMeta): Float32
   return arr;
 }
 
-async function runOne(modelKey: string, features: Record<string, unknown>): Promise<number> {
-  const meta = getMeta(modelKey);
+async function runOne(modelKey: string, input: Float32Array, featureCount: number): Promise<number> {
   const session = await getSession(modelKey);
-  const input = buildInput(features, meta);
-  const tensor = new ort.Tensor("float32", input, [1, meta.feature_names.length]);
+  const tensor = new ort.Tensor("float32", input, [1, featureCount]);
   const inputName = session.inputNames[0] ?? "input";
   const out = await session.run({ [inputName]: tensor });
   const outputName = session.outputNames[0] ?? "";
@@ -129,42 +155,70 @@ async function runOne(modelKey: string, features: Record<string, unknown>): Prom
 export async function POST(request: NextRequest): Promise<NextResponse> {
   try {
     const features = (await request.json()) as Record<string, unknown>;
-    const manifest = getManifest();
-    const weights = manifest.weights;
+    const encoders = getEncoders();
 
-    const [v2, xgb, cat] = await Promise.all([
-      runOne("sajung_lgbm_v2", features),
-      runOne("sajung_xgboost", features),
-      runOne("sajung_catboost", features),
+    // 1. 사정율 quantile q05/q50/q95 병렬
+    const sajungFeatures = encoders.models.sajung_quantile.feature_names;
+    const sajungCats = encoders.models.sajung_quantile.categorical_cols;
+    const sajungInput = buildSajungInput(features, sajungFeatures, sajungCats);
+
+    // 2. lowerlimit quantile q05/q50/q95 병렬 (피처 일부 다름)
+    const lwltFeatures = encoders.models.lowerlimit.feature_names;
+    const lwltCats = encoders.models.lowerlimit.categorical_cols;
+    // lowerlimit 학습 시 expanding mean 이 winrate(BidResult.bidRate) 기준이지만,
+    // 추론 시점에는 SajungRateStat 만 있으므로 stat_avg 등으로 폴백 매핑
+    const lwltFeatureValues: Record<string, unknown> = {
+      ...features,
+      org_past_winrate_mean: features.org_past_mean ?? features.stat_avg ?? 0,
+      org_past_winrate_std:  features.org_past_std  ?? features.stat_stddev ?? 0,
+      org_past_winrate_cnt:  features.org_past_cnt  ?? features.sampleSize ?? 0,
+      cat_past_winrate_mean: features.cat_past_mean ?? features.stat_avg ?? 0,
+      cat_past_winrate_std:  features.cat_past_std  ?? features.stat_stddev ?? 0,
+      cat_past_winrate_cnt:  features.cat_past_cnt  ?? features.sampleSize ?? 0,
+    };
+    const lwltInput = buildSajungInput(lwltFeatureValues, lwltFeatures, lwltCats);
+
+    // 6개 quantile 병렬 추론
+    const [sj_q05, sj_q50, sj_q95, lw_q05, lw_q50, lw_q95] = await Promise.all([
+      runOne("sajung_quantile_q05", sajungInput, sajungFeatures.length),
+      runOne("sajung_quantile_q50", sajungInput, sajungFeatures.length),
+      runOne("sajung_quantile_q95", sajungInput, sajungFeatures.length),
+      runOne("lowerlimit_q05",      lwltInput,   lwltFeatures.length),
+      runOne("lowerlimit_q50",      lwltInput,   lwltFeatures.length),
+      runOne("lowerlimit_q95",      lwltInput,   lwltFeatures.length),
     ]);
 
-    const wV2  = Number(weights.sajung_lgbm_v2  ?? 1/3);
-    const wXgb = Number(weights.sajung_xgboost  ?? 1/3);
-    const wCat = Number(weights.sajung_catboost ?? 1/3);
-    const wSum = wV2 + wXgb + wCat;
-    const avg  = (v2 * wV2 + xgb * wXgb + cat * wCat) / (wSum > 0 ? wSum : 1);
-
-    // 3개 예측 std → 신뢰구간 추정
-    const mean = (v2 + xgb + cat) / 3;
-    const variance = ((v2 - mean) ** 2 + (xgb - mean) ** 2 + (cat - mean) ** 2) / 3;
-    const std = Math.sqrt(variance);
-    const margin = Math.max(std * 1.96, 0.3);  // 정상범위 최소 ±0.3%p
+    // 3. 메타 q95 추론 — 11개 피처
+    const metaFeatureNames = encoders.models.ensemble_meta.feature_names;
+    const metaValues: Record<string, number> = {
+      pred_sajung_q05: sj_q05,
+      pred_sajung_q50: sj_q50,
+      pred_sajung_q95: sj_q95,
+      pred_lwlt_q05:   lw_q05,
+      pred_lwlt_q50:   lw_q50,
+      pred_lwlt_q95:   lw_q95,
+      budget_log:    Number(features.budget_log ?? 0),
+      lwltRate:      Number(features.lwltRate ?? 89.745),
+      stat_stddev:   Number(features.stat_stddev ?? 0.7),
+      sampleSize:    Number(features.sampleSize ?? 0),
+      numBidders:    Number(features.numBidders ?? 30),
+    };
+    const metaInput = new Float32Array(metaFeatureNames.length);
+    for (let i = 0; i < metaFeatureNames.length; i++) {
+      const fname = metaFeatureNames[i] ?? "";
+      metaInput[i] = metaValues[fname] ?? 0;
+    }
+    const meta_q95 = await runOne("ensemble_meta_q95", metaInput, metaFeatureNames.length);
 
     return NextResponse.json({
-      // 호환 필드 (기존 호출자)
-      recommended_sajung_rate: avg,
-      ensemble_sajung_q05: avg - margin,
-      ensemble_sajung_q50: avg,
-      ensemble_sajung_q95: avg + margin,
-      ensemble_lwlt_q05: avg - margin,
-      ensemble_lwlt_q50: avg,
-      ensemble_lwlt_q95: avg + margin,
-      // 디버깅 / 모델별 개별값
-      v2_pred:  v2,
-      xgb_pred: xgb,
-      cat_pred: cat,
-      weights: { v2: wV2 / wSum, xgb: wXgb / wSum, cat: wCat / wSum },
-      model_version: manifest.version,
+      ensemble_sajung_q05: sj_q05,
+      ensemble_sajung_q50: sj_q50,
+      ensemble_sajung_q95: sj_q95,
+      ensemble_lwlt_q05: lw_q05,
+      ensemble_lwlt_q50: lw_q50,
+      ensemble_lwlt_q95: lw_q95,
+      recommended_sajung_rate: meta_q95,  // 적격 95% 통과 안전선 (실제 1위 투찰률 q95)
+      model_version: getManifest().version,
     });
   } catch (e) {
     captureError(e as Error, { route: "ml-predict-ensemble" });
@@ -173,13 +227,97 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   }
 }
 
-export async function GET(): Promise<NextResponse> {
+export async function GET(request: NextRequest): Promise<NextResponse> {
   const manifest = getManifest();
+  const url = new URL(request.url);
+  // ?debug=timing — 각 모델 단계별 시간 측정 (수동 — getSession 우회)
+  if (url.searchParams.get("debug") === "timing") {
+    const model = url.searchParams.get("model") ?? "sajung_quantile_q05";
+    const result: Record<string, unknown> = { model };
+    try {
+      const overall0 = Date.now();
+
+      // 1. 모델 buffer 확보
+      const fetch0 = Date.now();
+      let buffer: ArrayBuffer;
+      const bundled = manifest.bundled_models[model];
+      const remote = manifest.remote_models[model];
+      if (bundled) {
+        const fname = bundled.replace("/ml/", "");
+        const fullPath = path.join(ML_DIR, fname);
+        const data = fs.readFileSync(fullPath);
+        buffer = new ArrayBuffer(data.byteLength);
+        new Uint8Array(buffer).set(data);
+        result.source = "bundled";
+        result.fetch_ms = Date.now() - fetch0;
+      } else if (remote) {
+        const blobToken = process.env.BLOB_READ_WRITE_TOKEN;
+        const res = await fetch(remote, {
+          signal: AbortSignal.timeout(20000),
+          headers: blobToken ? { authorization: `Bearer ${blobToken}` } : {},
+        });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const fetched = await res.arrayBuffer();
+        result.fetch_ms = Date.now() - fetch0;
+        result.fetched_mb = +(fetched.byteLength / 1024 / 1024).toFixed(2);
+
+        if (manifest.remote_compression === "gzip") {
+          const gz0 = Date.now();
+          const decomp = zlib.gunzipSync(Buffer.from(fetched));
+          buffer = new ArrayBuffer(decomp.byteLength);
+          new Uint8Array(buffer).set(decomp);
+          result.gunzip_ms = Date.now() - gz0;
+          result.decompressed_mb = +(buffer.byteLength / 1024 / 1024).toFixed(2);
+        } else {
+          buffer = fetched;
+        }
+        result.source = "remote";
+      } else {
+        throw new Error("Unknown model");
+      }
+
+      // 2. InferenceSession.create
+      const init0 = Date.now();
+      await ort.InferenceSession.create(buffer);
+      result.session_init_ms = Date.now() - init0;
+      result.total_ms = Date.now() - overall0;
+      result.buffer_mb = +(buffer.byteLength / 1024 / 1024).toFixed(2);
+    } catch (e) {
+      result.error = (e as Error).message;
+    }
+    return NextResponse.json(result);
+  }
+  // ?debug=1 — 환경변수 + remote fetch 1건 테스트
+  if (url.searchParams.get("debug") === "1") {
+    const token = process.env.BLOB_READ_WRITE_TOKEN;
+    const testUrl = manifest.remote_models["lowerlimit_q95"];
+    let fetchResult = "skipped";
+    if (testUrl) {
+      try {
+        const t0 = Date.now();
+        const res = await fetch(testUrl, {
+          signal: AbortSignal.timeout(15000),
+          headers: token ? { authorization: `Bearer ${token}` } : {},
+        });
+        const ms = Date.now() - t0;
+        fetchResult = `HTTP ${res.status} in ${ms}ms (size=${res.headers.get("content-length") ?? "?"})`;
+      } catch (e) {
+        fetchResult = `ERROR: ${(e as Error).message}`;
+      }
+    }
+    return NextResponse.json({
+      status: "debug",
+      has_blob_token: !!token,
+      token_prefix: token ? token.slice(0, 20) + "..." : null,
+      test_fetch_url: testUrl,
+      test_fetch_result: fetchResult,
+    });
+  }
   return NextResponse.json({
     status: "ok",
     version: manifest.version,
     bundled: Object.keys(manifest.bundled_models),
-    weights: manifest.weights,
+    remote: Object.keys(manifest.remote_models),
     cached_sessions: Array.from(sessionCache.keys()),
   });
 }

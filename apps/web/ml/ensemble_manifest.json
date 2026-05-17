@@ -1,24 +1,20 @@
 {
-  "version": "ensemble-v2.0-2026-05-17",
-  "training_date": "2026-05-17",
-  "operation_mode": "v2+xgb+cat weighted average (박상빈님 5/17 명시)",
-  "data_size": "1.84M (training_data_v2.csv)",
+  "version": "ensemble-v1.0-2026-05-15",
+  "training_date": "2026-05-15",
   "bundled_models": {
-    "sajung_lgbm_v2": "/ml/sajung_lgbm_v2.onnx",
-    "sajung_xgboost": "/ml/sajung_xgboost.onnx",
-    "sajung_catboost": "/ml/sajung_catboost.onnx"
+    "sajung_quantile_q05": "/ml/sajung_quantile_q05.onnx",
+    "sajung_quantile_q50": "/ml/sajung_quantile_q50.onnx",
+    "sajung_quantile_q95": "/ml/sajung_quantile_q95.onnx",
+    "ensemble_meta_q50": "/ml/ensemble_meta_q50.onnx",
+    "ensemble_meta_q95": "/ml/ensemble_meta_q95.onnx"
   },
-  "remote_models": {},
-  "weights": {
-    "sajung_lgbm_v2": 0.3333,
-    "sajung_xgboost": 0.3334,
-    "sajung_catboost": 0.3333
+  "remote_models": {
+    "lowerlimit_q05": "https://awk0keo9fr0lqijn.private.blob.vercel-storage.com/ml-models/lowerlimit_q05.onnx.gz",
+    "lowerlimit_q50": "https://awk0keo9fr0lqijn.private.blob.vercel-storage.com/ml-models/lowerlimit_q50.onnx.gz",
+    "lowerlimit_q95": "https://awk0keo9fr0lqijn.private.blob.vercel-storage.com/ml-models/lowerlimit_q95.onnx.gz"
   },
-  "test_mae": {
-    "sajung_lgbm_v2": 0.5844,
-    "sajung_xgboost": 0.5836,
-    "sajung_catboost": 0.5837
-  },
-  "host": "bundled",
-  "uploaded_at": "2026-05-17T15:30:00.000Z"
+  "notes": "lowerlimit 3개는 best_iter=2999/2998 로 ONNX 사이즈 큰 모델. Vercel 50MB 한도 우회 위해 GitHub Release 호스팅. 첫 추론 시 fetch 후 in-memory cache.",
+  "host": "vercel-blob",
+  "uploaded_at": "2026-05-15T08:24:11.272Z",
+  "remote_compression": "gzip"
 }
