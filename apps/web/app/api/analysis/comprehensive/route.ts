@@ -16,6 +16,12 @@ import { calcBaseBudget } from "@/lib/analysis/sajung-utils";
 import { classifyCategory, DEFAULT_SAJUNG_BY_KIND, DEFAULT_LWLT_BY_KIND, getDefaultLwlt } from "@/lib/analysis/category-config";
 import { applySajungNoise, calcBidPrice } from "@/lib/core1/noise";
 
+// 첫 호출 시 ensemble route cold start (onnx 22MB) + sajung-engine 통계 조회 + BidPricePrediction 저장
+// → 박상빈님 5/17 명시 ensemble 호출 보장 위해 60초 (Vercel Hobby 한도)
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+export const maxDuration = 60;
+
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24시간
 
 interface TrendMeta {
