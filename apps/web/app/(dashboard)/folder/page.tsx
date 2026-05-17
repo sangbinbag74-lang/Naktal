@@ -167,7 +167,7 @@ export default function FolderPage() {
                     </div>
                   </div>
                   <div style={{ textAlign: "right", flexShrink: 0 }}>
-                    <div style={{ fontSize: 11, color: "#94A3B8", marginBottom: 2 }}>기초금액</div>
+                    <div style={{ fontSize: 11, color: "#94A3B8", marginBottom: 2 }}>추정가격</div>
                     <div style={{ fontSize: 16, fontWeight: 700, color: "#1B3A6B" }}>
                       {formatBudget(ann.budget)}
                     </div>

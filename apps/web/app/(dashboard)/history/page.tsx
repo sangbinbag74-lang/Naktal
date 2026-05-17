@@ -215,7 +215,7 @@ export default function HistoryPage() {
                         {v.title}
                       </div>
                       <div style={{ fontSize: 12, color: "#64748B", marginTop: 3 }}>
-                        {v.orgName} · 기초금액 {fmt(v.budget)}
+                        {v.orgName} · 추정가격 {fmt(v.budget)}
                       </div>
                     </div>
                     <div style={{ flexShrink: 0, display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 4 }}>

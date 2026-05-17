@@ -54,7 +54,7 @@ export function BidCard({ id, title, orgName, konepsId, budget, deadline, catego
             <div style={{ fontSize: 12, color: "#64748B", marginTop: 3 }}>{orgName} · {konepsId}</div>
           </div>
           <div style={{ textAlign: "right", flexShrink: 0 }}>
-            <div style={{ fontSize: 11, color: "#94A3B8", marginBottom: 2 }}>기초금액</div>
+            <div style={{ fontSize: 11, color: "#94A3B8", marginBottom: 2 }}>추정가격</div>
             <div style={{ fontSize: 16, fontWeight: 700, color: "#1B3A6B" }}>{fmt(budget)}</div>
             <BidBadge type="dday" value={`${getDDayLabel(deadline)} · ${fmtDeadline(deadline)}`} deadline={deadline} />
           </div>
