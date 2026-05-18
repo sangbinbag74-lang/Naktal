@@ -743,7 +743,11 @@ export async function predictOptimalBid(params: {
     confidenceLevel: getConfidenceLevel(
       stat.sampleSize, stat.stddev, recentPoints.length, stabilityScore, isBlended
     ),
-    modelVersion: usedMl ? "sajung-v1.1+ml" : "sajung-v1.1",
+    modelVersion: usedEnsemble
+      ? "ensemble-v2.0-2026-05-17[v2+xgb+cat]"  // 박상빈님 5/17 명시 신규 1.84M
+      : usedMl
+        ? "sajung-v2+tuned-ml"  // ensemble 실패 시 v2+tuned 단독 fallback
+        : "sajung-stat",  // ML 둘 다 실패 시 통계 단독
     weightedAvg: Math.round(weightedAvg * 1000) / 1000,
     simpleAvg:   Math.round(simpleAvg * 1000) / 1000,
     trend:       trendResult,
