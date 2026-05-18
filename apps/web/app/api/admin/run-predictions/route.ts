@@ -139,7 +139,8 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
             expectedBidders: competition.expectedBidders,
             dominantCompany: competition.dominantCompany ?? null,
             dominantWinRate: competition.dominantWinRate ?? null,
-            modelVersion: sajung.isFallback ? "core1-v1[fallback]" : "core1-v1",
+            // 박상빈님 5/18 명시: 하드코딩 제거 → sajung-engine 실제 modelVersion 사용
+            modelVersion: sajung.isFallback ? `${sajung.modelVersion}[fallback]` : sajung.modelVersion,
             expiresAt,
           },
           { onConflict: "annId" }
