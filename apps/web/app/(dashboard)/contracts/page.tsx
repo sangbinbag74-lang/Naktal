@@ -14,18 +14,19 @@ export default async function ContractsPage() {
   const { data: dbUser } = await admin.from("User").select("id").eq("supabaseId", user.id).single();
   if (!dbUser) redirect("/login");
 
+  // 박상빈님 5/17 명시: 의뢰 시작(createdAt) + 의뢰 시점(contractAt) 둘 다 표시
+  // contractAt is null 의뢰 (의뢰 시작했으나 계약 미완료) 도 목록에 표시
   const { data: contracts } = await admin
     .from("BidRequest")
     .select([
-      "id,annId,title,orgName,deadline,contractAt",
+      "id,annId,title,orgName,deadline,contractAt,createdAt",
       "recommendedBidPrice,predictedSajungRate",
       "userBidPrice,userRank,userBidRate,userRemark",
       "actualSajungRate,actualFinalPrice,deviationPct,isHit,isWon,winnerName,totalBidders,openingDt",
       "agreedFeeRate,feeStatus,feeAmount",
     ].join(","))
     .eq("userId", dbUser.id as string)
-    .not("contractAt", "is", null)
-    .order("contractAt", { ascending: false });
+    .order("createdAt", { ascending: false });
 
   const list = contracts ?? [];
 
@@ -65,7 +66,8 @@ export interface ContractListItem {
   title: string;
   orgName: string;
   deadline: string;
-  contractAt: string;
+  contractAt: string | null;
+  createdAt: string;
   recommendedBidPrice: string | number;
   predictedSajungRate: string | number | null;
   userBidPrice: string | number | null;

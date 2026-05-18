@@ -73,7 +73,19 @@ function ContractCard({ c }: { c: ContractListItem }) {
           <div style={{ fontSize: 12, color: "#64748B", display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
             <span>{c.orgName}</span>
             <span style={{ color: "#CBD5E1" }}>·</span>
-            <span>의뢰 {fmtDate(c.contractAt)}</span>
+            <span>의뢰 시작 {fmtDate(c.createdAt)}</span>
+            {c.contractAt && (
+              <>
+                <span style={{ color: "#CBD5E1" }}>·</span>
+                <span>계약 {fmtDate(c.contractAt)}</span>
+              </>
+            )}
+            {!c.contractAt && (
+              <>
+                <span style={{ color: "#CBD5E1" }}>·</span>
+                <span style={{ color: "#D97706", fontWeight: 600 }}>계약 미완료</span>
+              </>
+            )}
             {c.openingDt && (
               <>
                 <span style={{ color: "#CBD5E1" }}>·</span>
