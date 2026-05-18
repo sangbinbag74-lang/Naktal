@@ -46,6 +46,10 @@ export interface SajungPrediction {
   trend: TrendResult;
   stabilityScore: number;
   recentSampleSize: number;
+  // F15 (박상빈님 5/18) — 자동 확장 및 분석 메타 영구 보관
+  originalSampleSize: number;  // 발주처 통계 원본 (확장 전 stat.sampleSize)
+  blendedSampleSize: number;   // ALL blend 적용 후 총 표본 (확장 후)
+  isBlended: boolean;          // 자동 확장 적용 여부
 }
 
 function getConfidenceLevel(
@@ -460,6 +464,10 @@ export async function predictOptimalBid(params: {
     isFallback = true;
   }
 
+  // F15 (박상빈님 5/18): 확장 전 원본 표본수 저장 (자동 확장 사실 가시화용)
+  // 원본 = 발주처+region+카테고리+예산구간 정확 매칭 (statPrimary). 확장 후 = blend 표본.
+  const originalSampleSize = statPrimary?.sampleSize ?? 0;
+  let blendedSampleSize = stat?.sampleSize ?? 0;
   // 2-a. stat이 sparse(< 30)하면 유사 업종 org stat과 먼저 블렌딩 (발주처 특성 우선 반영)
   let isBlended = false;
   if (stat && stat.sampleSize < 30 && !isFallback) {
@@ -473,6 +481,7 @@ export async function predictOptimalBid(params: {
       if (similarStats.length > 0) {
         const allStats = [stat, ...similarStats];
         const totalSamples = allStats.reduce((s, st) => s + st.sampleSize, 0);
+        blendedSampleSize = totalSamples;
         if (totalSamples >= 15) {
           // 카테고리별 default p25/p75 (공사 99/101 / 용역 80/95 / 물품 70/92)
           const sd = DEFAULT_SAJUNG_BY_KIND[classifyCategory(params.category)];
@@ -495,6 +504,7 @@ export async function predictOptimalBid(params: {
     const allStat = await querySajungStat("ALL", params.category, budgetRange, params.region)
       ?? (params.region ? await querySajungStat("ALL", params.category, budgetRange, "") : null);
     if (allStat && allStat.sampleSize >= 30) {
+      blendedSampleSize = stat.sampleSize + allStat.sampleSize;
       const w = stat.sampleSize / 30;
       // 카테고리별 default p25/p75
       const sd = DEFAULT_SAJUNG_BY_KIND[classifyCategory(params.category)];
@@ -611,6 +621,10 @@ export async function predictOptimalBid(params: {
         : trendResult,
       stabilityScore: Math.round(stabilityScore * 1000) / 1000,
       recentSampleSize: recentPoints.length,
+      // F15 — fallback path 도 동일 메타 유지
+      originalSampleSize,
+      blendedSampleSize,
+      isBlended: false,
     };
   }
 
@@ -753,6 +767,10 @@ export async function predictOptimalBid(params: {
     trend:       trendResult,
     stabilityScore: Math.round(stabilityScore * 1000) / 1000,
     recentSampleSize: recentPoints.length,
+    // F15 (박상빈님 5/18) — 자동 확장 메타
+    originalSampleSize,
+    blendedSampleSize,
+    isBlended,
   };
 }
 

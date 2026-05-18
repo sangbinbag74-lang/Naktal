@@ -220,6 +220,11 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     dominantCompany: competition.dominantCompany,
     dominantWinRate: competition.dominantWinRate,
     modelVersion: sajung.modelVersion,
+    // F15 (박상빈님 5/18) — 자동 확장 + 가격결정방식 영구 저장
+    originalSampleSize: sajung.originalSampleSize,
+    blendedSampleSize: sajung.blendedSampleSize,
+    isBlended: sajung.isBlended,
+    priceMethod: (ann.rawJson as { prearngPrceDcsnMthdNm?: string } | null)?.prearngPrceDcsnMthdNm ?? null,
     expiresAt: new Date(Date.now() + CACHE_TTL_MS).toISOString(),
   };
 
