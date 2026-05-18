@@ -88,10 +88,10 @@ export default async function AdminRequestsPage() {
         "winnerName,totalBidders",
         "feeAmount,feeStatus,agreedFeeRate,agreedFeeAmount",
         "deviationPct,isHit,resultDetectedAt",
-        "memo,konepsId,userId,annId",
+        "memo,konepsId,userId,annId,createdAt,contractAt",
         "recommendedAt,agreedAt,paidAt,invoicedAt",
       ].join(","))
-      .order("recommendedAt", { ascending: false })
+      .order("createdAt", { ascending: false })
       .limit(50);
     requests = data ?? [];
 

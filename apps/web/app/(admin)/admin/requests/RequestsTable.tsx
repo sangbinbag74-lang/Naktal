@@ -351,7 +351,7 @@ export function RequestsTable({ requests, userMap, bidResultMap, annOpengMap = {
           <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12.5 }}>
             <thead>
               <tr style={{ background: "#F8FAFC" }}>
-                {["회사명", "공고명", "마감/개찰", "추천금액", "실투찰금액", "순위", "G2B", "낙찰", "수수료", "상태", ""].map((h) => (
+                {["회사명", "공고명", "의뢰 시간", "마감/개찰", "추천금액", "실투찰금액", "순위", "G2B", "낙찰", "수수료", "상태", ""].map((h) => (
                   <th key={h} style={{ padding: "9px 12px", textAlign: "left", color: "#374151", fontWeight: 600, borderBottom: "2px solid #E8ECF2", whiteSpace: "nowrap" }}>{h}</th>
                 ))}
               </tr>
@@ -395,6 +395,15 @@ export function RequestsTable({ requests, userMap, bidResultMap, annOpengMap = {
                         {r.title}
                       </Link>
                       <div style={{ color: "#9CA3AF", fontSize: 10, marginTop: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.orgName}</div>
+                    </td>
+                    {/* 의뢰 시간 (createdAt + contractAt) */}
+                    <td style={{ padding: "8px 12px", whiteSpace: "nowrap" }}>
+                      <div style={{ color: "#374151", fontWeight: 500, fontSize: 11.5 }}>
+                        시작 {fmtKstDateTime(r.createdAt)}
+                      </div>
+                      <div style={{ fontSize: 10.5, marginTop: 2, color: r.contractAt ? "#059669" : "#D97706", fontWeight: r.contractAt ? 500 : 700 }}>
+                        {r.contractAt ? `계약 ${fmtKstDateTime(r.contractAt)}` : "계약 미완료"}
+                      </div>
                     </td>
                     {/* 마감 (마감일시 + 개찰일시 통합) */}
                     <td style={{ padding: "8px 12px", whiteSpace: "nowrap" }}>
