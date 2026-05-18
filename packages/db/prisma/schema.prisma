@@ -526,6 +526,11 @@ model BidRequest {
   repName                    String?
   contractAt                 DateTime?
   contractIp                 String?   @db.Text
+  contractUserAgent          String?   @db.Text
+  createdIp                  String?   @db.Text
+  createdUserAgent           String?   @db.Text
+  createdReferer             String?   @db.Text
+  supabaseSessionId          String?   @db.Text
   cancelledAt                DateTime?
   memo                       String?
   numberStrategy             Json?

@@ -4,16 +4,20 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 
-type UserInfo = { id: string; bizName: string; bizNo: string; ownerName: string; plan: string };
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type UserInfo = Record<string, any>;
 type BidResultInfo = { annId: string; winnerName: string | null; finalPrice: number | null; numBidders: number | null; bidRate: number | null };
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Request = Record<string, any>;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type CompanyProfile = Record<string, any>;
 
 type AnnInfo = { bsisAmt: number; aValueTotal: number; lowerLimitRate: number };
 
 interface Props {
   requests: Request[];
   userMap: Record<string, UserInfo>;
+  companyProfileMap?: Record<string, CompanyProfile>;
   bidResultMap: Record<string, BidResultInfo>;
   annOpengMap?: Record<string, string | null>; // 공고 rawJson.opengDt fallback
   annInfoMap?: Record<string, AnnInfo>; // 사정율 역산용 (bsisAmt/aValueTotal/lowerLimitRate)
@@ -100,9 +104,10 @@ function calcFee(isWon: string, actualFinalPrice: string, recommendedBidPrice: s
 }
 
 
-export function RequestsTable({ requests, userMap, bidResultMap, annOpengMap = {}, annInfoMap = {} }: Props) {
+export function RequestsTable({ requests, userMap, companyProfileMap = {}, bidResultMap, annOpengMap = {}, annInfoMap = {} }: Props) {
   const router = useRouter();
   const [editingRow, setEditingRow] = useState<Request | null>(null);
+  const [detailRow, setDetailRow] = useState<Request | null>(null);
   const [saving, setSaving] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [fetchingId, setFetchingId] = useState<string | null>(null);
@@ -351,7 +356,7 @@ export function RequestsTable({ requests, userMap, bidResultMap, annOpengMap = {
           <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12.5 }}>
             <thead>
               <tr style={{ background: "#F8FAFC" }}>
-                {["회사명", "공고명", "의뢰 시간", "마감/개찰", "추천금액", "실투찰금액", "순위", "G2B", "낙찰", "수수료", "상태", ""].map((h) => (
+                {["회사명", "공고명", "의뢰 시간", "마감/개찰", "추천금액", "실투찰금액", "순위", "G2B", "낙찰", "수수료", "상태", "", ""].map((h) => (
                   <th key={h} style={{ padding: "9px 12px", textAlign: "left", color: "#374151", fontWeight: 600, borderBottom: "2px solid #E8ECF2", whiteSpace: "nowrap" }}>{h}</th>
                 ))}
               </tr>
@@ -574,6 +579,15 @@ export function RequestsTable({ requests, userMap, bidResultMap, annOpengMap = {
                         편집
                       </button>
                     </td>
+                    {/* 더보기 — 소송/연락 가능한 모든 정보 (박상빈님 5/18 명시) */}
+                    <td style={{ padding: "8px 12px" }}>
+                      <button
+                        onClick={() => setDetailRow(r)}
+                        style={{ fontSize: 11, padding: "4px 10px", borderRadius: 6, border: "1px solid #1B3A6B", background: "#1B3A6B", cursor: "pointer", color: "#fff", fontWeight: 600, whiteSpace: "nowrap" }}
+                      >
+                        더보기
+                      </button>
+                    </td>
                   </tr>
                 );
               }).flatMap((tr, i) => {
@@ -591,7 +605,7 @@ export function RequestsTable({ requests, userMap, bidResultMap, annOpengMap = {
                 return [
                   tr,
                   <tr key={(r.id ?? i) + "-detail"} style={{ background: "#F8FAFC", borderBottom: "1px solid #E8ECF2" }}>
-                    <td colSpan={11} style={{ padding: "6px 18px", fontSize: 11.5, color: "#475569" }}>
+                    <td colSpan={13} style={{ padding: "6px 18px", fontSize: 11.5, color: "#475569" }}>
                       <div style={{ display: "flex", flexWrap: "wrap", gap: 18, alignItems: "center" }}>
                         <span style={{ fontSize: 10, color: "#94A3B8", fontWeight: 600 }}>📊 상세</span>
                         {r.userBidRate != null && (
@@ -738,8 +752,189 @@ export function RequestsTable({ requests, userMap, bidResultMap, annOpengMap = {
           </div>
         </div>
       )}
+
+      {/* 상세 정보 모달 — 박상빈님 5/18 명시 (소송/연락 가능한 모든 정보) */}
+      {detailRow && (
+        <DetailModal
+          row={detailRow}
+          user={userMap[detailRow.userId]}
+          profile={companyProfileMap[detailRow.userId]}
+          annInfo={annInfoMap[detailRow.annId]}
+          bidResult={bidResultMap[detailRow.annId]}
+          onClose={() => setDetailRow(null)}
+        />
+      )}
     </>
   );
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function DetailModal({ row, user, profile, annInfo, bidResult, onClose }: { row: any; user: any; profile: any; annInfo: AnnInfo | undefined; bidResult: BidResultInfo | undefined; onClose: () => void }) {
+  const mySajung = row.userBidPrice ? reverseSajung(Number(row.userBidPrice ?? 0), annInfo, Number(row.budget ?? 0)) : null;
+  const winSajung = row.actualFinalPrice ? reverseSajung(Number(row.actualFinalPrice ?? 0), annInfo, Number(row.budget ?? 0)) : null;
+
+  return (
+    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.55)", zIndex: 1100, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+      <div style={{ background: "#fff", borderRadius: 16, padding: 28, width: 720, maxWidth: "100%", maxHeight: "92vh", overflowY: "auto", boxShadow: "0 20px 60px rgba(0,0,0,0.25)" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 16 }}>
+          <div>
+            <div style={{ fontSize: 17, fontWeight: 700, color: "#0F172A", marginBottom: 4 }}>의뢰 상세 정보</div>
+            <div style={{ fontSize: 12, color: "#9CA3AF" }}>소송·연락 대비 전체 기록</div>
+          </div>
+          <button onClick={onClose} style={{ fontSize: 18, padding: "0 6px", background: "transparent", border: "none", cursor: "pointer", color: "#94A3B8" }}>✕</button>
+        </div>
+
+        <DetailSection title="🏢 사용자 정보 (User)">
+          <Row label="회사명"        value={user?.bizName} />
+          <Row label="사업자번호"    value={user?.bizNo} mono />
+          <Row label="대표자명"      value={user?.ownerName} />
+          <Row label="가입 이메일"   value={user?.notifyEmail} mono />
+          <Row label="가입 전화"     value={user?.notifyPhone} mono />
+          <Row label="가입 주소"     value={user?.address} />
+          <Row label="요금제"        value={user?.plan} />
+          <Row label="회원가입 시각" value={fmtFull(user?.createdAt)} mono />
+        </DetailSection>
+
+        <DetailSection title="📱 카카오 본인인증">
+          <Row label="인증 이름"   value={user?.kakaoVerifiedName ?? "(미인증)"} />
+          <Row label="인증 전화"   value={user?.kakaoVerifiedPhone ?? "-"} mono />
+          <Row label="인증 일시"   value={fmtFull(user?.kakaoVerifiedAt)} mono />
+        </DetailSection>
+
+        {profile && (
+          <DetailSection title="🏗️ G2B 자동조회 회사정보 (CompanyProfile)">
+            <Row label="대표자명"     value={profile?.ceoName} />
+            <Row label="회사 주소"    value={profile?.address} />
+            <Row label="설립일"       value={profile?.establishedAt} mono />
+            <Row label="임직원 수"    value={profile?.employeeCount != null ? `${profile.employeeCount}명` : null} />
+            <Row label="자본금"       value={profile?.capitalAmount ? Number(profile.capitalAmount).toLocaleString("ko-KR") + "원" : null} />
+            <Row label="신용도"       value={profile?.creditScore} />
+            <Row label="주력 업종"    value={profile?.mainCategory} />
+            <Row label="세부 업종"    value={Array.isArray(profile?.subCategories) ? profile.subCategories.join(", ") : null} />
+            <Row label="면허 수"      value={Array.isArray(profile?.licenses) ? `${profile.licenses.length}건` : null} />
+          </DetailSection>
+        )}
+
+        <DetailSection title="📬 의뢰 시점 (createdAt — 감사 정보)">
+          <Row label="의뢰 시각"     value={fmtFull(row.createdAt)} mono highlight />
+          <Row label="의뢰 IP"       value={row.createdIp} mono highlight />
+          <Row label="User-Agent"   value={row.createdUserAgent} mono small />
+          <Row label="Referer"      value={row.createdReferer} mono small />
+          <Row label="Session ID"   value={row.supabaseSessionId} mono />
+          <Row label="공고명"        value={row.title} />
+          <Row label="발주처"        value={row.orgName} />
+          <Row label="공고 ID"       value={row.konepsId} mono />
+          <Row label="마감 일시"     value={fmtFull(row.deadline)} mono />
+        </DetailSection>
+
+        <DetailSection title="📝 계약 시점 (contractAt)">
+          <Row label="계약 시각"        value={fmtFull(row.contractAt)} mono highlight />
+          <Row label="계약 IP"          value={row.contractIp} mono highlight />
+          <Row label="계약 User-Agent" value={row.contractUserAgent} mono small />
+          <Row label="입력 사업자번호" value={row.bizRegNo} mono />
+          <Row label="입력 대표자명"   value={row.repName} />
+          <Row label="동의 시각"        value={fmtFull(row.agreedAt)} mono />
+          <Row label="동의 수수료율"   value={row.agreedFeeRate ? `${(Number(row.agreedFeeRate) * 100).toFixed(2)}%` : null} />
+          <Row label="동의 수수료액"   value={row.agreedFeeAmount ? Number(row.agreedFeeAmount).toLocaleString("ko-KR") + "원" : null} />
+          {row.cancelledAt && <Row label="취소 시각" value={fmtFull(row.cancelledAt)} mono />}
+        </DetailSection>
+
+        <DetailSection title="💡 AI 추천 / 사용자 투찰">
+          <Row label="추천 투찰가"     value={row.recommendedBidPrice ? Number(row.recommendedBidPrice).toLocaleString("ko-KR") + "원" : null} />
+          <Row label="예측 사정율"     value={row.predictedSajungRate != null ? `${Number(row.predictedSajungRate).toFixed(3)}%` : null} />
+          <Row label="추정 예정가"     value={row.estimatedPrice ? Number(row.estimatedPrice).toLocaleString("ko-KR") + "원" : null} />
+          <Row label="낙찰 하한가"     value={row.lowerLimitPrice ? Number(row.lowerLimitPrice).toLocaleString("ko-KR") + "원" : null} />
+          <Row label="낙찰 확률"       value={row.winProbability != null ? `${row.winProbability}%` : null} />
+          <Row label="—— 사용자 투찰 ——" value="" />
+          <Row label="투찰 시각"       value={fmtFull(row.userBidAt)} mono />
+          <Row label="실투찰가"        value={row.userBidPrice ? Number(row.userBidPrice).toLocaleString("ko-KR") + "원" : null} />
+          <Row label="본인 사정율"     value={mySajung != null ? `${mySajung.toFixed(3)}%` : null} />
+          <Row label="추천 따름"       value={row.userFollowedRecommendation === true ? "따름" : row.userFollowedRecommendation === false ? "직접" : "미입력"} />
+          <Row label="순위"           value={row.userRank != null ? `${row.userRank}${row.totalBidders ? `/${row.totalBidders}` : ""}위` : null} />
+          <Row label="투찰률"         value={row.userBidRate != null ? `${Number(row.userBidRate).toFixed(3)}%` : null} />
+          <Row label="추첨번호 1"     value={row.userDrwtNo1 != null ? String(row.userDrwtNo1).padStart(2, "0") : null} mono />
+          <Row label="추첨번호 2"     value={row.userDrwtNo2 != null ? String(row.userDrwtNo2).padStart(2, "0") : null} mono />
+          <Row label="비고"           value={row.userRemark} />
+        </DetailSection>
+
+        <DetailSection title="🏆 개찰 결과">
+          <Row label="개찰 시각"      value={fmtFull(row.openingDt)} mono />
+          <Row label="낙찰 여부"      value={row.isWon === true ? "✅ 낙찰" : row.isWon === false ? "❌ 미낙찰" : "대기"} />
+          <Row label="낙찰 업체"      value={row.winnerName || bidResult?.winnerName} />
+          <Row label="실 낙찰가"      value={row.actualFinalPrice ? Number(row.actualFinalPrice).toLocaleString("ko-KR") + "원" : null} />
+          <Row label="낙찰 사정율"    value={winSajung != null ? `${winSajung.toFixed(3)}%` : null} />
+          <Row label="결과 사정율"    value={row.actualSajungRate != null ? `${Number(row.actualSajungRate).toFixed(3)}%` : null} />
+          <Row label="참여 업체 수"   value={row.totalBidders != null ? `${row.totalBidders}개사` : (bidResult?.numBidders != null ? `${bidResult.numBidders}개사` : null)} />
+          <Row label="결과 감지 시각" value={fmtFull(row.resultDetectedAt)} mono />
+          <Row label="편차"          value={row.deviationPct != null ? `${Number(row.deviationPct).toFixed(3)}%p` : null} />
+          <Row label="적중"          value={row.isHit === true ? "✅ 적중" : row.isHit === false ? "❌ 빗나감" : null} />
+        </DetailSection>
+
+        <DetailSection title="💰 수수료 정산">
+          <Row label="수수료율"       value={row.feeRate ? `${(Number(row.feeRate) * 100).toFixed(2)}%` : null} />
+          <Row label="수수료액"       value={row.feeAmount ? Number(row.feeAmount).toLocaleString("ko-KR") + "원" : null} />
+          <Row label="상태"          value={row.feeStatus} />
+          <Row label="청구 시각"      value={fmtFull(row.invoicedAt)} mono />
+          <Row label="납부 시각"      value={fmtFull(row.paidAt)} mono />
+          {row.memo && <Row label="메모" value={row.memo} />}
+        </DetailSection>
+
+        <DetailSection title="📊 스냅샷 (의뢰 시점 통계 보존)">
+          <Row label="발주처+카테고리 평균"  value={row.snapshotAvgSajungRate != null ? `${Number(row.snapshotAvgSajungRate).toFixed(3)}%` : null} />
+          <Row label="샘플 수"               value={row.snapshotSampleSize != null ? `${row.snapshotSampleSize}건` : null} />
+          <Row label="신뢰도"                value={row.snapshotConfidence} />
+          <Row label="카테고리 전체 평균"    value={row.snapshotCategoryAvg != null ? `${Number(row.snapshotCategoryAvg).toFixed(3)}%` : null} />
+          <Row label="카테고리 전체 샘플"    value={row.snapshotCategoryTotal != null ? `${row.snapshotCategoryTotal}건` : null} />
+        </DetailSection>
+
+        <DetailSection title="🔗 식별자">
+          <Row label="BidRequest ID"    value={row.id} mono small />
+          <Row label="userId"           value={row.userId} mono small />
+          <Row label="annId"            value={row.annId} mono small />
+        </DetailSection>
+
+        <div style={{ marginTop: 16, padding: "12px 14px", borderRadius: 10, background: "#FEF3F2", border: "1px solid #FECACA", fontSize: 11, color: "#991B1B" }}>
+          본 화면 정보는 AdminLog 에 조회 기록이 남습니다. 외부 공유 시 개인정보보호법 위반 가능.
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function DetailSection({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <div style={{ marginBottom: 14, padding: 14, background: "#F8FAFC", borderRadius: 10, border: "1px solid #E8ECF2" }}>
+      <div style={{ fontSize: 12, fontWeight: 700, color: "#1B3A6B", marginBottom: 8 }}>{title}</div>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: "4px 18px" }}>{children}</div>
+    </div>
+  );
+}
+
+function Row({ label, value, mono = false, small = false, highlight = false }: { label: string; value: unknown; mono?: boolean; small?: boolean; highlight?: boolean }) {
+  const v = value == null || value === "" ? "-" : String(value);
+  const isEmpty = v === "-";
+  return (
+    <div style={{ display: "flex", gap: 8, padding: "3px 0", borderBottom: "1px dotted #E8ECF2", minWidth: 0 }}>
+      <div style={{ fontSize: 11, color: "#64748B", flexShrink: 0, width: 130 }}>{label}</div>
+      <div style={{
+        fontSize: small ? 10 : 11.5,
+        color: isEmpty ? "#CBD5E1" : highlight ? "#DC2626" : "#0F172A",
+        fontWeight: highlight && !isEmpty ? 700 : 500,
+        fontFamily: mono ? "ui-monospace,'SF Mono',Consolas,monospace" : "inherit",
+        wordBreak: "break-all",
+        flex: 1,
+        minWidth: 0,
+      }}>{v}</div>
+    </div>
+  );
+}
+
+function fmtFull(v: unknown): string {
+  if (v == null || v === "") return "";
+  const d = new Date(typeof v === "string" && !/Z$/i.test(v) && !/[+-]\d{2}:?\d{2}$/.test(v) ? (v as string).replace(" ", "T") + "Z" : (v as string));
+  if (isNaN(d.getTime())) return String(v);
+  return d.toLocaleString("ko-KR", { timeZone: "Asia/Seoul", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false });
 }
 
 function Section({ label, children }: { label: string; children: React.ReactNode }) {

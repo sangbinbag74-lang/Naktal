@@ -25,6 +25,8 @@ export default async function AdminRequestsPage() {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let userMap: Record<string, any> = {};
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let companyProfileMap: Record<string, any> = {};
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let bidResultMap: Record<string, any> = {};
   // 공고 rawJson.opengDt fallback (BidRequest.openingDt 비어있을 때)
   let annOpengMap: Record<string, string | null> = {};
@@ -88,8 +90,11 @@ export default async function AdminRequestsPage() {
         "winnerName,totalBidders",
         "feeAmount,feeStatus,agreedFeeRate,agreedFeeAmount",
         "deviationPct,isHit,resultDetectedAt",
-        "memo,konepsId,userId,annId,createdAt,contractAt",
-        "recommendedAt,agreedAt,paidAt,invoicedAt",
+        "memo,konepsId,userId,annId,createdAt,contractAt,cancelledAt",
+        "recommendedAt,agreedAt,paidAt,invoicedAt,userBidAt,resultDetectedAt",
+        "createdIp,createdUserAgent,createdReferer,supabaseSessionId",
+        "contractIp,contractUserAgent,bizRegNo,repName",
+        "snapshotAvgSajungRate,snapshotSampleSize,snapshotConfidence,snapshotCategoryAvg,snapshotCategoryTotal",
       ].join(","))
       .order("createdAt", { ascending: false })
       .limit(50);
@@ -102,10 +107,18 @@ export default async function AdminRequestsPage() {
       if (userIds.length > 0) {
         const { data: users } = await admin
           .from("User")
-          .select("id,bizName,bizNo,ownerName,plan")
+          .select("id,bizName,bizNo,ownerName,plan,notifyEmail,notifyPhone,address,kakaoVerifiedName,kakaoVerifiedPhone,kakaoVerifiedAt,createdAt")
           .in("id", userIds);
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         userMap = Object.fromEntries((users ?? []).map((u: any) => [u.id, u]));
+
+        // CompanyProfile (G2B 자동조회 정보 — 주소·업종·실적 등)
+        const { data: profiles } = await admin
+          .from("CompanyProfile")
+          .select("userId,bizNo,bizName,ceoName,address,establishedAt,employeeCount,mainCategory,subCategories,licenses,capitalAmount,creditScore")
+          .in("userId", userIds);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        companyProfileMap = Object.fromEntries((profiles ?? []).map((p: any) => [p.userId, p]));
       }
 
       // BidResult 배치 조회 (낙찰 업체 보완)
@@ -213,7 +226,7 @@ export default async function AdminRequestsPage() {
       {/* ── 의뢰 목록 테이블 ── */}
       <div style={{ background: "#fff", borderRadius: 14, border: "1px solid #E8ECF2", padding: "20px" }}>
         <div style={{ fontSize: 14, fontWeight: 700, color: "#0F172A", marginBottom: 14 }}>의뢰 목록 (최근 50건)</div>
-        <RequestsTable requests={requests} userMap={userMap} bidResultMap={bidResultMap} annOpengMap={annOpengMap} annInfoMap={annInfoMap} />
+        <RequestsTable requests={requests} userMap={userMap} companyProfileMap={companyProfileMap} bidResultMap={bidResultMap} annOpengMap={annOpengMap} annInfoMap={annInfoMap} />
       </div>
     </div>
   );

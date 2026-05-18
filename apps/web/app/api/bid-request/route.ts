@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import crypto from "crypto";
 import { createClient, createAdminClient } from "@/lib/supabase/server";
 import { applySajungNoise, calcBidPrice } from "@/lib/core1/noise";
 
@@ -172,7 +173,23 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     }
   }
 
-  const contractIp = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
+  // 박상빈님 5/18 명시 — 의뢰/계약 시점 감사 정보 수집 (소송/연락 대비)
+  const clientIp = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim()
+                  ?? request.headers.get("x-real-ip")?.trim()
+                  ?? "unknown";
+  const contractIp = clientIp; // 기존 변수명 유지 (호환성)
+  const createdIp = clientIp;  // 의뢰 시점 IP
+  const ua = request.headers.get("user-agent")?.slice(0, 500) ?? "";
+  const referer = request.headers.get("referer")?.slice(0, 500) ?? "";
+  // supabaseSessionId — cookie 의 sb-*-auth-token SHA256 앞 16자 (동일 IP 다중 의뢰 식별)
+  let supabaseSessionId = "";
+  try {
+    const cookies = request.cookies.getAll();
+    const authCookie = cookies.find(c => c.name.startsWith("sb-") && c.name.endsWith("-auth-token"));
+    if (authCookie?.value) {
+      supabaseSessionId = crypto.createHash("sha256").update(authCookie.value).digest("hex").slice(0, 16);
+    }
+  } catch {}
 
   // 카테고리 일반 평균 사정율 — 계약 시점 1회 계산해 스냅샷 (이후 변동 차단)
   let snapshotCategoryAvg: number | null = null;
@@ -224,6 +241,13 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       ...(snapshotCategoryAvg != null ? { snapshotCategoryAvg } : {}),
       ...(snapshotCategoryTotal != null ? { snapshotCategoryTotal } : {}),
     };
+    // createdIp/UA/Referer/sessionId — 기존 row 에 NULL 일 때만 보충 (옛 row 보강용)
+    // 새 의뢰가 들어오는 시점이므로 이 시점 IP/UA 로 채우는 게 맞음
+    if (createdIp !== "unknown") Object.assign(updatePayload, { createdIp });
+    if (ua)                       Object.assign(updatePayload, { createdUserAgent: ua });
+    if (referer)                  Object.assign(updatePayload, { createdReferer: referer });
+    if (supabaseSessionId)        Object.assign(updatePayload, { supabaseSessionId });
+
     if (!alreadyContracted) {
       // ⚠️ UPDATE path 에도 INSERT 와 동일한 사정율 일관성 검증 (옛 코드로 인한 비정상값 저장 차단)
       const verifyEffUpd = (((finalRecommendedBidPrice - (aValueTotal ?? 0)) * 100 / Number(lowerLimitRate ?? 1))
@@ -254,7 +278,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         budget: String(serverBaseAmount),
         ...(bizRegNo ? { bizRegNo } : {}),
         ...(repName ? { repName } : {}),
-        ...(bizRegNo ? { contractAt: new Date().toISOString(), contractIp } : {}),
+        ...(bizRegNo ? { contractAt: new Date().toISOString(), contractIp, contractUserAgent: ua } : {}),
       });
     }
     const { data: updated, error } = await admin
@@ -316,7 +340,11 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         updatedAt: new Date().toISOString(),
         ...(bizRegNo ? { bizRegNo } : {}),
         ...(repName ? { repName } : {}),
-        ...(bizRegNo ? { contractAt: new Date().toISOString(), contractIp } : {}),
+        ...(bizRegNo ? { contractAt: new Date().toISOString(), contractIp, contractUserAgent: ua } : {}),
+        createdIp,
+        createdUserAgent: ua,
+        createdReferer: referer,
+        supabaseSessionId,
         ...(numberStrategy ? { numberStrategy } : {}),
         ...(snapshotAvgSajungRate != null ? { snapshotAvgSajungRate } : {}),
         ...(snapshotSampleSize != null ? { snapshotSampleSize } : {}),
