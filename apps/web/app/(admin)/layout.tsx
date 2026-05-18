@@ -3,7 +3,6 @@ import { redirect } from "next/navigation";
 import { verifyAdminSession } from "@/lib/admin-auth";
 import { createClient, createAdminClient } from "@/lib/supabase/server";
 import { AdminLogoutButton } from "./AdminLogoutButton";
-import { NavProgress } from "@/components/admin/NavProgress";
 import { AdminNavLink } from "@/components/admin/AdminNavLink";
 
 export const dynamic = "force-dynamic";
@@ -71,8 +70,6 @@ export default async function AdminLayout({
 
   return (
     <div style={{ display: "flex", minHeight: "100vh", background: "#F0F2F5" }}>
-      {/* 박상빈님 5/18 명시: 관리자 모든 페이지 navigation 진행률 bar */}
-      <NavProgress />
       {/* 사이드바 */}
       <aside style={{
         width: 220, flexShrink: 0,
