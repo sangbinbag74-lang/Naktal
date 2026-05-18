@@ -163,7 +163,7 @@ export default async function AdminAccuracyPage() {
       : Promise.resolve({ data: [] }),
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     extraAnnIds.length > 0
-      ? (admin.from("Announcement") as any).select("id,category").in("id", extraAnnIds)
+      ? (admin.from("Announcement") as any).select("id,konepsId,category,bsisAmt,budget,aValueAmt,aValueTotal,sucsfbidLwltRate").in("id", extraAnnIds)
       : Promise.resolve({ data: [] }),
   ]);
   const aiAnns = aiAnnsRes.data;
@@ -264,22 +264,39 @@ export default async function AdminAccuracyPage() {
     }
 
     // 박상빈님 5/18 명시 (memory project_naktal_ultimate_goal): 부적격 + 1위 근접 측정
-    let isDisqualified: boolean | null = null; // AI 추천 < 진짜 낙찰하한가 → 부적격
-    let isTop1Near: boolean | null = null;      // AI 추천 vs 실제 낙찰가 ±0.1% 이내
+    // 개선 1+2: 사정율 기준 1위 판정 + Range 부적격 측정
+    let isDisqualified: boolean | null = null; // AI 추천(opt) < 진짜 낙찰하한가 → 부적격
+    let isRangeAllAbove: boolean | null = null; // bidPriceRangeLow >= 진짜 낙찰하한가 (범위 전체 안전)
+    let isRangeAllBelow: boolean | null = null; // bidPriceRangeHigh < 진짜 낙찰하한가 (범위 전체 탈락)
+    let isTop1Near: boolean | null = null;      // 사정율 차이 ±0.05%p 이내 = 1위 매우 가까움
     let recDistancePct: number | null = null;   // AI 추천과 실제 낙찰가 차이 (%)
+    let sajungDeviation: number | null = null;  // |예측사정율 - 실제사정율| (개선 1)
     const info = annIdToLwltInfo[b.annId];
     if (info && info.base > 0 && info.lwltRate > 0 && b.optimalBidPrice) {
       const optimalBid = Number(b.optimalBidPrice);
       // 진짜 낙찰하한가 = (기초금액 - A값) × lwltRate/100 + A값
       const realLowerLimit = (info.base - info.aValue) * (info.lwltRate / 100) + info.aValue;
       isDisqualified = optimalBid < realLowerLimit;
-      // 1위 근접 = AI 추천가 vs 실제 낙찰가 ±0.1% 이내 (또는 표준 단위)
+      // 개선 2: Range 부적격 — bidPriceRangeLow / bidPriceRangeHigh 도 함께 측정
+      if (b.bidPriceRangeLow) {
+        const rangeLow = Number(b.bidPriceRangeLow);
+        isRangeAllAbove = rangeLow >= realLowerLimit;
+      }
+      if (b.bidPriceRangeHigh) {
+        const rangeHigh = Number(b.bidPriceRangeHigh);
+        isRangeAllBelow = rangeHigh < realLowerLimit;
+      }
+      // 1위 근접: 가격 기준 + 사정율 기준 둘 다 측정 (개선 1)
       if (br?.finalPrice) {
         const finalPrice = Number(br.finalPrice);
         if (finalPrice > 0) {
           recDistancePct = Math.abs((optimalBid - finalPrice) / finalPrice * 100);
-          isTop1Near = recDistancePct <= 0.1;
         }
+      }
+      // 개선 1: 사정율 기준 1위 판정 — 예측 사정율 vs 실제 사정율 ±0.05%p (정밀)
+      if (actualSajungRate != null && b.predictedSajungRate != null) {
+        sajungDeviation = Math.abs(Number(b.predictedSajungRate) - actualSajungRate);
+        isTop1Near = sajungDeviation <= 0.05;
       }
     }
     return {
@@ -290,8 +307,11 @@ export default async function AdminAccuracyPage() {
       deviationPct,
       isHit,
       isDisqualified,
+      isRangeAllAbove,
+      isRangeAllBelow,
       isTop1Near,
       recDistancePct,
+      sajungDeviation,
     };
   });
 
@@ -301,6 +321,21 @@ export default async function AdminAccuracyPage() {
   const extraCatMap: Record<string, string> = Object.fromEntries(
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (extraAnnsRes.data ?? []).map((a: any) => [a.id, a.category ?? "기타"])
+  );
+  // 개선 3: extra path 도 lwlt info 가져와 부적격/1위 측정 적용
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const extraLwltMap: Record<string, { lwltRate: number; aValue: number; base: number }> = Object.fromEntries(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (extraAnnsRes.data ?? []).map((a: any) => {
+      const bsis = Number(a.bsisAmt ?? 0);
+      const avAmt = Number(a.aValueAmt ?? 0);
+      const aValTotal = Number(a.aValueTotal ?? 0);
+      const bud = Number(a.budget ?? 0);
+      const base = bsis > 0 ? bsis : avAmt > 0 ? avAmt : Math.round(bud * 1.1);
+      const lwltRate = Number(a.sucsfbidLwltRate ?? 0);
+      const aValue = aValTotal > 0 ? aValTotal : 0;
+      return [a.id, { lwltRate, aValue, base }];
+    })
   );
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const aiOnlyAsBpp: BppItem[] = extraOnlyAi.map((r: any) => ({
@@ -327,9 +362,34 @@ export default async function AdminAccuracyPage() {
     winnerName: null,
     deviationPct: r.deviationPct != null ? Number(r.deviationPct) : null,
     isHit: r.isHit ?? null,
-    isDisqualified: null,  // extra path 는 lwlt info 없음
-    isTop1Near: null,
-    recDistancePct: null,
+    // 개선 3: extra path 도 부적격/1위 측정 적용
+    ...(function() {
+      const info = extraLwltMap[r.annId];
+      const actualSajung = r.actualSajungRate != null ? Number(r.actualSajungRate) : null;
+      const predictedSajung = r.predictedSajungRate != null ? Number(r.predictedSajungRate) : null;
+      let isDisqualified: boolean | null = null;
+      let isRangeAllAbove: boolean | null = null;
+      let isRangeAllBelow: boolean | null = null;
+      let isTop1Near: boolean | null = null;
+      let recDistancePct: number | null = null;
+      let sajungDeviation: number | null = null;
+      if (info && info.base > 0 && info.lwltRate > 0 && r.optimalBidPrice) {
+        const optimalBid = Number(r.optimalBidPrice);
+        const realLowerLimit = (info.base - info.aValue) * (info.lwltRate / 100) + info.aValue;
+        isDisqualified = optimalBid < realLowerLimit;
+        if (r.bidPriceRangeLow) isRangeAllAbove = Number(r.bidPriceRangeLow) >= realLowerLimit;
+        if (r.bidPriceRangeHigh) isRangeAllBelow = Number(r.bidPriceRangeHigh) < realLowerLimit;
+        if (r.actualFinalPrice) {
+          const finalPrice = Number(r.actualFinalPrice);
+          if (finalPrice > 0) recDistancePct = Math.abs((optimalBid - finalPrice) / finalPrice * 100);
+        }
+        if (actualSajung != null && predictedSajung != null) {
+          sajungDeviation = Math.abs(predictedSajung - actualSajung);
+          isTop1Near = sajungDeviation <= 0.05;
+        }
+      }
+      return { isDisqualified, isRangeAllAbove, isRangeAllBelow, isTop1Near, recDistancePct, sajungDeviation };
+    })(),
   }));
 
   const bppList = [...bppListWithResult, ...aiOnlyAsBpp].sort((a, b) => {
@@ -353,11 +413,21 @@ export default async function AdminAccuracyPage() {
 
   // 박상빈님 5/18 명시 (memory project_naktal_ultimate_goal):
   // 부적격율 + 1위율 — 공사 카테고리만 측정 (궁극 목표 영역)
-  const consWithMeasure = bppListWithResult.filter((b) => isConstruction(b.announcement?.category));
-  const consDisqEvaluated = consWithMeasure.filter((b) => (b as { isDisqualified?: boolean | null }).isDisqualified != null);
-  const consTop1Evaluated = consWithMeasure.filter((b) => (b as { isTop1Near?: boolean | null }).isTop1Near != null);
-  const consDisqualified = consDisqEvaluated.filter((b) => (b as { isDisqualified?: boolean | null }).isDisqualified === true);
-  const consTop1Near = consTop1Evaluated.filter((b) => (b as { isTop1Near?: boolean | null }).isTop1Near === true);
+  // 개선 3: extra path 도 포함 (bppListWithResult + aiOnlyAsBpp 통합)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const allConsRows = [...bppListWithResult, ...aiOnlyAsBpp].filter((b: any) => isConstruction(b.announcement?.category));
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const consDisqEvaluated = allConsRows.filter((b: any) => b.isDisqualified != null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const consTop1Evaluated = allConsRows.filter((b: any) => b.isTop1Near != null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const consRangeEvaluated = allConsRows.filter((b: any) => b.isRangeAllBelow != null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const consDisqualified = consDisqEvaluated.filter((b: any) => b.isDisqualified === true);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const consTop1Near = consTop1Evaluated.filter((b: any) => b.isTop1Near === true);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const consRangeAllBelow = consRangeEvaluated.filter((b: any) => b.isRangeAllBelow === true);
   const ultimateGoal = {
     disqEvaluated: consDisqEvaluated.length,
     disqualifiedCount: consDisqualified.length,
@@ -365,7 +435,39 @@ export default async function AdminAccuracyPage() {
     top1Evaluated: consTop1Evaluated.length,
     top1NearCount: consTop1Near.length,
     top1NearRate: consTop1Evaluated.length > 0 ? (consTop1Near.length / consTop1Evaluated.length) * 100 : null,
+    // 개선 2: Range 완전 부적격 (bidPriceRangeHigh < 진짜 낙찰하한가)
+    rangeEvaluated: consRangeEvaluated.length,
+    rangeAllBelowCount: consRangeAllBelow.length,
+    rangeAllBelowRate: consRangeEvaluated.length > 0 ? (consRangeAllBelow.length / consRangeEvaluated.length) * 100 : null,
   };
+
+  // 개선 4: 부적격율 시계열 추이 (createdAt 기준 일자별 집계)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const dailyMap: Record<string, { disqEval: number; disq: number; top1Eval: number; top1: number }> = {};
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  for (const b of allConsRows as any[]) {
+    if (!b.createdAt) continue;
+    const day = String(b.createdAt).slice(0, 10);
+    if (!dailyMap[day]) dailyMap[day] = { disqEval: 0, disq: 0, top1Eval: 0, top1: 0 };
+    if (b.isDisqualified != null) {
+      dailyMap[day].disqEval++;
+      if (b.isDisqualified === true) dailyMap[day].disq++;
+    }
+    if (b.isTop1Near != null) {
+      dailyMap[day].top1Eval++;
+      if (b.isTop1Near === true) dailyMap[day].top1++;
+    }
+  }
+  const dailyTrend = Object.entries(dailyMap)
+    .map(([day, s]) => ({
+      day,
+      disqRate: s.disqEval > 0 ? (s.disq / s.disqEval) * 100 : null,
+      top1Rate: s.top1Eval > 0 ? (s.top1 / s.top1Eval) * 100 : null,
+      disqEval: s.disqEval,
+      top1Eval: s.top1Eval,
+    }))
+    .sort((a, b) => a.day.localeCompare(b.day))
+    .slice(-14); // 최근 14일
 
   // ─── 카테고리 행 데이터 ────────────────────────────────────────────────────
   const catRows: { key: string; label: string; emoji: string; color: string; bg: string; stats: CatStats }[] = [
@@ -432,35 +534,71 @@ export default async function AdminAccuracyPage() {
           <span style={{ fontSize: 14, fontWeight: 800, color: "#991B1B" }}>🎯 궁극 목표 (공사)</span>
           <span style={{ fontSize: 11, color: "#94A3B8" }}>· 부적격 ↓ + 1위 ↑ 동시 최적화 (박상빈님 5/17 명시)</span>
         </div>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 12 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12 }}>
           {[
             {
-              label: "부적격율 (낙찰하한가 미달)",
+              label: "부적격율 (추천가 미달)",
               value: ultimateGoal.disqualifiedRate != null ? ultimateGoal.disqualifiedRate.toFixed(2) + "%" : "-",
               sub: `${ultimateGoal.disqualifiedCount} / ${ultimateGoal.disqEvaluated}건`,
               color: ultimateGoal.disqualifiedRate != null
                 ? (ultimateGoal.disqualifiedRate < 1 ? "#059669" : ultimateGoal.disqualifiedRate < 5 ? "#D97706" : "#DC2626")
                 : "#9CA3AF",
-              note: "AI 추천가 < 진짜 낙찰하한가 비율. 낮을수록 좋음.",
+              note: "AI 추천가 (opt) < 진짜 낙찰하한가 비율. 낮을수록 좋음.",
             },
             {
-              label: "1위 근접률 (±0.1%)",
+              label: "Range 전체 부적격 (개선 2)",
+              value: ultimateGoal.rangeAllBelowRate != null ? ultimateGoal.rangeAllBelowRate.toFixed(2) + "%" : "-",
+              sub: `${ultimateGoal.rangeAllBelowCount} / ${ultimateGoal.rangeEvaluated}건`,
+              color: ultimateGoal.rangeAllBelowRate != null
+                ? (ultimateGoal.rangeAllBelowRate < 1 ? "#059669" : ultimateGoal.rangeAllBelowRate < 5 ? "#D97706" : "#DC2626")
+                : "#9CA3AF",
+              note: "bidPriceRangeHigh < 낙찰하한가 = 추천 범위 전체 탈락. 매우 심각.",
+            },
+            {
+              label: "1위 근접률 (사정율 ±0.05%p)",
               value: ultimateGoal.top1NearRate != null ? ultimateGoal.top1NearRate.toFixed(2) + "%" : "-",
               sub: `${ultimateGoal.top1NearCount} / ${ultimateGoal.top1Evaluated}건`,
               color: ultimateGoal.top1NearRate != null
-                ? (ultimateGoal.top1NearRate >= 20 ? "#059669" : ultimateGoal.top1NearRate >= 10 ? "#D97706" : "#DC2626")
+                ? (ultimateGoal.top1NearRate >= 10 ? "#059669" : ultimateGoal.top1NearRate >= 5 ? "#D97706" : "#DC2626")
                 : "#9CA3AF",
-              note: "AI 추천가가 실제 낙찰가의 ±0.1% 이내 비율. 높을수록 1위 가능성 ↑.",
+              note: "예측 사정율 vs 실제 사정율 ±0.05%p 이내 (정밀, 개선 1).",
             },
           ].map(({ label, value, sub, color, note }) => (
             <div key={label} style={{ background: "#fff", borderRadius: 10, padding: "14px 16px" }}>
               <div style={{ fontSize: 11, color: "#7F1D1D", marginBottom: 4, fontWeight: 700 }}>{label}</div>
-              <div style={{ fontSize: 28, fontWeight: 800, color, lineHeight: 1.1 }}>{value}</div>
+              <div style={{ fontSize: 26, fontWeight: 800, color, lineHeight: 1.1 }}>{value}</div>
               <div style={{ fontSize: 11, color: "#94A3B8", marginTop: 4 }}>{sub}</div>
               <div style={{ fontSize: 10, color: "#9CA3AF", marginTop: 6, lineHeight: 1.4 }}>{note}</div>
             </div>
           ))}
         </div>
+
+        {/* 개선 4: 시계열 차트 — 최근 14일 부적격율/1위율 trend */}
+        {dailyTrend.length > 0 && (
+          <div style={{ marginTop: 16, background: "#fff", borderRadius: 10, padding: "14px 16px" }}>
+            <div style={{ fontSize: 12, fontWeight: 700, color: "#0F172A", marginBottom: 10 }}>최근 14일 추이</div>
+            <div style={{ display: "flex", gap: 4, alignItems: "flex-end", height: 80, marginBottom: 6 }}>
+              {dailyTrend.map((d) => {
+                // 부적격율 빨강 bar (낮을수록 좋음), 1위율 녹색 bar (높을수록 좋음)
+                const disqH = d.disqRate != null ? Math.min(80, d.disqRate * 4) : 0;
+                const top1H = d.top1Rate != null ? Math.min(80, d.top1Rate * 2) : 0;
+                return (
+                  <div key={d.day} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 2 }}>
+                    <div style={{ display: "flex", gap: 1, height: 80, alignItems: "flex-end" }}>
+                      <div title={`${d.day} 부적격율 ${d.disqRate?.toFixed(2) ?? "-"}% (${d.disqEval}건)`} style={{ width: 8, height: disqH, background: "#DC2626", borderRadius: "2px 2px 0 0" }} />
+                      <div title={`${d.day} 1위근접율 ${d.top1Rate?.toFixed(2) ?? "-"}% (${d.top1Eval}건)`} style={{ width: 8, height: top1H, background: "#059669", borderRadius: "2px 2px 0 0" }} />
+                    </div>
+                    <div style={{ fontSize: 9, color: "#94A3B8", whiteSpace: "nowrap" }}>{d.day.slice(5)}</div>
+                  </div>
+                );
+              })}
+            </div>
+            <div style={{ display: "flex", gap: 14, fontSize: 10, color: "#64748B" }}>
+              <span><span style={{ display: "inline-block", width: 8, height: 8, background: "#DC2626", marginRight: 4, borderRadius: 2 }} />부적격율</span>
+              <span><span style={{ display: "inline-block", width: 8, height: 8, background: "#059669", marginRight: 4, borderRadius: 2 }} />1위 근접률</span>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* ── 섹션 2: 카테고리별 정확도 표 ── */}
