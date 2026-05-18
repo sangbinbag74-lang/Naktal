@@ -3,8 +3,10 @@ import Link from "next/link";
 import { useLinkStatus } from "next/link";
 import type { ReactNode } from "react";
 
-// 박상빈님 5/18 명시: 관리자 사이드바 Link 클릭 시 즉시 시각 피드백
-// 페이지 server component fetch 동안 박상빈님이 클릭 반응 확인 가능
+// 박상빈님 5/18 명시: 관리자 사이드바 Link 클릭 시 "즉시" 시각 피드백
+// useLinkStatus pending = Link 클릭 직후 ~ 페이지 도착 완료 시점까지 true.
+// 클릭하는 그 순간부터 박상빈님이 반응을 확인할 수 있어야 함.
+// → 사이드바 항목 옆 작은 스피너 + 화면 상단 두꺼운 진행률 bar 동시 표시
 function LinkContent({ children }: { children: ReactNode }) {
   const { pending } = useLinkStatus();
   return (
@@ -20,7 +22,30 @@ function LinkContent({ children }: { children: ReactNode }) {
           flexShrink: 0,
         }} />
       )}
-      <style>{`@keyframes adminspin { to { transform: rotate(360deg); } }`}</style>
+      {/* 화면 상단 fixed 진행률 bar — 클릭 즉시 표시, 페이지 도착 시 즉시 사라짐 */}
+      {pending && (
+        <span
+          aria-hidden
+          style={{
+            position: "fixed",
+            top: 0, left: 0, right: 0,
+            height: 4,
+            background: "linear-gradient(90deg, #1B3A6B 0%, #60A5FA 50%, #93C5FD 100%)",
+            boxShadow: "0 0 12px rgba(96,165,250,0.85)",
+            zIndex: 9999,
+            animation: "adminbarslide 1.2s cubic-bezier(0.4, 0, 0.2, 1) infinite",
+            pointerEvents: "none",
+          }}
+        />
+      )}
+      <style>{`
+        @keyframes adminspin { to { transform: rotate(360deg); } }
+        @keyframes adminbarslide {
+          0%   { transform: translateX(-100%); opacity: 0.6; }
+          50%  { transform: translateX(0%);    opacity: 1;   }
+          100% { transform: translateX(100%);  opacity: 0.6; }
+        }
+      `}</style>
     </span>
   );
 }
