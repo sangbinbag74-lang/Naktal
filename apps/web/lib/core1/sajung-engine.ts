@@ -746,7 +746,7 @@ export async function predictOptimalBid(params: {
     modelVersion: usedEnsemble
       ? "ensemble-v2.0-2026-05-17[v2+xgb+cat]"  // 박상빈님 5/17 명시 신규 1.84M
       : usedMl
-        ? "sajung-v2+tuned-ml"  // ensemble 실패 시 v2+tuned 단독 fallback
+        ? "sajung-v2-only-ml-2026-05-18"  // tuned(5/02 옛 1.16M) 차단, v2(1.84M) 단독
         : "sajung-stat",  // ML 둘 다 실패 시 통계 단독
     weightedAvg: Math.round(weightedAvg * 1000) / 1000,
     simpleAvg:   Math.round(simpleAvg * 1000) / 1000,

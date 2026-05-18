@@ -28,9 +28,12 @@ const V2_META = path.join(ML_DIR, "sajung_lgbm_v2_meta.json");
 const TUNED_MODEL = path.join(ML_DIR, "sajung_lgbm_v3_tuned.onnx");
 const TUNED_META = path.join(ML_DIR, "sajung_lgbm_v3_tuned_meta.json");
 
-// 앙상블 가중치 (ensemble_sajung.py 4-way 실측 best)
-const W_V2 = 0.9;
-const W_TUNED = 0.1;
+// 앙상블 가중치
+// 박상빈님 5/18 명시 — TUNED(sajung_lgbm_v3_tuned.onnx) 가 5/02 옛 1.16M 학습.
+// 박상빈님 의도 = "전부 1.84M" 위반. tuned 재학습 + ONNX 변환 전까지 가중치 0 으로
+// 차단하고 v2(1.84M 신규) 단독 100%. 옛 ML 박상빈님 화면 적용 즉시 차단.
+const W_V2 = 1.0;
+const W_TUNED = 0.0;
 
 // 학습 시 expanding mean의 결측 → 전역 평균/표준편차로 채움 (merge_raw.py 참고)
 const GLOBAL_SAJUNG_MEAN = 99.72;

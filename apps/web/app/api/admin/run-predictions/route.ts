@@ -114,9 +114,9 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         }),
       ]);
 
-      // 데이터 부족 (sampleSize=0 + isFallback=true) 시 저장 차단
-      // 의미 없는 fallback 값(공사 100% / 용역 87% 등)을 BidPricePrediction 에 적재하지 않음
-      if (sajung.optimalBidPrice === 0 || sajung.sampleSize === 0 || sajung.isFallback) {
+      // 박상빈님 5/18 명시: comprehensive route 와 일관성 — isFallback 도 적재.
+      // 박상빈님 의뢰 진입 보장 (PREDICTION_MISSING 차단). optimalBidPrice=0 만 skip.
+      if (sajung.optimalBidPrice === 0) {
         skipped++; continue;
       }
 
@@ -139,7 +139,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
             expectedBidders: competition.expectedBidders,
             dominantCompany: competition.dominantCompany ?? null,
             dominantWinRate: competition.dominantWinRate ?? null,
-            modelVersion: "core1-v1",
+            modelVersion: sajung.isFallback ? "core1-v1[fallback]" : "core1-v1",
             expiresAt,
           },
           { onConflict: "annId" }
