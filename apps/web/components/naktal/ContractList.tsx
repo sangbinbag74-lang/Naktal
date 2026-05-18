@@ -12,6 +12,12 @@ function fmtPrice(n: number) {
 function fmtDate(iso: string) {
   return new Date(iso).toLocaleDateString("ko-KR", { month: "long", day: "numeric" });
 }
+function fmtDateTime(iso: string) {
+  // 박상빈님 5/17 명시: 의뢰 시간 (시각) 표시
+  const d = new Date(iso);
+  return d.toLocaleDateString("ko-KR", { month: "long", day: "numeric" }) + " " +
+    d.toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit", hour12: false });
+}
 function getDDay(deadline: string) {
   const diff = Math.ceil((new Date(deadline).getTime() - Date.now()) / 86400000);
   if (diff <= 0) return { label: "마감", bg: "#F1F5F9", color: "#94A3B8" };
@@ -73,11 +79,11 @@ function ContractCard({ c }: { c: ContractListItem }) {
           <div style={{ fontSize: 12, color: "#64748B", display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
             <span>{c.orgName}</span>
             <span style={{ color: "#CBD5E1" }}>·</span>
-            <span>의뢰 시작 {fmtDate(c.createdAt)}</span>
+            <span>의뢰 시작 {fmtDateTime(c.createdAt)}</span>
             {c.contractAt && (
               <>
                 <span style={{ color: "#CBD5E1" }}>·</span>
-                <span>계약 {fmtDate(c.contractAt)}</span>
+                <span>계약 {fmtDateTime(c.contractAt)}</span>
               </>
             )}
             {!c.contractAt && (
