@@ -178,7 +178,7 @@ export function AccuracyClient({ bppList, activeCount, predCount }: Props) {
             <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12.5 }}>
               <thead>
                 <tr style={{ background: "#F8FAFC" }}>
-                  {["구분", "공고명", "발주처", "마감일", "예산", "AI 추천금액", "예측사정율", "실제결과", "추천점수", "샘플수"].map((h) => (
+                  {["구분", "공고명", "발주처", "마감일", "예산", "AI 추천금액", "예측사정율", "실제결과", "낙찰확률(예측)", "사후정확도", "샘플수"].map((h) => (
                     <th key={h} style={{ padding: "9px 12px", textAlign: "left", color: "#374151", fontWeight: 600, borderBottom: "2px solid #E8ECF2", whiteSpace: "nowrap" }}>{h}</th>
                   ))}
                 </tr>
@@ -314,17 +314,54 @@ export function AccuracyClient({ bppList, activeCount, predCount }: Props) {
                           })()
                         )}
                       </td>
-                      {/* 추천점수 */}
+                      {/* F14: 낙찰확률(예측) — 표본 < 30 경고 (F12) */}
                       <td style={{ padding: "8px 12px", whiteSpace: "nowrap" }}>
                         {winProb ? (
-                          <span style={{ fontSize: 12, fontWeight: 700, color: probColor }}>
-                            {winProb}점
-                          </span>
+                          <>
+                            <span style={{ fontSize: 12, fontWeight: 700, color: probColor }}>{winProb}%</span>
+                            {/* F12: 표본 < 30 일 때 ⚠️ 경고 */}
+                            {r.sampleSize != null && r.sampleSize < 30 && (
+                              <span title="표본 < 30 — 신뢰도 낮음 (자동 확장 적용)" style={{ fontSize: 10, marginLeft: 4, color: "#D97706" }}>⚠️</span>
+                            )}
+                          </>
                         ) : <span style={{ color: "#D1D5DB" }}>-</span>}
                       </td>
-                      {/* 샘플수 */}
+                      {/* F13: 사후 정확도 점수 (deviationPct 기반) */}
+                      <td style={{ padding: "8px 12px", whiteSpace: "nowrap" }}>
+                        {r.deviationPct != null ? (() => {
+                          const dev = Number(r.deviationPct);
+                          // 사정율 97~103% 범위 외 = 이상값 (CLAUDE.md)
+                          const actual = Number(r.actualSajungRate ?? 0);
+                          const isOutlier = actual > 0 && (actual < 97 || actual > 103);
+                          // 사후 점수: 오차 작을수록 점수 ↑ (0%p=100점, 1%p=0점)
+                          const score = Math.max(0, Math.min(100, (1 - dev) * 100));
+                          const scoreColor = score >= 70 ? "#059669" : score >= 40 ? "#D97706" : "#DC2626";
+                          return (
+                            <div>
+                              <span style={{ fontSize: 12, fontWeight: 700, color: isOutlier ? "#94A3B8" : scoreColor }}>
+                                {isOutlier ? "—" : score.toFixed(0) + "점"}
+                              </span>
+                              {/* F9': 이상값 라벨 */}
+                              {isOutlier && (
+                                <div style={{ fontSize: 9, color: "#DC2626", fontWeight: 700, marginTop: 1 }}>
+                                  이상값(97~103% 외)
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })() : <span style={{ color: "#D1D5DB" }}>-</span>}
+                      </td>
+                      {/* F10: 샘플수 + 자동 확장 표시 */}
                       <td style={{ padding: "8px 12px", color: "#9CA3AF", whiteSpace: "nowrap" }}>
-                        {r.sampleSize != null ? r.sampleSize + "건" : "-"}
+                        {r.sampleSize != null ? (
+                          <div>
+                            <span>{r.sampleSize}건</span>
+                            {/* F10: 자동 확장 (< 30 일 때 ALL blend 적용된 것 명시) */}
+                            {r.sampleSize > 0 && r.sampleSize < 30 && (
+                              <div style={{ fontSize: 9, color: "#3B82F6", marginTop: 1 }}>+ ALL 확장</div>
+                            )}
+                          </div>
+                        ) : "-"}
                       </td>
                     </tr>
                   );

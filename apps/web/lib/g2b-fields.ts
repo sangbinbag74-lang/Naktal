@@ -43,6 +43,8 @@ export function extractMetadata(rawJson: Raw) {
   return {
     pureWorkCnstcAmt: pickNum(rawJson, ["pureWorkCnstcAmt", "pureWorkAmt", "prearngPrceAmt"]),
     cntrctCnclsMthdNm: pick(rawJson, ["cntrctCnclsMthdNm", "cntrctMthdNm"]),
+    prearngPrceDcsnMthdNm: pick(rawJson, ["prearngPrceDcsnMthdNm"]), // 가격결정방식 (복수예가/단일예가/비예가)
+    sucsfbidMthdNm: pick(rawJson, ["sucsfbidMthdNm"]), // 낙찰자결정방식 (협상/최저가/수의시담 등)
     indstrytyNm: pick(rawJson, ["indstrytyNm", "indstrytyCdNm"]),
     indstrytyCd: pick(rawJson, ["indstrytyCd", "indCd"]),
     dmndInsttNm: pick(rawJson, ["dmndInsttNm"]),

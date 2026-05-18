@@ -84,6 +84,7 @@ export interface AnnouncementTabsProps {
   isContracted?: boolean;    // 계약 완료 여부 — false 면 사정율 분석 블러
   aValueTotal?: number;      // A합산 (원). A값 적용 공고만, 없으면 0
   cntrctCnclsMthdNm?: string | null; // 계약방법 (수의/협상/일반·제한 등) — 분석 차단 판정용
+  prearngPrceDcsnMthdNm?: string | null; // 가격결정방식 (복수예가/단일예가/비예가) — F3+F8 분석 차단용
 }
 
 // ─── 메인 컴포넌트 ────────────────────────────────────────────────────────────
@@ -92,6 +93,7 @@ export function AnnouncementTabs({
   annId, annDbId, title, orgName, budget, deadline, category, region,
   lowerLimitRate, multiplePrice, isClosed, bidMethod, isContracted = false, aValueTotal = 0,
   cntrctCnclsMthdNm = null,
+  prearngPrceDcsnMthdNm = null,
 }: AnnouncementTabsProps) {
   const [analysis, setAnalysis] = useState<ComprehensiveResult | null>(null);
   const [analysisLoading, setAnalysisLoading] = useState(true);
@@ -155,7 +157,7 @@ export function AnnouncementTabs({
   // 카테고리·계약방식 가드
   const catKind = classifyCategory(category);
   const isConstruction = catKind === "construction";
-  const analysisSupported = isAnalysisSupported(category, cntrctCnclsMthdNm, bidMethod);
+  const analysisSupported = isAnalysisSupported(category, cntrctCnclsMthdNm, bidMethod, prearngPrceDcsnMthdNm);
   // 협상에 의한 계약 — winProbability 의미 약함 (가격 비중 30~70%)
   const isNegotiated = !!cntrctCnclsMthdNm?.includes("협상");
 

@@ -516,6 +516,7 @@ export default async function AnnouncementDetailPage({
             isContracted={isContracted}
             aValueTotal={aValueTotal}
             cntrctCnclsMthdNm={meta.cntrctCnclsMthdNm}
+            prearngPrceDcsnMthdNm={meta.prearngPrceDcsnMthdNm}
           />
         </div>
 
