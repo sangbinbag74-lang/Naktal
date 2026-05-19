@@ -98,7 +98,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   // 서버에서 노이즈 + 추천금액 재계산 (클라이언트 입력 무시)
   // → 화면 사정율 = 추천금액 역산 = G2B 검증값 (3개 한 몸)
   const mlRate = Number((pred as { predictedSajungRate?: number }).predictedSajungRate);
-  const effRate = applySajungNoise(mlRate, userId, annId, 0.05);
+  const effRate = applySajungNoise(mlRate, userId, annId, 0.03);  // 박상빈님 5/19 명시 B-q70+N03 backtest sigma
   // 사정율의 기준 금액 = Announcement.bsisAmt (기초금액). 없으면 폴백.
   // BidRequest.budget 도 같은 값으로 저장 → 사정율 계산 일관성 보장
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
