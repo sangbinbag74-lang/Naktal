@@ -1,13 +1,10 @@
 /**
- * Ensemble 사정율 예측 API — v2 + xgb + cat 가중평균 (박상빈님 5/17 명시)
+ * 사정율 예측 API — B-q70 단독 + 음수미러 (박상빈님 5/19 명시)
  *
- * 구조 (단순):
- *   1) sajung_lgbm_v2.onnx     — LightGBM v2 (1.84M 학습, MAE 0.5844)
- *   2) sajung_xgboost.onnx     — XGBoost   (1.84M 학습, MAE 0.5836)
- *   3) sajung_catboost.onnx    — CatBoost ONNX-compat (1.84M 학습, MAE 0.5837)
- *
- * 모두 54 피처 동일 구조, 각 모델 자체 encoders 사용.
- * recommended_sajung_rate = (v2 + xgb + cat) / 3
+ * 운영 모델: B-q70 (sajung_quantile_q70.onnx, LightGBM Quantile q70 박스권 ML)
+ * 145K 백테스트 (공사 + 복수예가):
+ *   - B-q70 + 음수미러 sigma 0.03 = 부적격 30.33% / 1위 4.80% / 점수 3.287
+ *   - vs M1-N03 (이전 운영) = 부적격 -7.53%p 대폭 개선
  *
  * 모델 손실 시 호출측 (sajung-engine) σ × z 폴백 자동 발동.
  */
@@ -132,49 +129,27 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   try {
     const features = (await request.json()) as Record<string, unknown>;
     const manifest = getManifest();
-    const weights = manifest.weights;
 
-    // 박상빈님 5/19 명시 M1-N03: 5way (v2+tuned+xgb+cat+q95) 가중평균
-    // 145K 백테스트 결과 = 부적격 38.96% / 1위 5.02% (현재 운영 대비 -23%p)
-    const [v2, tuned, xgb, cat, q95] = await Promise.all([
-      runOne("sajung_lgbm_v2", features),
-      runOne("sajung_lgbm_v3_tuned", features),
-      runOne("sajung_xgboost", features),
-      runOne("sajung_catboost", features),
-      runOne("sajung_quantile_q95", features),
-    ]);
+    // 박상빈님 5/19 명시 B-q70 단독 + 음수미러 sigma 0.03
+    // 145K 백테스트 (공사+복수예가) = 부적격 30.33% / 1위 4.80% / 점수 3.287
+    // vs M1-N03 (이전 운영) = 부적격 -7.53%p 대폭 개선
+    const bq70 = await runOne("sajung_quantile_q70", features);
 
-    const wV2    = Number(weights.sajung_lgbm_v2          ?? 0.15);
-    const wTuned = Number(weights.sajung_lgbm_v3_tuned    ?? 0.15);
-    const wXgb   = Number(weights.sajung_xgboost          ?? 0.10);
-    const wCat   = Number(weights.sajung_catboost         ?? 0.00);
-    const wQ95   = Number(weights.sajung_quantile_q95     ?? 0.60);
-    const wSum   = wV2 + wTuned + wXgb + wCat + wQ95;
-    const avg    = (v2 * wV2 + tuned * wTuned + xgb * wXgb + cat * wCat + q95 * wQ95) / (wSum > 0 ? wSum : 1);
-
-    // 5개 예측 std → 신뢰구간 추정
-    const all = [v2, tuned, xgb, cat, q95];
-    const mean = all.reduce((s, v) => s + v, 0) / all.length;
-    const variance = all.reduce((s, v) => s + (v - mean) ** 2, 0) / all.length;
-    const std = Math.sqrt(variance);
-    const margin = Math.max(std * 1.96, 0.3);  // 정상범위 최소 ±0.3%p
+    // 단일 모델이므로 std 기반 margin 산출 X → 운영 신뢰구간 ±0.3%p 고정
+    const margin = 0.3;
 
     return NextResponse.json({
       // 호환 필드 (기존 호출자)
-      recommended_sajung_rate: avg,
-      ensemble_sajung_q05: avg - margin,
-      ensemble_sajung_q50: avg,
-      ensemble_sajung_q95: avg + margin,
-      ensemble_lwlt_q05: avg - margin,
-      ensemble_lwlt_q50: avg,
-      ensemble_lwlt_q95: avg + margin,
-      // 디버깅 / 모델별 개별값
-      v2_pred:    v2,
-      tuned_pred: tuned,
-      xgb_pred:   xgb,
-      cat_pred:   cat,
-      q95_pred:   q95,
-      weights: { v2: wV2/wSum, tuned: wTuned/wSum, xgb: wXgb/wSum, cat: wCat/wSum, q95: wQ95/wSum },
+      recommended_sajung_rate: bq70,
+      ensemble_sajung_q05: bq70 - margin,
+      ensemble_sajung_q50: bq70,
+      ensemble_sajung_q95: bq70 + margin,
+      ensemble_lwlt_q05: bq70 - margin,
+      ensemble_lwlt_q50: bq70,
+      ensemble_lwlt_q95: bq70 + margin,
+      // 디버깅
+      bq70_pred: bq70,
+      weights: { sajung_quantile_q70: 1.00 },
       model_version: manifest.version,
     });
   } catch (e) {

@@ -758,7 +758,7 @@ export async function predictOptimalBid(params: {
       stat.sampleSize, stat.stddev, recentPoints.length, stabilityScore, isBlended
     ),
     modelVersion: usedEnsemble
-      ? "ensemble-v3.0-2026-05-19[M1-N03]"  // 박상빈님 5/19 명시 — 5way q95 0.60 + 음수미러 sigma 0.03
+      ? "ensemble-v4.0-2026-05-19[B-q70+N03]"  // 박상빈님 5/19 명시 — B-q70 단독 + 음수미러 sigma 0.03 (부적격 30.33% / 1위 4.80%)
       : usedMl
         ? "sajung-v2-only-ml-2026-05-18"  // tuned(5/02 옛 1.16M) 차단, v2(1.84M) 단독
         : "sajung-stat",  // ML 둘 다 실패 시 통계 단독

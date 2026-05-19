@@ -1,41 +1,33 @@
 {
-  "version": "ensemble-v3.0-2026-05-19[M1-N03]",
+  "version": "ensemble-v4.0-2026-05-19[B-q70+N03]",
   "training_date": "2026-05-19",
-  "operation_mode": "M1-N03: 5way (v2:0.15+tuned:0.15+xgb:0.10+cat:0.00+q95:0.60) + 음수미러 sigma 0.03",
-  "data_size": "1.84M (training_data_v2.csv) + 145K backtest",
+  "operation_mode": "B-q70 단독 (LightGBM Quantile q70, 박스권 ML 신규) + 음수미러 sigma 0.03",
+  "data_size": "1.84M (training_data_v2.csv) + 145,390 backtest (공사 + 복수예가)",
   "bundled_models": {
-    "sajung_lgbm_v2": "/ml/sajung_lgbm_v2.onnx",
-    "sajung_lgbm_v3_tuned": "/ml/sajung_lgbm_v3_tuned.onnx",
-    "sajung_xgboost": "/ml/sajung_xgboost.onnx",
-    "sajung_catboost": "/ml/sajung_catboost.onnx",
-    "sajung_quantile_q95": "/ml/sajung_quantile_q95.onnx"
+    "sajung_quantile_q70": "/ml/sajung_quantile_q70.onnx"
   },
   "remote_models": {},
   "weights": {
-    "sajung_lgbm_v2": 0.15,
-    "sajung_lgbm_v3_tuned": 0.15,
-    "sajung_xgboost": 0.10,
-    "sajung_catboost": 0.00,
-    "sajung_quantile_q95": 0.60
-  },
-  "test_mae": {
-    "sajung_lgbm_v2": 0.5844,
-    "sajung_lgbm_v3_tuned": 0.5844,
-    "sajung_xgboost": 0.5836,
-    "sajung_catboost": 0.5837,
-    "sajung_quantile_q95": 0.7320
+    "sajung_quantile_q70": 1.00
   },
   "backtest_145k": {
     "period": "2025-01-01 ~ 2026-05-18",
-    "sample": 145343,
-    "single_5way_no_noise": { "disq_rate": 38.96, "top1_rate": 5.02 },
-    "with_noise_sigma_003": { "disq_rate": 37.82, "top1_rate": 5.05 }
+    "sample": 145390,
+    "category": "공사 + 복수예가",
+    "B_q70_no_noise":  { "disq_rate": 31.48, "top1_rate": 4.85, "win_05": 45.78, "win_10": 77.70, "score": 3.281 },
+    "B_q70_with_noise_sigma_003": { "disq_rate": 30.33, "top1_rate": 4.80, "win_05": 45.20, "win_10": 77.00, "score": 3.287 },
+    "M1_N03_baseline (이전 운영)": { "disq_rate": 37.86, "top1_rate": 4.90, "win_05": 46.17, "win_10": 78.16, "score": 3.006 }
+  },
+  "improvement_vs_M1_N03": {
+    "disq_rate": "-7.53%p (대폭 개선)",
+    "top1_rate": "-0.10%p (미미)",
+    "score": "+0.281"
   },
   "noise": {
     "type": "abs_mirror",
     "sigma": 0.03,
-    "note": "박상빈님 5/19 명시 M1-N03 채택"
+    "note": "박상빈님 5/19 명시 B-q70 + 음수미러 채택"
   },
   "host": "bundled",
-  "uploaded_at": "2026-05-19T12:00:00.000Z"
+  "uploaded_at": "2026-05-19T20:56:00.000Z"
 }
