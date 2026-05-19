@@ -1,20 +1,17 @@
 {
-  "version": "ensemble-v5.0-2026-05-19[B-q70+M1]",
+  "version": "ensemble-v6.0-2026-05-19[cat3]",
   "training_date": "2026-05-19",
-  "operation_mode": "B-q70 0.5 + M1(5way 가중평균) 0.5 — 균형 ensemble (noise X)",
+  "operation_mode": "cat3: 카테고리별 다른 가중 (자동 선택) — 박상빈님 5/19 명시",
   "data_size": "1.84M (training_data_v2.csv) + 145,390 backtest (공사 + 복수예가)",
   "bundled_models": {
+    "sajung_quantile_q60": "/ml/sajung_quantile_q60.onnx",
     "sajung_quantile_q70": "/ml/sajung_quantile_q70.onnx",
+    "sajung_quantile_q80": "/ml/sajung_quantile_q80.onnx",
     "sajung_lgbm_v2": "/ml/sajung_lgbm_v2.onnx",
     "sajung_lgbm_v3_tuned": "/ml/sajung_lgbm_v3_tuned.onnx",
     "sajung_xgboost": "/ml/sajung_xgboost.onnx",
     "sajung_catboost": "/ml/sajung_catboost.onnx",
     "sajung_quantile_q95": "/ml/sajung_quantile_q95.onnx"
-  },
-  "remote_models": {},
-  "outer_weights": {
-    "B_q70": 0.5,
-    "M1_5way": 0.5
   },
   "M1_inner_weights": {
     "sajung_lgbm_v2": 0.15,
@@ -23,23 +20,46 @@
     "sajung_catboost": 0.00,
     "sajung_quantile_q95": 0.60
   },
+  "category_variants": {
+    "_DEFAULT_":         { "type": "bq70_m1",    "note": "B-q70-M1 (0.5×B-q70 + 0.5×M1)" },
+    "시설공사":           { "type": "bq70_m1" },
+    "전기공사":           { "type": "bq70_q60",   "note": "0.5×B-q70 + 0.5×B-q60" },
+    "토목공사":           { "type": "bq70_m1" },
+    "건축공사":           { "type": "bq70_q80",   "note": "0.5×B-q70 + 0.5×B-q80" },
+    "실내건축공사":       { "type": "bq70_solo",  "note": "B-q70 단독" },
+    "기계설비공사":       { "type": "bq70_m1" },
+    "지반조성포장공사":   { "type": "bq70_q60" },
+    "상하수도설비공사":   { "type": "bq70_m1" },
+    "도장습식방수석공사": { "type": "bq70_q80" },
+    "통신공사":           { "type": "bq70_m1" },
+    "조경식재공사":       { "type": "bq60_q70_q80", "note": "1/3 × B-q60 + 1/3 × B-q70 + 1/3 × B-q80" },
+    "소방시설공사":       { "type": "bq70_m1" },
+    "조경공사":           { "type": "bq70_m1" },
+    "철근콘크리트공사":   { "type": "bq70_q80" },
+    "구조물해체비계공사": { "type": "bq70_q80" }
+  },
   "backtest_145k": {
     "period": "2025-01-01 ~ 2026-05-18",
     "sample": 145390,
     "category": "공사 + 복수예가",
-    "B_q70_M1_noise_X":         { "disq_rate": 34.55, "top1_rate": 5.04, "win_05": 46.62, "win_10": 78.51, "score": 3.315 },
-    "B_q70_N03_previous":       { "disq_rate": 30.34, "top1_rate": 4.78, "win_05": 45.21, "win_10": 76.98, "score": 3.262 },
-    "M1_N03_baseline":          { "disq_rate": 37.86, "top1_rate": 4.90, "win_05": 46.17, "win_10": 78.16, "score": 3.006 }
+    "cat3_score":           { "disq_rate": 33.08, "top1_rate": 5.11, "win_05": 46.26, "win_10": 78.17, "score": 3.456 },
+    "B_q70_M1_baseline":    { "disq_rate": 35.13, "top1_rate": 5.08, "win_05": 46.83, "win_10": 78.76, "score": 3.327 },
+    "M1_N03_legacy":        { "disq_rate": 37.86, "top1_rate": 4.90, "win_05": 46.17, "win_10": 78.16, "score": 3.006 }
+  },
+  "improvement_vs_B_q70_M1": {
+    "disq_rate": "-2.05%p ↓ (개선)",
+    "top1_rate": "+0.03%p ↑ (미미 ↑)",
+    "score": "+0.129 ↑"
   },
   "improvement_vs_M1_N03": {
-    "disq_rate": "-3.31%p ↓ (개선)",
-    "top1_rate": "+0.14%p ↑ (개선)",
-    "score": "+0.309 ↑ (대폭 개선)"
+    "disq_rate": "-4.78%p ↓ (대폭 개선)",
+    "top1_rate": "+0.21%p ↑",
+    "score": "+0.450 ↑"
   },
   "noise": {
     "applied": false,
-    "note": "박상빈님 5/19 명시 B-q70-M1 = noise X 채택"
+    "note": "박상빈님 5/19 cat3 = noise X (ensemble 자체가 균형)"
   },
   "host": "bundled",
-  "uploaded_at": "2026-05-19T21:30:00.000Z"
+  "uploaded_at": "2026-05-19T23:35:00.000Z"
 }
