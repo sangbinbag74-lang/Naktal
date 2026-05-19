@@ -758,7 +758,7 @@ export async function predictOptimalBid(params: {
       stat.sampleSize, stat.stddev, recentPoints.length, stabilityScore, isBlended
     ),
     modelVersion: usedEnsemble
-      ? "ensemble-v6.0-2026-05-19[cat3]"  // 박상빈님 5/19 명시 — 카테고리별 다른 가중 자동 선택 (cat3 점수 1위 3.456, 127 ensemble 중 최고)
+      ? "ensemble-v7.0-2026-05-20[optuna_10K]"  // 박상빈님 5/20 명시 — Optuna 10000 trial 카테고리별 4모델 가중 (점수 3.607 전체 ML 1위)
       : usedMl
         ? "sajung-v2-only-ml-2026-05-18"  // tuned(5/02 옛 1.16M) 차단, v2(1.84M) 단독
         : "sajung-stat",  // ML 둘 다 실패 시 통계 단독

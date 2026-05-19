@@ -1,20 +1,15 @@
 /**
- * 사정율 예측 API — cat3 카테고리별 가중 (박상빈님 5/19 명시)
+ * 사정율 예측 API — optuna_10K 카테고리별 가중 (박상빈님 5/20 명시)
  *
- * 운영 모델: 카테고리별로 다른 변형 자동 선택 (cat3)
- *   - 시설/토목/통신/기계/상하수도/소방/조경 → B-q70-M1 (0.5×B-q70 + 0.5×M1)
- *   - 건축/도장/철근/구조물해체 → 0.5×B-q70 + 0.5×B-q80 (부적격 ↓)
- *   - 전기/지반조성 → 0.5×B-q70 + 0.5×B-q60 (1위 ↑)
- *   - 실내건축 → B-q70 단독
- *   - 조경식재 → 1/3×(B-q60 + B-q70 + B-q80)
- *   - 그 외 (소카테고리) → B-q70-M1 폴백
- *
- * M1 = v2*0.15 + tuned*0.15 + xgb*0.10 + cat*0.00 + q95*0.60
+ * 운영 모델: Optuna 10000 trial × 15 카테고리 자동 학습 가중
+ *   - 카테고리별 4 모델 가중 (B-q70 / B-q60 / B-q80 / M1)
+ *   - M1 = v2*0.15 + tuned*0.15 + xgb*0.10 + cat*0.00 + q95*0.60
+ *   - 소카테고리 (N<500) = _DEFAULT_ (0.5 × B-q70 + 0.5 × M1) 폴백
  *
  * 145K 백테스트 (공사 + 복수예가):
- *   - cat3 = 부적격 33.08% / 1위 5.11% / 점수 3.456 (점수 1위, 127 ensemble 중 최고)
- *   - vs B-q70-M1 (직전 운영) = 부적격 -2.05%p ↓ + 1위 +0.03%p ↑
- *   - vs M1-N03 (5/19 03시 운영) = 부적격 -4.78%p ↓ + 1위 +0.21%p ↑
+ *   - optuna_10K = 부적격 34.34% / 1위 5.32% / 점수 3.607 (전체 ML 점수 1위)
+ *   - vs cat3 (직전 운영) = 부적격 +1.26%p (미미) + 1위 +0.21%p ↑ / 점수 +0.151 ↑
+ *   - vs M1-N03 (5/19 03시) = 부적격 -3.52%p ↓ + 1위 +0.42%p ↑ / 점수 +0.601 ↑
  */
 import { NextRequest, NextResponse } from "next/server";
 import * as ort from "onnxruntime-web";
@@ -29,12 +24,17 @@ export const maxDuration = 60;
 const ML_DIR = path.join(process.cwd(), "ml");
 const MANIFEST_PATH = path.join(ML_DIR, "ensemble_manifest.json");
 
-interface CategoryVariant { type: string; note?: string; }
+interface OptunaWeights {
+  B_q70: number;
+  B_q60: number;
+  B_q80: number;
+  M1: number;
+}
 interface Manifest {
   version: string;
   bundled_models: Record<string, string>;
   M1_inner_weights: Record<string, number>;
-  category_variants: Record<string, CategoryVariant>;
+  category_optuna_weights: Record<string, OptunaWeights>;
 }
 
 interface ModelMeta {
@@ -131,66 +131,48 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     const features = (await request.json()) as Record<string, unknown>;
     const manifest = getManifest();
 
-    // category 추출 → 변형 선택
+    // category 추출 → optuna 가중치 선택
     const category = String(features["category"] ?? "_DEFAULT_");
-    const variant = manifest.category_variants[category] ?? manifest.category_variants["_DEFAULT_"];
-    const vtype = variant?.type ?? "bq70_m1";
+    const weights: OptunaWeights =
+      manifest.category_optuna_weights[category] ??
+      manifest.category_optuna_weights["_DEFAULT_"] ??
+      { B_q70: 0.5, B_q60: 0.0, B_q80: 0.0, M1: 0.5 };
 
-    let recommended: number;
-    let modelsUsed: Record<string, number> = {};
+    // 4 모델 추론 (B-q70 / B-q60 / B-q80 / M1)
+    const [bq70, bq60, bq80, v2, tuned, xgb, cat, q95] = await Promise.all([
+      runOne("sajung_quantile_q70", features),
+      runOne("sajung_quantile_q60", features),
+      runOne("sajung_quantile_q80", features),
+      runOne("sajung_lgbm_v2", features),
+      runOne("sajung_lgbm_v3_tuned", features),
+      runOne("sajung_xgboost", features),
+      runOne("sajung_catboost", features),
+      runOne("sajung_quantile_q95", features),
+    ]);
 
-    if (vtype === "bq70_solo") {
-      // B-q70 단독
-      const bq70 = await runOne("sajung_quantile_q70", features);
-      recommended = bq70;
-      modelsUsed = { B_q70: bq70 };
-    } else if (vtype === "bq70_q60") {
-      // 0.5 × B-q70 + 0.5 × B-q60
-      const [bq70, bq60] = await Promise.all([
-        runOne("sajung_quantile_q70", features),
-        runOne("sajung_quantile_q60", features),
-      ]);
-      recommended = 0.5 * bq70 + 0.5 * bq60;
-      modelsUsed = { B_q70: bq70, B_q60: bq60 };
-    } else if (vtype === "bq70_q80") {
-      // 0.5 × B-q70 + 0.5 × B-q80
-      const [bq70, bq80] = await Promise.all([
-        runOne("sajung_quantile_q70", features),
-        runOne("sajung_quantile_q80", features),
-      ]);
-      recommended = 0.5 * bq70 + 0.5 * bq80;
-      modelsUsed = { B_q70: bq70, B_q80: bq80 };
-    } else if (vtype === "bq60_q70_q80") {
-      // 1/3 × B-q60 + 1/3 × B-q70 + 1/3 × B-q80
-      const [bq60, bq70, bq80] = await Promise.all([
-        runOne("sajung_quantile_q60", features),
-        runOne("sajung_quantile_q70", features),
-        runOne("sajung_quantile_q80", features),
-      ]);
-      recommended = (bq60 + bq70 + bq80) / 3;
-      modelsUsed = { B_q60: bq60, B_q70: bq70, B_q80: bq80 };
-    } else {
-      // 기본: bq70_m1 = 0.5 × B-q70 + 0.5 × M1(5way)
-      const [bq70, v2, tuned, xgb, cat, q95] = await Promise.all([
-        runOne("sajung_quantile_q70", features),
-        runOne("sajung_lgbm_v2", features),
-        runOne("sajung_lgbm_v3_tuned", features),
-        runOne("sajung_xgboost", features),
-        runOne("sajung_catboost", features),
-        runOne("sajung_quantile_q95", features),
-      ]);
-      const w = manifest.M1_inner_weights;
-      const m1 =
-        v2 * (w.sajung_lgbm_v2 ?? 0.15) +
-        tuned * (w.sajung_lgbm_v3_tuned ?? 0.15) +
-        xgb * (w.sajung_xgboost ?? 0.10) +
-        cat * (w.sajung_catboost ?? 0.00) +
-        q95 * (w.sajung_quantile_q95 ?? 0.60);
-      recommended = 0.5 * bq70 + 0.5 * m1;
-      modelsUsed = { B_q70: bq70, M1: m1, v2, tuned, xgb, cat, q95 };
-    }
+    // M1 = 5way 가중평균
+    const mw = manifest.M1_inner_weights;
+    const m1 =
+      v2 * (mw.sajung_lgbm_v2 ?? 0.15) +
+      tuned * (mw.sajung_lgbm_v3_tuned ?? 0.15) +
+      xgb * (mw.sajung_xgboost ?? 0.10) +
+      cat * (mw.sajung_catboost ?? 0.00) +
+      q95 * (mw.sajung_quantile_q95 ?? 0.60);
 
-    const margin = 0.3;
+    // optuna 카테고리별 가중 적용
+    const recommended =
+      bq70 * weights.B_q70 +
+      bq60 * weights.B_q60 +
+      bq80 * weights.B_q80 +
+      m1 * weights.M1;
+
+    // 4 예측 std → 신뢰구간
+    const all = [bq70, bq60, bq80, m1];
+    const mean = all.reduce((s, v) => s + v, 0) / all.length;
+    const variance = all.reduce((s, v) => s + (v - mean) ** 2, 0) / all.length;
+    const std = Math.sqrt(variance);
+    const margin = Math.max(std * 1.96, 0.3);
+
     return NextResponse.json({
       recommended_sajung_rate: recommended,
       ensemble_sajung_q05: recommended - margin,
@@ -200,8 +182,8 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       ensemble_lwlt_q50: recommended,
       ensemble_lwlt_q95: recommended + margin,
       category,
-      variant_type: vtype,
-      models: modelsUsed,
+      weights,
+      models: { bq70, bq60, bq80, m1, v2, tuned, xgb, cat, q95 },
       model_version: manifest.version,
     });
   } catch (e) {
@@ -217,7 +199,7 @@ export async function GET(): Promise<NextResponse> {
     status: "ok",
     version: manifest.version,
     bundled: Object.keys(manifest.bundled_models),
-    category_variants: manifest.category_variants,
+    category_optuna_weights: manifest.category_optuna_weights,
     cached_sessions: Array.from(sessionCache.keys()),
   });
 }
