@@ -509,7 +509,7 @@ export default async function AdminAccuracyPage() {
           },
           {
             label: "평균 편차 (MAE)",
-            value: statsAll.mae != null ? statsAll.mae.toFixed(3) + "%p" : "-",
+            value: statsAll.mae != null ? statsAll.mae.toFixed(4) + "%p" : "-",
             sub: statsAll.mae != null && statsAll.mae < 0.5 ? "우수" : statsAll.mae != null && statsAll.mae < 1.0 ? "양호" : statsAll.mae != null ? "개선 필요" : "-",
             color: maeColor(statsAll.mae),
           },
@@ -657,7 +657,7 @@ export default async function AdminAccuracyPage() {
                     </td>
                     <td style={{ padding: "12px 14px", textAlign: "center" }}>
                       {s.mae != null ? (
-                        <strong style={{ fontSize: 13.5, color: maeColor(s.mae) }}>{s.mae.toFixed(3)}%p</strong>
+                        <strong style={{ fontSize: 13.5, color: maeColor(s.mae) }}>{s.mae.toFixed(4)}%p</strong>
                       ) : <span style={{ color: "#D1D5DB" }}>-</span>}
                     </td>
                   </tr>

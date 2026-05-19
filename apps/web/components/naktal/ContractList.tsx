@@ -151,15 +151,15 @@ function ContractCard({ c }: { c: ContractListItem }) {
           <span>
             <span style={{ color: "#94A3B8" }}>내 투찰 </span>
             <strong style={{ color: "#0F172A" }}>{fmtPrice(userBid)}원</strong>
-            {c.userBidRate != null && <span style={{ color: "#94A3B8", marginLeft: 6 }}>({Number(c.userBidRate).toFixed(3)}%)</span>}
+            {c.userBidRate != null && <span style={{ color: "#94A3B8", marginLeft: 6 }}>({Number(c.userBidRate).toFixed(4)}%)</span>}
           </span>
           {actualSajung != null && (
             <span>
               <span style={{ color: "#94A3B8" }}>실제 사정율 </span>
-              <strong>{actualSajung.toFixed(3)}%</strong>
+              <strong>{actualSajung.toFixed(4)}%</strong>
               {predictedSajung != null && deviation != null && (
                 <span style={{ color: deviation <= 0.5 ? "#059669" : "#94A3B8", marginLeft: 6, fontSize: 11 }}>
-                  (예측 {predictedSajung.toFixed(3)}% · 오차 {deviation.toFixed(3)}%)
+                  (예측 {predictedSajung.toFixed(4)}% · 오차 {deviation.toFixed(4)}%)
                 </span>
               )}
             </span>
@@ -210,7 +210,7 @@ function WonBadge({
             {userRemark}
             {userBidRate != null && (
               <span style={{ display: "block", color: "#94A3B8", fontSize: 10.5, marginTop: 1 }}>
-                투찰률 {userBidRate.toFixed(3)}%
+                투찰률 {userBidRate.toFixed(4)}%
               </span>
             )}
           </span>

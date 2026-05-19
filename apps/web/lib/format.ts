@@ -26,7 +26,7 @@ export function formatDeadline(iso: string): string {
 
 /** 사정율 절대값: 소수점 3자리. 예: 103.456 → "103.456%" */
 export function formatSajung(sajung: number): string {
-  return `${sajung.toFixed(3)}%`;
+  return `${sajung.toFixed(4)}%`;
 }
 
 /**
@@ -36,7 +36,7 @@ export function formatSajung(sajung: number): string {
 export function formatDeviation(sajung: number, orgAvg: number): string {
   const dev = sajung - orgAvg;
   const sign = dev >= 0 ? "+" : "";
-  return `${sign}${dev.toFixed(3)}%p`; // 평균 대비 %p (퍼센트 포인트)
+  return `${sign}${dev.toFixed(4)}%p`; // 평균 대비 %p (퍼센트 포인트)
 }
 
 /** 편차 색상: 양수(파랑) / 음수(빨강) */
@@ -50,8 +50,8 @@ export function formatSajungWithDev(sajung: number, orgAvg: number): {
 } {
   const dev = sajung - orgAvg;
   return {
-    absolute: `${sajung.toFixed(3)}%`,
-    deviation: `${dev >= 0 ? "+" : ""}${dev.toFixed(3)}%`,
+    absolute: `${sajung.toFixed(4)}%`,
+    deviation: `${dev >= 0 ? "+" : ""}${dev.toFixed(4)}%`,
     isPositive: dev >= 0,
   };
 }

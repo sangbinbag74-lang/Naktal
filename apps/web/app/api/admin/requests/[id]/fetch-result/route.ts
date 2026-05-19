@@ -77,7 +77,7 @@ export async function POST(
 
   const bidResultRow = {
     annId: bidReq.konepsId,
-    bidRate: parseFloat(rateRaw).toFixed(3),
+    bidRate: parseFloat(rateRaw).toFixed(4),
     finalPrice: String(parseInt(priceRaw, 10)),
     numBidders: parseInt((found.prtcptCnum || found.totPrtcptCo || "0").replace(/[^0-9]/g, ""), 10),
     winnerName: found.sucsfbidCorpNm?.trim() || found.bidwinnrNm?.trim() || null,

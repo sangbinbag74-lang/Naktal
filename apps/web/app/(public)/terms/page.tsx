@@ -1,7 +1,10 @@
 import Link from "next/link";
 
 export const metadata = {
-  title: "이용약관 — 낙비",
+  title: "이용약관",
+  description: "낙비 — 내 손안의 AI 낙찰비서 이용약관. 서비스 이용 조건·수수료·환불·면책 조항.",
+  keywords: ["낙비 이용약관", "낙비 약관", "낙찰AI 약관", "공공입찰 AI 약관"],
+  alternates: { canonical: "https://naktal.me/terms" },
 };
 
 export default function TermsPage() {

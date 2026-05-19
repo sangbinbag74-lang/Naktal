@@ -133,7 +133,7 @@ function calcNext3Predictions(
     center: { deviation: centerDev, sajung: Math.round((orgAvg + centerDev) * 1000) / 1000, label: "가장 유력" },
     upper:  { deviation: upperDev,  sajung: Math.round((orgAvg + upperDev) * 1000) / 1000,  label: "상단 예상" },
     lower:  { deviation: lowerDev,  sajung: Math.round((orgAvg + lowerDev) * 1000) / 1000,  label: "하단 예상" },
-    basis: `최근 ${recent.length}건 · ${trendResult.direction !== "stable" ? (trendResult.direction === "up" ? "상승" : "하락") + "추세" : "추세 안정"} · ±${stddev.toFixed(3)}%p`,
+    basis: `최근 ${recent.length}건 · ${trendResult.direction !== "stable" ? (trendResult.direction === "up" ? "상승" : "하락") + "추세" : "추세 안정"} · ±${stddev.toFixed(4)}%p`,
   };
 }
 

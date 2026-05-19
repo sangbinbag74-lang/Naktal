@@ -256,10 +256,10 @@ export function SajungTrendOverlay({ annId, userId, predictedSajungRate, budget,
                     color: pred.deviation >= 0 ? "#1B3A6B" : "#DC2626",
                     letterSpacing: "-0.5px",
                   }}>
-                    {pred.deviation >= 0 ? "+" : ""}{pred.deviation.toFixed(3)}%p
+                    {pred.deviation >= 0 ? "+" : ""}{pred.deviation.toFixed(4)}%p
                   </div>
                   <div style={{ fontSize: 12, color: "#64748B", marginTop: 3 }}>
-                    사정율 {pred.sajung.toFixed(3)}%
+                    사정율 {pred.sajung.toFixed(4)}%
                   </div>
                   {bidPrice && (
                     <div style={{ fontSize: 11, color: "#94A3B8", marginTop: 4 }}>
@@ -271,7 +271,7 @@ export function SajungTrendOverlay({ annId, userId, predictedSajungRate, budget,
             })}
           </div>
           <div style={{ padding: "8px 16px", borderTop: "1px solid #E2E8F0", fontSize: 11, color: "#94A3B8" }}>
-            ※ 발주처 평균 {data.orgAvg?.toFixed(3)}% 기준 편차 · 통계적 참고자료, 낙찰 보장 없음
+            ※ 발주처 평균 {data.orgAvg?.toFixed(4)}% 기준 편차 · 통계적 참고자료, 낙찰 보장 없음
           </div>
         </div>
       )}

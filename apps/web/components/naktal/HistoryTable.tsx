@@ -49,7 +49,7 @@ export function HistoryTable({ rows, title }: HistoryTableProps) {
                 {row.title}
               </td>
               <td style={{ fontSize: 12, color: "#64748B", padding: "10px 8px" }}>{fmt(row.budget)}</td>
-              <td style={{ fontSize: 13, fontWeight: 700, color: "#1B3A6B", padding: "10px 8px" }}>{row.bidRate.toFixed(3)}%</td>
+              <td style={{ fontSize: 13, fontWeight: 700, color: "#1B3A6B", padding: "10px 8px" }}>{row.bidRate.toFixed(4)}%</td>
               <td style={{ fontSize: 12, color: "#64748B", padding: "10px 8px" }}>{row.bidderCount}개사</td>
               <td style={{ fontSize: 11, color: "#94A3B8", padding: "10px 8px" }}>
                 {new Date(row.awardedAt).toLocaleDateString("ko-KR")}

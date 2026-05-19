@@ -82,11 +82,11 @@ export function SajungTopTen({ annId, predictedSajungRate, budget: _budget, peri
       {/* 공통 통계 헤더 (3탭 일관성) */}
       <div style={{ background: "#F8FAFC", borderRadius: 10, padding: "10px 14px", fontSize: 12, color: "#475569", display: "flex", flexWrap: "wrap", gap: 12 }}>
         <span><strong>{data.sampleSize.toLocaleString()}건</strong> 기반</span>
-        {data.orgAvg != null && <span>· 평균 <strong>{data.orgAvg.toFixed(3)}%</strong></span>}
+        {data.orgAvg != null && <span>· 평균 <strong>{data.orgAvg.toFixed(4)}%</strong></span>}
         {data.mode != null && <span>· 최빈 <strong>{data.mode.toFixed(1)}%</strong></span>}
-        {data.stddev != null && <span>· σ <strong>±{data.stddev.toFixed(3)}%p</strong></span>}
+        {data.stddev != null && <span>· σ <strong>±{data.stddev.toFixed(4)}%p</strong></span>}
         {data.p25 != null && data.p75 != null && <span>· IQR <strong>{data.p25.toFixed(1)}~{data.p75.toFixed(1)}%</strong></span>}
-        <span style={{ color: "#94A3B8" }}>· 낙찰하한율 {data.lowerLimitRate.toFixed(3)}% · 0.1%p bucket</span>
+        <span style={{ color: "#94A3B8" }}>· 낙찰하한율 {data.lowerLimitRate.toFixed(4)}% · 0.1%p bucket</span>
       </div>
 
       {/* TOP 10 테이블 */}

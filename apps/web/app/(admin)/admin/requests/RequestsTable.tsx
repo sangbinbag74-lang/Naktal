@@ -438,7 +438,7 @@ export function RequestsTable({ requests, userMap, companyProfileMap = {}, bidRe
                     <td style={{ padding: "8px 12px", whiteSpace: "nowrap" }}>
                       <div style={{ color: "#1B3A6B", fontWeight: 600 }}>{fmtPrice(r.recommendedBidPrice)}</div>
                       {r.predictedSajungRate && (
-                        <div style={{ color: "#9CA3AF", fontSize: 10, marginTop: 1 }}>예측사정율 {Number(r.predictedSajungRate).toFixed(3)}%</div>
+                        <div style={{ color: "#9CA3AF", fontSize: 10, marginTop: 1 }}>예측사정율 {Number(r.predictedSajungRate).toFixed(4)}%</div>
                       )}
                     </td>
                     {/* 실투찰금액 — 본인 투찰가 기준 사정율 역산 */}
@@ -450,10 +450,10 @@ export function RequestsTable({ requests, userMap, companyProfileMap = {}, bidRe
                               const info = annInfoMap[r.annId];
                               const mySajung = reverseSajung(Number(r.userBidPrice ?? 0), info, Number(r.budget ?? 0));
                               if (mySajung != null) {
-                                return <div style={{ color: "#9CA3AF", fontSize: 10, marginTop: 1 }}>본인사정율 {mySajung.toFixed(3)}%</div>;
+                                return <div style={{ color: "#9CA3AF", fontSize: 10, marginTop: 1 }}>본인사정율 {mySajung.toFixed(4)}%</div>;
                               }
                               if (r.userBidRate != null) {
-                                return <div style={{ color: "#9CA3AF", fontSize: 10, marginTop: 1 }}>투찰률 {Number(r.userBidRate).toFixed(3)}%</div>;
+                                return <div style={{ color: "#9CA3AF", fontSize: 10, marginTop: 1 }}>투찰률 {Number(r.userBidRate).toFixed(4)}%</div>;
                               }
                               return null;
                             })()}
@@ -492,7 +492,7 @@ export function RequestsTable({ requests, userMap, companyProfileMap = {}, bidRe
                           </span>
                           {r.userBidRate != null && (
                             <span style={{ fontSize: 10, color: "#9CA3AF" }}>
-                              투찰률 {Number(r.userBidRate).toFixed(3)}%
+                              투찰률 {Number(r.userBidRate).toFixed(4)}%
                             </span>
                           )}
                         </div>
@@ -562,7 +562,7 @@ export function RequestsTable({ requests, userMap, companyProfileMap = {}, bidRe
                         )}
                         {r.isHit != null && (
                           <div style={{ fontSize: 10, color: r.isHit ? "#059669" : "#9CA3AF" }}>
-                            {r.isHit ? "✓ 적중" : `오차 ${r.deviationPct ? Number(r.deviationPct).toFixed(3) : "?"}%`}
+                            {r.isHit ? "✓ 적중" : `오차 ${r.deviationPct ? Number(r.deviationPct).toFixed(4) : "?"}%`}
                           </div>
                         )}
                         {r.memo && (
@@ -611,7 +611,7 @@ export function RequestsTable({ requests, userMap, companyProfileMap = {}, bidRe
                         {r.userBidRate != null && (
                           <span>
                             <span style={{ color: "#94A3B8" }}>투찰률 </span>
-                            <strong>{Number(r.userBidRate).toFixed(3)}%</strong>
+                            <strong>{Number(r.userBidRate).toFixed(4)}%</strong>
                           </span>
                         )}
                         {(r.userDrwtNo1 != null || r.userDrwtNo2 != null) && (
@@ -644,14 +644,14 @@ export function RequestsTable({ requests, userMap, companyProfileMap = {}, bidRe
                         {winSajung != null && (
                           <span>
                             <span style={{ color: "#94A3B8" }}>낙찰사정율 </span>
-                            <strong style={{ color: "#059669" }}>{winSajung.toFixed(3)}%</strong>
+                            <strong style={{ color: "#059669" }}>{winSajung.toFixed(4)}%</strong>
                           </span>
                         )}
                         {/* 결과 사정율 (G2B 공식, 비교용) */}
                         {r.actualSajungRate != null && (
                           <span>
                             <span style={{ color: "#94A3B8" }}>결과사정율 </span>
-                            <strong style={{ color: "#7C3AED" }}>{Number(r.actualSajungRate).toFixed(3)}%</strong>
+                            <strong style={{ color: "#7C3AED" }}>{Number(r.actualSajungRate).toFixed(4)}%</strong>
                           </span>
                         )}
                       </div>
@@ -842,17 +842,17 @@ function DetailModal({ row, user, profile, annInfo, bidResult, onClose }: { row:
 
         <DetailSection title="💡 AI 추천 / 사용자 투찰">
           <Row label="추천 투찰가"     value={row.recommendedBidPrice ? Number(row.recommendedBidPrice).toLocaleString("ko-KR") + "원" : null} />
-          <Row label="예측 사정율"     value={row.predictedSajungRate != null ? `${Number(row.predictedSajungRate).toFixed(3)}%` : null} />
+          <Row label="예측 사정율"     value={row.predictedSajungRate != null ? `${Number(row.predictedSajungRate).toFixed(4)}%` : null} />
           <Row label="추정 예정가"     value={row.estimatedPrice ? Number(row.estimatedPrice).toLocaleString("ko-KR") + "원" : null} />
           <Row label="낙찰 하한가"     value={row.lowerLimitPrice ? Number(row.lowerLimitPrice).toLocaleString("ko-KR") + "원" : null} />
           <Row label="낙찰 확률"       value={row.winProbability != null ? `${row.winProbability}%` : null} />
           <Row label="—— 사용자 투찰 ——" value="" />
           <Row label="투찰 시각"       value={fmtFull(row.userBidAt)} mono />
           <Row label="실투찰가"        value={row.userBidPrice ? Number(row.userBidPrice).toLocaleString("ko-KR") + "원" : null} />
-          <Row label="본인 사정율"     value={mySajung != null ? `${mySajung.toFixed(3)}%` : null} />
+          <Row label="본인 사정율"     value={mySajung != null ? `${mySajung.toFixed(4)}%` : null} />
           <Row label="추천 따름"       value={row.userFollowedRecommendation === true ? "따름" : row.userFollowedRecommendation === false ? "직접" : "미입력"} />
           <Row label="순위"           value={row.userRank != null ? `${row.userRank}${row.totalBidders ? `/${row.totalBidders}` : ""}위` : null} />
-          <Row label="투찰률"         value={row.userBidRate != null ? `${Number(row.userBidRate).toFixed(3)}%` : null} />
+          <Row label="투찰률"         value={row.userBidRate != null ? `${Number(row.userBidRate).toFixed(4)}%` : null} />
           <Row label="추첨번호 1"     value={row.userDrwtNo1 != null ? String(row.userDrwtNo1).padStart(2, "0") : null} mono />
           <Row label="추첨번호 2"     value={row.userDrwtNo2 != null ? String(row.userDrwtNo2).padStart(2, "0") : null} mono />
           <Row label="비고"           value={row.userRemark} />
@@ -863,11 +863,11 @@ function DetailModal({ row, user, profile, annInfo, bidResult, onClose }: { row:
           <Row label="낙찰 여부"      value={row.isWon === true ? "✅ 낙찰" : row.isWon === false ? "❌ 미낙찰" : "대기"} />
           <Row label="낙찰 업체"      value={row.winnerName || bidResult?.winnerName} />
           <Row label="실 낙찰가"      value={row.actualFinalPrice ? Number(row.actualFinalPrice).toLocaleString("ko-KR") + "원" : null} />
-          <Row label="낙찰 사정율"    value={winSajung != null ? `${winSajung.toFixed(3)}%` : null} />
-          <Row label="결과 사정율"    value={row.actualSajungRate != null ? `${Number(row.actualSajungRate).toFixed(3)}%` : null} />
+          <Row label="낙찰 사정율"    value={winSajung != null ? `${winSajung.toFixed(4)}%` : null} />
+          <Row label="결과 사정율"    value={row.actualSajungRate != null ? `${Number(row.actualSajungRate).toFixed(4)}%` : null} />
           <Row label="참여 업체 수"   value={row.totalBidders != null ? `${row.totalBidders}개사` : (bidResult?.numBidders != null ? `${bidResult.numBidders}개사` : null)} />
           <Row label="결과 감지 시각" value={fmtFull(row.resultDetectedAt)} mono />
-          <Row label="편차"          value={row.deviationPct != null ? `${Number(row.deviationPct).toFixed(3)}%p` : null} />
+          <Row label="편차"          value={row.deviationPct != null ? `${Number(row.deviationPct).toFixed(4)}%p` : null} />
           <Row label="적중"          value={row.isHit === true ? "✅ 적중" : row.isHit === false ? "❌ 빗나감" : null} />
         </DetailSection>
 
@@ -881,10 +881,10 @@ function DetailModal({ row, user, profile, annInfo, bidResult, onClose }: { row:
         </DetailSection>
 
         <DetailSection title="📊 스냅샷 (의뢰 시점 통계 보존)">
-          <Row label="발주처+카테고리 평균"  value={row.snapshotAvgSajungRate != null ? `${Number(row.snapshotAvgSajungRate).toFixed(3)}%` : null} />
+          <Row label="발주처+카테고리 평균"  value={row.snapshotAvgSajungRate != null ? `${Number(row.snapshotAvgSajungRate).toFixed(4)}%` : null} />
           <Row label="샘플 수"               value={row.snapshotSampleSize != null ? `${row.snapshotSampleSize}건` : null} />
           <Row label="신뢰도"                value={row.snapshotConfidence} />
-          <Row label="카테고리 전체 평균"    value={row.snapshotCategoryAvg != null ? `${Number(row.snapshotCategoryAvg).toFixed(3)}%` : null} />
+          <Row label="카테고리 전체 평균"    value={row.snapshotCategoryAvg != null ? `${Number(row.snapshotCategoryAvg).toFixed(4)}%` : null} />
           <Row label="카테고리 전체 샘플"    value={row.snapshotCategoryTotal != null ? `${row.snapshotCategoryTotal}건` : null} />
         </DetailSection>
 

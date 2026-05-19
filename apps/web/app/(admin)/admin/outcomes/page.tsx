@@ -118,7 +118,7 @@ export default async function AdminOutcomesPage() {
                   </td>
                   <td style={{ padding: "8px 12px", color: "#374151" }}>
                     {r.bidRate
-                      ? Number(r.bidRate).toFixed(3) + "%"
+                      ? Number(r.bidRate).toFixed(4) + "%"
                       : <span style={{ color: "#D1D5DB" }}>-</span>}
                   </td>
                   <td style={{ padding: "8px 12px" }}>

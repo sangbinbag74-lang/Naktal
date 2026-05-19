@@ -266,7 +266,7 @@ export function AccuracyClient({ bppList, activeCount, predCount }: Props) {
                       <td style={{ padding: "8px 12px", color: "#1B3A6B", fontWeight: 600, whiteSpace: "nowrap" }}>
                         {r.predictedSajungRate != null ? (
                           <>
-                            {Number(r.predictedSajungRate).toFixed(3)}%
+                            {Number(r.predictedSajungRate).toFixed(4)}%
                             {r.actualSajungRate != null && (() => {
                               // 예측 - 실제 (음수 = 예측이 낮음 / 양수 = 예측이 높음)
                               const diff = Number(r.predictedSajungRate) - Number(r.actualSajungRate);
@@ -274,7 +274,7 @@ export function AccuracyClient({ bppList, activeCount, predCount }: Props) {
                               const color = Math.abs(diff) <= 0.5 ? "#059669" : Math.abs(diff) <= 1.0 ? "#D97706" : "#DC2626";
                               return (
                                 <span style={{ marginLeft: 6, fontSize: 11, color, fontWeight: 700 }}>
-                                  ({sign}{diff.toFixed(3)}%p)
+                                  ({sign}{diff.toFixed(4)}%p)
                                 </span>
                               );
                             })()}
@@ -286,11 +286,11 @@ export function AccuracyClient({ bppList, activeCount, predCount }: Props) {
                         {r.actualSajungRate != null ? (
                           <div>
                             <div style={{ color: "#0F172A", fontWeight: 700, fontSize: 12 }}>
-                              {Number(r.actualSajungRate).toFixed(3)}%
+                              {Number(r.actualSajungRate).toFixed(4)}%
                             </div>
                             {r.deviationPct != null && (
                               <div style={{ fontSize: 10, marginTop: 1, color: r.isHit ? "#059669" : Number(r.deviationPct) <= 1.0 ? "#D97706" : "#DC2626", fontWeight: 600 }}>
-                                {r.isHit ? "✓ 적중" : `오차 ${Number(r.deviationPct).toFixed(3)}%p`}
+                                {r.isHit ? "✓ 적중" : `오차 ${Number(r.deviationPct).toFixed(4)}%p`}
                               </div>
                             )}
                             {r.winnerName && (

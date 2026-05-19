@@ -102,7 +102,6 @@ export const metadata: Metadata = {
     google: "k7bqS0a6GuynUrEatPT2zj_Gzue1TxwBOC8snTaalvM",
     other: {
       "naver-site-verification": "689dd8fa9c79ef28ce8e35391c0a6ec4ced1e75a",
-      "msvalidate.01": "0B9C4CCC954AAEDC8BA263C367E711FA",
     },
   },
   formatDetection: {

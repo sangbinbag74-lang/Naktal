@@ -55,14 +55,14 @@ function SajungDistBar({ range, predicted, avg }: {
       <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, color: "#94A3B8" }}>
         <span>{min.toFixed(1)}%</span>
         <span style={{ color: "#1B3A6B", fontWeight: 700 }}>
-          예측 {pred.toFixed(3)}%
+          예측 {pred.toFixed(4)}%
           {deviation !== null && (
             <span style={{
               marginLeft: 4,
               color: deviation >= 0 ? "#16A34A" : "#DC2626",
               fontWeight: 600,
             }}>
-              ({sign}{deviation.toFixed(3)}%p)
+              ({sign}{deviation.toFixed(4)}%p)
             </span>
           )}
         </span>
@@ -302,11 +302,11 @@ export function AiAnalysisPanel({ annDbId, budget, g2bUrl, konepsId, onRefresh, 
                   <div style={{ textAlign: "right", flexShrink: 0 }}>
                     <div style={{ fontSize: 10, color: "#94A3B8" }}>단순평균</div>
                     <div style={{ fontSize: 11, color: "#94A3B8" }}>
-                      {bs.simpleAvg.toFixed(3)}%
+                      {bs.simpleAvg.toFixed(4)}%
                     </div>
                     <div style={{ fontSize: 10, color: "#1B3A6B", marginTop: 2, fontWeight: 600 }}>가중평균 (적용)</div>
                     <div style={{ fontSize: 11, color: "#1B3A6B", fontWeight: 700 }}>
-                      {bs.weightedAvg.toFixed(3)}%
+                      {bs.weightedAvg.toFixed(4)}%
                     </div>
                   </div>
                 )}

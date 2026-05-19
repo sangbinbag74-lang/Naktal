@@ -62,7 +62,7 @@ function fmtDate(iso: string) {
 
 function fmtDeviation(dev: number) {
   const sign = dev >= 0 ? "+" : "";
-  return `${sign}${dev.toFixed(3)}%p`;
+  return `${sign}${dev.toFixed(4)}%p`;
 }
 
 // ContractRow 의 getDDay 와 동일 (ceil 기반) — D-N 표시 일관성
@@ -291,7 +291,7 @@ export default async function BidResultPage({
           {fmtPrice(price)}
         </div>
         <div style={{ fontSize: 12, color: "#BFDBFE", marginTop: 8 }}>
-          예측 사정율 {sajungRate.toFixed(3)}%
+          예측 사정율 {sajungRate.toFixed(4)}%
           {sajungDeviation !== null && (
             <span style={{
               marginLeft: 6,
@@ -357,7 +357,7 @@ export default async function BidResultPage({
               <div style={{ fontSize: 11, color: "#94A3B8", marginBottom: 4 }}>내 실제 투찰가</div>
               <div style={{ fontSize: 17, fontWeight: 700, color: "#0F172A" }}>{fmtPrice(Number(req.userBidPrice))}</div>
               {req.userBidRate != null && (
-                <div style={{ fontSize: 10, color: "#64748B", marginTop: 2 }}>투찰률 {Number(req.userBidRate).toFixed(3)}%</div>
+                <div style={{ fontSize: 10, color: "#64748B", marginTop: 2 }}>투찰률 {Number(req.userBidRate).toFixed(4)}%</div>
               )}
             </div>
             <div style={{ background: "#F8FAFC", borderRadius: 10, padding: "12px 14px" }}>
@@ -430,14 +430,14 @@ export default async function BidResultPage({
             { label: "기초금액", value: fmtPrice(budget) + " (부가세 포함)" },
             { label: "예정가 (예측)", value: fmtPrice(effectiveEstPrice) },
             isAValue && aValueTotal > 0 ? { label: "A값", value: fmtPrice(aValueTotal) } : null,
-            { label: "낙찰하한율", value: `${lowerLimitRateNum.toFixed(3)}%` },
+            { label: "낙찰하한율", value: `${lowerLimitRateNum.toFixed(4)}%` },
             { label: "낙찰하한가", value: fmtPrice(lowerLimit) },
             bidRate != null ? { label: "투찰률 (기초금액 대비)", value: `${bidRate.toFixed(4)}%` } : null,
             {
               label: "예측 사정율",
               value: sajungDeviation !== null
-                ? `${sajungRate.toFixed(3)}% (발주처 평균 ${fmtDeviation(sajungDeviation)})`
-                : `${sajungRate.toFixed(3)}%`,
+                ? `${sajungRate.toFixed(4)}% (발주처 평균 ${fmtDeviation(sajungDeviation)})`
+                : `${sajungRate.toFixed(4)}%`,
             },
           ].filter((x): x is { label: string; value: string; bold?: boolean } => x !== null).map(({ label, value, bold }) => (
             <div key={label} style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
@@ -477,7 +477,7 @@ export default async function BidResultPage({
               },
               {
                 label: "발주처 평균 사정율",
-                value: avgSajungRate > 0 ? `${avgSajungRate.toFixed(3)}%` : "데이터 부족",
+                value: avgSajungRate > 0 ? `${avgSajungRate.toFixed(4)}%` : "데이터 부족",
                 sub: sampleSize > 0 ? `최근 ${sampleSize}건 기준` : "샘플 부족",
                 color: "#1B3A6B",
               },

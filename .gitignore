@@ -54,3 +54,10 @@ apps/ml/**/*.csv
 apps/crawler/.recollect-cache/
 apps/crawler/.cache/
 apps/crawler/recollect-*.log
+
+# 박상빈님 5/20 — 큰 ONNX 파일 (100MB+) GitHub 한계
+apps/web/ml/lowerlimit_q05.onnx
+apps/web/ml/lowerlimit_q50.onnx
+apps/web/ml/lowerlimit_q95.onnx
+apps/web/ml/sajung_flaml.onnx
+apps/web/ml/sajung_flaml_meta.json

@@ -202,7 +202,7 @@ export default async function AdminRequestsPage() {
             },
             {
               label: "평균 예측 오차",
-              value: resultCount > 0 ? `${avgDeviation.toFixed(3)}%p` : "-",
+              value: resultCount > 0 ? `${avgDeviation.toFixed(4)}%p` : "-",
               color: resultCount > 0
                 ? avgDeviation < 0.5 ? "#059669" : avgDeviation < 1.0 ? "#D97706" : "#DC2626"
                 : "#9CA3AF",

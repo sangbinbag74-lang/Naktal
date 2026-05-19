@@ -1,7 +1,10 @@
 import Link from "next/link";
 
 export const metadata = {
-  title: "개인정보처리방침 — 낙비",
+  title: "개인정보처리방침",
+  description: "낙비 — 내 손안의 AI 낙찰비서 개인정보처리방침. 수집 항목·이용 목적·보관 기간·이용자 권리·보호책임자 안내.",
+  keywords: ["낙비 개인정보", "낙비 개인정보처리방침", "낙찰AI 개인정보"],
+  alternates: { canonical: "https://naktal.me/privacy" },
 };
 
 export default function PrivacyPage() {

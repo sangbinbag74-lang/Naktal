@@ -142,7 +142,7 @@ async function importBidResults(
     return {
       id: randomUUID(),  // Prisma @default(cuid()) → supabase REST id 명시
       annId,
-      bidRate: parseFloat(rateRaw).toFixed(3),
+      bidRate: parseFloat(rateRaw).toFixed(4),
       finalPrice: String(parseInt(priceRaw, 10)),
       numBidders: parseInt((item.prtcptCnum || item.totPrtcptCo || "0").replace(/[^0-9]/g, ""), 10),
       winnerName: item.sucsfbidCorpNm?.trim() || item.bidwinnrNm?.trim() || null,

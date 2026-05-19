@@ -233,7 +233,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         if (rateRaw && priceRaw) {
           res = {
             annId: req.konepsId,
-            bidRate: parseFloat(rateRaw).toFixed(3),
+            bidRate: parseFloat(rateRaw).toFixed(4),
             finalPrice: String(parseInt(priceRaw, 10)),
             numBidders: parseInt((found.prtcptCnum || found.totPrtcptCo || "0").replace(/[^0-9]/g, ""), 10),
             winnerName: found.sucsfbidCorpNm?.trim() || found.bidwinnrNm?.trim() || null,
@@ -442,7 +442,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
               if (rateRaw && priceRaw) {
                 res = {
                   annId: koneps,
-                  bidRate: parseFloat(rateRaw).toFixed(3),
+                  bidRate: parseFloat(rateRaw).toFixed(4),
                   finalPrice: String(parseInt(priceRaw, 10)),
                   numBidders: parseInt((found.prtcptCnum || found.totPrtcptCo || "0").replace(/[^0-9]/g, ""), 10),
                   winnerName: found.sucsfbidCorpNm?.trim() || found.bidwinnrNm?.trim() || null,
