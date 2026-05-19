@@ -35,7 +35,7 @@ export function applySajungNoise(
   mlPredictedRate: number,
   userId: string,
   annId: string,
-  sigma = 0.05,
+  sigma = 0.03,  // 박상빈님 5/19 명시 M1-N03 채택 — 145K 백테스트 best (이전 0.05)
 ): number {
   const noise = deterministicGaussian(`${userId}:${annId}`, sigma);
   return mlPredictedRate + Math.abs(noise);  // ★ 음수만 미러 (5/17 명시)

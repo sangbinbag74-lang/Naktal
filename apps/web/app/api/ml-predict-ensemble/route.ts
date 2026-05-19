@@ -134,21 +134,28 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     const manifest = getManifest();
     const weights = manifest.weights;
 
-    const [v2, xgb, cat] = await Promise.all([
+    // 박상빈님 5/19 명시 M1-N03: 5way (v2+tuned+xgb+cat+q95) 가중평균
+    // 145K 백테스트 결과 = 부적격 38.96% / 1위 5.02% (현재 운영 대비 -23%p)
+    const [v2, tuned, xgb, cat, q95] = await Promise.all([
       runOne("sajung_lgbm_v2", features),
+      runOne("sajung_lgbm_v3_tuned", features),
       runOne("sajung_xgboost", features),
       runOne("sajung_catboost", features),
+      runOne("sajung_quantile_q95", features),
     ]);
 
-    const wV2  = Number(weights.sajung_lgbm_v2  ?? 1/3);
-    const wXgb = Number(weights.sajung_xgboost  ?? 1/3);
-    const wCat = Number(weights.sajung_catboost ?? 1/3);
-    const wSum = wV2 + wXgb + wCat;
-    const avg  = (v2 * wV2 + xgb * wXgb + cat * wCat) / (wSum > 0 ? wSum : 1);
+    const wV2    = Number(weights.sajung_lgbm_v2          ?? 0.15);
+    const wTuned = Number(weights.sajung_lgbm_v3_tuned    ?? 0.15);
+    const wXgb   = Number(weights.sajung_xgboost          ?? 0.10);
+    const wCat   = Number(weights.sajung_catboost         ?? 0.00);
+    const wQ95   = Number(weights.sajung_quantile_q95     ?? 0.60);
+    const wSum   = wV2 + wTuned + wXgb + wCat + wQ95;
+    const avg    = (v2 * wV2 + tuned * wTuned + xgb * wXgb + cat * wCat + q95 * wQ95) / (wSum > 0 ? wSum : 1);
 
-    // 3개 예측 std → 신뢰구간 추정
-    const mean = (v2 + xgb + cat) / 3;
-    const variance = ((v2 - mean) ** 2 + (xgb - mean) ** 2 + (cat - mean) ** 2) / 3;
+    // 5개 예측 std → 신뢰구간 추정
+    const all = [v2, tuned, xgb, cat, q95];
+    const mean = all.reduce((s, v) => s + v, 0) / all.length;
+    const variance = all.reduce((s, v) => s + (v - mean) ** 2, 0) / all.length;
     const std = Math.sqrt(variance);
     const margin = Math.max(std * 1.96, 0.3);  // 정상범위 최소 ±0.3%p
 
@@ -162,10 +169,12 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       ensemble_lwlt_q50: avg,
       ensemble_lwlt_q95: avg + margin,
       // 디버깅 / 모델별 개별값
-      v2_pred:  v2,
-      xgb_pred: xgb,
-      cat_pred: cat,
-      weights: { v2: wV2 / wSum, xgb: wXgb / wSum, cat: wCat / wSum },
+      v2_pred:    v2,
+      tuned_pred: tuned,
+      xgb_pred:   xgb,
+      cat_pred:   cat,
+      q95_pred:   q95,
+      weights: { v2: wV2/wSum, tuned: wTuned/wSum, xgb: wXgb/wSum, cat: wCat/wSum, q95: wQ95/wSum },
       model_version: manifest.version,
     });
   } catch (e) {
