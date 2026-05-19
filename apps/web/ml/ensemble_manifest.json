@@ -1,33 +1,45 @@
 {
-  "version": "ensemble-v4.0-2026-05-19[B-q70+N03]",
+  "version": "ensemble-v5.0-2026-05-19[B-q70+M1]",
   "training_date": "2026-05-19",
-  "operation_mode": "B-q70 단독 (LightGBM Quantile q70, 박스권 ML 신규) + 음수미러 sigma 0.03",
+  "operation_mode": "B-q70 0.5 + M1(5way 가중평균) 0.5 — 균형 ensemble (noise X)",
   "data_size": "1.84M (training_data_v2.csv) + 145,390 backtest (공사 + 복수예가)",
   "bundled_models": {
-    "sajung_quantile_q70": "/ml/sajung_quantile_q70.onnx"
+    "sajung_quantile_q70": "/ml/sajung_quantile_q70.onnx",
+    "sajung_lgbm_v2": "/ml/sajung_lgbm_v2.onnx",
+    "sajung_lgbm_v3_tuned": "/ml/sajung_lgbm_v3_tuned.onnx",
+    "sajung_xgboost": "/ml/sajung_xgboost.onnx",
+    "sajung_catboost": "/ml/sajung_catboost.onnx",
+    "sajung_quantile_q95": "/ml/sajung_quantile_q95.onnx"
   },
   "remote_models": {},
-  "weights": {
-    "sajung_quantile_q70": 1.00
+  "outer_weights": {
+    "B_q70": 0.5,
+    "M1_5way": 0.5
+  },
+  "M1_inner_weights": {
+    "sajung_lgbm_v2": 0.15,
+    "sajung_lgbm_v3_tuned": 0.15,
+    "sajung_xgboost": 0.10,
+    "sajung_catboost": 0.00,
+    "sajung_quantile_q95": 0.60
   },
   "backtest_145k": {
     "period": "2025-01-01 ~ 2026-05-18",
     "sample": 145390,
     "category": "공사 + 복수예가",
-    "B_q70_no_noise":  { "disq_rate": 31.48, "top1_rate": 4.85, "win_05": 45.78, "win_10": 77.70, "score": 3.281 },
-    "B_q70_with_noise_sigma_003": { "disq_rate": 30.33, "top1_rate": 4.80, "win_05": 45.20, "win_10": 77.00, "score": 3.287 },
-    "M1_N03_baseline (이전 운영)": { "disq_rate": 37.86, "top1_rate": 4.90, "win_05": 46.17, "win_10": 78.16, "score": 3.006 }
+    "B_q70_M1_noise_X":         { "disq_rate": 34.55, "top1_rate": 5.04, "win_05": 46.62, "win_10": 78.51, "score": 3.315 },
+    "B_q70_N03_previous":       { "disq_rate": 30.34, "top1_rate": 4.78, "win_05": 45.21, "win_10": 76.98, "score": 3.262 },
+    "M1_N03_baseline":          { "disq_rate": 37.86, "top1_rate": 4.90, "win_05": 46.17, "win_10": 78.16, "score": 3.006 }
   },
   "improvement_vs_M1_N03": {
-    "disq_rate": "-7.53%p (대폭 개선)",
-    "top1_rate": "-0.10%p (미미)",
-    "score": "+0.281"
+    "disq_rate": "-3.31%p ↓ (개선)",
+    "top1_rate": "+0.14%p ↑ (개선)",
+    "score": "+0.309 ↑ (대폭 개선)"
   },
   "noise": {
-    "type": "abs_mirror",
-    "sigma": 0.03,
-    "note": "박상빈님 5/19 명시 B-q70 + 음수미러 채택"
+    "applied": false,
+    "note": "박상빈님 5/19 명시 B-q70-M1 = noise X 채택"
   },
   "host": "bundled",
-  "uploaded_at": "2026-05-19T20:56:00.000Z"
+  "uploaded_at": "2026-05-19T21:30:00.000Z"
 }

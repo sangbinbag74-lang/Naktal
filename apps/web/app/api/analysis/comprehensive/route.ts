@@ -299,13 +299,9 @@ function buildResponse(
   const sd = DEFAULT_SAJUNG_BY_KIND[annKind];
   const dl = DEFAULT_LWLT_BY_KIND[annKind];
 
-  // ML 원본 사정율 + 사용자×공고 deterministic 노이즈 (σ=0.03%p)
-  // 박상빈님 5/19 명시 B-q70+N03 backtest sigma
-  // 같은 사용자가 같은 공고 재조회 시 동일 결과 보장
+  // 박상빈님 5/19 명시 B-q70-M1 = noise X 채택 (ensemble 자체가 균형 = 추가 노이즈 X)
   const mlRate = Number(pred.predictedSajungRate) || sd.center;
-  const effRate = userId
-    ? applySajungNoise(mlRate, userId, ann.id as string, 0.03)
-    : mlRate;
+  const effRate = mlRate;
 
   // A값 공고: 낙찰하한가 + 1원 = (예정가 - A합산) × 낙찰하한율 + A합산 + 1
   const aLowerLimit = (estimatedPriceByA != null && aValueTotal != null && lowerLimitRate != null)
