@@ -1,7 +1,13 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/server";
 
-export async function GET() {
+export async function GET(request: NextRequest) {
+  // 박상빈님 5/20 명시 — 어드민 secret 가드 추가 (환경변수 일부·서버 구성 비인증 공개 차단)
+  const adminKey = request.headers.get("x-admin-key");
+  if (!adminKey || adminKey !== process.env.ADMIN_SECRET_KEY) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   const result: Record<string, unknown> = {};
 
   // 1. 환경변수 체크

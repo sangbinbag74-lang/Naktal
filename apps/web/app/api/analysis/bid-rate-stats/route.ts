@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import {
   g2bFetchBidResultPage,
@@ -96,24 +96,14 @@ async function syncAnnouncementsFromG2B(
   }
 }
 
-export async function GET(): Promise<NextResponse> {
-  const supabase = await createClient();
-
-  // BidResult 건수 확인
-  const { count: bidCount } = await supabase
-    .from("BidResult")
-    .select("*", { count: "exact", head: true });
-
-  // 데이터 없으면 G2B에서 on-demand 수집 (90일치)
-  if ((bidCount ?? 0) === 0) {
-    try {
-      await syncAnnouncementsFromG2B(supabase, 90);
-      const saved = await syncBidResultsFromG2B(supabase, 90);
-      console.log(`[on-demand bid-result sync] 90일치 ${saved}건 저장`);
-    } catch (e) {
-      console.error("[on-demand bid-result sync 실패]", e);
-    }
+export async function GET(request: NextRequest): Promise<NextResponse> {
+  // 박상빈님 5/20 명시 — 어드민 가드 + on-demand G2B sync 제거 (비인증 DoS·G2B 할당량 소진 차단)
+  const adminKey = request.headers.get("x-admin-key");
+  if (!adminKey || adminKey !== process.env.ADMIN_SECRET_KEY) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+
+  const supabase = await createClient();
 
   // BidResult + Announcement JOIN으로 업종별 통계 계산
   const { data: bidResults, error } = await supabase
