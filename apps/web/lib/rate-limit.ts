@@ -48,7 +48,7 @@ export async function rateLimit(
   // ⚠️ id 명시 필수 — Prisma @default(cuid()) 는 client-side 동작, Supabase JS upsert 는 DB default 필요
   if (!existing || new Date(existing.resetAt) <= now) {
     const { error: upErr } = await supabase.from("RateLimit").upsert(
-      { id: randomUUID(), key, count: 1, resetAt: resetAt.toISOString() },
+      { id: randomUUID(), key, count: 1, resetAt: resetAt.toISOString(), updatedAt: now.toISOString() },
       { onConflict: "key" },
     );
     if (upErr) debug = `${debug}|up:${upErr.code ?? ""}:${upErr.message?.slice(0, 60) ?? ""}`;
@@ -63,7 +63,7 @@ export async function rateLimit(
   // 카운트 증가
   const { error: updErr } = await supabase
     .from("RateLimit")
-    .update({ count: existing.count + 1 })
+    .update({ count: existing.count + 1, updatedAt: now.toISOString() })
     .eq("key", key);
   if (updErr) debug = `${debug}|upd:${updErr.code ?? ""}:${updErr.message?.slice(0, 60) ?? ""}`;
 
