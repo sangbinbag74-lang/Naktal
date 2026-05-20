@@ -5,6 +5,7 @@
  */
 
 import { createClient } from "@supabase/supabase-js";
+import { randomUUID } from "crypto";
 
 export interface OrgFreqMap {
   freqMap: Record<number, number>;
@@ -97,7 +98,7 @@ export async function updateOrgPattern(
 
   const supabase = createClient(supabaseUrl, supabaseKey);
   await supabase.from("OrgBiddingPattern").upsert(
-    { orgName, freqMap: freqPct, deviation, sampleSize: bidRates.length },
+    { id: randomUUID(), orgName, freqMap: freqPct, deviation, sampleSize: bidRates.length },
     { onConflict: "orgName" },
   );
 }

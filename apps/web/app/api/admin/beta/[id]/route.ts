@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { randomUUID } from "crypto";
 import { requireAdmin } from "@/lib/admin-guard";
 import { createAdminClient, createClient } from "@/lib/supabase/server";
 
@@ -54,6 +55,7 @@ export async function PATCH(
   } catch { /* ignore */ }
 
   await admin.from("AdminLog").insert({
+    id: randomUUID(),
     adminId,
     action: action === "approve" ? "BETA_APPROVE" : "BETA_REJECT",
     targetId: id,

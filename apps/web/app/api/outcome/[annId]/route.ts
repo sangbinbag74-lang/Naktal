@@ -4,6 +4,7 @@
  * 저장 시 번호 추천 +1회 보너스 지급
  */
 import { NextRequest, NextResponse } from "next/server";
+import { randomUUID } from "crypto";
 import { createClient } from "@/lib/supabase/server";
 
 type Params = { params: Promise<{ annId: string }> };
@@ -125,6 +126,7 @@ export async function POST(req: NextRequest, { params }: Params): Promise<NextRe
 
   // 신규 저장
   await supabase.from("BidOutcome").insert({
+    id: randomUUID(),
     userId: dbUser.id,
     annId,
     bidPrice: String(body.bidPrice),
@@ -142,6 +144,7 @@ export async function POST(req: NextRequest, { params }: Params): Promise<NextRe
 
   // 보너스 지급 — NumberRecommendation에 bonus 기록
   await supabase.from("NumberRecommendation").insert({
+    id: randomUUID(),
     userId: dbUser.id,
     annId: null,
     category: "BONUS",

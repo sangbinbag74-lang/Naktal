@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { randomUUID } from "crypto";
 import { rateLimit, getClientIp } from "@/lib/rate-limit";
 
 export async function POST(req: NextRequest): Promise<NextResponse> {
@@ -55,7 +56,9 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ error: statusMsg }, { status: 409 });
   }
 
+  // id 명시 필수 — Prisma @default(cuid()) 는 client-side, Supabase JS 는 명시 필요
   const { error } = await supabase.from("BetaApplication").insert({
+    id: randomUUID(),
     bizNo,
     bizName: body.bizName.trim(),
     email: body.email.trim().toLowerCase(),

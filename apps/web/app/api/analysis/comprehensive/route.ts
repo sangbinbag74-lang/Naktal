@@ -254,6 +254,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   if (!isUnreliable) {
     try {
       await admin.from("AIPrediction").upsert({
+        id: crypto.randomUUID(),
         annId,
         konepsId: ann.konepsId as string,
         title: (ann.title as string) ?? "",

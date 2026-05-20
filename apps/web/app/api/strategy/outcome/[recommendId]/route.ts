@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { randomUUID } from "crypto";
 import { createClient } from "@/lib/supabase/server";
 
 export async function GET(
@@ -82,6 +83,7 @@ export async function POST(
 
   // 새 결과 저장
   await supabase.from("BidOutcome").insert({
+    id: randomUUID(),
     userId: dbUser.id,
     annId: rec.annId ?? "unknown",
     recommendationId: recommendId,
@@ -100,6 +102,7 @@ export async function POST(
   // 실제 구현: 별도 bonus 컬럼 or 이번달 카운트 -1
   // 여기서는 bonus 기록을 NumberRecommendation에 modelVersion="bonus" 로 표시
   await supabase.from("NumberRecommendation").insert({
+    id: randomUUID(),
     userId: dbUser.id,
     annId: null,
     category: "BONUS",

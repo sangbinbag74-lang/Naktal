@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { randomUUID } from "crypto";
 import { createClient } from "@/lib/supabase/server";
 
 // GET /api/alerts — 현재 유저의 알림 목록
@@ -49,6 +50,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   };
 
   const { data, error } = await supabase.from("UserAlert").insert({
+    id:         randomUUID(),
     userId:     typedUser.id,
     keywords:   body.keywords ?? [],
     categories: body.categories ?? [],

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { randomUUID } from "crypto";
 import * as PortOneServer from "@portone/server-sdk";
 import { createClient } from "@/lib/supabase/server";
 
@@ -49,6 +50,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
   await supabase.from("Subscription").upsert(
     {
+      id:               randomUUID(),
       userId,
       plan: body.plan,
       portoneOrderId:   body.paymentId,

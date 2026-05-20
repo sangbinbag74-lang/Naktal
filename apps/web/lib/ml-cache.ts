@@ -2,6 +2,7 @@
  * ML 예측 결과 24시간 캐시 (Supabase Prediction 테이블)
  */
 import { createClient } from "@/lib/supabase/server";
+import { randomUUID } from "crypto";
 
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24시간
 
@@ -37,7 +38,7 @@ export async function setCached(
   const expiresAt = new Date(Date.now() + CACHE_TTL_MS).toISOString();
 
   await supabase.from("Prediction").upsert(
-    { type, cacheKey, result, expiresAt },
+    { id: randomUUID(), type, cacheKey, result, expiresAt },
     { onConflict: "cacheKey" }
   );
 }

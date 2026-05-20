@@ -6,6 +6,7 @@
  *  3. Supabase 세션 + User.isAdmin=true
  */
 import { NextRequest, NextResponse } from "next/server";
+import { randomUUID } from "crypto";
 import { verifyAdminSession } from "@/lib/admin-auth";
 
 export async function requireAdmin(
@@ -51,6 +52,7 @@ export async function writeAdminLog(opts: {
   const { createAdminClient } = await import("@/lib/supabase/server");
   const supabase = createAdminClient();
   await supabase.from("AdminLog").insert({
+    id: randomUUID(),
     adminId: opts.adminId,
     action: opts.action,
     targetId: opts.targetId,

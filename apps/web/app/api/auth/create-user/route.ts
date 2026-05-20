@@ -70,6 +70,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       if (userData?.id) {
         await admin.from("CompanyProfile").upsert(
           {
+            id:            crypto.randomUUID(),
             userId:        userData.id,
             bizNo:         body.bizNo,
             bizName:       g2bInfo.bizName || body.bizName,
