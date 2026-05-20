@@ -8,6 +8,7 @@
  */
 
 import { createClient } from "@supabase/supabase-js";
+import { randomUUID } from "crypto";
 
 export interface RateLimitResult {
   allowed: boolean;
@@ -44,9 +45,10 @@ export async function rateLimit(
   if (selErr) debug = `sel:${selErr.code ?? ""}:${selErr.message?.slice(0, 60) ?? ""}`;
 
   // 만료된 레코드 또는 없는 경우 → 새로 시작
+  // ⚠️ id 명시 필수 — Prisma @default(cuid()) 는 client-side 동작, Supabase JS upsert 는 DB default 필요
   if (!existing || new Date(existing.resetAt) <= now) {
     const { error: upErr } = await supabase.from("RateLimit").upsert(
-      { key, count: 1, resetAt: resetAt.toISOString() },
+      { id: randomUUID(), key, count: 1, resetAt: resetAt.toISOString() },
       { onConflict: "key" },
     );
     if (upErr) debug = `${debug}|up:${upErr.code ?? ""}:${upErr.message?.slice(0, 60) ?? ""}`;
