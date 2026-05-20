@@ -189,7 +189,8 @@ async function fetchFromDB(opts: Record<string, string | number>): Promise<NextR
   // 2026-05-15: AnnouncementActive MV 폐기 (REFRESH 좀비 원인). idx_ann_deadline_active 인덱스 활용
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let q: any = admin.from("Announcement").select(
-    "id,konepsId,title,orgName,budget,deadline,category,subCategories,region,createdAt,rawJson,aValueYn,pdfRgnLimit"
+    "id,konepsId,title,orgName,budget,deadline,category,subCategories,region,createdAt,rawJson,aValueYn,pdfRgnLimit",
+    { count: "exact" }   // 박상빈님 5/20 — total 누적치 → 정확한 매칭 카운트
   ).gt("deadline", new Date().toISOString());
 
   // 다중 카테고리: category(주종) OR subCategories(부종) — 박상빈님 5/20 명시 SIMILAR 확장 제거 (정확한 필터)
@@ -334,12 +335,13 @@ async function fetchFromDB(opts: Record<string, string | number>): Promise<NextR
   }
   q = q.range(offset, offset + limit);
 
-  const { data, error } = await q;
+  const { data, error, count } = await q;
   if (error) {
     console.error("[announcements DB]", error.message, error.hint, error.details);
     return NextResponse.json({ data: [], total: 0, hasMore: false, page, limit, error: error.message });
   }
   const rows = data ?? [];
+  const exactTotal = typeof count === "number" ? count : null;
 
   // 단일 단어 키워드 0건 → 공백 무시 RPC fallback
   if (keyword && !keyword.includes(" ") && rows.length === 0) {
@@ -355,7 +357,8 @@ async function fetchFromDB(opts: Record<string, string | number>): Promise<NextR
   const hasMore = rows.length > limit;
   return NextResponse.json({
     data: hasMore ? rows.slice(0, limit) : rows,
-    total: offset + rows.length,
+    // 박상빈님 5/20 — count: 'exact' 로 정확한 매칭 row 수 반환 (누적치 X)
+    total: exactTotal ?? (offset + rows.length),
     hasMore, page, limit,
   });
 }
