@@ -16,7 +16,12 @@ import * as ort from "onnxruntime-web";
 import path from "path";
 import fs from "fs";
 import { captureError } from "@/lib/observability/sentry";
-import { rateLimit, getClientIp } from "@/lib/rate-limit";
+
+const ML_API_KEY = process.env.ML_API_KEY ?? "";
+function authOk(req: NextRequest): boolean {
+  if (!ML_API_KEY) return true;
+  return req.headers.get("x-api-key") === ML_API_KEY;
+}
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -128,17 +133,12 @@ async function runOne(modelKey: string, features: Record<string, unknown>): Prom
 }
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
-  try {
-    // IP 분당 30회 — ONNX 추론 비용 보호
-    const ip = getClientIp(request);
-    const { allowed, resetAt } = await rateLimit(`${ip}:ml-ensemble`, 30, 60);
-    if (!allowed) {
-      return NextResponse.json(
-        { error: "요청이 너무 많습니다. 잠시 후 다시 시도해주세요." },
-        { status: 429, headers: { "Retry-After": String(Math.ceil((resetAt.getTime() - Date.now()) / 1000)) } },
-      );
-    }
+  if (!authOk(request)) {
+    return NextResponse.json({ error: "invalid api key" }, { status: 401 });
+  }
+  // rate limit X — server-to-server 내부 호출 (ml-client.ts fetchMlEnsemble). 사용자측은 comprehensive 에서 user.id 20/min 제한.
 
+  try {
     const features = (await request.json()) as Record<string, unknown>;
     const manifest = getManifest();
 
