@@ -149,9 +149,8 @@ async function fetchFromDB(opts: Record<string, string | number>): Promise<NextR
     !hasCityFilter &&
     (deadlineRange === "" || deadlineRange === "active");
   if (rpcEligible) {
-    const expanded = new Set<string>(cats);
-    for (const c of cats) (SIMILAR_CATEGORIES[c] ?? []).forEach((s) => expanded.add(s));
-    const catList = expanded.size > 0 ? [...expanded] : null;
+    // 박상빈님 5/20 명시: SIMILAR 확장 제거 (전기 선택 시 전기만)
+    const catList = cats.length > 0 ? cats : null;
     const regList = regionList.length > 0 ? regionList : null;
     const sortKey = sort === "deadline" ? "deadline" : "latest";
 
@@ -188,13 +187,9 @@ async function fetchFromDB(opts: Record<string, string | number>): Promise<NextR
     "id,konepsId,title,orgName,budget,deadline,category,subCategories,region,createdAt,rawJson,aValueYn,pdfRgnLimit"
   ).gt("deadline", new Date().toISOString());
 
-  // 다중 카테고리: category(주종) OR subCategories(부종) OR 유사 업종 확장
+  // 다중 카테고리: category(주종) OR subCategories(부종) — 박상빈님 5/20 명시 SIMILAR 확장 제거 (정확한 필터)
   if (cats.length > 0) {
-    const expanded = new Set<string>(cats);
-    for (const c of cats) {
-      (SIMILAR_CATEGORIES[c] ?? []).forEach((s) => expanded.add(s));
-    }
-    const list = [...expanded];
+    const list = cats;  // 박상빈님 사용자 명시: 전기만 선택 시 전기만 표시
     const orParts: string[] = [];
     // category 주종 매칭
     orParts.push(`category.in.(${list.join(",")})`);
