@@ -172,63 +172,21 @@ export async function fillAValue() {
   );
   console.log(`진행중 공사 공고: ${all.length}건 | 처리 대상: ${list.length}건`);
 
-  // ym 그룹 (마감 기준 + 주변 월 포함, 공고일 vs 마감일 차이 보정)
-  const ymSet = new Set<string>();
-  for (const ann of list) {
-    if (!ann.ym) continue;
-    ymSet.add(ann.ym);
-    // 마감 ym 이전 1~2 개월 포함 (공고가 보통 한두 달 전 등록)
-    const y = parseInt(ann.ym.slice(0, 4));
-    const m = parseInt(ann.ym.slice(4, 6));
-    for (let off = 1; off <= 3; off++) {
-      const d = new Date(y, m - 1 - off, 1);
-      ymSet.add(`${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, "0")}`);
-    }
-  }
-  const yms = Array.from(ymSet).sort();
-  console.log(`Bulk fetch ym 수: ${yms.length}개`);
-
-  // ym 별로 BsisAmount + CalclA bulk fetch
-  const bsisMap: Record<string, BsisAmountItem> = {};
-  const calclMap: Record<string, AInfoItem> = {};
-  for (let i = 0; i < yms.length; i++) {
-    const ym = yms[i];
-    const t0 = Date.now();
-    const bsis = await fetchBulk("getBidPblancListInfoCnstwkBsisAmount", ym, apiKey);
-    const calcl = await fetchBulk("getBidPblancListBidPrceCalclAInfo", ym, apiKey);
-    Object.assign(bsisMap, bsis);
-    Object.assign(calclMap, calcl);
-    console.log(`[${i + 1}/${yms.length}] ${ym} bulk fetch (${((Date.now() - t0) / 1000).toFixed(1)}s) | bsis ${Object.keys(bsis).length} / calcl ${Object.keys(calcl).length}`);
-  }
-
-  // 각 ann 에 대해 map lookup → bulk UPDATE
+  // 박상빈님 5/20 명시 — bulk fetch (inqryDiv=1) ym 매칭 실패 95% (마감일 ym 와 G2B 응답 시점 불일치)
+  // → inqryDiv=2 단건 조회로 변경 (5/5 검증 완료). 박상빈님 메모리 `recollect_acceleration` 2 worker 적용.
   let updated = 0;
   let skipped = 0;
-  for (const ann of list) {
-    const bs = bsisMap[ann.konepsId] as BsisAmountItem | undefined;
-    if (!bs) { skipped++; continue; }
-    const aValueYn = bs.bidPrceCalclAYn ?? "";
-    const aValueAmt = BigInt(parseInt((bs.bssamt ?? "0").replace(/[^0-9]/g, ""), 10) || 0);
-    const bgn = parseFloat((bs.rsrvtnPrceRngBgnRate ?? "0").replace(/[^\-0-9.]/g, "")) || 0;
-    const end = parseFloat((bs.rsrvtnPrceRngEndRate ?? "0").replace(/[^\-0-9.]/g, "")) || 0;
-    const priceRangeRate = bgn !== 0 || end !== 0 ? `${bgn}~${end}` : "";
+  let processed = 0;
+  const tStart = Date.now();
 
-    let aValueTotal = 0n;
-    if (aValueYn === "Y") {
-      const ai = calclMap[ann.konepsId] as AInfoItem | undefined;
-      if (ai) {
-        const sum =
-          Number(ai.npnInsrprm ?? 0) +
-          Number(ai.mrfnHealthInsrprm ?? 0) +
-          Number(ai.rtrfundNon ?? 0) +
-          Number(ai.odsnLngtrmrcprInsrprm ?? 0) +
-          Number(ai.sftyMngcst ?? 0) +
-          (ai.qltyMngcstAObjYn === "Y" ? Number(ai.qltyMngcst ?? 0) : 0);
-        aValueTotal = BigInt(Math.round(sum));
-      }
-    }
-
+  async function processOne(ann: typeof list[number]): Promise<void> {
     try {
+      const bs = await fetchBsisAmount(ann.konepsId, apiKey);
+      if (!bs) { skipped++; return; }
+      let aValueTotal = 0n;
+      if (bs.aValueYn === "Y") {
+        aValueTotal = await fetchATotal(ann.konepsId, apiKey);
+      }
       await pool.query(
         `UPDATE "Announcement" SET
            "aValueYn"        = $2,
@@ -236,15 +194,34 @@ export async function fillAValue() {
            "aValueTotal"     = CASE WHEN $4::bigint > 0 THEN $4::bigint ELSE "aValueTotal" END,
            "priceRangeRate"  = CASE WHEN $5 != '' THEN $5 ELSE "priceRangeRate" END
          WHERE id = $1`,
-        [ann.id, aValueYn, aValueAmt.toString(), aValueTotal.toString(), priceRangeRate],
+        [ann.id, bs.aValueYn, bs.aValueAmt.toString(), aValueTotal.toString(), bs.priceRangeRate],
       );
       updated++;
     } catch (e) {
-      console.error(`[${ann.konepsId}] UPDATE 오류:`, (e as Error).message);
+      console.error(`[${ann.konepsId}] 오류:`, (e as Error).message);
+    } finally {
+      processed++;
+      if (processed % 200 === 0) {
+        const rate = processed / ((Date.now() - tStart) / 1000);
+        const eta = Math.round((list.length - processed) / rate);
+        console.log(`  ${processed}/${list.length} (${rate.toFixed(1)} row/s, ETA ${eta}s) | 업데이트 ${updated} | 스킵 ${skipped}`);
+      }
     }
   }
 
-  console.log(`\n완료: ${updated}건 업데이트 / ${skipped}건 스킵(bulk 응답 없음) / 총 ${list.length}건`);
+  // 박상빈님 메모리 recollect_acceleration: 2 worker
+  const WORKER = 2;
+  const queue = [...list];
+  async function worker() {
+    while (queue.length > 0) {
+      const ann = queue.shift();
+      if (!ann) break;
+      await processOne(ann);
+    }
+  }
+  await Promise.all(Array.from({ length: WORKER }, () => worker()));
+
+  console.log(`\n완료: ${updated}건 업데이트 / ${skipped}건 스킵(G2B 응답 없음) / 총 ${list.length}건 (${((Date.now() - tStart) / 1000 / 60).toFixed(1)}분)`);
   await pool.end();
 }
 
