@@ -15,7 +15,7 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
-  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? "https://naktal.me"),
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || "https://naktal.me"),
   title: {
     default: "낙비 — 내 손안의 AI 낙찰비서 · 나라장터 입찰 분석",
     template: "%s | 낙비",

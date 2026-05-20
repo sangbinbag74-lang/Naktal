@@ -15,7 +15,7 @@ function tplId(...candidates: (string | undefined)[]): string {
 }
 
 const KAKAO_API_BASE = "https://kapi.kakao.com/v1/api/talk/friends/message/send";
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://naktal.me";
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://naktal.me";
 
 interface KakaoTemplateParams {
   templateId: string;
