@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient, createAdminClient } from "@/lib/supabase/server";
 import { fetchG2BCompanyInfo } from "@/lib/g2b-company";
+import { isCeoMatch } from "@/lib/biz-name-match";
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
   // 세션 확인은 anon 클라이언트로
@@ -28,6 +29,29 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   } catch {
     return NextResponse.json({ ok: false }, { status: 400 });
   }
+
+  // 박상빈님 5/20 명시 — 클라이언트 검증 우회 차단을 위한 서버 측 재검증
+  const bizNoClean = (body.bizNo ?? "").replace(/\D/g, "");
+  if (bizNoClean.length !== 10) {
+    return NextResponse.json({ ok: false, error: "사업자번호 형식 오류" }, { status: 400 });
+  }
+  const ownerNameClean = (body.ownerName ?? "").trim();
+  if (!ownerNameClean) {
+    return NextResponse.json({ ok: false, error: "대표자명 누락" }, { status: 400 });
+  }
+  // G2B 사업자등록증 재대조 (클라이언트가 lookup-biz 우회한 경우 차단)
+  const g2bVerify = await fetchG2BCompanyInfo(bizNoClean);
+  if (!g2bVerify) {
+    return NextResponse.json({ ok: false, error: "나라장터 미등록 업체" }, { status: 400 });
+  }
+  if (g2bVerify.ceoName && !isCeoMatch(ownerNameClean, g2bVerify.ceoName)) {
+    return NextResponse.json(
+      { ok: false, error: `대표자명 불일치 (입력 ${ownerNameClean} / 등록 ${g2bVerify.ceoName})` },
+      { status: 400 },
+    );
+  }
+  body.bizNo = bizNoClean;
+  body.ownerName = ownerNameClean;
 
   // RLS 우회: service_role로 User 테이블 upsert
   const admin = createAdminClient();

@@ -72,6 +72,10 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     if (item.b_stt_cd === "03") {
       return NextResponse.json({ valid: false, message: "폐업된 사업자번호입니다." });
     }
+    // 박상빈님 5/20 명시 — b_stt_cd 가 "01" (계속사업자) 일 때만 통과. 빈 객체/누락 시 차단.
+    if (item.b_stt_cd !== "01") {
+      return NextResponse.json({ valid: false, message: "등록되지 않은 사업자번호입니다." });
+    }
 
     return NextResponse.json({ valid: true, status: item.b_stt });
   } catch (err) {
