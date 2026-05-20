@@ -54,7 +54,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         const rows = items.map((item: G2BAnnouncement) => {
           const konepsId = item.bidNtceNo?.trim();
           const title = item.bidNtceNm?.trim();
-          const orgName = (item.ntceInsttNm || item.demInsttNm)?.trim();
+          const orgName = (item.ntceInsttNm || item.dminsttNm)?.trim();
           const budgetNum = parseInt((item.asignBdgtAmt || item.presmptPrce || "0").replace(/[^0-9]/g, ""), 10);
           const deadline = g2bParseDate(item.bidClseDt);
           if (!konepsId || !title || !orgName || isNaN(budgetNum) || !deadline) return null;

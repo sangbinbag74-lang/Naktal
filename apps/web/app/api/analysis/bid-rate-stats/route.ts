@@ -71,7 +71,7 @@ async function syncAnnouncementsFromG2B(
     const rows = items.map((item: G2BAnnouncement) => {
       const konepsId  = item.bidNtceNo?.trim();
       const title     = item.bidNtceNm?.trim();
-      const orgName   = (item.ntceInsttNm || item.demInsttNm)?.trim();
+      const orgName   = (item.ntceInsttNm || item.dminsttNm)?.trim();
       const budgetNum = parseInt(
         (item.asignBdgtAmt || item.presmptPrce || "0").replace(/[^0-9]/g, ""), 10
       );

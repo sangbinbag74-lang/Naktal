@@ -69,7 +69,7 @@ function extractParticipationConditions(rawJson: Record<string, unknown> | null)
   const fields: { key: string; label: string }[] = [
     { key: "prtcptnLmtNm",    label: "참가제한" },
     { key: "ntceInsttAddr",    label: "공고기관주소" },
-    { key: "demInsttNm",       label: "수요기관" },
+    { key: "dminsttNm",       label: "수요기관" },
     { key: "rbidPermsnYn",     label: "재입찰허용" },
     { key: "sucsfbidLwltRate", label: "낙찰하한율" },
     { key: "indutyCtgryNm",    label: "업종카테고리" },
@@ -90,7 +90,7 @@ function g2bToAnnouncement(item: G2BAnnouncement): Announcement {
     id: item.bidNtceNo,
     konepsId: item.bidNtceNo,
     title: item.bidNtceNm ?? "",
-    orgName: item.ntceInsttNm || item.demInsttNm || "",
+    orgName: item.ntceInsttNm || item.dminsttNm || "",
     budget: String(+(item.asignBdgtAmt || item.presmptPrce || "0").replace(/[^0-9]/g, "")),
     deadline: g2bParseDate(item.bidClseDt) ?? "",
     category: item.indutyCtgryNm || item.ntceKindNm || "",

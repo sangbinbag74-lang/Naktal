@@ -102,16 +102,24 @@ async function upsertG2BItemsToDB(pairs: { item: G2BAnnouncement; operation: str
     const deadline  = g2bParseDate(i.bidClseDt);
     const konepsId  = i.bidNtceNo?.trim();
     const title     = i.bidNtceNm?.trim();
-    const orgName   = (i.ntceInsttNm || i.demInsttNm)?.trim();
+    const orgName   = (i.ntceInsttNm || i.dminsttNm)?.trim();
     if (!konepsId || !title || !orgName || !deadline) return null;
+    // 박상빈님 5/20 — G2B 응답 실측: ntceInsttAddr 필드 자체 없음. cnstrtsiteRgnNm/dminsttNm/ntceInsttNm 폴백
+    const regionSrc =
+      i.cnstrtsiteRgnNm  // 공사현장 지역 (가장 정확)
+      || i.dminsttNm     // 수요기관명 (광역시도 포함)
+      || i.ntceInsttNm   // 공고기관명 폴백
+      || "";
     return {
       konepsId, title, orgName,
       budget: budgetNum,
       deadline,
       category: g2bGetCategory(i, operation),
-      region: g2bExtractRegion(i.ntceInsttAddr || i.ntceInsttNm || i.demInsttNm || ""),
+      region: g2bExtractRegion(regionSrc),
       rawJson,
       subCategories: operation === "getBidPblancListInfoCnstwk" ? parseSubCategories(rawJson) : [],
+      // 박상빈님 5/20 — 일반 공고 op 응답에 bidPrceCalclAYn 없음. BsisAmount op (D2 단계)에서 채움
+      aValueYn: i.bidPrceCalclAYn ?? "",
     };
   }).filter(Boolean);
 

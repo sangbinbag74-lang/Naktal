@@ -18,6 +18,7 @@ import {
   type G2BAnnouncement,
   type G2BBidResult,
 } from "@/lib/g2b";
+import { parseSubCategories } from "@/lib/category-map";
 
 export const maxDuration = 300;
 
@@ -62,19 +63,29 @@ async function importAnnouncementsOp(
     const rows = items.map((item: G2BAnnouncement) => {
       const konepsId  = item.bidNtceNo?.trim();
       const title     = item.bidNtceNm?.trim();
-      const orgName   = (item.ntceInsttNm || item.demInsttNm)?.trim();
+      const orgName   = (item.ntceInsttNm || item.dminsttNm)?.trim();
       const budgetNum = parseInt((item.asignBdgtAmt || item.presmptPrce || "0").replace(/[^0-9]/g, ""), 10);
       const deadline  = g2bParseDate(item.bidClseDt);
       if (!konepsId || !title || !orgName || isNaN(budgetNum) || !deadline) return null;
       const rawJson: Record<string, string> = {};
       for (const [k, v] of Object.entries(item)) rawJson[k] = String(v ?? "");
+      // 박상빈님 5/20 — G2B 응답 실측: ntceInsttAddr 필드 자체 없음. cnstrtsiteRgnNm/dminsttNm/ntceInsttNm 폴백
+      const regionSrc =
+        item.cnstrtsiteRgnNm  // 공사현장 지역 (가장 정확)
+        || item.dminsttNm     // 수요기관명 (광역시도 포함)
+        || item.ntceInsttNm   // 공고기관명 폴백
+        || "";
       return {
         id: randomUUID(),  // Prisma @default(cuid()) → supabase REST 에서는 클라이언트 ID 명시 필수
         konepsId, title, orgName,
         budget: budgetNum,
         deadline,
         category: g2bGetCategory(item, operation),
-        region: g2bExtractRegion(item.ntceInsttAddr || ""),
+        region: g2bExtractRegion(regionSrc),
+        // 박상빈님 5/20 — 공사 op 만 부종 정보 인라인. 빈 시 별도 LicenseLimit op (D3 단계)에서 채움
+        subCategories: operation === "getBidPblancListInfoCnstwk" ? parseSubCategories(rawJson) : [],
+        // 박상빈님 5/20 — 일반 공고 op 응답에 bidPrceCalclAYn 없음. BsisAmount op (D2 단계)에서 채움
+        aValueYn: item.bidPrceCalclAYn ?? "",
         rawJson,
       };
     }).filter(Boolean);

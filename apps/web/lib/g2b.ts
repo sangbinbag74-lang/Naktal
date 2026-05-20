@@ -17,7 +17,7 @@ export interface G2BAnnouncement {
   bidNtceNo: string;
   bidNtceNm: string;
   ntceInsttNm: string;
-  demInsttNm: string;
+  dminsttNm: string;          // 박상빈님 5/20 — G2B 응답의 진짜 키 (이전 demInsttNm 타이포 수정)
   asignBdgtAmt: string;
   presmptPrce: string;
   bidClseDt: string;
@@ -26,6 +26,8 @@ export interface G2BAnnouncement {
   cntrctMthdNm: string;
   indutyCtgryNm: string;
   ntceInsttAddr: string;
+  cnstrtsiteRgnNm: string;    // 박상빈님 5/20 — 공사현장 지역 (region 1순위 폴백)
+  bidPrceCalclAYn: string;    // 박상빈님 5/20 — A값 대상 Y/N (BsisAmount op 응답에 있음)
   sucsfbidLwltRate: string;
   [key: string]: string;
 }
