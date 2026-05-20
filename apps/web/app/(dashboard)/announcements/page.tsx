@@ -158,25 +158,16 @@ export default function AnnouncementsPage() {
   // hydrated 플래그: localStorage 복원 완료 후에만 fetch 실행 (race condition 방지)
   const [hydrated, setHydrated] = useState(false);
 
-  // 마운트 후 localStorage에서 필터 복원 (hydration mismatch 방지)
+  // 박상빈님 5/20 명시 — localStorage 옛 필터 자동 복원 제거 + 사용자 캐시 강제 클리어
   useEffect(() => {
-    const saved = getSavedFilters();
-    if (typeof saved.keyword === "string")        setKeyword(saved.keyword);
-    if (Array.isArray(saved.categories))           setCategories(saved.categories as string[]);
-    if (Array.isArray(saved.regions))              setRegions(saved.regions as string[]);
-    if (typeof saved.sort === "string")            setSort(saved.sort);
-    if (typeof saved.contractMethod === "string")  setContractMethod(saved.contractMethod);
-    if (typeof saved.deadlineRange === "string")   setDeadlineRange(saved.deadlineRange);
-    if (typeof saved.minBudget === "string")       setMinBudget(saved.minBudget);
-    if (typeof saved.maxBudget === "string")       setMaxBudget(saved.maxBudget);
-    if (typeof saved.budgetPreset === "string")    setBudgetPreset(saved.budgetPreset);
-    if (typeof saved.rgnType === "string")         setRgnType(saved.rgnType);
-    if (typeof saved.ntceKind === "string")        setNtceKind(saved.ntceKind);
-    if (typeof saved.cnclsType === "string")       setCnclsType(saved.cnclsType);
-    if (typeof saved.myProvince === "string")      setMyProvince(saved.myProvince);
-    if (typeof saved.myCity === "string")          setMyCity(saved.myCity);
-    if (typeof saved.onlyMyRegion === "boolean")   setOnlyMyRegion(saved.onlyMyRegion);
+    try { localStorage.removeItem(FILTERS_KEY); } catch { /* 무시 */ }
     setHydrated(true);
+  }, []);
+
+  // 박상빈님 5/20 명시 — 카테고리 변경 시 옛 지역·마감일 자동 reset
+  const resetSubFiltersOnCategoryChange = useCallback(() => {
+    setRegions([]);
+    setDeadlineRange("active");
   }, []);
 
   const observerRef = useRef<IntersectionObserver | null>(null);
@@ -243,7 +234,7 @@ export default function AnnouncementsPage() {
       clearTimeout(searchTimerRef.current);
       searchTimerRef.current = null;
     }
-    saveFilters({ keyword, categories, regions, sort, contractMethod, deadlineRange, minBudget, maxBudget, budgetPreset, rgnType, ntceKind, cnclsType, myProvince, myCity, onlyMyRegion });
+    // 박상빈님 5/20 명시 — saveFilters 호출 제거 (옛 필터 자동 복원 차단)
     setPage(1);
     setItems([]);
     setHasMore(true);
@@ -363,7 +354,7 @@ export default function AnnouncementsPage() {
                   <div style={{ padding: "4px 14px 8px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                     <span style={{ fontSize: 11, color: "#94A3B8", fontWeight: 600 }}>업종 선택</span>
                     {categories.length > 0 && (
-                      <button onClick={() => setCategories([])} style={{ fontSize: 11, color: "#DC2626", background: "none", border: "none", cursor: "pointer", padding: 0 }}>
+                      <button onClick={() => { setCategories([]); resetSubFiltersOnCategoryChange(); }} style={{ fontSize: 11, color: "#DC2626", background: "none", border: "none", cursor: "pointer", padding: 0 }}>
                         전체해제
                       </button>
                     )}
@@ -385,6 +376,7 @@ export default function AnnouncementsPage() {
                                 ...groupCats,
                               ]);
                             }
+                            resetSubFiltersOnCategoryChange();
                           }} style={{ fontSize: 10, color: selectedInGroup > 0 ? "#1B3A6B" : "#94A3B8",
                             background: "none", border: "none", cursor: "pointer", padding: 0 }}>
                             {allSelected ? "전체해제" : "전체선택"}
@@ -405,9 +397,12 @@ export default function AnnouncementsPage() {
                               <input
                                 type="checkbox"
                                 checked={checked}
-                                onChange={() => setCategories(prev =>
-                                  checked ? prev.filter(c => c !== cat) : [...prev, cat]
-                                )}
+                                onChange={() => {
+                                  setCategories(prev =>
+                                    checked ? prev.filter(c => c !== cat) : [...prev, cat]
+                                  );
+                                  resetSubFiltersOnCategoryChange();
+                                }}
                                 style={{ accentColor: "#1B3A6B", width: 14, height: 14, cursor: "pointer" }}
                               />
                               <span style={{ color: checked ? "#1B3A6B" : "#374151", fontWeight: checked ? 600 : 400 }}>
@@ -645,7 +640,7 @@ export default function AnnouncementsPage() {
                 border: "1px solid #C7D2FE",
               }}>
                 {cat}
-                <button onClick={() => setCategories(prev => prev.filter(c => c !== cat))} style={{
+                <button onClick={() => { setCategories(prev => prev.filter(c => c !== cat)); resetSubFiltersOnCategoryChange(); }} style={{
                   background: "none", border: "none", cursor: "pointer",
                   fontSize: 11, color: "#6366F1", padding: 0, lineHeight: 1,
                 }}>×</button>
