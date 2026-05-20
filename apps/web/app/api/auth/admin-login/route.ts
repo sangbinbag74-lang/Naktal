@@ -23,11 +23,18 @@ function safeEq(a: string, b: string): boolean {
 export async function POST(req: NextRequest): Promise<NextResponse> {
   // IP 분당 5회 — brute force 방지
   const ip = getClientIp(req);
-  const { allowed, resetAt } = await rateLimit(`${ip}:admin-login`, 5, 60);
-  if (!allowed) {
+  const rl = await rateLimit(`${ip}:admin-login`, 5, 60);
+  // 디버그: 진단용 헤더 (rate limit 작동 검증 후 제거)
+  const debugHeaders: Record<string, string> = {
+    "X-Debug-IP": ip,
+    "X-Debug-RL-Allowed": String(rl.allowed),
+    "X-Debug-RL-Remaining": String(rl.remaining),
+    "X-Debug-RL-Reset": rl.resetAt.toISOString(),
+  };
+  if (!rl.allowed) {
     return NextResponse.json(
       { error: "로그인 시도가 너무 많습니다. 잠시 후 다시 시도해주세요." },
-      { status: 429, headers: { "Retry-After": String(Math.ceil((resetAt.getTime() - Date.now()) / 1000)) } },
+      { status: 429, headers: { ...debugHeaders, "Retry-After": String(Math.ceil((rl.resetAt.getTime() - Date.now()) / 1000)) } },
     );
   }
 
@@ -37,11 +44,11 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   const adminPw = process.env.ADMIN_LOGIN_PW;
 
   if (!adminId || !adminPw) {
-    return NextResponse.json({ error: "관리자 계정이 설정되지 않았습니다." }, { status: 503 });
+    return NextResponse.json({ error: "관리자 계정이 설정되지 않았습니다." }, { status: 503, headers: debugHeaders });
   }
 
   if (!id || !password || !safeEq(id, adminId) || !safeEq(password, adminPw)) {
-    return NextResponse.json({ error: "아이디 또는 비밀번호가 올바르지 않습니다." }, { status: 401 });
+    return NextResponse.json({ error: "아이디 또는 비밀번호가 올바르지 않습니다." }, { status: 401, headers: debugHeaders });
   }
 
   const expiry = Date.now() + EXPIRES_MS;
