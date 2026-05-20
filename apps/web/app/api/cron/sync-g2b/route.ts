@@ -215,9 +215,13 @@ function currentMonth(): string {
 // ─── Cron 진입점 ──────────────────────────────────────────────────────────────
 export async function GET(request: NextRequest) {
   // ⚠️ 2026-05-16 좀비 curl loop 차단 + 트레이스 동시
+  // 정상 cron: Vercel Cron 또는 GitHub Actions (Bearer 토큰 보유, x-vercel-cron 헤더 등)
+  // 좀비 차단 조건: curl UA + Authorization 헤더 없음 (정상 cron은 Bearer 토큰 필수)
   const ua = request.headers.get("user-agent") ?? "";
   const ip = request.headers.get("x-forwarded-for") ?? request.headers.get("x-real-ip") ?? "";
-  const isZombie = ua.startsWith("curl/") && ip.includes("182.229.121.70");
+  const hasAuth = !!request.headers.get("authorization");
+  const isVercelCron = !!request.headers.get("x-vercel-cron");
+  const isZombie = ua.startsWith("curl/") && !hasAuth && !isVercelCron;
 
   try {
     const supabaseUrl0 = process.env.NEXT_PUBLIC_SUPABASE_URL;

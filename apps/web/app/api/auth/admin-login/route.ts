@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createHmac } from "crypto";
+import { createHmac, timingSafeEqual } from "crypto";
+import { rateLimit, getClientIp } from "@/lib/rate-limit";
 
 const COOKIE_NAME = "naktal_admin";
 const EXPIRES_MS = 8 * 60 * 60 * 1000; // 8시간
@@ -11,7 +12,25 @@ function signToken(expiry: number): string {
   return `${payload}.${sig}`;
 }
 
+/** timing-safe 문자열 비교 (길이 차이도 false) */
+function safeEq(a: string, b: string): boolean {
+  const ab = Buffer.from(a);
+  const bb = Buffer.from(b);
+  if (ab.length !== bb.length) return false;
+  return timingSafeEqual(ab, bb);
+}
+
 export async function POST(req: NextRequest): Promise<NextResponse> {
+  // IP 분당 5회 — brute force 방지
+  const ip = getClientIp(req);
+  const { allowed, resetAt } = await rateLimit(`${ip}:admin-login`, 5, 60);
+  if (!allowed) {
+    return NextResponse.json(
+      { error: "로그인 시도가 너무 많습니다. 잠시 후 다시 시도해주세요." },
+      { status: 429, headers: { "Retry-After": String(Math.ceil((resetAt.getTime() - Date.now()) / 1000)) } },
+    );
+  }
+
   const { id, password } = await req.json().catch(() => ({})) as Record<string, string>;
 
   const adminId = process.env.ADMIN_LOGIN_ID;
@@ -21,7 +40,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ error: "관리자 계정이 설정되지 않았습니다." }, { status: 503 });
   }
 
-  if (!id || !password || id !== adminId || password !== adminPw) {
+  if (!id || !password || !safeEq(id, adminId) || !safeEq(password, adminPw)) {
     return NextResponse.json({ error: "아이디 또는 비밀번호가 올바르지 않습니다." }, { status: 401 });
   }
 

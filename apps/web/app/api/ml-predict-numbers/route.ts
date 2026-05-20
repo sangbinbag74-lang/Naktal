@@ -18,6 +18,12 @@ import * as ort from "onnxruntime-web";
 import path from "path";
 import fs from "fs";
 
+const ML_API_KEY = process.env.ML_API_KEY ?? "";
+function authOk(req: NextRequest): boolean {
+  if (!ML_API_KEY) return true;
+  return req.headers.get("x-api-key") === ML_API_KEY;
+}
+
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;  // 첫 호출 cold start (onnx 로드) 여유
@@ -83,6 +89,9 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
+  if (!authOk(req)) {
+    return NextResponse.json({ error: "invalid api key" }, { status: 401 });
+  }
   try {
     await init();
   } catch {

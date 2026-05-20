@@ -15,6 +15,7 @@ function tplId(...candidates: (string | undefined)[]): string {
 }
 
 const KAKAO_API_BASE = "https://kapi.kakao.com/v1/api/talk/friends/message/send";
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://naktal.me";
 
 interface KakaoTemplateParams {
   templateId: string;
@@ -65,7 +66,7 @@ export async function notifyNewAnnouncement(
     const sent = await sendKakaoAlimtalk({ templateId, receiverPhone: phone, variables: { title: announcementTitle, deadline } });
     if (sent) return;
   }
-  if (email) await sendEmailFallback(email, "[낙찰AI] 새 공고 매칭: " + announcementTitle, "마감일: " + deadline + "\n\nhttps://naktal.me/announcements");
+  if (email) await sendEmailFallback(email, "[낙찰AI] 새 공고 매칭: " + announcementTitle, "마감일: " + deadline + "\n\n" + SITE_URL + "/announcements");
 }
 
 /** 개찰 결과 입력 요청 알림 */
@@ -96,5 +97,5 @@ export async function notifyDeadlineReminder(
     const sent = await sendKakaoAlimtalk({ templateId, receiverPhone: phone, variables: { title: announcementTitle, deadline } });
     if (sent) return;
   }
-  if (email) await sendEmailFallback(email, "[낙찰AI] 마감 D-1: " + announcementTitle, "내일 마감입니다. 번호 전략을 지금 확인하세요.\nhttps://naktal.me/strategy");
+  if (email) await sendEmailFallback(email, "[낙찰AI] 마감 D-1: " + announcementTitle, "내일 마감입니다. 번호 전략을 지금 확인하세요.\n" + SITE_URL + "/strategy");
 }

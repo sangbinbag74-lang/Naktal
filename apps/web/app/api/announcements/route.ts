@@ -15,6 +15,11 @@ export const maxDuration = 60;
 export const runtime = "nodejs";
 export const preferredRegion = ["icn1"]; // Seoul — Supabase 와 같은 region 으로 latency 최소화
 
+/** PostgREST `.or()` 템플릿 삽입 방어 — 쉼표/괄호/별표 등 메타문자 제거 */
+function sanitizeOrFilter(v: string): string {
+  return v.replace(/[,()*]/g, "");
+}
+
 // ─── G2B API 직접 조회 (실시간) ───────────────────────────────────────────────
 // 최근 3일치 공고 조회 — 용역/시설공사/물품 3개 타입 모두 수집
 const NTCE_OPS_WEB = [
@@ -199,7 +204,8 @@ async function fetchFromDB(opts: Record<string, string | number>): Promise<NextR
     }
     q = q.or(orParts.join(","));
   } else if (category) {
-    q = q.or(`category.ilike.%${category}%,rawJson->>pubPrcrmntMidClsfcNm.ilike.%${category}%,rawJson->>pubPrcrmntLrgClsfcNm.ilike.%${category}%`);
+    const c = sanitizeOrFilter(category);
+    q = q.or(`category.ilike.%${c}%,rawJson->>pubPrcrmntMidClsfcNm.ilike.%${c}%,rawJson->>pubPrcrmntLrgClsfcNm.ilike.%${c}%`);
   }
   if (regions) {
     const all = regions.split(",").map((r: string) => r.trim()).filter(Boolean);
@@ -208,10 +214,10 @@ async function fetchFromDB(opts: Record<string, string | number>): Promise<NextR
     if (provinces.length && cities.length === 0) {
       q = q.in("region", provinces);
     } else if (cities.length && provinces.length === 0) {
-      q = q.or(cities.map((c: string) => `rawJson->>ntceInsttAddr.ilike.%${c}%`).join(","));
+      q = q.or(cities.map((c: string) => `rawJson->>ntceInsttAddr.ilike.%${sanitizeOrFilter(c)}%`).join(","));
     } else if (provinces.length && cities.length) {
       const orParts: string[] = [`region.in.(${provinces.join(",")})`];
-      cities.forEach((c: string) => orParts.push(`rawJson->>ntceInsttAddr.ilike.%${c}%`));
+      cities.forEach((c: string) => orParts.push(`rawJson->>ntceInsttAddr.ilike.%${sanitizeOrFilter(c)}%`));
       q = q.or(orParts.join(","));
     }
   } else if (region) {
@@ -220,12 +226,16 @@ async function fetchFromDB(opts: Record<string, string | number>): Promise<NextR
   if (keyword) {
     const words = keyword.trim().split(/\s+/).filter(Boolean);
     for (const word of words) {
-      q = q.or(`title.ilike.%${word}%,orgName.ilike.%${word}%`);
+      const w = sanitizeOrFilter(word);
+      q = q.or(`title.ilike.%${w}%,orgName.ilike.%${w}%`);
     }
   }
   if (minBudget)      q = q.gte("budget", minBudget);
   if (maxBudget)      q = q.lte("budget", maxBudget);
-  if (contractMethod) q = q.or(`rawJson->>bidMthdNm.ilike.%${contractMethod}%,rawJson->>cntrctMthdNm.ilike.%${contractMethod}%`);
+  if (contractMethod) {
+    const cm = sanitizeOrFilter(contractMethod);
+    q = q.or(`rawJson->>bidMthdNm.ilike.%${cm}%,rawJson->>cntrctMthdNm.ilike.%${cm}%`);
+  }
   // 계약체결방법 (cntrctCnclsMthdNm) 필터 — 통합 검색 (default 전체)
   if (cnclsType === "일반경쟁") {
     q = q.eq("rawJson->>cntrctCnclsMthdNm", "일반경쟁");
