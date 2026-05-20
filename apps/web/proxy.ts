@@ -1,6 +1,25 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
+/**
+ * Naktal.me 라우트 가드 — 박상빈님 5/20 CLAUDE.md L7 명시 보호 라우트
+ * /dashboard, /admin 외 추가: /folder, /history, /profile, /alerts, /realtime, /pricing, /settings,
+ * /strategy, /bid-request, /bid-result
+ */
+const PROTECTED_PATHS = [
+  "/dashboard",
+  "/folder",
+  "/history",
+  "/profile",
+  "/alerts",
+  "/realtime",
+  "/pricing",
+  "/settings",
+  "/strategy",
+  "/bid-request",
+  "/bid-result",
+];
+
 export async function proxy(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request });
 
@@ -35,9 +54,11 @@ export async function proxy(request: NextRequest) {
   // /admin 경로는 naktal_admin 쿠키가 있으면 admin layout이 자체 검증하므로 통과
   const hasAdminCookie = request.cookies.has("naktal_admin");
   const isAdminPath = pathname.startsWith("/admin") && pathname !== "/admin-login";
-  if (!user && (pathname.startsWith("/dashboard") || (isAdminPath && !hasAdminCookie))) {
+  const isProtectedPath = PROTECTED_PATHS.some((p) => pathname.startsWith(p));
+  if (!user && (isProtectedPath || (isAdminPath && !hasAdminCookie))) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
+    url.searchParams.set("next", pathname);
     return NextResponse.redirect(url);
   }
 

@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
-export const dynamic = "force-static";
+// 박상빈님 5/20 명시 보호 — CDN 캐시 X (proxy.ts 의 라우트 가드가 작동하도록)
+export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: "요금 안내 — 분석 무료, 낙찰 시에만 수수료",
