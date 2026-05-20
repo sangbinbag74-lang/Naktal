@@ -13,8 +13,6 @@ import { REGION_ALIASES, normalizeRegion } from "@/lib/region-alias";
 
 export const maxDuration = 60;
 export const runtime = "nodejs";
-export const dynamic = "force-dynamic";          // CDN/route 캐시 X
-export const fetchCache = "force-no-store";      // 박상빈님 5/20 — 옛 응답 노출 방지
 export const preferredRegion = ["icn1"]; // Seoul — Supabase 와 같은 region 으로 latency 최소화
 
 /** PostgREST `.or()` 템플릿 삽입 방어 — 쉼표/괄호/별표 등 메타문자 제거 */

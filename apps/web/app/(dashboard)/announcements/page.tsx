@@ -205,8 +205,7 @@ export default function AnnouncementsPage() {
           if (myCity) tokens.push(myCity);
           params.set("myRegions", tokens.join(","));
         }
-        // 박상빈님 5/20 — 브라우저 캐시 우회 (옛 응답 표시 방지)
-        const res = await fetch(`/api/announcements?${params}`, { cache: "no-store" });
+        const res = await fetch(`/api/announcements?${params}`);
         const json = (await res.json()) as ApiResponse;
         const newItems: Announcement[] = json.data ?? [];
         setItems((prev) => (reset ? newItems : [...prev, ...newItems]));
