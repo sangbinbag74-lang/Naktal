@@ -30,6 +30,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     "X-Debug-RL-Allowed": String(rl.allowed),
     "X-Debug-RL-Remaining": String(rl.remaining),
     "X-Debug-RL-Reset": rl.resetAt.toISOString(),
+    "X-Debug-RL-Err": rl.debug || "(none)",
   };
   if (!rl.allowed) {
     return NextResponse.json(
