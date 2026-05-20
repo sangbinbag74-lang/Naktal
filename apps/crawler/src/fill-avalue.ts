@@ -43,6 +43,15 @@ interface BsisAmountItem {
   bidPrceCalclAYn?: string;
   rsrvtnPrceRngBgnRate?: string;  // 예비가격 범위 시작 (예: "-2")
   rsrvtnPrceRngEndRate?: string;  // 예비가격 범위 끝 (예: "+2")
+  // 박상빈님 메모리 reference_g2b_apis.md A값 6필드 (공사 BsisAmount 응답에 모두 포함)
+  sftyMngcst?: string;              // 안전관리비
+  sftyChckMngcst?: string;          // 안전점검관리비
+  rtrfundNon?: string;              // 퇴직공제부금
+  mrfnHealthInsrprm?: string;       // 건강보험료
+  npnInsrprm?: string;              // 국민연금료
+  odsnLngtrmrcprInsrprm?: string;   // 장기요양보험료
+  qltyMngcst?: string;              // 품질관리비
+  qltyMngcstAObjYn?: string;        // 품질관리비 A값 포함 Y/N
 }
 
 interface AInfoItem {
@@ -76,7 +85,13 @@ function safeJson<T>(text: string): T | null {
   try { return JSON.parse(text) as T; } catch { return null; }
 }
 
-async function fetchBsisAmount(bidNtceNo: string, apiKey: string): Promise<{ aValueYn: string; aValueAmt: bigint; priceRangeRate: string } | null> {
+async function fetchBsisAmount(bidNtceNo: string, apiKey: string): Promise<{
+  aValueYn: string;
+  aValueAmt: bigint;
+  priceRangeRate: string;
+  aValueTotal: bigint;       // 박상빈님 메모리 reference_g2b_apis — BsisAmount A값 6필드 합산
+  aValueDetails: Record<string, number>;
+} | null> {
   const url = `${BASE}/getBidPblancListInfoCnstwkBsisAmount?serviceKey=${apiKey}&inqryDiv=2&bidNtceNo=${bidNtceNo}&bidNtceOrd=000&numOfRows=1&pageNo=1&type=json`;
   const text = await httpsGet(url);
   const json = safeJson<{ response?: { body?: { items?: BsisAmountItem[] } } }>(text);
@@ -89,7 +104,24 @@ async function fetchBsisAmount(bidNtceNo: string, apiKey: string): Promise<{ aVa
   const bgn = item.rsrvtnPrceRngBgnRate ?? "";
   const end = item.rsrvtnPrceRngEndRate ?? "";
   const priceRangeRate = bgn && end ? `${bgn}~${end}` : "";
-  return { aValueYn, aValueAmt, priceRangeRate };
+
+  // 박상빈님 메모리 reference_g2b_apis.md 공식:
+  //   sum = sftyMngcst + sftyChckMngcst + rtrfundNon
+  //       + mrfnHealthInsrprm + npnInsrprm + odsnLngtrmrcprInsrprm
+  //       + (qltyMngcstAObjYn === 'Y' ? qltyMngcst : 0)
+  const toNum = (s: string | undefined) => Number((s ?? "0").replace(/[^0-9]/g, "")) || 0;
+  const details = {
+    sftyMngcst:             toNum(item.sftyMngcst),
+    sftyChckMngcst:         toNum(item.sftyChckMngcst),
+    rtrfundNon:             toNum(item.rtrfundNon),
+    mrfnHealthInsrprm:      toNum(item.mrfnHealthInsrprm),
+    npnInsrprm:             toNum(item.npnInsrprm),
+    odsnLngtrmrcprInsrprm:  toNum(item.odsnLngtrmrcprInsrprm),
+    qltyMngcst:             item.qltyMngcstAObjYn === "Y" ? toNum(item.qltyMngcst) : 0,
+  };
+  const aValueTotal = BigInt(Object.values(details).reduce((s, v) => s + v, 0));
+
+  return { aValueYn, aValueAmt, priceRangeRate, aValueTotal, aValueDetails: details };
 }
 
 /**
@@ -183,8 +215,9 @@ export async function fillAValue() {
     try {
       const bs = await fetchBsisAmount(ann.konepsId, apiKey);
       if (!bs) { skipped++; return; }
-      let aValueTotal = 0n;
-      if (bs.aValueYn === "Y") {
+      // 박상빈님 메모리 reference_g2b_apis — BsisAmount A값 6필드 우선. 0 일 때만 CalclA op 폴백.
+      let aValueTotal = bs.aValueTotal;
+      if (bs.aValueYn === "Y" && aValueTotal === 0n) {
         aValueTotal = await fetchATotal(ann.konepsId, apiKey);
       }
       await pool.query(
@@ -192,9 +225,10 @@ export async function fillAValue() {
            "aValueYn"        = $2,
            "aValueAmt"       = CASE WHEN $3::bigint > 0 THEN $3::bigint ELSE "aValueAmt" END,
            "aValueTotal"     = CASE WHEN $4::bigint > 0 THEN $4::bigint ELSE "aValueTotal" END,
-           "priceRangeRate"  = CASE WHEN $5 != '' THEN $5 ELSE "priceRangeRate" END
+           "priceRangeRate"  = CASE WHEN $5 != '' THEN $5 ELSE "priceRangeRate" END,
+           "aValueDetails"   = CASE WHEN $4::bigint > 0 THEN $6::jsonb ELSE "aValueDetails" END
          WHERE id = $1`,
-        [ann.id, bs.aValueYn, bs.aValueAmt.toString(), aValueTotal.toString(), bs.priceRangeRate],
+        [ann.id, bs.aValueYn, bs.aValueAmt.toString(), aValueTotal.toString(), bs.priceRangeRate, JSON.stringify(bs.aValueDetails)],
       );
       updated++;
     } catch (e) {
