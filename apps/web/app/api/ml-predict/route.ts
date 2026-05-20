@@ -17,6 +17,7 @@ import * as ort from "onnxruntime-web";
 import path from "path";
 import fs from "fs";
 import { captureError } from "@/lib/observability/sentry";
+import { rateLimit, getClientIp } from "@/lib/rate-limit";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -126,6 +127,17 @@ export async function POST(req: NextRequest) {
   if (!authOk(req)) {
     return NextResponse.json({ error: "invalid api key" }, { status: 401 });
   }
+
+  // IP 분당 30회 — ONNX 추론 비용 보호
+  const ip = getClientIp(req);
+  const { allowed, resetAt } = await rateLimit(`${ip}:ml-predict`, 30, 60);
+  if (!allowed) {
+    return NextResponse.json(
+      { error: "rate limit exceeded" },
+      { status: 429, headers: { "Retry-After": String(Math.ceil((resetAt.getTime() - Date.now()) / 1000)) } },
+    );
+  }
+
   try {
     await init();
   } catch {

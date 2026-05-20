@@ -1,10 +1,21 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/server";
 import { Resend } from "resend";
+import { rateLimit, getClientIp } from "@/lib/rate-limit";
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://naktal.me";
 
 export async function POST(request: NextRequest) {
+  // IP 분당 3회 — 스팸/브루트포스 방지
+  const ip = getClientIp(request);
+  const { allowed, resetAt } = await rateLimit(`${ip}:forgot-pw`, 3, 60);
+  if (!allowed) {
+    return NextResponse.json(
+      { error: "요청이 너무 많습니다. 잠시 후 다시 시도해주세요." },
+      { status: 429, headers: { "Retry-After": String(Math.ceil((resetAt.getTime() - Date.now()) / 1000)) } },
+    );
+  }
+
   const body = (await request.json()) as { bizNo?: string };
   const bizNo = body.bizNo?.replace(/\D/g, "");
 

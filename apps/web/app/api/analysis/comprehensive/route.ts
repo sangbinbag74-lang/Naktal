@@ -15,6 +15,7 @@ import { isMultiplePriceBid } from "@/lib/bid-utils";
 import { calcBaseBudget } from "@/lib/analysis/sajung-utils";
 import { classifyCategory, DEFAULT_SAJUNG_BY_KIND, DEFAULT_LWLT_BY_KIND, getDefaultLwlt } from "@/lib/analysis/category-config";
 import { applySajungNoise, calcBidPrice } from "@/lib/core1/noise";
+import { rateLimit } from "@/lib/rate-limit";
 
 // 첫 호출 시 ensemble route cold start (onnx 22MB) + sajung-engine 통계 조회 + BidPricePrediction 저장
 // → 박상빈님 5/17 명시 ensemble 호출 보장 위해 60초 (Vercel Hobby 한도)
@@ -39,9 +40,18 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const admin = createAdminClient();
-  const { data: dbUser } = await admin.from("User").select("plan").eq("supabaseId", user.id).single();
+  const { data: dbUser } = await admin.from("User").select("id,plan").eq("supabaseId", user.id).single();
   if (!dbUser || dbUser.plan === "FREE") {
     return NextResponse.json({ error: "PRO_REQUIRED", message: "AI 분석은 프로 플랜부터 이용할 수 있습니다.", upgradeUrl: "/pricing" }, { status: 403 });
+  }
+
+  // 사용자 분당 20회 — ML/DB 비용 보호 (24시간 캐시 있어도 첫 호출 비싸므로)
+  const { allowed: rlAllowed, resetAt: rlReset } = await rateLimit(`${dbUser.id}:comprehensive`, 20, 60);
+  if (!rlAllowed) {
+    return NextResponse.json(
+      { error: "요청이 너무 많습니다. 잠시 후 다시 시도해주세요." },
+      { status: 429, headers: { "Retry-After": String(Math.ceil((rlReset.getTime() - Date.now()) / 1000)) } },
+    );
   }
 
   const body = (await request.json()) as { annId?: string; force?: boolean };

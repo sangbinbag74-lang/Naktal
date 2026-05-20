@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { rateLimit, getClientIp } from "@/lib/rate-limit";
 
 const NTS_API_URL = "https://api.odcloud.kr/api/nts-businessman/v1/status";
 
@@ -15,6 +16,16 @@ interface NtsResponse {
 }
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
+  // IP 분당 10회 — NTS API 보호
+  const ip = getClientIp(request);
+  const { allowed, resetAt } = await rateLimit(`${ip}:verify-bizno`, 10, 60);
+  if (!allowed) {
+    return NextResponse.json(
+      { valid: false, message: "요청이 너무 많습니다. 잠시 후 다시 시도해주세요." },
+      { status: 429, headers: { "Retry-After": String(Math.ceil((resetAt.getTime() - Date.now()) / 1000)) } },
+    );
+  }
+
   let bizNo: string;
   try {
     const body = (await request.json()) as { bizNo?: string };
