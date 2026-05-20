@@ -14,8 +14,6 @@ export interface RateLimitResult {
   allowed: boolean;
   remaining: number;
   resetAt: Date;
-  /** 디버그용 — select/upsert 에러 메시지 (없으면 빈 문자열) */
-  debug?: string;
 }
 
 /**
@@ -35,43 +33,38 @@ export async function rateLimit(
 
   const now = new Date();
   const resetAt = new Date(now.getTime() + windowSec * 1000);
-  let debug = "";
 
-  const { data: existing, error: selErr } = await supabase
+  const { data: existing } = await supabase
     .from("RateLimit")
     .select("id,count,resetAt")
     .eq("key", key)
     .maybeSingle();
-  if (selErr) debug = `sel:${selErr.code ?? ""}:${selErr.message?.slice(0, 60) ?? ""}`;
 
   // 만료된 레코드 또는 없는 경우 → 새로 시작
-  // ⚠️ id 명시 필수 — Prisma @default(cuid()) 는 client-side 동작, Supabase JS upsert 는 DB default 필요
+  // ⚠️ id, updatedAt 명시 필수 — Prisma @default(cuid()) / @updatedAt 은 client-side, Supabase JS 는 명시 필요
   if (!existing || new Date(existing.resetAt) <= now) {
-    const { error: upErr } = await supabase.from("RateLimit").upsert(
+    await supabase.from("RateLimit").upsert(
       { id: randomUUID(), key, count: 1, resetAt: resetAt.toISOString(), updatedAt: now.toISOString() },
       { onConflict: "key" },
     );
-    if (upErr) debug = `${debug}|up:${upErr.code ?? ""}:${upErr.message?.slice(0, 60) ?? ""}`;
-    return { allowed: true, remaining: limit - 1, resetAt, debug };
+    return { allowed: true, remaining: limit - 1, resetAt };
   }
 
   // 한도 초과
   if (existing.count >= limit) {
-    return { allowed: false, remaining: 0, resetAt: new Date(existing.resetAt), debug };
+    return { allowed: false, remaining: 0, resetAt: new Date(existing.resetAt) };
   }
 
   // 카운트 증가
-  const { error: updErr } = await supabase
+  await supabase
     .from("RateLimit")
     .update({ count: existing.count + 1, updatedAt: now.toISOString() })
     .eq("key", key);
-  if (updErr) debug = `${debug}|upd:${updErr.code ?? ""}:${updErr.message?.slice(0, 60) ?? ""}`;
 
   return {
     allowed: true,
     remaining: limit - existing.count - 1,
     resetAt: new Date(existing.resetAt),
-    debug,
   };
 }
 
