@@ -7,6 +7,21 @@ import { classifyCategory, DEFAULT_LWLT_BY_KIND, DEFAULT_SAJUNG_BY_KIND } from "
 
 export const dynamic = "force-dynamic";
 
+interface AnnRow {
+  id: string;
+  konepsId: string;
+  title: string;
+  orgName: string;
+  deadline: string;
+  budget: string | number;
+  bsisAmt?: string | number | null;
+  aValueAmt?: string | number | null;
+  category?: string;
+  rawJson?: Record<string, unknown> | null;
+  aValueYn?: string;
+  aValueTotal?: string | number | null;
+}
+
 function fmtDate(iso: string) {
   return new Date(iso).toLocaleDateString("ko-KR", {
     year: "numeric", month: "long", day: "numeric",
@@ -36,14 +51,14 @@ export default async function BidContractPage({
       .maybeSingle(),
   ]);
   const dbUser = dbUserRes.data;
-  const ann = annRes.data;
+  const ann = annRes.data as AnnRow | null;
   if (!dbUser) redirect("/login");
   if (!ann) notFound();
 
   const rawJson = (ann.rawJson as Record<string, string>) ?? {};
   // 사정율 분모 우선순위 (박상빈님 5/17 명시): bsisAmt (기초금액) > aValueAmt > 추정가격×1.1
-  const bsisAmtNum = Number((ann as unknown as Record<string, unknown>).bsisAmt ?? 0);
-  const aValueAmtNum = Number((ann as unknown as Record<string, unknown>).aValueAmt ?? 0);
+  const bsisAmtNum = Number(ann.bsisAmt ?? 0);
+  const aValueAmtNum = Number(ann.aValueAmt ?? 0);
   const rawBudget = Number(rawJson.bdgtAmt) || Number(ann.budget);
   const budgetNum = bsisAmtNum > 0 ? bsisAmtNum : aValueAmtNum > 0 ? aValueAmtNum : rawBudget * 1.1;
   const annCategory = String(ann.category ?? "");

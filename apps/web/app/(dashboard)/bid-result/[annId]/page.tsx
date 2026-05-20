@@ -6,6 +6,18 @@ import { BidResultCombos } from "@/components/naktal/BidResultCombos";
 import { classifyCategory, DEFAULT_LWLT_BY_KIND } from "@/lib/analysis/category-config";
 import { recommendNumbers } from "@/lib/core1/frequency-engine";
 
+interface AnnRow {
+  id: string;
+  title: string;
+  orgName: string;
+  deadline: string;
+  category?: string;
+  region?: string;
+  budget: string | number;
+  bsisAmt?: string | number | null;
+  aValueAmt?: string | number | null;
+}
+
 // 카테고리(공사/용역/물품) 평균 사정율 — 1시간 캐시 (전 사용자 공통)
 // 1차: orgName='ALL' 집계, 0건이면 2차: 카테고리 전체 row 가중평균
 const getCategoryAllAvgSajung = unstable_cache(
@@ -99,7 +111,7 @@ export default async function BidResultPage({
       .maybeSingle(),
   ]);
   const dbUser = dbUserRes.data;
-  const ann = annRes.data;
+  const ann = annRes.data as AnnRow | null;
   if (!dbUser) redirect("/login");
   if (!ann) notFound();
 
@@ -119,8 +131,8 @@ export default async function BidResultPage({
   const lowerLimit = Number(req.lowerLimitPrice ?? 0);
   // 사정율 분모 = Announcement.bsisAmt 우선 (박상빈님 5/17 명시).
   // BidRequest.budget 은 옛 의뢰 (5/10 이전) 가 추정가격으로 저장돼 있어 부정확.
-  const annBsisAmt = Number((ann as unknown as Record<string, unknown>).bsisAmt ?? 0);
-  const annAValueAmt = Number((ann as unknown as Record<string, unknown>).aValueAmt ?? 0);
+  const annBsisAmt = Number(ann.bsisAmt ?? 0);
+  const annAValueAmt = Number(ann.aValueAmt ?? 0);
   const annBudgetRaw = Number(ann.budget ?? 0);
   const annBaseAmount = annBsisAmt > 0 ? annBsisAmt : annAValueAmt > 0 ? annAValueAmt : annBudgetRaw * 1.1;
   const reqBudget = Number(req.budget ?? 0);

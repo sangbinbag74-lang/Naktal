@@ -42,6 +42,8 @@ interface Announcement {
   aValueTotal?: string;
   priceRangeRate?: string;
   pdfRgnLimit?: PdfRgnLimit | null;
+  bsisAmt?: string | number | null;       // 기초금액 (BsisAmount API)
+  bidNtceDtlUrl?: string | null;          // 공고 상세 URL
 }
 
 function fmt(n: string) {
@@ -168,14 +170,14 @@ export default async function AnnouncementDetailPage({
     : parseSubCategories(a.rawJson as Record<string, string> | null);
   const allLicenses = getAllCategories(a.category, subCats);
   const budgetNum = parseInt(a.budget, 10); // presmptPrce (추정가격, 부가세 별도)
-  const bsisAmtNum = Number((a as unknown as Record<string, unknown>).bsisAmt ?? 0); // 기초금액 (BsisAmount API, 부가세 포함)
+  const bsisAmtNum = Number(a.bsisAmt ?? 0); // 기초금액 (BsisAmount API, 부가세 포함)
   const aValueAmtNum = Number(a.aValueAmt ?? 0);
   // 기초금액 우선순위: bsisAmt (G2B BsisAmount API) > aValueAmt > 추정가격×1.1
   const bdgtAmt = bsisAmtNum > 0 ? bsisAmtNum : aValueAmtNum > 0 ? aValueAmtNum : budgetNum * 1.1;
   // 2025년 나라장터 개편 — 옛 deep link (:8081/ep/peoplecvpl/narasVary.do) 모두 폐기됨.
   // 메인 페이지 또는 announcement.bidNtceDtlUrl (Announcement 컬럼) 사용.
   // bidNtceDtlUrl 도 개편 후 메인 redirect 일 가능성 있음 → 사용자가 공고번호 직접 검색 안내 필요.
-  const bidNtceDtlUrlCol = String((a as unknown as Record<string, unknown>).bidNtceDtlUrl ?? "");
+  const bidNtceDtlUrlCol = String(a.bidNtceDtlUrl ?? "");
   const g2bUrl = bidNtceDtlUrlCol || String(rawJson.ntcePbancUrl ?? "") || "https://www.g2b.go.kr/";
 
   // G2B rawJson 메타데이터 추출 (입찰 일정 4단계 + 공고 메타)

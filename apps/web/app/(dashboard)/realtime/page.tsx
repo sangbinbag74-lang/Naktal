@@ -87,9 +87,21 @@ export default function RealtimePage() {
   return <RealtimeMonitor />;
 }
 
+interface ParticipantSnapshot {
+  snapshotAt: string;
+  count: number;
+}
+interface ParticipantData {
+  title?: string;
+  deadline?: string;
+  currentCount?: number | null;
+  snapshotChannel?: string | null;
+  snapshots?: ParticipantSnapshot[];
+}
+
 function RealtimeMonitor() {
   const [annId, setAnnId] = useState("");
-  const [data, setData] = useState<any>(null);
+  const [data, setData] = useState<ParticipantData | null>(null);
   const [liveCount, setLiveCount] = useState<number | null>(null);
   const [fetching, setFetching] = useState(false);
 
@@ -175,7 +187,7 @@ function RealtimeMonitor() {
           {data.snapshots && data.snapshots.length > 0 && (
             <div style={{ background: "#fff", borderRadius: 14, border: "1px solid #E8ECF2", padding: 20 }}>
               <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 12, color: "#374151" }}>참여자 수 이력</div>
-              {data.snapshots.map((s: any, i: number) => (
+              {data.snapshots.map((s, i: number) => (
                 <div key={i} style={{ display: "flex", justifyContent: "space-between", padding: "6px 0", borderBottom: "1px solid #F1F5F9", fontSize: 13 }}>
                   <span style={{ color: "#6B7280" }}>{new Date(s.snapshotAt).toLocaleString("ko-KR")}</span>
                   <span style={{ fontWeight: 600, color: "#1B3A6B" }}>{s.count}개사</span>
