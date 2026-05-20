@@ -104,18 +104,26 @@ export function AiAnalysisPanel({ annDbId, budget, g2bUrl, konepsId, onRefresh, 
     void forceRefresh;
 
     setLoading(true);
+    // 박상빈님 5/20 명시 — fetch timeout 없으면 hang 시 무한 로딩. 65초 (서버 60초 maxDuration + 5초 여유)
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 65000);
     try {
       const res = await fetch("/api/analysis/comprehensive", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ annId: annDbId, force: forceRefresh }),
+        signal: controller.signal,
       });
       if (res.ok) {
         const data = (await res.json()) as ComprehensiveResult;
         setAnalysis(data);
       }
-    } catch { /* 무시 */ }
-    setLoading(false);
+    } catch (e) {
+      console.error("[comprehensive] fetch 실패 또는 timeout:", e);
+    } finally {
+      clearTimeout(timeoutId);
+      setLoading(false);
+    }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [annDbId]);
 

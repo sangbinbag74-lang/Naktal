@@ -846,9 +846,12 @@ export default function AnnouncementsPage() {
               key={ann.konepsId || ann.id}
               className={`ann-card${isNavigating ? " navigating" : ""}`}
               onClick={() => {
-                setNavigatingId(ann.konepsId || ann.id);
-                window.open(`/announcements/${ann.konepsId || ann.id}`, "_blank");
-                setNavigatingId(null);
+                // 박상빈님 5/20 명시 — setNavigatingId(null) 즉시 호출 시 로딩 오버레이 0초 → 사용자 호소 "공고버튼 보임/안보임"
+                // 새 창 열림 후 2초 동안 로딩 오버레이 유지 (새 창에서 분석 진행 중임 시각화)
+                const id = ann.konepsId || ann.id;
+                setNavigatingId(id);
+                window.open(`/announcements/${id}`, "_blank");
+                setTimeout(() => setNavigatingId((cur) => (cur === id ? null : cur)), 2000);
               }}
               style={{ textDecoration: "none" }}
             >
