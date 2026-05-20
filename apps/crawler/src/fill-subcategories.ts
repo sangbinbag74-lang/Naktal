@@ -36,17 +36,35 @@ const BASE = "https://apis.data.go.kr/1230000/ad/BidPublicInfoService";
 async function fetchLicenseLimit(bidNtceNo: string, apiKey: string): Promise<string[]> {
   const url = `${BASE}/getBidPblancListInfoLicenseLimit?serviceKey=${apiKey}&inqryDiv=2&bidNtceNo=${bidNtceNo}&bidNtceOrd=000&numOfRows=50&pageNo=1&type=json`;
   const res = await fetch(url, { signal: AbortSignal.timeout(10000) });
-  const json = await res.json() as { response?: { body?: { items?: Array<{ indstrytyMfrcFldList?: string }> } } };
+  const json = await res.json() as { response?: { body?: { items?: Array<{
+    indstrytyMfrcFldList?: string;
+    permsnIndstrytyList?: string;
+    lcnsLmtNm?: string;
+  }> } } };
   const items = json?.response?.body?.items ?? [];
   if (!Array.isArray(items) || items.length === 0) return [];
 
   const result = new Set<string>();
   for (const item of items) {
-    const raw = item.indstrytyMfrcFldList ?? "";
-    // "[1^조경식재공사][2^전문건설공사]" → ["조경식재공사", "전문건설공사"]
-    const matches = raw.matchAll(/\[\d+\^([^\]]+)\]/g);
-    for (const m of matches) {
+    // 박상빈님 5/20 D-3 명시 — 5/5 표본 실측: lcnsLmtNm 100% 채움, indstrytyMfrcFldList 60%, permsnIndstrytyList 20%.
+    // INCIDENT-2026-04-24 3.5 사건 재발 (permsnIndstrytyList 미파싱). 3개 키 전수 파싱.
+
+    // 1. indstrytyMfrcFldList: "[1^조경식재공사][2^전문건설공사]" 형식
+    const indst = item.indstrytyMfrcFldList ?? "";
+    for (const m of indst.matchAll(/\[\d+\^([^\]]+)\]/g)) {
       const name = m[1].trim();
+      if (name) result.add(name);
+    }
+    // 2. permsnIndstrytyList: 동일 형식
+    const permsn = item.permsnIndstrytyList ?? "";
+    for (const m of permsn.matchAll(/\[\d+\^([^\]]+)\]/g)) {
+      const name = m[1].trim();
+      if (name) result.add(name);
+    }
+    // 3. lcnsLmtNm: "조경식재ㆍ시설물공사업/4993" 또는 ", " 구분 다건 → 업종명만 추출 (코드 제거)
+    const lcns = item.lcnsLmtNm ?? "";
+    for (const part of lcns.split(/[,，;]/)) {
+      const name = part.split("/")[0].trim();
       if (name) result.add(name);
     }
   }
