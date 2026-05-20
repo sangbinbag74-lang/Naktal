@@ -21,6 +21,7 @@ const PROTECTED_PATHS = [
   "/profile",
   "/alerts",
   "/realtime",
+  "/pricing",        // 요금제 (박상빈님 5/20 CLAUDE.md 명시 보호)
   "/settings",
   "/strategy",       // 번호 분석 결과 페이지
   "/bid-request",    // 투찰 의뢰
