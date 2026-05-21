@@ -125,7 +125,8 @@ export default async function AdminAccuracyPage() {
     admin
       .from("BidPricePrediction")
       .select("annId", { count: "exact", head: true })
-      .gt("expiresAt", now),
+      .gt("expiresAt", now)
+      .gte("createdAt", K2_CUTOFF_ISO),  // 박상빈님 5/21 — K-2 적용 후만 카운트
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (admin.from("SajungRateStat") as any)
       .select("sampleSize,stddev")
