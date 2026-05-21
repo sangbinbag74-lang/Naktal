@@ -211,15 +211,9 @@ export default function AnnouncementsPage() {
     [keyword, konepsId, categories, regions, sort, contractMethod, deadlineRange, minBudget, maxBudget, rgnType, ntceKind, cnclsType, onlyMyRegion, myProvince, myCity]
   );
 
-  const triggerDebouncedSearch = useCallback(() => {
-    if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
-    searchTimerRef.current = setTimeout(() => {
-      setPage(1);
-      setItems([]);
-      setHasMore(true);
-      fetchData(1, true);
-    }, 500);
-  }, [fetchData]);
+  // 박상빈님 5/21 명시 — 자동 검색 (debounce) 제거. 검색 버튼 클릭만 검색.
+  // 이유: useCallback closure stale 로 사용자 마지막 입력보다 1단계 이전 keyword 로 API 호출 → 무관 결과 표출.
+  // 박상빈님 호소 "설천중 외 3교 연립관사 화장" 자동 검색 시 무관 결과, 검색 버튼 재클릭 시 정상.
 
   // localStorage 복원 후 1회만 자동 조회 (hydrated 플래그로 race condition 방지)
   useEffect(() => {
@@ -310,7 +304,7 @@ export default function AnnouncementsPage() {
           <input
             type="text"
             value={keyword}
-            onChange={(e) => { setKeyword(e.target.value); if (e.target.value) triggerDebouncedSearch(); }}
+            onChange={(e) => setKeyword(e.target.value)}
             onKeyDown={(e) => { if (e.key === "Enter") handleSearch(); }}
             placeholder="공고명, 발주기관 검색..."
             style={{
@@ -609,7 +603,7 @@ export default function AnnouncementsPage() {
           <input
             type="text"
             value={konepsId}
-            onChange={(e) => { setKonepsId(e.target.value); if (e.target.value.length >= 6) triggerDebouncedSearch(); }}
+            onChange={(e) => setKonepsId(e.target.value)}
             onKeyDown={(e) => { if (e.key === "Enter") handleSearch(); }}
             placeholder="공고번호 직접 입력 (예: R26BK01367226)"
             style={{
