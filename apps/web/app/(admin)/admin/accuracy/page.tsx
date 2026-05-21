@@ -107,6 +107,7 @@ export default async function AdminAccuracyPage() {
         createdAt,
         announcement:Announcement(id, title, orgName, deadline, budget, category)
       `)
+      .gte("createdAt", K2_CUTOFF_ISO)  // 박상빈님 5/21 — K-2 적용 후만 측정
       .order("createdAt", { ascending: false })
       .limit(300),
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
