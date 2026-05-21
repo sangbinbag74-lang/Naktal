@@ -54,13 +54,15 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ ok: false, error: String(error) }, { status: 500 });
   }
 
-  // 이미 유효한 예측이 있는 공고 제외
+  // 이미 유효한 예측이 있는 공고 제외 — 박상빈님 5/21 K-2 적용 후 K-2 modelVersion 만 유효 처리
+  // K-2 이전 (ensemble-v7 등) 캐시는 무효로 보고 강제 재분석 (사용자별 다양화 적용)
   const annIds = announcements.map((a) => a.id as string);
   const { data: existing } = await admin
     .from("BidPricePrediction")
-    .select("annId")
+    .select("annId,modelVersion")
     .in("annId", annIds)
-    .gt("expiresAt", now);
+    .gt("expiresAt", now)
+    .like("modelVersion", "boxquan-K2%");  // K-2 modelVersion 만 유효 (옛 ensemble-v7 = 무효 → 재분석)
 
   const existingSet = new Set((existing ?? []).map((r) => r.annId as string));
   const targets = announcements
