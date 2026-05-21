@@ -159,10 +159,54 @@ export default function AnnouncementsPage() {
   const [hydrated, setHydrated] = useState(false);
 
   // 박상빈님 5/20 명시 — localStorage 옛 필터 자동 복원 제거 + 사용자 캐시 강제 클리어
+  // 박상빈님 5/21 명시 — URL query → state 복원 (공유 URL 클릭 시 동일 검색 결과)
   useEffect(() => {
     try { localStorage.removeItem(FILTERS_KEY); } catch { /* 무시 */ }
+    const q = new URL(window.location.href).searchParams;
+    const kw = q.get("keyword"); if (kw) setKeyword(kw);
+    const kid = q.get("konepsId"); if (kid) setKonepsId(kid);
+    const cats = q.get("categories"); if (cats) setCategories(cats.split(",").filter(Boolean));
+    const regs = q.get("regions"); if (regs) setRegions(regs.split(",").filter(Boolean));
+    const srt = q.get("sort"); if (srt) setSort(srt);
+    const cm = q.get("contractMethod"); if (cm) setContractMethod(cm);
+    const dr = q.get("deadlineRange"); if (dr) setDeadlineRange(dr);
+    const mnb = q.get("minBudget"); if (mnb) setMinBudget(mnb);
+    const mxb = q.get("maxBudget"); if (mxb) setMaxBudget(mxb);
+    const rt = q.get("rgnType"); if (rt) setRgnType(rt);
+    const nk = q.get("ntceKind"); if (nk) setNtceKind(nk);
+    const ct = q.get("cnclsType"); if (ct) setCnclsType(ct);
+    if (q.get("onlyMyRegion") === "1") {
+      setOnlyMyRegion(true);
+      const mp = q.get("myProvince"); if (mp) setMyProvince(mp);
+      const mc = q.get("myCity"); if (mc) setMyCity(mc);
+    }
     setHydrated(true);
   }, []);
+
+  // 박상빈님 5/21 명시 — state → URL 동기화 (공유 가능 URL). history.replaceState (re-render X)
+  const syncUrlFromState = useCallback(() => {
+    const params = new URLSearchParams();
+    if (keyword) params.set("keyword", keyword);
+    if (konepsId) params.set("konepsId", konepsId);
+    if (categories.length) params.set("categories", categories.join(","));
+    if (regions.length) params.set("regions", regions.join(","));
+    if (sort && sort !== "latest") params.set("sort", sort);
+    if (contractMethod) params.set("contractMethod", contractMethod);
+    if (deadlineRange && deadlineRange !== "active") params.set("deadlineRange", deadlineRange);
+    if (minBudget) params.set("minBudget", minBudget);
+    if (maxBudget) params.set("maxBudget", maxBudget);
+    if (rgnType) params.set("rgnType", rgnType);
+    if (ntceKind) params.set("ntceKind", ntceKind);
+    if (cnclsType) params.set("cnclsType", cnclsType);
+    if (onlyMyRegion) {
+      params.set("onlyMyRegion", "1");
+      if (myProvince) params.set("myProvince", myProvince);
+      if (myCity) params.set("myCity", myCity);
+    }
+    const qs = params.toString();
+    const newUrl = qs ? `${window.location.pathname}?${qs}` : window.location.pathname;
+    window.history.replaceState({}, "", newUrl);
+  }, [keyword, konepsId, categories, regions, sort, contractMethod, deadlineRange, minBudget, maxBudget, rgnType, ntceKind, cnclsType, onlyMyRegion, myProvince, myCity]);
 
   // 박상빈님 5/20 명시 — 카테고리 변경 시 옛 지역·마감일 자동 reset
   const resetSubFiltersOnCategoryChange = useCallback(() => {
@@ -231,12 +275,15 @@ export default function AnnouncementsPage() {
     setPage(1);
     setItems([]);
     setHasMore(true);
+    syncUrlFromState();   // 박상빈님 5/21 — 검색 시 URL 동기화 (공유 가능)
     fetchData(1, true);
   };
 
   // 박상빈님 5/21 명시 — 초기화 버튼. 모든 필터/검색어 초기값 복원 + 초기 결과 직접 fetch (closure 우회).
   const handleReset = async () => {
     if (searchTimerRef.current) { clearTimeout(searchTimerRef.current); searchTimerRef.current = null; }
+    // 박상빈님 5/21 — 초기화 시 URL 도 base path 로
+    window.history.replaceState({}, "", window.location.pathname);
     setKeyword("");
     setKonepsId("");
     setCategories([]);
