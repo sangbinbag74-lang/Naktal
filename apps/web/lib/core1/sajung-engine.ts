@@ -641,6 +641,26 @@ export async function predictOptimalBid(params: {
   const mlStddev = stat.stddev ?? 2;
   const month = params.deadlineMonth;
   const deadlineDate = new Date(params.deadlineDate ?? Date.now());
+
+  // 박상빈님 5/21 명시 Step 2 — 그룹별 SajungRateStat (ALL 폴백 row) 별도 SELECT
+  // ML 학습 시 merge_raw.py L178-188: cat/reg/bud/sub/catreg 별 expanding mean.
+  // 추론 시 추정 = SajungRateStat 의 orgName='ALL' 폴백 row 활용 (cat-only, region-only 등).
+  const subcatMain = params.subCategories?.[0] ?? "";
+  const [catGroupStat, regGroupStat, budGroupStat, subGroupStat, catregGroupStat] = await Promise.all([
+    querySajungStat("ALL", params.category, "ALL", "ALL"),                  // cat_past
+    querySajungStat("ALL", "ALL", "ALL", params.region || "전국"),          // reg_past
+    querySajungStat("ALL", "ALL", budgetRange, "ALL"),                       // bud_past
+    subcatMain ? querySajungStat("ALL", subcatMain, "ALL", "ALL") : null,    // sub_past
+    querySajungStat("ALL", params.category, "ALL", params.region || "전국"), // catreg_past
+  ]);
+  // 폴백: 그룹 통계 없으면 기본 stat 사용 (Step 1 동일)
+  const gFB = (g: SajungStatRow | null): SajungStatRow => g ?? stat;
+  const catG = gFB(catGroupStat);
+  const regG = gFB(regGroupStat);
+  const budG = gFB(budGroupStat);
+  const subG = gFB(subGroupStat);
+  const catregG = gFB(catregGroupStat);
+
   // SajungRateStat 값을 v2 expanding mean 피처 프록시로 매핑
   const mlFeatures = {
     category: params.category,
@@ -678,25 +698,22 @@ export async function predictOptimalBid(params: {
     orgbud_past_mean: stat.avg,
     orgbud_past_std: mlStddev,
     orgbud_past_cnt: stat.sampleSize,
-    // 박상빈님 5/21 명시 — ML 학습 시 5개 그룹 통계 (cat/reg/bud/sub/catreg) expanding mean/std/cnt.
-    // merge_raw.py L185-188: 결측 = global_mean/global_std/0 으로 fillna.
-    // 추론 시 누락 (디폴트 0) → 학습 분포 불일치 → 출력 단조 (박상빈님 호소 100% 부근).
-    // → stat.avg (가장 정밀 SajungRateStat) 로 1차 폴백 — 학습 시 fillna 정확값 (각 그룹별 expanding) 보다는 약하나 디폴트 0 보다 학습 분포 일치 ↑.
-    cat_past_mean: stat.avg,
-    cat_past_std: mlStddev,
-    cat_past_cnt: stat.sampleSize,
-    reg_past_mean: stat.avg,
-    reg_past_std: mlStddev,
-    reg_past_cnt: stat.sampleSize,
-    bud_past_mean: stat.avg,
-    bud_past_std: mlStddev,
-    bud_past_cnt: stat.sampleSize,
-    sub_past_mean: stat.avg,
-    sub_past_std: mlStddev,
-    sub_past_cnt: stat.sampleSize,
-    catreg_past_mean: stat.avg,
-    catreg_past_std: mlStddev,
-    catreg_past_cnt: stat.sampleSize,
+    // 박상빈님 5/21 명시 Step 2 — 그룹별 SajungRateStat (ALL 폴백) 별도 SELECT → 진정한 그룹별 다양성.
+    cat_past_mean: catG.avg,
+    cat_past_std: catG.stddev ?? mlStddev,
+    cat_past_cnt: catG.sampleSize,
+    reg_past_mean: regG.avg,
+    reg_past_std: regG.stddev ?? mlStddev,
+    reg_past_cnt: regG.sampleSize,
+    bud_past_mean: budG.avg,
+    bud_past_std: budG.stddev ?? mlStddev,
+    bud_past_cnt: budG.sampleSize,
+    sub_past_mean: subG.avg,
+    sub_past_std: subG.stddev ?? mlStddev,
+    sub_past_cnt: subG.sampleSize,
+    catreg_past_mean: catregG.avg,
+    catreg_past_std: catregG.stddev ?? mlStddev,
+    catreg_past_cnt: catregG.sampleSize,
     opened_month: month,
     opened_weekday: (deadlineDate.getDay() + 1) % 7,
     opened_hour: 10,
