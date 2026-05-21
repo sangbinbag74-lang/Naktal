@@ -74,10 +74,6 @@ export default async function AdminAccuracyPage() {
   const admin = createAdminClient();
   const now = new Date().toISOString();
 
-  // 박상빈님 5/21 K-2 박스권 ML 운영 적용 시점 (commit 600ccf7) — 이후 신규 분석만 적중률 측정
-  // 옛 ensemble-v7 예측 데이터는 보존 (박상빈님 메모리 no_destructive_delete)
-  const K2_CUTOFF_ISO = "2026-05-21T16:30:04+09:00";
-
   // ─── Step A: 독립 쿼리 6개 동시 실행 (Promise.all 병렬) ─────────────────────
   // 박상빈님 명시 (2026-05-14 C 분할 2단계): 직렬 11개 await → 3 step 병렬화
   const [
@@ -91,7 +87,6 @@ export default async function AdminAccuracyPage() {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (admin.from("AIPrediction") as any)
       .select("annId,isExact,isHit,isNearHit,deviationPct,resultFilledAt,predictedAt")
-      .gte("predictedAt", K2_CUTOFF_ISO)  // 박상빈님 5/21 — K-2 적용 후만 측정
       .limit(2000),
     admin
       .from("BidPricePrediction")
@@ -107,14 +102,12 @@ export default async function AdminAccuracyPage() {
         createdAt,
         announcement:Announcement(id, title, orgName, deadline, budget, category)
       `)
-      .gte("createdAt", K2_CUTOFF_ISO)  // 박상빈님 5/21 — K-2 적용 후만 측정
       .order("createdAt", { ascending: false })
       .limit(300),
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (admin.from("AIPrediction") as any)
       .select("annId,konepsId,title,orgName,deadline,budget,predictedSajungRate,optimalBidPrice,bidPriceRangeLow,bidPriceRangeHigh,winProbability,sampleSize,actualSajungRate,actualFinalPrice,deviationPct,isHit,resultFilledAt,predictedAt")
       .not("resultFilledAt", "is", null)
-      .gte("predictedAt", K2_CUTOFF_ISO)  // 박상빈님 5/21 — K-2 적용 후만 측정
       .order("resultFilledAt", { ascending: false })
       .limit(500),
     admin
@@ -125,8 +118,7 @@ export default async function AdminAccuracyPage() {
     admin
       .from("BidPricePrediction")
       .select("annId", { count: "exact", head: true })
-      .gt("expiresAt", now)
-      .gte("createdAt", K2_CUTOFF_ISO),  // 박상빈님 5/21 — K-2 적용 후만 카운트
+      .gt("expiresAt", now),
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (admin.from("SajungRateStat") as any)
       .select("sampleSize,stddev")
@@ -494,9 +486,6 @@ export default async function AdminAccuracyPage() {
           <h2 style={{ fontSize: 22, fontWeight: 700, color: "#0F172A", margin: "0 0 4px" }}>정확도 분석</h2>
           <p style={{ fontSize: 13, color: "#64748B", margin: 0 }}>
             AI 사정율 예측 적중률 · 카테고리별 분리 · 발주처 신뢰도
-          </p>
-          <p style={{ fontSize: 12, color: "#1B3A6B", margin: "6px 0 0", padding: "6px 10px", background: "#EFF6FF", border: "1px solid #BFDBFE", borderRadius: 6, display: "inline-block" }}>
-            ⚠️ K-2 박스권 ML 운영 적용 (2026-05-21 16:30 KST) 이후 신규 분석만 측정 — 옛 데이터는 DB에 보존
           </p>
         </div>
       </div>
