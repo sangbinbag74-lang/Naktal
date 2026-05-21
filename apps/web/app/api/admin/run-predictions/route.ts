@@ -15,7 +15,13 @@ import {
 import { calcBaseBudget } from "@/lib/analysis/sajung-utils";
 import { classifyCategory, DEFAULT_LWLT_BY_KIND } from "@/lib/analysis/category-config";
 
-const BATCH_LIMIT = 50;
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+export const maxDuration = 300;  // 박상빈님 5/22 — K-2 재분석 = 1건 1~3초 × BATCH 안전 처리 (Vercel Pro 최대 300s)
+
+// 박상빈님 5/22 — Vercel 60s/300s maxDuration 안전 처리 위해 BATCH 축소 (50 → 10)
+// 1건 약 3초 (ensemble route + ONNX 추론) × 10 = 약 30초 < maxDuration
+const BATCH_LIMIT = 10;
 const DEFAULT_LOWER_LIMIT_RATE = 89.745; // 2026-01-30 공사 표준 상향 (10억 미만)
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
