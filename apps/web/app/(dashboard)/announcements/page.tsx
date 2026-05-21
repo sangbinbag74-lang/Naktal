@@ -235,6 +235,42 @@ export default function AnnouncementsPage() {
     fetchData(1, true);
   };
 
+  // 박상빈님 5/21 명시 — 초기화 버튼. 모든 필터/검색어 초기값 복원 + 초기 결과 직접 fetch (closure 우회).
+  const handleReset = async () => {
+    if (searchTimerRef.current) { clearTimeout(searchTimerRef.current); searchTimerRef.current = null; }
+    setKeyword("");
+    setKonepsId("");
+    setCategories([]);
+    setRegions([]);
+    setSort("latest");
+    setContractMethod("");
+    setDeadlineRange("active");
+    setMinBudget("");
+    setMaxBudget("");
+    setBudgetPreset("");
+    setRgnType("");
+    setNtceKind("");
+    setCnclsType("");
+    setMyProvince("");
+    setMyCity("");
+    setOnlyMyRegion(false);
+    setPage(1);
+    setItems([]);
+    setHasMore(true);
+    setLoading(true);
+    try {
+      const res = await fetch("/api/announcements?page=1&limit=20&sort=latest&deadlineRange=active");
+      const json = (await res.json()) as ApiResponse;
+      setItems(json.data ?? []);
+      setHasMore(json.hasMore);
+      setTotal(json.total);
+    } catch {
+      console.error("초기화 fetch 실패");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
     if (observerRef.current) observerRef.current.disconnect();
     observerRef.current = new IntersectionObserver(
@@ -595,6 +631,19 @@ export default function AnnouncementsPage() {
             }}
           >
             {loading ? "검색 중..." : "검색"}
+          </button>
+          {/* 박상빈님 5/21 명시 — 초기화 버튼 추가 */}
+          <button
+            onClick={handleReset}
+            disabled={loading}
+            style={{
+              height: 38, padding: "0 16px", borderRadius: 9, fontSize: 13, fontWeight: 600,
+              background: "#fff", color: "#64748B",
+              border: "1px solid #E8ECF2", cursor: loading ? "default" : "pointer",
+              whiteSpace: "nowrap", flexShrink: 0,
+            }}
+          >
+            초기화
           </button>
         </div>
 
