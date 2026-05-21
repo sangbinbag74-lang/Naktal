@@ -170,8 +170,7 @@ export default function AnnouncementsPage() {
     setDeadlineRange("active");
   }, []);
 
-  const observerRef = useRef<IntersectionObserver | null>(null);
-  const sentinelRef = useRef<HTMLDivElement | null>(null);
+  // 박상빈님 5/21 명시 — 무한 스크롤 (IntersectionObserver) 제거 → 더보기 버튼.
   const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const fetchData = useCallback(
@@ -271,21 +270,14 @@ export default function AnnouncementsPage() {
     }
   };
 
-  useEffect(() => {
-    if (observerRef.current) observerRef.current.disconnect();
-    observerRef.current = new IntersectionObserver(
-      (entries) => {
-        if (entries[0]?.isIntersecting && hasMore && !loading) {
-          const nextPage = page + 1;
-          setPage(nextPage);
-          fetchData(nextPage);
-        }
-      },
-      { threshold: 0.1 }
-    );
-    if (sentinelRef.current) observerRef.current.observe(sentinelRef.current);
-    return () => observerRef.current?.disconnect();
-  }, [hasMore, loading, page, fetchData]);
+  // 박상빈님 5/21 명시 — 무한 스크롤 IntersectionObserver 제거. 더보기 버튼으로 대체.
+  // 이유: sentinel height=4 가 화면 안에 즉시 보임 → 검색 직후 페이지 2 자동 fetch → 사용자 "자동 새로고침" 호소.
+  const handleMore = () => {
+    if (!hasMore || loading) return;
+    const nextPage = page + 1;
+    setPage(nextPage);
+    fetchData(nextPage);
+  };
 
   const selectStyle: React.CSSProperties = {
     height: 38,
@@ -1105,7 +1097,21 @@ export default function AnnouncementsPage() {
           );
         })}
 
-        <div ref={sentinelRef} style={{ height: 4 }} />
+        {/* 박상빈님 5/21 명시 — 더보기 버튼 (무한 스크롤 sentinel 대체) */}
+        {hasMore && items.length > 0 && !loading && (
+          <div style={{ textAlign: "center", padding: "20px 0" }}>
+            <button
+              onClick={handleMore}
+              style={{
+                height: 44, padding: "0 32px", borderRadius: 10, fontSize: 14, fontWeight: 600,
+                background: "#fff", color: "#1B3A6B",
+                border: "1.5px solid #1B3A6B", cursor: "pointer",
+              }}
+            >
+              더보기 ({items.length} / {total.toLocaleString()})
+            </button>
+          </div>
+        )}
 
         {loading && (
           <div style={{ textAlign: "center", padding: "16px 0", fontSize: 13, color: "#94A3B8" }}>불러오는 중...</div>
