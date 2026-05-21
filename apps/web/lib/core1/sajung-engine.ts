@@ -678,6 +678,25 @@ export async function predictOptimalBid(params: {
     orgbud_past_mean: stat.avg,
     orgbud_past_std: mlStddev,
     orgbud_past_cnt: stat.sampleSize,
+    // 박상빈님 5/21 명시 — ML 학습 시 5개 그룹 통계 (cat/reg/bud/sub/catreg) expanding mean/std/cnt.
+    // merge_raw.py L185-188: 결측 = global_mean/global_std/0 으로 fillna.
+    // 추론 시 누락 (디폴트 0) → 학습 분포 불일치 → 출력 단조 (박상빈님 호소 100% 부근).
+    // → stat.avg (가장 정밀 SajungRateStat) 로 1차 폴백 — 학습 시 fillna 정확값 (각 그룹별 expanding) 보다는 약하나 디폴트 0 보다 학습 분포 일치 ↑.
+    cat_past_mean: stat.avg,
+    cat_past_std: mlStddev,
+    cat_past_cnt: stat.sampleSize,
+    reg_past_mean: stat.avg,
+    reg_past_std: mlStddev,
+    reg_past_cnt: stat.sampleSize,
+    bud_past_mean: stat.avg,
+    bud_past_std: mlStddev,
+    bud_past_cnt: stat.sampleSize,
+    sub_past_mean: stat.avg,
+    sub_past_std: mlStddev,
+    sub_past_cnt: stat.sampleSize,
+    catreg_past_mean: stat.avg,
+    catreg_past_std: mlStddev,
+    catreg_past_cnt: stat.sampleSize,
     opened_month: month,
     opened_weekday: (deadlineDate.getDay() + 1) % 7,
     opened_hour: 10,
