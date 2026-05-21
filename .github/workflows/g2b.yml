@@ -110,6 +110,15 @@ jobs:
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
         run: pnpm ts-node src/index.ts --type fill-avalue
+      # 박상빈님 5/20 명시 D-2 옵션 c — 공사 외 카테고리 (학술연구서비스/설계/회계 등) bsisAmt 채움
+      - name: 용역 bsisAmt 채우기
+        working-directory: apps/crawler
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          G2B_API_KEY: ${{ secrets.G2B_API_KEY }}
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: pnpm ts-node src/index.ts --type fill-bsis-servc
 
   bid-result:
     needs: setup

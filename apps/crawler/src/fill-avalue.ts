@@ -179,16 +179,27 @@ export async function fillAValue() {
   const pool = new Pool({ connectionString: dbUrl, max: 2, statement_timeout: 0 });
   const now = new Date().toISOString();
 
-  // 진행중 시설공사 (deadline 정보 포함, ym 그룹핑용)
+  // 박상빈님 5/20 명시 D-2 진단 — category NOT IN ('물품','용역','기타') 광범위 = 학술연구서비스/설계/외자 등 비공사 포함
+  // → CnstwkBsisAmount op 0% 응답 = 매칭률 0.26%
+  // 박상빈님 메모리 reference_g2b_apis: "공사 BsisAmount 에만 A값 필드 존재"
+  // → MAIN_CNSTWK_MAP value 19개 + "시설공사" 기본값으로 IN 필터링 (공사만)
+  const CNSTWK_CATEGORIES = [
+    "시설공사", "건축공사", "토건공사", "토목공사", "조경공사", "산업환경공사",
+    "전기공사", "통신공사", "소방시설공사", "지반조성포장공사", "실내건축공사",
+    "철근콘크리트공사", "구조물해체비계공사", "상하수도설비공사", "도장습식방수석공사",
+    "조경식재공사", "조경시설물공사", "철강재설치공사", "기계설비공사",
+  ];
+
+  // 진행중 공사 카테고리만 (MAIN_CNSTWK_MAP value + 기본값)
   let all: { id: string; konepsId: string; aValueYn: string; aValueTotal: string; priceRangeRate: string; ym: string }[] = [];
   try {
     const r = await pool.query(
       `SELECT id, "konepsId", "aValueYn", "aValueTotal"::text AS "aValueTotal", "priceRangeRate",
               TO_CHAR("deadline", 'YYYYMM') AS ym
        FROM "Announcement"
-       WHERE "category" NOT IN ('물품','용역','기타')
+       WHERE "category" = ANY($2::text[])
          AND "deadline" >= $1::timestamptz`,
-      [now],
+      [now, CNSTWK_CATEGORIES],
     );
     all = r.rows;
   } catch (e) {

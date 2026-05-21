@@ -13,6 +13,7 @@ import {
 import { logger } from "./utils/logger";
 import { fillSubCategories } from "./fill-subcategories";
 import { fillAValue } from "./fill-avalue";
+import { fillBsisServc } from "./fill-bsis-servc";
 
 // ─── .env.local 수동 로드 ────────────────────────────────────────────────────
 function loadEnv(): void {
@@ -37,7 +38,7 @@ function loadEnv(): void {
 
 // ─── CLI 인수 파싱 ───────────────────────────────────────────────────────────
 interface CliArgs {
-  type: "announcement" | "bid-result" | "all" | "fill-sub" | "fill-avalue";
+  type: "announcement" | "bid-result" | "all" | "fill-sub" | "fill-avalue" | "fill-bsis-servc";
   pages: number;
   from?: string; // YYYYMMDD — 과거 데이터 수집 시작일
   to?: string;   // YYYYMMDD — 종료일 (기본: 오늘)
@@ -53,7 +54,7 @@ function parseArgs(): CliArgs {
   for (let i = 0; i < args.length; i++) {
     if (args[i] === "--type" && args[i + 1]) {
       const t = args[i + 1];
-      if (t === "announcement" || t === "bid-result" || t === "all" || t === "fill-sub" || t === "fill-avalue") type = t;
+      if (t === "announcement" || t === "bid-result" || t === "all" || t === "fill-sub" || t === "fill-avalue" || t === "fill-bsis-servc") type = t;
     }
     if (args[i] === "--pages" && args[i + 1]) {
       const p = parseInt(args[i + 1], 10);
@@ -154,6 +155,9 @@ async function main(): Promise<void> {
     }
     if (args.type === "fill-avalue") {
       await fillAValue();
+    }
+    if (args.type === "fill-bsis-servc") {
+      await fillBsisServc();
     }
   } catch (err) {
     logger.error("수집 치명적 오류", err);
