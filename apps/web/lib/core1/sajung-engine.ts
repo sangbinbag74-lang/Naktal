@@ -395,6 +395,19 @@ export async function queryRawDataPoints(
 
 // ─── 최적 투찰가 예측 ─────────────────────────────────────────────────────────
 
+// 박상빈님 5/21 K-2 박스권 ML — annId + userId 기반 deterministic 사용자 hash
+function computeUserHash(annId: string | null | undefined, userId: string | null | undefined): number {
+  const seed = `${annId ?? ""}|${userId ?? ""}`;
+  if (!seed || seed === "|") return 0.5;
+  // FNV-1a 32bit hash → 0~1 deterministic (새로고침 = 같은 값)
+  let h = 2166136261 >>> 0;
+  for (let i = 0; i < seed.length; i++) {
+    h = (h ^ seed.charCodeAt(i)) >>> 0;
+    h = (h * 16777619) >>> 0;
+  }
+  return (h >>> 0) / 4294967296;
+}
+
 export async function predictOptimalBid(params: {
   orgName: string;
   category: string;
@@ -407,6 +420,9 @@ export async function predictOptimalBid(params: {
   deadlineDate?: string | Date;
   bsisAmt?: number;
   subCategories?: string[];
+  // 박상빈님 5/21 K-2 박스권 ML — 사용자별 deterministic 다양화 (옵션, 없으면 hash=0.5 = 박스권 중간)
+  annId?: string;
+  userId?: string;
 }): Promise<SajungPrediction> {
   const budgetRange = classifyBudget(params.budget);
   const orgName = params.orgName;
@@ -736,12 +752,32 @@ export async function predictOptimalBid(params: {
   // - Ensemble 실패 + v2+tuned 성공: 0.4 × stat + 0.6 × ML 앙상블 (기존 로직)
   //   → 아래 6단계 σ × z 안전선 정상 적용
   // - 둘 다 실패: 통계 단독 + σ × z
-  const predictedRate = usedEnsemble && mlPred !== null
+  const baseRate = usedEnsemble && mlPred !== null
     ? Math.max(85, Math.min(115, mlPred))
     : mlPred !== null
       ? Math.max(85, Math.min(115, 0.4 * statPred + 0.6 * mlPred))
       : Math.max(85, Math.min(115, statPred));
   const usedMl = mlPred !== null;
+
+  // 박상빈님 5/21 K-2 박스권 ML — 사용자별 deterministic 다양화 (annId + userId hash → q40~q70 사이)
+  // 박상빈님 메모리 feedback_recommendation_diversity 직접 명시:
+  //   "같은 공고 수십명 분석 요청 → 적당히 넓어야 그중 하나 당첨 → 박상빈님 수수료 ↑"
+  // 145K v7 측정 (2026-05-21):
+  //   B q40~q70 사용자별 deterministic = 부적격 45.78% / 1위 5.26% / 점수 2.970
+  //   M1-N03 단독 (운영 기준) = 부적격 37.84% / 1위 4.98% / 점수 3.088
+  //   → 점수 -0.118 trade-off 받고 추천 다양화 (박상빈님 케이스 신성토건 3공고 해결)
+  let predictedRate = baseRate;
+  let usedBoxquan = false;
+  const bq40 = ensemblePred?.box_q40;
+  const bq70 = ensemblePred?.box_q70;
+  if (
+    typeof bq40 === "number" && typeof bq70 === "number" &&
+    Number.isFinite(bq40) && Number.isFinite(bq70) && bq40 < bq70
+  ) {
+    const userHash = computeUserHash(params.annId, params.userId);
+    predictedRate = Math.max(85, Math.min(115, bq40 + (bq70 - bq40) * userHash));
+    usedBoxquan = true;
+  }
 
   // 6. 투찰가 역산 — 박상빈님 지시 (2026-05-17): Hard clamp 완전 제거
   //
@@ -793,7 +829,9 @@ export async function predictOptimalBid(params: {
     confidenceLevel: getConfidenceLevel(
       stat.sampleSize, stat.stddev, recentPoints.length, stabilityScore, isBlended
     ),
-    modelVersion: usedEnsemble
+    modelVersion: usedBoxquan
+      ? "boxquan-K2-2026-05-21[B-q40-q70-user-hash]"  // 박상빈님 5/21 K-2 박스권 ML 사용자별 deterministic 다양화 (point estimate B q40~q70 사이, 145K v7 측정 부적격 45.78% / 1위 5.26% / 점수 2.970)
+      : usedEnsemble
       ? "ensemble-v7.0-2026-05-20[optuna_10K]"  // 박상빈님 5/20 명시 — Optuna 10000 trial 카테고리별 4모델 가중 (점수 3.607 전체 ML 1위)
       : usedMl
         ? "sajung-v2-only-ml-2026-05-18"  // tuned(5/02 옛 1.16M) 차단, v2(1.84M) 단독

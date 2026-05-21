@@ -4,6 +4,7 @@
   "operation_mode": "Optuna 10000 trial 카테고리별 4모델 가중 (B-q70/B-q60/B-q80/M1)",
   "data_size": "1.84M (training_data_v2.csv) + 145,668 backtest (공사 + 복수예가)",
   "bundled_models": {
+    "sajung_quantile_q40": "/ml/sajung_quantile_q40.onnx",
     "sajung_quantile_q60": "/ml/sajung_quantile_q60.onnx",
     "sajung_quantile_q70": "/ml/sajung_quantile_q70.onnx",
     "sajung_quantile_q80": "/ml/sajung_quantile_q80.onnx",

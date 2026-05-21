@@ -180,6 +180,9 @@ export interface EnsemblePrediction {
   ensemble_lwlt_q50: number;
   ensemble_lwlt_q95: number;
   recommended_sajung_rate: number;
+  // 박상빈님 5/21 K-2 박스권 ML — 사용자별 deterministic 다양화용
+  box_q40?: number;
+  box_q70?: number;
   model_version: string;
 }
 

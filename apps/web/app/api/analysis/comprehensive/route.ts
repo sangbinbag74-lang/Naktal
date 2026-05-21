@@ -187,6 +187,9 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       deadlineDate: ann.deadline as string,
       bsisAmt: Number(ann.bsisAmt ?? 0),
       subCategories: (ann.subCategories as string[]) ?? [],
+      // 박상빈님 5/21 K-2 박스권 ML — annId + userId hash → q40~q70 deterministic 다양화
+      annId,
+      userId: user.id,
     }),
     analyzeCompetition({
       orgName: ann.orgName as string,

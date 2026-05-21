@@ -149,8 +149,9 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       manifest.category_optuna_weights["_DEFAULT_"] ??
       { B_q70: 0.5, B_q60: 0.0, B_q80: 0.0, M1: 0.5 };
 
-    // 4 모델 추론 (B-q70 / B-q60 / B-q80 / M1)
-    const [bq70, bq60, bq80, v2, tuned, xgb, cat, q95] = await Promise.all([
+    // 4 모델 추론 (B-q70 / B-q60 / B-q80 / M1) + 박상빈님 5/21 박스권 ML 사용자별 다양화 (B-q40)
+    const [bq40, bq70, bq60, bq80, v2, tuned, xgb, cat, q95] = await Promise.all([
+      runOne("sajung_quantile_q40", features),
       runOne("sajung_quantile_q70", features),
       runOne("sajung_quantile_q60", features),
       runOne("sajung_quantile_q80", features),
@@ -194,7 +195,10 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       ensemble_lwlt_q95: recommended + margin,
       category,
       weights,
-      models: { bq70, bq60, bq80, m1, v2, tuned, xgb, cat, q95 },
+      models: { bq40, bq70, bq60, bq80, m1, v2, tuned, xgb, cat, q95 },
+      // 박상빈님 5/21 K-2 박스권 ML 사용자별 다양화 (sajung-engine.ts 가 user hash 적용)
+      box_q40: bq40,
+      box_q70: bq70,
       model_version: manifest.version,
     });
   } catch (e) {
