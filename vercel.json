@@ -16,7 +16,10 @@
     "apps/web/app/api/admin/refresh-outcomes/route.ts": { "maxDuration": 60 },
     "apps/web/app/api/cron/collect-sajung-stat/route.ts": { "maxDuration": 300 },
     "apps/web/app/api/cron/prefill-predictions/route.ts": { "maxDuration": 120 },
-    "apps/web/app/api/cron/fill-bid-results/route.ts": { "maxDuration": 120 }
+    "apps/web/app/api/cron/fill-bid-results/route.ts": { "maxDuration": 120 },
+    "apps/web/app/api/cron/seo-ping/route.ts": { "maxDuration": 30 }
   },
-  "crons": []
+  "crons": [
+    { "path": "/api/cron/seo-ping", "schedule": "0 20 * * *" }
+  ]
 }

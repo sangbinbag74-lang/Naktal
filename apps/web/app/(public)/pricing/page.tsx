@@ -6,13 +6,35 @@ export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: "요금 안내 — 분석 무료, 낙찰 시에만 수수료",
-  description: "낙비 — 내 손안의 AI 낙찰비서. AI 사정율 예측·복수예가 번호 추천·공고문 자격 분석 모두 무료. 낙찰 성공 시에만 수수료(1억 이상 1.5% / 1억 미만 1.7%) 발생.",
-  keywords: ["낙비 요금", "낙비 가격", "낙비 수수료", "낙찰AI 요금", "공공입찰 AI 요금", "나라장터 AI 무료", "성공보수형 수수료"],
+  description:
+    "낙비 — 내 손안의 AI 낙찰비서. AI 사정율 예측·복수예가 번호 추천·공고문 자격 분석 모두 무제한 무료. " +
+    "월 구독료 없음, 낙찰 성공 시에만 수수료(낙찰가 1억 이상 1.5%, 1억 미만 1.7%) 발생. " +
+    "미낙찰 시 0원. 결과가 나기 전까지 어떠한 비용도 청구되지 않습니다.",
+  keywords: [
+    "낙비 요금", "낙비 가격", "낙비 수수료", "낙비 결제",
+    "낙찰AI 요금", "낙찰 AI 가격", "공공입찰 AI 요금",
+    "나라장터 AI 무료", "나라장터 AI 가격",
+    "성공보수형 수수료", "낙찰 성공 수수료", "낙찰 시에만 수수료",
+    "1.5% 수수료", "1.7% 수수료",
+    "미낙찰 0원", "분석 무료", "구독료 없음", "월 구독료 없음",
+    "낙비 환불", "환불 정책",
+  ],
   alternates: { canonical: "https://naktal.me/pricing" },
   openGraph: {
-    title: "낙비 — 요금 안내 (분석 무제한 무료)",
-    description: "AI 사정율 예측·복수예가 번호·자격 분석 모두 무료. 낙찰 시에만 수수료.",
+    title: "낙비 — 요금 안내 (분석 무제한 무료, 낙찰 시에만 수수료)",
+    description:
+      "AI 사정율 예측·복수예가 번호·자격 분석 모두 무료. 낙찰 시에만 수수료 1.5~1.7%. 미낙찰 0원, 월 구독료 없음.",
     url: "https://naktal.me/pricing",
+    siteName: "낙비",
+    locale: "ko_KR",
+    type: "website",
+    images: [{ url: "/og.png", width: 1200, height: 630, alt: "낙비 요금 안내" }],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "낙비 — 요금 안내",
+    description: "분석 무료. 낙찰 시에만 수수료 1.5~1.7%. 미낙찰 0원.",
+    images: ["/og.png"],
   },
 };
 
