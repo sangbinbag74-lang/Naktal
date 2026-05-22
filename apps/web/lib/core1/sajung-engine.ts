@@ -10,6 +10,7 @@ import { createAdminClient } from "@/lib/supabase/server";
 import { extractCoreOrgName } from "@/lib/analysis/sajung-utils";
 import { SIMILAR_CATEGORIES } from "@/lib/category-map";
 import { fetchMlSajung, fetchMlEnsemble } from "./ml-client";
+import { getOrgNameAliases } from "@/lib/analysis/org-name-mapping";
 import {
   classifyCategory,
   SAJUNG_FILTER_BY_KIND,
@@ -154,15 +155,33 @@ async function querySajungStat(
   region: string
 ): Promise<SajungStatRow | null> {
   const supabase = createAdminClient();
+  // 박상빈님 5/22 K-3 — orgName 옛/신규 명칭 매핑 (전라북도↔전북특별자치도, 국토해양부↔국토교통부 등)
+  const orgAliases = orgName === "ALL" ? ["ALL"] : getOrgNameAliases(orgName);
   const { data } = await supabase
     .from("SajungRateStat")
     .select("avg,stddev,p25,p50,p75,min,max,mode,monthlyAvg,sampleSize")
-    .eq("orgName", orgName)
+    .in("orgName", orgAliases)
     .eq("category", category)
     .eq("budgetRange", budgetRange)
-    .eq("region", region)
-    .maybeSingle();
-  return data as SajungStatRow | null;
+    .eq("region", region);
+  if (!data || data.length === 0) return null;
+  if (data.length === 1) return data[0] as SajungStatRow;
+  // 여러 row (옛+신규) = 가중평균 합산 (박상빈님 메모리 no_omission 부합)
+  const rows = data as SajungStatRow[];
+  const total = rows.reduce((s, r) => s + (r.sampleSize ?? 0), 0);
+  if (total === 0) return null;
+  return {
+    avg:        rows.reduce((s, r) => s + r.avg * (r.sampleSize ?? 0), 0) / total,
+    stddev:     rows.reduce((s, r) => s + (r.stddev ?? 2) * (r.sampleSize ?? 0), 0) / total,
+    p25:        rows.reduce((s, r) => s + (r.p25 ?? 99)  * (r.sampleSize ?? 0), 0) / total,
+    p50:        rows.reduce((s, r) => s + (r.p50 ?? 100) * (r.sampleSize ?? 0), 0) / total,
+    p75:        rows.reduce((s, r) => s + (r.p75 ?? 101) * (r.sampleSize ?? 0), 0) / total,
+    min:        Math.min(...rows.map(r => r.min ?? 97)),
+    max:        Math.max(...rows.map(r => r.max ?? 103)),
+    mode:       rows[0]?.mode ?? 100,
+    monthlyAvg: rows[0]?.monthlyAvg ?? {},
+    sampleSize: total,
+  };
 }
 
 /** orgName 의 첫 2 토큰 (도 + 시·군) — '경상북도 봉화군 체육시설사업소' → '경상북도 봉화군' */
@@ -187,10 +206,13 @@ async function querySajungStatByParentOrg(
   region: string
 ): Promise<SajungStatRow | null> {
   const supabase = createAdminClient();
+  // 박상빈님 5/22 K-3 — parentOrg 옛/신규 prefix 모두 ILIKE 매칭
+  const prefixAliases = getOrgNameAliases(parentOrg);
+  const orFilter = prefixAliases.map((p) => `orgName.ilike.${p}%`).join(",");
   const { data } = await supabase
     .from("SajungRateStat")
     .select("avg,stddev,p25,p50,p75,min,max,mode,monthlyAvg,sampleSize")
-    .ilike("orgName", `${parentOrg}%`)
+    .or(orFilter)
     .eq("category", category)
     .eq("budgetRange", budgetRange)
     .eq("region", region);
