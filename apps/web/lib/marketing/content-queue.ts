@@ -209,10 +209,13 @@ G2B(나라장터) 공식 계산기로 직접 검증할 수 있습니다.
  * Date 기반 시드로 같은 날엔 항상 같은 인덱스 반환.
  */
 export function pickByDate<T>(items: T[], date: Date = new Date()): T {
+  if (items.length === 0) {
+    throw new Error("pickByDate: empty array");
+  }
   const ymd = `${date.getUTCFullYear()}${date.getUTCMonth()}${date.getUTCDate()}`;
   let hash = 0;
   for (let i = 0; i < ymd.length; i++) {
     hash = (hash * 31 + ymd.charCodeAt(i)) % 1000000;
   }
-  return items[hash % items.length];
+  return items[hash % items.length] as T;
 }

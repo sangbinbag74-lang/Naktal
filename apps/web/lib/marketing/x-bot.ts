@@ -47,19 +47,19 @@ function buildOAuth1Header(
 
   const paramString = Object.keys(oauthParams)
     .sort()
-    .map((k) => `${rfc3986(k)}=${rfc3986(oauthParams[k])}`)
+    .map((k) => `${rfc3986(k)}=${rfc3986(oauthParams[k] ?? "")}`)
     .join("&");
 
   const signatureBaseString = `${method.toUpperCase()}&${rfc3986(url)}&${rfc3986(paramString)}`;
   const signingKey = `${rfc3986(creds.apiSecret)}&${rfc3986(creds.accessTokenSecret)}`;
   const signature = createHmac("sha1", signingKey).update(signatureBaseString).digest("base64");
 
-  const authParams = { ...oauthParams, oauth_signature: signature };
+  const authParams: Record<string, string> = { ...oauthParams, oauth_signature: signature };
   const header =
     "OAuth " +
     Object.keys(authParams)
       .sort()
-      .map((k) => `${rfc3986(k)}="${rfc3986(authParams[k])}"`)
+      .map((k) => `${rfc3986(k)}="${rfc3986(authParams[k] ?? "")}"`)
       .join(", ");
 
   return header;
