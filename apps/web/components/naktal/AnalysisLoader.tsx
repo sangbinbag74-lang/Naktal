@@ -75,9 +75,8 @@ export function AnalysisLoader() {
         }
       `}</style>
 
-      {/* 메인 시각 — 회전 링 + 펄스 도트 */}
+      {/* 메인 시각 — 회전 링 (박상빈님 5/22: 펄스 도트만 제거, 회전 링 유지) */}
       <div style={{ position: "relative", width: 100, height: 100 }}>
-        {/* 회전 링 */}
         <div style={{
           position: "absolute", inset: 0,
           borderRadius: "50%",
@@ -85,17 +84,6 @@ export function AnalysisLoader() {
           borderTopColor: "#1B3A6B",
           borderRightColor: "#1B3A6B",
           animation: "naktal-spin 1.2s linear infinite",
-        }} />
-        {/* 내부 펄스 도트 */}
-        <div style={{
-          position: "absolute",
-          left: "50%", top: "50%",
-          transform: "translate(-50%, -50%)",
-          width: 28, height: 28,
-          borderRadius: "50%",
-          background: "linear-gradient(135deg, #1B3A6B 0%, #60A5FA 100%)",
-          animation: "naktal-pulse 1.5s ease-in-out infinite",
-          boxShadow: "0 0 20px rgba(27, 58, 107, 0.4)",
         }} />
       </div>
 

@@ -237,7 +237,7 @@ export function AiAnalysisPanel({ annDbId, budget, g2bUrl, konepsId, onRefresh, 
                   {isNegotiated ? "N/A" : cl === "LOW" ? "-" : `${Math.round(bs.winProbability * 100)}점`}
                 </div>
                 <div style={{ fontSize: 10, color: "#94A3B8", marginTop: 2 }}>
-                  {isNegotiated ? "협상 계약 — 가격 외 평가" : `${bs.sampleSize}건 기반`}
+                  {isNegotiated ? "협상 계약 — 가격 외 평가" : "AI 빅데이터 분석"}
                 </div>
               </div>
               <div style={{ background: "#F8FAFC", borderRadius: 10, padding: "12px 8px", textAlign: "center" }}>
@@ -329,7 +329,7 @@ export function AiAnalysisPanel({ annDbId, budget, g2bUrl, konepsId, onRefresh, 
                 background: cl === "HIGH" ? "#DCFCE7" : cl === "MEDIUM" ? "#FEF3C7" : "#FEE2E2",
                 color: cl === "HIGH" ? "#16A34A" : cl === "MEDIUM" ? "#D97706" : "#DC2626",
               }}>
-                {cl === "HIGH" ? "높음" : cl === "MEDIUM" ? "보통" : "낮음"} · {bs.sampleSize}건
+                {cl === "HIGH" ? "높음" : cl === "MEDIUM" ? "보통" : "낮음"}
               </span>
             </div>
 

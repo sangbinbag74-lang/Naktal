@@ -61,29 +61,22 @@ export function BidRequestButton({
   }
 
   async function handleClick() {
-    setStatus("loading");
-    setErrorMsg("");
+    // 박상빈님 5/22 명시 (7번째) — 즉시 새 창 (사용자 클릭 직후 = 팝업 차단 회피)
+    // 분석/저장은 백그라운드에서 진행. 새 창에서 결과 polling.
+    window.open(`/bid-contract/${konepsId}`, "_blank", "noopener,noreferrer");
+    setHasRequested(true);
+
+    // 백그라운드 분석 + 의뢰 저장 (사용자 대기 X)
     try {
-      // 1. 분석
       const analysisRes = await fetch("/api/analysis/comprehensive", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ annId }),
       });
-      if (!analysisRes.ok) {
-        const json = await analysisRes.json().catch(() => ({}));
-        if (analysisRes.status === 403) {
-          setErrorMsg(json.message ?? "AI 분석은 프로 플랜부터 이용할 수 있습니다.");
-        } else {
-          setErrorMsg("분석 데이터를 불러오지 못했습니다.");
-        }
-        setStatus("error");
-        return;
-      }
+      if (!analysisRes.ok) return;
       const analysis = await analysisRes.json() as AnalysisData;
 
-      // 2. 의뢰 저장
-      const bidRes = await fetch("/api/bid-request", {
+      await fetch("/api/bid-request", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -104,21 +97,7 @@ export function BidRequestButton({
           competitionScore: analysis.competition.competitionScore,
         }),
       });
-      if (!bidRes.ok) {
-        const json = await bidRes.json().catch(() => ({}));
-        setErrorMsg(json.error ?? "의뢰 저장에 실패했습니다.");
-        setStatus("error");
-        return;
-      }
-
-      // 3. 계약 페이지 같은 탭 이동 (팝업 차단 회피)
-      setHasRequested(true);
-      setStatus("idle");
-      router.push(`/bid-contract/${konepsId}`);
-    } catch {
-      setErrorMsg("네트워크 오류가 발생했습니다.");
-      setStatus("error");
-    }
+    } catch { /* 백그라운드 — 사용자 영향 X */ }
   }
 
   return (
