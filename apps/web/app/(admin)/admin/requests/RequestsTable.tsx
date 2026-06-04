@@ -462,7 +462,7 @@ export function RequestsTable({ requests, userMap, companyProfileMap = {}, bidRe
                     </td>
                     {/* 순위 — null 이면 G2B 사유(낙찰하한선 미달 등) 또는 마감 지난 경우 조회 버튼 표시 */}
                     <td style={{ padding: "8px 12px", whiteSpace: "nowrap", textAlign: "center" }}>
-                      {r.userRank != null ? (
+                      {r.userRank != null && r.userRank > 0 ? (
                         <span style={{
                           display: "inline-block",
                           fontSize: 12,
@@ -474,6 +474,18 @@ export function RequestsTable({ requests, userMap, companyProfileMap = {}, bidRe
                         }}>
                           {r.userRank}{r.totalBidders ? `/${r.totalBidders}` : ""}위
                         </span>
+                      ) : r.userRank != null && r.userRank < 0 ? (
+                        <div style={{ display: "inline-flex", flexDirection: "column", alignItems: "center", gap: 2 }}>
+                          <span style={{
+                            display: "inline-block", fontSize: 12, fontWeight: 700,
+                            color: "#DC2626", background: "#FEF2F2", padding: "3px 8px", borderRadius: 6,
+                          }} title={r.userRemark ?? "낙찰하한선 미달"}>
+                            {r.userRank}등 (부적격)
+                          </span>
+                          {r.userBidRate != null && (
+                            <span style={{ fontSize: 10, color: "#9CA3AF" }}>투찰률 {Number(r.userBidRate).toFixed(4)}%</span>
+                          )}
+                        </div>
                       ) : r.userRemark ? (
                         <div style={{ display: "inline-flex", flexDirection: "column", alignItems: "center", gap: 2 }}>
                           <span style={{

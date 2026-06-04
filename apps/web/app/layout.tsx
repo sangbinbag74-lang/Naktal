@@ -4,6 +4,7 @@ import { SpeedInsights } from "@vercel/speed-insights/next";
 import { Analytics } from "@vercel/analytics/next";
 import { cn } from "@/lib/utils";
 import { MobileNotice } from "@/components/common/MobileNotice";
+import { CacheGuard } from "@/components/common/CacheGuard";
 import "./globals.css";
 
 const geist = Geist({ subsets: ["latin"], variable: "--font-sans" });
@@ -255,6 +256,7 @@ export default function RootLayout({
         />
       </head>
       <body>
+        <CacheGuard />
         {children}
         <MobileNotice />
         <SpeedInsights />

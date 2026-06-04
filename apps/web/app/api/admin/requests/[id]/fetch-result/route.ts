@@ -6,6 +6,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/admin-guard";
 import { createAdminClient } from "@/lib/supabase/server";
 import { g2bFetchBidResultPage, g2bFetchOpengComptForBidNtceNo, g2bParseDate, toYMD } from "@/lib/g2b";
+import { rankBidders } from "@/lib/bid-rank";
 
 const SCSBID_OPS = [
   "getScsbidListSttusThng",
@@ -152,9 +153,14 @@ export async function POST(
         c.prcbdrCeoBizno, c.bidprrBizno,
       ].filter(Boolean).map(normalizeBiz);
 
-      const me = comptItems.find(c => getCandidateBiznos(c).includes(userBizNoLast10));
+      // 박상빈님 2026-06-05 -N등: 적격 opengRank(+N) / 부적격 투찰가 높은순(-N)
+      const ranked = rankBidders(comptItems);
+      const meIdx = comptItems.findIndex(c => getCandidateBiznos(c).includes(userBizNoLast10));
+      const me = meIdx >= 0 ? comptItems[meIdx] : undefined;
       if (me) {
-        userRank = parseInt(me.opengRank ?? "0", 10) || null;
+        const r = ranked[meIdx];
+        // rank 0 = 예가초과 → userRank null (userRemark "예가초과"로 표시)
+        userRank = r ? (r.rank !== 0 ? r.rank : null) : (parseInt(me.opengRank ?? "0", 10) || null);
         userBidPriceFromG2B = parseInt(String(me.bidprcAmt ?? "0").replace(/[^0-9]/g, ""), 10) || null;
         userBidRate = parseFloat(String(me.bidprcrt ?? "0")) || null;
         userDrwtNo1 = parseInt(String(me.drwtNo1 ?? "").trim(), 10) || null;

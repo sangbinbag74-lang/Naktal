@@ -135,12 +135,17 @@ function ContractCard({ c }: { c: ContractListItem }) {
           marginTop: 14, paddingTop: 12, borderTop: "1px solid #F1F5F9",
           display: "flex", flexWrap: "wrap", gap: 22, fontSize: 12.5,
         }}>
-          {userRank != null ? (
+          {userRank != null && userRank > 0 ? (
             <span>
               <span style={{ color: "#94A3B8" }}>내 순위 </span>
               <strong style={{ color: userRank === 1 ? "#059669" : userRank <= 3 ? "#D97706" : "#374151" }}>
                 {userRank}{totalBidders ? ` / ${totalBidders}` : ""}위
               </strong>
+            </span>
+          ) : userRank != null && userRank < 0 ? (
+            <span>
+              <span style={{ color: "#94A3B8" }}>내 순위 </span>
+              <strong style={{ color: "#DC2626" }}>{userRank}등 (부적격)</strong>
             </span>
           ) : (userBid != null && (
             <span>
@@ -193,8 +198,10 @@ function WonBadge({
   );
   if (isWon === false) {
     // 미낙찰 — 작고 평범하게 + 아래에 (1) 순위 or (2) G2B 사유(낙찰하한선 미달 등)
-    const rankLabel = userRank != null
+    const rankLabel = userRank != null && userRank > 0
       ? `${userRank}${totalBidders ? ` / ${totalBidders}` : ""}위`
+      : userRank != null && userRank < 0
+      ? `${userRank}등 (부적격)`
       : null;
     return (
       <div style={{ display: "inline-flex", flexDirection: "column", alignItems: "flex-end", gap: 3 }}>
