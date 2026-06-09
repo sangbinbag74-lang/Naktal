@@ -257,3 +257,38 @@ export async function fetchMlParticipants(features: ParticipantsMlFeatures): Pro
     return null;
   }
 }
+
+// ─── winRate: 낙찰선 직접예측 (2026-06-09, 전체 입찰자 데이터) ──────────────────
+// 반환 = 마진(낙찰선 투찰률 − 낙찰하한율). 실패 시 null → sajung-engine 기존 경로 폴백.
+
+export interface WinrateFeatures {
+  year: number;
+  month: number;
+  instt_te: number;   // 발주처별 과거 평균 마진 (winrate_te_map 조회)
+  log_bss: number;    // ln(1+기초금액)
+  log_presmpt: number; // ln(1+추정가격)
+  lwlt: number;        // 낙찰하한율 %
+}
+
+export async function fetchMlWinrate(features: WinrateFeatures): Promise<number | null> {
+  if (!ML_ENABLED) return null;
+  const url = `${getBaseUrl()}/api/ml-predict-winrate`;
+  try {
+    const res = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...(ML_API_KEY ? { "X-API-Key": ML_API_KEY } : {}),
+      },
+      body: JSON.stringify(features),
+      signal: AbortSignal.timeout(55000), // cold start onnx 로드 여유
+    });
+    if (!res.ok) return null;
+    const data = (await res.json()) as { margin?: number };
+    const m = Number(data.margin);
+    if (!Number.isFinite(m) || m < -2 || m > 10) return null; // 마진 sane 범위
+    return m;
+  } catch {
+    return null;
+  }
+}

@@ -6,10 +6,12 @@
  * 유효 범위: 97~103%
  */
 
+import fs from "fs";
+import path from "path";
 import { createAdminClient } from "@/lib/supabase/server";
 import { extractCoreOrgName } from "@/lib/analysis/sajung-utils";
 import { SIMILAR_CATEGORIES } from "@/lib/category-map";
-import { fetchMlSajung, fetchMlEnsemble } from "./ml-client";
+import { fetchMlSajung, fetchMlEnsemble, fetchMlWinrate } from "./ml-client";
 import { getOrgNameAliases } from "@/lib/analysis/org-name-mapping";
 import {
   classifyCategory,
@@ -416,6 +418,34 @@ export async function queryRawDataPoints(
 }
 
 // ─── 최적 투찰가 예측 ─────────────────────────────────────────────────────────
+
+// ─── winRate 낙찰선 직접예측 (박상빈님 6/9, 전체 입찰자 데이터) ──────────────
+interface WinrateTeMap { global: number; map: Record<string, number>; }
+let winrateTeMapCache: WinrateTeMap | null | undefined;
+function getWinrateTeMap(): WinrateTeMap | null {
+  if (winrateTeMapCache !== undefined) return winrateTeMapCache;
+  try {
+    const p = path.join(process.cwd(), "ml", "winrate_te_map.json");
+    winrateTeMapCache = JSON.parse(fs.readFileSync(p, "utf-8")) as WinrateTeMap;
+  } catch {
+    winrateTeMapCache = null;
+  }
+  return winrateTeMapCache;
+}
+/** 규모적응 band offset — 소액 [0.45,0.75] / 대형(3억+) [0.0,1.2], 사용자 hash 분산 (다양화) */
+function winrateBandOffset(budget: number, userHash: number): number {
+  const lo = budget >= 3e8 ? 0.0 : 0.45;
+  const hi = budget >= 3e8 ? 1.2 : 0.75;
+  return lo + (hi - lo) * userHash;
+}
+/** te_map 발주처 조회 (raw orgName + 옛/신규 별칭, 미스 시 global 폴백) */
+function lookupInsttTe(teMap: WinrateTeMap, orgName: string): number {
+  if (Object.prototype.hasOwnProperty.call(teMap.map, orgName)) return teMap.map[orgName] as number;
+  for (const alias of getOrgNameAliases(orgName)) {
+    if (Object.prototype.hasOwnProperty.call(teMap.map, alias)) return teMap.map[alias] as number;
+  }
+  return teMap.global;
+}
 
 // 박상빈님 5/21 K-2 박스권 ML — annId + userId 기반 deterministic 사용자 hash
 function computeUserHash(annId: string | null | undefined, userId: string | null | undefined): number {
@@ -825,10 +855,34 @@ export async function predictOptimalBid(params: {
   // UI 표시용 참조 가격 (사정율 100% 기준) — 진짜 낙찰하한가 아님 (G2B 사후만 확인 가능)
   const lowerLimit = Math.ceil((params.budget - aVal) * lwlt + aVal);
 
+  // ─── winRate 경로 (박상빈님 6/9): 낙찰선 직접예측 → 추천금액 교체, 실패 시 사정율 폴백 ───
+  let finalOptimalBid = optimalBid;
+  let usedWinrate = false;
+  try {
+    const teMap = getWinrateTeMap();
+    if (teMap) {
+      const dd = new Date(params.deadlineDate ?? Date.now());
+      const margin = await fetchMlWinrate({
+        year: dd.getFullYear(),
+        month: params.deadlineMonth,
+        instt_te: lookupInsttTe(teMap, params.orgName),
+        log_bss: Math.log1p(params.budget),
+        log_presmpt: Math.log1p(params.budget / 1.1), // 추정가격=기초금액/1.1 (실측 0.9091)
+        lwlt: params.lowerLimitRate,
+      });
+      if (margin !== null) {
+        const offset = winrateBandOffset(params.budget, computeUserHash(params.annId, params.userId));
+        const recRate = margin + params.lowerLimitRate + offset; // 추천 투찰률(기초금액 대비 %)
+        finalOptimalBid = Math.ceil((recRate / 100) * params.budget); // A값은 학습 rate에 이미 반영
+        usedWinrate = true;
+      }
+    }
+  } catch { /* 폴백: 기존 사정율 optimalBid 유지 */ }
+
   // 7. 몬테카를로 낙찰 확률 (다른 회사 분포 포함)
   // numBidders 가 인자에 없으면 30명 기본 (한국 공공조달 평균)
   const winProb = monteCarloWinProb(
-    optimalBid, params.budget, predictedRate, stat.stddev, params.lowerLimitRate, 30
+    finalOptimalBid, params.budget, predictedRate, stat.stddev, params.lowerLimitRate, 30
   );
 
   // 카테고리별 사정율 default (공사 99~101 / 용역 80~95 / 물품 70~92)
@@ -842,7 +896,7 @@ export async function predictOptimalBid(params: {
       p75: stat.p75 ?? sajungDef.p75,
     },
     sampleSize: stat.sampleSize,
-    optimalBidPrice: Math.ceil(optimalBid),
+    optimalBidPrice: Math.ceil(finalOptimalBid),
     bidPriceRangeLow: Math.ceil(rangeLow),
     bidPriceRangeHigh: Math.ceil(rangeHigh),
     lowerLimitPrice: Math.ceil(lowerLimit),
@@ -851,7 +905,9 @@ export async function predictOptimalBid(params: {
     confidenceLevel: getConfidenceLevel(
       stat.sampleSize, stat.stddev, recentPoints.length, stabilityScore, isBlended
     ),
-    modelVersion: usedBoxquan
+    modelVersion: usedWinrate
+      ? "winrate-te-2026-06-09[q50+size-band]"  // 박상빈님 6/9 낙찰선 직접예측 + 규모적응 band 다양화 (M1 대비 같은 부적격서 낙찰 +20~68%)
+      : usedBoxquan
       ? "boxquan-K2-2026-05-21[B-q40-q70-user-hash]"  // 박상빈님 5/21 K-2 박스권 ML 사용자별 deterministic 다양화 (point estimate B q40~q70 사이, 145K v7 측정 부적격 45.78% / 1위 5.26% / 점수 2.970)
       : usedEnsemble
       ? "ensemble-v7.0-2026-05-20[optuna_10K]"  // 박상빈님 5/20 명시 — Optuna 10000 trial 카테고리별 4모델 가중 (점수 3.607 전체 ML 1위)
