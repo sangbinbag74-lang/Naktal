@@ -586,6 +586,48 @@ function DataScale() {
   );
 }
 
+function ProvenPerformance() {
+  const stats = [
+    { pre: "~", n: "30", u: "%", l: "낙찰선 ±3등 근접률", d: "추천가가 낙찰선 코앞(±3등)에 안착하는 비율" },
+    { pre: "", n: "28,000", u: "+", l: "맞춤 학습 발주처", d: "발주처마다 다른 입찰 패턴을 각각 학습" },
+    { pre: "", n: "218", u: "만 건", l: "AI 학습 공고", d: "2002년부터 누적된 입찰 데이터로 학습" },
+  ];
+  return (
+    <section style={{ background: "var(--navy-900)", color: "#fff", padding: "140px 0", position: "relative", overflow: "hidden" }}>
+      <div style={{ position: "absolute", inset: 0, backgroundImage: "radial-gradient(rgba(96,165,250,0.06) 1px, transparent 1px)", backgroundSize: "30px 30px", maskImage: "linear-gradient(180deg, transparent, #000 30%, #000 70%, transparent)", WebkitMaskImage: "linear-gradient(180deg, transparent, #000 30%, #000 70%, transparent)" }} />
+      <div className="nk-container" style={{ position: "relative" }}>
+        <div className="nk-reveal" style={{ maxWidth: 760, marginBottom: 56 }}>
+          <div className="nk-eyebrow" style={{ color: "var(--blue-400)", marginBottom: 16 }}>PROVEN PERFORMANCE</div>
+          <h2 style={{ fontSize: "clamp(34px, 4vw, 52px)", lineHeight: 1.08, letterSpacing: "-0.028em", fontWeight: 900, margin: "0 0 16px", color: "#fff" }}>
+            숫자로 증명합니다.
+          </h2>
+          <p style={{ fontSize: 18, lineHeight: 1.6, color: "rgba(255,255,255,0.65)", margin: 0 }}>
+            감이 아니라, 검증된 숫자입니다.
+          </p>
+        </div>
+
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 0, borderTop: "1px solid rgba(255,255,255,0.12)" }}>
+          {stats.map((s, i) => (
+            <div key={i} className="nk-reveal" style={{ padding: "40px 32px 36px", borderRight: i < 2 ? "1px solid rgba(255,255,255,0.12)" : "none" }}>
+              <div style={{ display: "flex", alignItems: "baseline", gap: 2, marginBottom: 18 }}>
+                {s.pre && <span className="nk-num nk-en" style={{ fontSize: "clamp(28px, 3vw, 40px)", fontWeight: 700, color: "var(--blue-400)", marginRight: 2 }}>{s.pre}</span>}
+                <span className="nk-num nk-en" style={{ fontSize: "clamp(48px, 6vw, 76px)", fontWeight: 900, lineHeight: 1, letterSpacing: "-0.04em", color: "#fff" }}>{s.n}</span>
+                <span style={{ fontSize: "clamp(18px, 2vw, 24px)", fontWeight: 700, color: "var(--blue-400)", marginLeft: 2 }}>{s.u}</span>
+              </div>
+              <div style={{ fontSize: 17, fontWeight: 700, color: "#fff", marginBottom: 8, letterSpacing: "-0.01em" }}>{s.l}</div>
+              <div style={{ fontSize: 14, color: "rgba(255,255,255,0.6)", lineHeight: 1.6 }}>{s.d}</div>
+            </div>
+          ))}
+        </div>
+
+        <div className="nk-reveal" style={{ marginTop: 26, fontSize: 12.5, color: "rgba(255,255,255,0.42)", lineHeight: 1.6 }}>
+          * 낙찰선 ±3등 근접률은 자체 백테스트(2024~2026년, 27만 공고) 기준이며, 낙찰을 보장하지 않습니다.
+        </div>
+      </div>
+    </section>
+  );
+}
+
 function Flow() {
   const steps = [
     { n: "01", t: "공고 검색", d: "업종, 지역, 계약 방법으로 즉시 필터. 활성 공고를 한 번에 훑습니다.", sub: "SEARCH", viz: "filter" },
@@ -915,6 +957,7 @@ export default function LandingPage() {
       <Engines />
       <WhyAccurate />
       <DataScale />
+      <ProvenPerformance />
       <Flow />
       <Trust />
       <Pricing />
