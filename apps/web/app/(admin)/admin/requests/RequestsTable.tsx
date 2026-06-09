@@ -863,7 +863,11 @@ function DetailModal({ row, user, profile, annInfo, bidResult, onClose }: { row:
           <Row label="실투찰가"        value={row.userBidPrice ? Number(row.userBidPrice).toLocaleString("ko-KR") + "원" : null} />
           <Row label="본인 사정율"     value={mySajung != null ? `${mySajung.toFixed(4)}%` : null} />
           <Row label="추천 따름"       value={row.userFollowedRecommendation === true ? "따름" : row.userFollowedRecommendation === false ? "직접" : "미입력"} />
-          <Row label="순위"           value={row.userRank != null ? `${row.userRank}${row.totalBidders ? `/${row.totalBidders}` : ""}위` : null} />
+          <Row label="순위"           value={
+            row.userRank != null && row.userRank > 0 ? `${row.userRank}${row.totalBidders ? `/${row.totalBidders}` : ""}위`
+            : row.userRank != null && row.userRank < 0 ? `${row.userRank}등 (부적격·낙찰하한 미달)`
+            : null
+          } />
           <Row label="투찰률"         value={row.userBidRate != null ? `${Number(row.userBidRate).toFixed(4)}%` : null} />
           <Row label="추첨번호 1"     value={row.userDrwtNo1 != null ? String(row.userDrwtNo1).padStart(2, "0") : null} mono />
           <Row label="추첨번호 2"     value={row.userDrwtNo2 != null ? String(row.userDrwtNo2).padStart(2, "0") : null} mono />

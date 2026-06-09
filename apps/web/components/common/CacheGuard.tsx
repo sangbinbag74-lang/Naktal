@@ -8,7 +8,7 @@ import { useEffect } from "react";
  *  - 옛 필터(naktal_ann_filters 등) 자동 복원으로 "연동 안 됨" 호소 방지.
  *  - 조건부 X — 버전 불일치 시 무조건 전부 밀어버림.
  */
-const APP_VERSION = "2026-06-05-bidrank-N"; // ⚠️ 배포마다 갱신
+const APP_VERSION = "2026-06-09-rank-refill"; // ⚠️ 배포마다 갱신
 
 export function CacheGuard() {
   useEffect(() => {

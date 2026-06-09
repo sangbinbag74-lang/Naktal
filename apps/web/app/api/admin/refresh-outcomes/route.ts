@@ -127,10 +127,11 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
   // 1. 마감 + 1시간 지났으나 결과 미입력 BidRequest 조회 (최대 50건)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  // 결과 미입력(isWon null) OR -등수 미입력(userRank null — c674125 이전 옛 데이터 -N 재계산)
   const { data: pending, error: pendingErr } = await (admin.from("BidRequest") as any)
     .select("id,userId,konepsId,budget,recommendedBidPrice,predictedSajungRate,deadline")
     .lt("deadline", deadlineCutoff)
-    .is("isWon", null)
+    .or("isWon.is.null,userRank.is.null")
     .limit(50);
 
   if (pendingErr) {
