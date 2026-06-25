@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import { AdminTable } from "@/components/admin/AdminTable";
 import { CsvDownload } from "@/components/admin/CsvDownload";
+import { isProxySignup } from "@/lib/biz-name-match";
 
 interface UserRow {
   id: string;
@@ -123,9 +124,17 @@ export default function AdminUsersPage() {
     {
       key: "kakaoId", label: "카카오",
       render: (r: UserRow) => r.kakaoId
-        ? <span title={r.kakaoVerifiedAt ? `인증일: ${r.kakaoVerifiedAt.slice(0, 10)}` : undefined}
-                style={{ fontSize: 11, fontWeight: 700, color: "#191600", background: "#FEE500", padding: "2px 8px", borderRadius: 5 }}>
-            💬 {r.kakaoVerifiedName ?? "인증"}
+        ? <span style={{ display: "inline-flex", alignItems: "center", gap: 4, flexWrap: "wrap" }}>
+            <span title={r.kakaoVerifiedAt ? `인증일: ${r.kakaoVerifiedAt.slice(0, 10)}` : undefined}
+                  style={{ fontSize: 11, fontWeight: 700, color: "#191600", background: "#FEE500", padding: "2px 8px", borderRadius: 5 }}>
+              💬 {r.kakaoVerifiedName ?? "인증"}
+            </span>
+            {isProxySignup(r.ownerName, r.kakaoVerifiedName) && (
+              <span title={`카카오 명의(${r.kakaoVerifiedName})가 대표자명(${r.ownerName})과 다름 — 실무자/대리 가입`}
+                    style={{ fontSize: 10, fontWeight: 700, color: "#B45309", background: "#FEF3C7", padding: "2px 6px", borderRadius: 5 }}>
+                실무자
+              </span>
+            )}
           </span>
         : <span style={{ fontSize: 11, fontWeight: 600, color: "#94A3B8", background: "#F1F5F9", padding: "2px 8px", borderRadius: 5 }}>미인증</span>,
     },

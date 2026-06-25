@@ -2,6 +2,7 @@
 
 import { useEffect, useState, use } from "react";
 import { ConfirmModal } from "@/components/admin/ConfirmModal";
+import { isProxySignup } from "@/lib/biz-name-match";
 
 interface UserDetail {
   id: string;
@@ -156,6 +157,11 @@ export default function AdminUserDetailPage({ params }: { params: Promise<{ id: 
         </h2>
         {user.kakaoId ? (
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+            {isProxySignup(user.ownerName, user.kakaoVerifiedName) && (
+              <div style={{ gridColumn: "span 2", background: "#FEF3C7", border: "1px solid #FCD34D", borderRadius: 8, padding: "10px 12px", fontSize: 12.5, color: "#92400E", lineHeight: 1.5 }}>
+                ⚠️ <strong>실무자/대리 가입</strong> — 카카오 인증 명의(<strong>{user.kakaoVerifiedName}</strong>)가 사업자 대표자명(<strong>{user.ownerName}</strong>)과 다릅니다.
+              </div>
+            )}
             <div>
               <span style={{ fontSize: 11, color: "#94A3B8", fontWeight: 500 }}>카카오 실명</span>
               <p style={{ fontSize: 13, color: "#0F172A", marginTop: 3 }}>{user.kakaoVerifiedName ?? "-"}</p>

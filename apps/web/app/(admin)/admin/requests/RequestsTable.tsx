@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { isProxySignup } from "@/lib/biz-name-match";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type UserInfo = Record<string, any>;
@@ -812,6 +813,9 @@ function DetailModal({ row, user, profile, annInfo, bidResult, onClose }: { row:
           <Row label="인증 이름"   value={user?.kakaoVerifiedName ?? "(미인증)"} />
           <Row label="인증 전화"   value={user?.kakaoVerifiedPhone ?? "-"} mono />
           <Row label="인증 일시"   value={fmtFull(user?.kakaoVerifiedAt)} mono />
+          {isProxySignup(user?.ownerName ?? "", user?.kakaoVerifiedName) && (
+            <Row label="⚠️ 명의확인" value={`대표자명(${user?.ownerName})과 카카오 명의가 다름 — 실무자/대리 가입`} />
+          )}
         </DetailSection>
 
         {profile && (
