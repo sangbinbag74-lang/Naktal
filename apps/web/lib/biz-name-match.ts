@@ -40,5 +40,6 @@ export function isProxySignup(
   kakaoVerifiedName: string | null | undefined,
 ): boolean {
   if (!kakaoVerifiedName || !kakaoVerifiedName.trim()) return false;
+  if (!ownerName || !ownerName.trim()) return false; // 대표자명 빈값이면 판별 불가 → 오탐 방지(뱃지 미표시)
   return !isCeoMatch(kakaoVerifiedName, ownerName);
 }
