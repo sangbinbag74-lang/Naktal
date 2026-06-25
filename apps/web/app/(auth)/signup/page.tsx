@@ -91,7 +91,7 @@ export default function SignupPage() {
           setKakaoVerified(v);
           setForm(prev => ({
             ...prev,
-            ownerName: v.name,
+            // ownerName 자동입력 안 함 — 카카오 명의 ≠ 대표자명 대응 (사용자가 사업자등록 대표자명 직접 입력)
             notifyEmail: prev.notifyEmail || v.email || "",
             ownerPhone: prev.ownerPhone || (v.phone ? v.phone.replace(/^\+82\s*/, "0").replace(/\s/g, "") : ""),
           }));
@@ -226,15 +226,9 @@ export default function SignupPage() {
       return;
     }
 
-    // 4. (선택) 카카오 인증 명의 vs 사업자등록증 대표자명 대조
-    if (KAKAO_AUTH_ENABLED && kakaoVerified && g2bCeoName) {
-      if (!isCeoMatch(kakaoVerified.name, g2bCeoName)) {
-        setError(`카카오 인증 명의(${kakaoVerified.name})와 사업자등록증의 대표자명(${g2bCeoName})이 일치하지 않습니다.`);
-        setVerifying(false);
-        setVerifyStage(null);
-        return;
-      }
-    }
+    // 카카오 명의 ↔ 대표자명 대조는 제거 (A안, 2026-06-11)
+    //   사업자등록 대표자명(form.ownerName) 대조만으로 본인확인. 카카오는 연락처·본인인증용.
+    //   실무자·가족 등 카카오 명의가 대표와 달라도 가입 가능.
 
     setVerifying(false);
     setVerifyStage(null);
@@ -340,7 +334,7 @@ export default function SignupPage() {
         {/* Step 1 — 카카오 본인인증 */}
         {KAKAO_AUTH_ENABLED && step === 1 && (
           <StepWrap title="본인인증" subtitle="카카오 계정으로 1초 만에 시작"
-            notice="사업자등록증의 대표자명과 동일한 성함이어야 가입할 수 있어요.">
+            notice="카카오로 본인인증해 주세요. 받아온 연락처는 알림톡·결과 안내에 사용됩니다. (카카오 명의가 대표자와 달라도 괜찮아요)">
             {kakaoVerified ? (
               <div style={{ background: "#ECFDF5", border: "1.5px solid #A7F3D0", borderRadius: 10, padding: "14px 16px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                 <div>
@@ -372,7 +366,7 @@ export default function SignupPage() {
         {/* Step 2 — 사업자 확인 */}
         {step === (KAKAO_AUTH_ENABLED ? 2 : 1) && (
           <StepWrap title="사업자 확인" subtitle="사업자등록번호와 대표자 정보를 입력해주세요"
-            notice="사업자등록증의 대표자명과 동일한 성함이어야 가입할 수 있어요. (나라장터 자동 대조)">
+            notice="사업자등록증의 대표자명을 입력하세요. 실무자가 가입하는 경우에도 카카오 명의가 아닌 대표자명을 적어주세요. (나라장터 자동 대조)">
             <Field label="사업자번호">
               <BizNoInput value={form.bizNo} onChange={(v) => set("bizNo", v)} disabled={verifying} />
               {bizAutoFilled && form.bizName && (
@@ -382,7 +376,7 @@ export default function SignupPage() {
                 </InfoBox>
               )}
             </Field>
-            <Field label="대표자 이름" hint="사업자등록증과 일치해야 합니다 (나라장터 자동 대조)">
+            <Field label="대표자 이름" hint="사업자등록증의 대표자명 (카카오 명의와 달라도 됩니다)">
               <input type="text" value={form.ownerName} disabled={verifying}
                 onChange={(e) => set("ownerName", e.target.value)} placeholder="홍길동"
                 className="naktal-input" autoComplete="name" />
