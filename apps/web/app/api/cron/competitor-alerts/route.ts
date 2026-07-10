@@ -11,6 +11,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/server";
 import { Resend } from "resend";
+import { sendAlimtalk, isSolapiConfigured } from "@/lib/notifications/solapi";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -95,8 +96,8 @@ async function runCompetitorAlerts(): Promise<NextResponse> {
 
   // 5. 사용자 이메일 (CompetitorWatch.userId = User.id)
   const userIds = [...matchesByUser.keys()];
-  const { data: users } = await admin.from("User").select("id,bizName,notifyEmail").in("id", userIds);
-  const userMap = new Map((users ?? []).map((u) => [u.id as string, u as { bizName: string; notifyEmail: string | null }]));
+  const { data: users } = await admin.from("User").select("id,bizName,notifyEmail,notifyPhone").in("id", userIds);
+  const userMap = new Map((users ?? []).map((u) => [u.id as string, u as { bizName: string; notifyEmail: string | null; notifyPhone: string | null }]));
 
   let sent = 0;
   for (const [userId, matches] of matchesByUser) {
@@ -131,6 +132,26 @@ async function runCompetitorAlerts(): Promise<NextResponse> {
         html: buildHtml(u.bizName, items),
       });
       sent++;
+
+      // 카카오 알림톡 (솔라피, 2026-07-10) — 대표 1건, 검수 승인·notifyPhone 있을 때만 발송
+      if (isSolapiConfigured() && u.notifyPhone) {
+        const it = items[0];
+        if (it) {
+          await sendAlimtalk({
+            to: u.notifyPhone,
+            templateId: process.env.SOLAPI_TEMPLATE_COMPETITOR,
+            variables: {
+              "#{회사명}": u.bizName || "고객",
+              "#{경쟁사}": it.competitor,
+              "#{공고명}": items.length > 1 ? `${it.title} 외 ${items.length - 1}건` : it.title,
+              "#{발주처}": it.orgName,
+              "#{낙찰가}": fmtWon(it.finalPrice),
+              "#{낙찰률}": `${Number(it.bidRate).toFixed(3)}%`,
+            },
+          });
+        }
+      }
+
       const resetAt = new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString();
       const now = new Date().toISOString();
       await admin.from("RateLimit").upsert(

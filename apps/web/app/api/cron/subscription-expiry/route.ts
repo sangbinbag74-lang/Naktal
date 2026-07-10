@@ -11,6 +11,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/server";
 import { Resend } from "resend";
+import { sendAlimtalk, isSolapiConfigured } from "@/lib/notifications/solapi";
+import { PLAN_LABELS } from "@/lib/plan-guard";
+import type { Plan } from "@naktal/types";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -51,7 +54,7 @@ async function runExpiry(): Promise<NextResponse> {
     const key = `subexp:${sub.id}:${sub.currentPeriodEnd.slice(0, 10)}`;
     const { count } = await admin.from("RateLimit").select("key", { count: "exact", head: true }).eq("key", key);
     if ((count ?? 0) > 0) continue;
-    const { data: u } = await admin.from("User").select("bizName,notifyEmail").eq("id", sub.userId).single();
+    const { data: u } = await admin.from("User").select("bizName,notifyEmail,notifyPhone").eq("id", sub.userId).single();
     if (!u?.notifyEmail) continue;
     try {
       await resend.emails.send({
@@ -61,6 +64,20 @@ async function runExpiry(): Promise<NextResponse> {
         html: reminderHtml(u.bizName as string, sub.plan, sub.currentPeriodEnd.slice(0, 10)),
       });
       reminded++;
+
+      // 카카오 알림톡 (솔라피, 2026-07-10) — 검수 승인·notifyPhone 있을 때만
+      if (isSolapiConfigured() && u.notifyPhone) {
+        await sendAlimtalk({
+          to: u.notifyPhone as string,
+          templateId: process.env.SOLAPI_TEMPLATE_EXPIRY,
+          variables: {
+            "#{고객명}": (u.bizName as string) || "고객",
+            "#{서비스명}": "낙비",
+            "#{만료일}": sub.currentPeriodEnd.slice(0, 10),
+            "#{서비스플랜}": PLAN_LABELS[sub.plan as Plan] ?? sub.plan,
+          },
+        });
+      }
       await admin.from("RateLimit").upsert(
         { id: crypto.randomUUID(), key, count: 1, resetAt: new Date(now.getTime() + 30 * 86400000).toISOString(), updatedAt: now.toISOString() },
         { onConflict: "key" },

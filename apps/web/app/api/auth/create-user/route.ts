@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient, createAdminClient } from "@/lib/supabase/server";
 import { fetchG2BCompanyInfo } from "@/lib/g2b-company";
 import { isCeoMatch } from "@/lib/biz-name-match";
+import { sendAlimtalk, isSolapiConfigured } from "@/lib/notifications/solapi";
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
   // 세션 확인은 anon 클라이언트로
@@ -79,6 +80,23 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   if (error) {
     console.error("[create-user]", error.message);
     return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
+  }
+
+  // 회원가입 환영 알림톡 (솔라피, 2026-07-10) — 검수 승인·전화번호 있을 때만, 실패해도 가입은 성공 처리
+  if (isSolapiConfigured() && body.notifyPhone) {
+    try {
+      await sendAlimtalk({
+        to: body.notifyPhone,
+        templateId: process.env.SOLAPI_TEMPLATE_WELCOME,
+        variables: {
+          "#{고객명}": body.ownerName || body.bizName || "고객",
+          "#{가입일시}": new Date().toLocaleString("ko-KR", { timeZone: "Asia/Seoul" }),
+          "#{아이디}": body.bizNo,
+        },
+      });
+    } catch (e) {
+      console.error("[create-user] 환영 알림톡 실패 (무시됨):", e);
+    }
   }
 
   // G2B에서 업체 상세정보(면허·주소·설립일) 조회 후 CompanyProfile 자동 생성

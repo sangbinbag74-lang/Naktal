@@ -12,6 +12,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/server";
 import { Resend } from "resend";
+import { sendAlimtalk, isSolapiConfigured } from "@/lib/notifications/solapi";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -68,6 +69,58 @@ function buildScorecardHtml(bizName: string, rows: ScoreRow[]): string {
     </p>
   </div>
 </div>`;
+}
+
+// 개찰 성적표 알림톡 (솔라피, 2026-07-10) — 순위가 있는 BidRequest(AI 정밀 분석) 결과 기반.
+// 이메일 성적표는 "열람 공고"(AnnouncementVisit) 기반이라 순위가 없어 별도 소스 사용.
+async function sendScorecardAlimtalk(admin: ReturnType<typeof createAdminClient>): Promise<number> {
+  if (!isSolapiConfigured()) return 0;
+  const since = new Date(Date.now() - 36 * 60 * 60 * 1000).toISOString();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: reqs } = await (admin.from("BidRequest") as any)
+    .select("id,userId,title,recommendedBidPrice,actualFinalPrice,userRank,totalBidders,resultDetectedAt")
+    .gte("resultDetectedAt", since)
+    .not("userRank", "is", null)
+    .not("actualFinalPrice", "is", null)
+    .limit(300);
+  const rows = (reqs ?? []) as {
+    id: string; userId: string; title: string; recommendedBidPrice: string | null;
+    actualFinalPrice: string | null; userRank: number | null; totalBidders: number | null;
+  }[];
+  if (rows.length === 0) return 0;
+
+  const userIds = [...new Set(rows.map((r) => r.userId))];
+  const { data: users } = await admin.from("User").select("id,bizName,notifyPhone").in("id", userIds);
+  const uMap = new Map((users ?? []).map((u) => [u.id as string, u as { bizName: string; notifyPhone: string | null }]));
+
+  let sent = 0;
+  for (const r of rows) {
+    const u = uMap.get(r.userId);
+    if (!u?.notifyPhone) continue;
+    const key = `scorecard-at:${r.id}`;
+    const { count } = await admin.from("RateLimit").select("key", { count: "exact", head: true }).eq("key", key);
+    if ((count ?? 0) > 0) continue;
+
+    const ok = await sendAlimtalk({
+      to: u.notifyPhone,
+      templateId: process.env.SOLAPI_TEMPLATE_SCORECARD,
+      variables: {
+        "#{회사명}": u.bizName || "고객",
+        "#{공고명}": r.title,
+        "#{낙찰가}": fmtWon(r.actualFinalPrice),
+        "#{추천가}": fmtWon(r.recommendedBidPrice),
+        "#{순위}": r.totalBidders ? `${r.totalBidders}개사 중 ${r.userRank}등` : `${r.userRank}등`,
+      },
+    });
+    if (ok) {
+      sent++;
+      await admin.from("RateLimit").upsert(
+        { id: crypto.randomUUID(), key, count: 1, resetAt: new Date(Date.now() + 180 * 86400000).toISOString(), updatedAt: new Date().toISOString() },
+        { onConflict: "key" },
+      );
+    }
+  }
+  return sent;
 }
 
 async function runScorecard(): Promise<NextResponse> {
@@ -147,7 +200,8 @@ async function runScorecard(): Promise<NextResponse> {
     }
   }
 
-  return NextResponse.json({ ok: true, sent, announcements: scoreRows.length });
+  const alimtalk = await sendScorecardAlimtalk(admin);
+  return NextResponse.json({ ok: true, sent, alimtalk, announcements: scoreRows.length });
 }
 
 // Vercel Cron (매일 10:30 KST)
