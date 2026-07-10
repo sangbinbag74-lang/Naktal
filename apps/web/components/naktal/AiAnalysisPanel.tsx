@@ -136,6 +136,11 @@ export function AiAnalysisPanel({ annDbId, budget, g2bUrl, konepsId, onRefresh, 
 
   const bs = analysis?.bidStrategy;
   const comp = analysis?.competition;
+  // 수수료·전자계약 폐지 (2026-07-09): 잠금은 서버 응답 기준으로 단일화.
+  //  - 유료 플랜·영구PRO·FREE 크레딧 내 = 정밀값 내려옴 → 공개
+  //  - FREE 크레딧 소진 = 서버가 정밀값 null + meta.blurred → 블러 + 구독 CTA
+  const metaBlurred = !!(analysis?.meta as { blurred?: boolean } | undefined)?.blurred;
+  const unlocked = isContracted || (!!bs && bs.optimalBidPrice != null && !metaBlurred);
   // 신뢰도 — 사정율 히스토그램(< 30 경고)과 일관성 유지: 30건 미만은 HIGH 안 됨
   const cl = bs
     ? (bs.isFallback
@@ -197,32 +202,35 @@ export function AiAnalysisPanel({ annDbId, budget, g2bUrl, konepsId, onRefresh, 
               <div style={{ fontSize: 10, color: "#94A3B8", marginBottom: 6 }}>적격 통과 구간 내 최저가 — 1순위 가능성 우선</div>
               <div style={{ fontSize: 22, fontWeight: 800, color: cl === "LOW" ? "#94A3B8" : "#1B3A6B", lineHeight: 1.2 }}>
                 {cl === "LOW" ? "데이터 부족" : (
-                  isContracted
+                  unlocked
                     ? fmt(bs.optimalBidPrice)
-                    : <span style={{ filter: "blur(6px)", userSelect: "none", pointerEvents: "none" }}>{fmt(bs.optimalBidPrice)}</span>
+                    : <span style={{ filter: "blur(6px)", userSelect: "none", pointerEvents: "none" }}>888,888,888원</span>
                 )}
               </div>
-              {cl !== "LOW" && isContracted && (
+              {cl !== "LOW" && unlocked && (
                 <div style={{ fontSize: 11, color: "#64748B", marginTop: 6 }}>
                   과거 분포 50% 구간 (IQR p25~p75)<br />
                   {fmt(bs.bidPriceRangeLow)} ~ {fmt(bs.bidPriceRangeHigh)}
                 </div>
               )}
-              {cl !== "LOW" && !isContracted && (
-                <a
-                  href={`/bid-contract/${annDbId}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  style={{
-                    display: "inline-block", marginTop: 10,
-                    fontSize: 12, fontWeight: 700,
-                    color: "#fff", background: "#1B3A6B",
-                    borderRadius: 8, padding: "6px 14px",
-                    textDecoration: "none",
-                  }}
-                >
-                  계약하고 확인하기 →
-                </a>
+              {cl !== "LOW" && !unlocked && (
+                <>
+                  <div style={{ fontSize: 11, color: "#94A3B8", marginTop: 6 }}>
+                    이번 달 무료 정밀 분석 3건을 모두 사용했어요
+                  </div>
+                  <a
+                    href="/billing"
+                    style={{
+                      display: "inline-block", marginTop: 8,
+                      fontSize: 12, fontWeight: 700,
+                      color: "#fff", background: "#1B3A6B",
+                      borderRadius: 8, padding: "6px 14px",
+                      textDecoration: "none",
+                    }}
+                  >
+                    구독하고 정밀 추천 무제한 →
+                  </a>
+                </>
               )}
             </div>
 
@@ -264,7 +272,7 @@ export function AiAnalysisPanel({ annDbId, budget, g2bUrl, konepsId, onRefresh, 
                   (예정가 ÷ 기초금액 × 100)
                 </span>
               </div>
-              <div style={!isContracted ? { filter: "blur(5px)", userSelect: "none", pointerEvents: "none", overflow: "hidden", borderRadius: 8 } : undefined}>
+              <div style={!unlocked ? { filter: "blur(5px)", userSelect: "none", pointerEvents: "none", overflow: "hidden", borderRadius: 8 } : undefined}>
                 <SajungDistBar range={bs.sajungRateRange} predicted={bs.predictedSajungRate} avg={bs.weightedAvg ?? bs.simpleAvg} />
                 <div style={{ fontSize: 11, color: "#64748B", marginTop: 8 }}>
                   예상 예정가{" "}
@@ -342,9 +350,9 @@ export function AiAnalysisPanel({ annDbId, budget, g2bUrl, konepsId, onRefresh, 
                   display: "flex", alignItems: "center", gap: 8,
                 }}>
                   <span style={{ fontSize: 12, color: isAboveLower ? "#16A34A" : "#DC2626", flexShrink: 0 }}>{isAboveLower ? "✓ 낙찰하한가" : "⚠ 낙찰하한가"}</span>
-                  {isContracted
+                  {unlocked
                     ? <span style={{ fontSize: 13, fontWeight: 700, color: isAboveLower ? "#16A34A" : "#DC2626" }}>{fmt(bs.lowerLimitPrice)}</span>
-                    : <span style={{ fontSize: 13, fontWeight: 700, color: isAboveLower ? "#16A34A" : "#DC2626", filter: "blur(5px)", userSelect: "none", pointerEvents: "none" }}>{fmt(bs.lowerLimitPrice)}</span>
+                    : <span style={{ fontSize: 13, fontWeight: 700, color: isAboveLower ? "#16A34A" : "#DC2626", filter: "blur(5px)", userSelect: "none", pointerEvents: "none" }}>888,888,888원</span>
                   }
                   <span style={{ fontSize: 11, color: "#94A3B8", marginLeft: "auto", flexShrink: 0 }}>{isAboveLower ? "이상 (충족)" : "이상 필수"}</span>
                 </div>

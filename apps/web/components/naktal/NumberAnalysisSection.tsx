@@ -92,6 +92,7 @@ interface Props {
 
 export function NumberAnalysisSection({ annId, isClosed, bidMethod, multiplePrice = false, isContracted = false, defaultBidders, category }: Props) {
   void bidMethod; // bidMethod 는 더 이상 차단 분기에 사용하지 않음 (multiplePrice 사용)
+  void isContracted; // 2026-07-09 수수료·전자계약 폐지 — 잠금 분기에서 제거 (prop 은 호출부 호환용 유지)
   // 공사 외 카테고리는 번호 분석 차단 (학습 데이터·분포가 공사 위주)
   const isConstruction = !!category && category.includes("공사");
   const [estimatedBidders, setEstimatedBidders] = useState(
@@ -106,10 +107,8 @@ export function NumberAnalysisSection({ annId, isClosed, bidMethod, multiplePric
   const cacheKey = `naktal_analysis_v2_${annId}`;
 
   // 마운트 시 (1) localStorage 캐시 우선, (2) 서버 NumberRecommendation 조회
+  //  (2026-07-09 계약 폐지 — 본인 이력 복원은 전 플랜 허용)
   useEffect(() => {
-    // 계약 미완료 — 캐시·history 모두 조회 금지 (잠금 강제)
-    if (!isContracted) return;
-
     let aborted = false;
 
     // 1. localStorage 캐시 (같은 브라우저)
@@ -152,19 +151,12 @@ export function NumberAnalysisSection({ annId, isClosed, bidMethod, multiplePric
       .catch(() => { /* 무시 */ });
 
     return () => { aborted = true; };
-  }, [cacheKey, annId, isContracted]);
+  }, [cacheKey, annId]);
 
-  // 계약 완료 + 결과 없음 → 자동 분석 호출 (history 조회 결과 반영 후)
-  useEffect(() => {
-    if (!isContracted || result || loading || isClosed) return;
-    const t = setTimeout(() => { void handleAnalyze(); }, 500); // history fetch 완료 대기
-    return () => clearTimeout(t);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isContracted, result, isClosed]);
+  // 자동 분석 제거 (2026-07-09) — FREE 월 3건 크레딧 보호를 위해 사용자가 버튼으로 직접 실행
 
   async function handleAnalyze() {
     if (loading || isClosed) return;
-    if (!isContracted) return; // 계약 미완료 — 분석 호출 금지
     setLoading(true);
     setError(null);
     setUpgradeUrl(null);
@@ -227,25 +219,8 @@ export function NumberAnalysisSection({ annId, isClosed, bidMethod, multiplePric
         </div>
       )}
 
-      {/* 계약 미완료 — 락 카드 단독 (fetch 자체 차단) */}
-      {!isClosed && isConstruction && !isContracted && (
-        <div style={{
-          background: "#F8FAFC", border: "1px solid #E2E8F0", borderRadius: 12,
-          padding: "32px 24px", display: "flex", flexDirection: "column",
-          alignItems: "center", justifyContent: "center", gap: 10,
-        }}>
-          <div style={{ fontSize: 36 }}>🔒</div>
-          <div style={{ fontSize: 15, fontWeight: 700, color: "#0F172A" }}>
-            계약 완료 후 공개됩니다
-          </div>
-          <div style={{ fontSize: 12, color: "#64748B", textAlign: "center", lineHeight: 1.5 }}>
-            투찰 의뢰 + 전자서명 완료 시<br />
-            AI 추천 번호 조합 4종 + 빈도 히트맵 공개
-          </div>
-        </div>
-      )}
-
-      {!isClosed && isConstruction && isContracted && showForm && (
+      {/* 수수료·전자계약 폐지 (2026-07-09) — 계약 락 카드 제거, 플랜 한도는 서버(plan-guard)가 집행 */}
+      {!isClosed && isConstruction && showForm && (
         <div style={{ background: "#fff", borderRadius: 12, border: "1px solid #E8ECF2", padding: "18px 20px" }}>
           <div style={{ display: "flex", gap: 12, alignItems: "flex-end" }}>
             <div style={{ flex: 1 }}>
@@ -301,8 +276,8 @@ export function NumberAnalysisSection({ annId, isClosed, bidMethod, multiplePric
         </div>
       )}
 
-      {/* 결과 */}
-      {result && isContracted && isConstruction && (
+      {/* 결과 — 서버(plan-guard)가 권한 집행: result 존재 = 열람 권한 있음 (2026-07-09 계약 폐지) */}
+      {result && isConstruction && (
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
           {result.isFallback && (
             <div style={{ background: "#FFFBEB", border: "1px solid #FDE68A", borderRadius: 10, padding: "10px 14px", fontSize: 13, color: "#92400E" }}>
@@ -344,9 +319,6 @@ export function NumberAnalysisSection({ annId, isClosed, bidMethod, multiplePric
           <div style={{ position: "relative", overflow: "hidden", borderRadius: 12 }}>
             <div style={{
               display: "flex", flexDirection: "column", gap: 12,
-              filter: isContracted ? "none" : "blur(8px)",
-              userSelect: isContracted ? "auto" : "none",
-              pointerEvents: isContracted ? "auto" : "none",
               transition: "filter 0.2s",
             }}>
           {([
@@ -403,26 +375,7 @@ export function NumberAnalysisSection({ annId, isClosed, bidMethod, multiplePric
             ⚠ 위 번호 조합은 과거 낙찰 데이터 통계를 기반으로 한 참고 자료이며, 낙찰을 보장하지 않습니다.
           </div>
             </div>
-            {/* 계약 미완료 시 오버레이 */}
-            {!isContracted && (
-              <div style={{
-                position: "absolute", inset: 0,
-                background: "rgba(248,250,252,0.92)",
-                backdropFilter: "blur(18px)",
-                WebkitBackdropFilter: "blur(18px)",
-                display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
-                gap: 10, borderRadius: 12,
-              }}>
-                <div style={{ fontSize: 36 }}>🔒</div>
-                <div style={{ fontSize: 15, fontWeight: 700, color: "#0F172A" }}>
-                  계약 완료 후 공개됩니다
-                </div>
-                <div style={{ fontSize: 12, color: "#64748B", textAlign: "center", padding: "0 16px", lineHeight: 1.5 }}>
-                  투찰 의뢰 + 전자서명 완료 시<br />
-                  AI 추천 번호 조합 4종 + 빈도 히트맵 공개
-                </div>
-              </div>
-            )}
+            {/* 계약 오버레이 제거 (2026-07-09 수수료·전자계약 폐지) */}
           </div>
         </div>
       )}

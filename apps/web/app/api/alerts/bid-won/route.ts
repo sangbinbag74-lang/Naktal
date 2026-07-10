@@ -42,32 +42,14 @@ function buildWonHtml(d: WonData): string {
       <tr><td style="padding:8px 0;color:#64748B">낙찰금액</td><td style="font-weight:700;color:#1B3A6B">${fmtPrice(d.actualFinalPrice)}</td></tr>
     </table>
 
-    <div style="background:#FFFBEB;border:1px solid #FDE68A;border-radius:8px;padding:16px;margin-bottom:20px">
-      <div style="font-size:13px;font-weight:700;color:#92400E;margin-bottom:10px">수수료 납부 안내</div>
-      <table style="width:100%;font-size:13px">
-        <tr>
-          <td style="color:#78350F;padding:4px 0">수수료 (${(d.feeRate * 100).toFixed(1)}%)</td>
-          <td style="text-align:right;font-weight:700;color:#92400E">${fmtPrice(d.feeAmount)}</td>
-        </tr>
-        <tr>
-          <td style="color:#78350F;padding:4px 0">납부 기한</td>
-          <td style="text-align:right">낙찰 공고일로부터 14일 이내</td>
-        </tr>
-      </table>
-      <div style="margin-top:12px;padding:12px;background:#fff;border-radius:6px;border:1px solid #FDE68A">
-        <div style="font-size:12px;font-weight:700;color:#78350F;margin-bottom:4px">납부 계좌</div>
-        <div style="font-size:13px;color:#374151">신한은행 100-038-306439</div>
-        <div style="font-size:12px;color:#6B7280">예금주: 주식회사 호라이즌</div>
+    <div style="background:#ECFDF5;border:1px solid #A7F3D0;border-radius:8px;padding:16px;margin-bottom:20px">
+      <div style="font-size:13px;font-weight:700;color:#065F46;margin-bottom:6px">낙찰 수수료 0원</div>
+      <div style="font-size:12.5px;color:#047857;line-height:1.6">
+        낙비는 낙찰 성공 수수료를 받지 않습니다. 이 낙찰에 대해 청구되는 금액은 없습니다.
       </div>
     </div>
 
-    <div style="background:#FEF2F2;border:1px solid #FECACA;border-radius:8px;padding:14px;margin-bottom:20px;font-size:12px;color:#991B1B">
-      <strong>⚠️ 미납 시 제재 안내</strong><br/>
-      납부 기한 초과 시 연 6% 지연이자가 부과되며, 서비스 이용이 영구 제한될 수 있습니다.
-      30일 초과 미납 시 민사소송 등 법적 조치를 취할 수 있으며, 소송비용은 전액 이용자 부담입니다.
-    </div>
-
-    <a href="${SITE_URL}/contracts" style="display:block;text-align:center;padding:14px;background:#1B3A6B;color:#fff;border-radius:10px;text-decoration:none;font-size:14px;font-weight:700">계약 서류 확인하기</a>
+    <a href="${SITE_URL}/contracts" style="display:block;text-align:center;padding:14px;background:#1B3A6B;color:#fff;border-radius:10px;text-decoration:none;font-size:14px;font-weight:700">낙찰 결과 확인하기</a>
 
     <p style="color:#9CA3AF;font-size:11px;margin-top:20px;text-align:center">
       이 메일은 낙비 서비스 이용 계약에 따라 자동 발송되었습니다.
