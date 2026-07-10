@@ -169,12 +169,7 @@ function ContractCard({ c }: { c: ContractListItem }) {
               )}
             </span>
           )}
-          {won && c.feeAmount && Number(c.feeAmount) > 0 && (
-            <span>
-              <span style={{ color: "#94A3B8" }}>수수료 </span>
-              <strong style={{ color: "#D97706" }}>{fmtPrice(Number(c.feeAmount))}원</strong>
-            </span>
-          )}
+          {/* 수수료 표시 제거 (2026-07-09 수수료 전면 폐지·면제 — 약관 경과조치) */}
         </div>
       )}
     </div>

@@ -157,11 +157,10 @@ async function runFillBidResults(): Promise<NextResponse> {
         : null;
     const isHit = deviationPct != null ? deviationPct <= 0.5 : null;
 
-    // 수수료 계산 (낙찰 시에만)
-    const recPrice = Number(req.recommendedBidPrice ?? 0);
-    const feeRate = recPrice > 0 && recPrice < 100_000_000 ? 0.017 : 0.015;
-    const feeAmount = isWon ? Math.round(finalPrice * feeRate) : 0;
-    const feeStatus = isWon ? "invoiced" : "waived";
+    // 수수료 전면 폐지 (2026-07-09 약관 경과조치: 기존 약정 포함 전부 면제 — invoiced 기록 금지)
+    const feeRate = 0;
+    const feeAmount = 0;
+    const feeStatus = "waived";
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { error: updateErr } = await (admin.from("BidRequest") as any)

@@ -182,10 +182,11 @@ export async function POST(
       : null;
   const isHit = deviationPct != null ? deviationPct <= 0.5 : null;
 
-  const recPrice = Number(bidReq.recommendedBidPrice ?? 0);
-  const feeRate = recPrice > 0 && recPrice < 100_000_000 ? 0.017 : 0.015;
-  const feeAmount = isWon ? Math.round(finalPrice * feeRate) : 0;
-  const feeStatus = isWon ? "invoiced" : "waived";
+  const recPrice = Number(bidReq.recommendedBidPrice ?? 0); // 추천 따름 판정용으로만 사용
+  // 수수료 전면 폐지 (2026-07-09) — invoiced 기록 금지
+  const feeRate = 0;
+  const feeAmount = 0;
+  const feeStatus = "waived";
 
   // 추천 따름 자동 판정 (±0.5% 이내)
   let userFollowedRecommendation: boolean | null = null;

@@ -336,10 +336,11 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         : null;
     const isHit = deviationPct != null ? deviationPct <= 0.5 : null;
 
-    const recPrice = Number(req.recommendedBidPrice ?? 0);
-    const feeRate = recPrice > 0 && recPrice < 100_000_000 ? 0.017 : 0.015;
-    const feeAmount = isWon ? Math.round(finalPrice * feeRate) : 0;
-    const feeStatus = isWon ? "invoiced" : "waived";
+    const recPrice = Number(req.recommendedBidPrice ?? 0); // 추천 따름 판정용으로만 사용
+    // 수수료 전면 폐지 (2026-07-09) — invoiced 기록 금지
+    const feeRate = 0;
+    const feeAmount = 0;
+    const feeStatus = "waived";
 
     // 추천 따름 자동 판정: 추천가 vs 실투찰가 차이 ±0.5% 이내 = 추천 따름
     // userBidPrice 가 G2B에서 매칭됐을 때만 판정 가능

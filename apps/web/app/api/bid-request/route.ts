@@ -217,9 +217,9 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     console.error("[bid-request] 카테고리 평균 스냅샷 실패:", (e as Error).message);
   }
 
-  // 수수료 = 서버 재계산 추천금액 기준 (클라이언트 입력 무시)
-  let feeRate = finalRecommendedBidPrice < 100_000_000 ? 0.017 : 0.015;
-  let agreedFeeAmount = Math.round(finalRecommendedBidPrice * feeRate);
+  // 수수료 전면 폐지 (2026-07-09 약관 경과조치) — 약정 기록도 0 고정 (invoiced/약정 생성 금지)
+  const feeRate = 0;
+  const agreedFeeAmount = 0;
 
   const { data: existing } = await admin
     .from("BidRequest")
@@ -294,8 +294,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     }
     resultId = (updated as { id: string }).id;
   } else {
-    feeRate = finalRecommendedBidPrice < 100_000_000 ? 0.017 : 0.015;
-    agreedFeeAmount = Math.round(finalRecommendedBidPrice * feeRate);
+    // 수수료 폐지 — feeRate/agreedFeeAmount 는 위에서 0 고정
 
     // INSERT 직전 일관성 검증 — 추천가/budget/lwlt/aValue 의 역산 사정율이 95~105% 범위인지
     // 옛 코드 시점 4건 비정상 사례 재발 방지
