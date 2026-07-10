@@ -1,0 +1,73 @@
+name: 웹 cron 트리거 (Vercel Hobby cron 2개 제한 우회)
+
+# ⚠️ Vercel Hobby 플랜은 cron 2개 + 하루 1회 제한 (2026-07-10 배포 거부 실측)
+#    → naktal.me 의 주기 작업은 전부 여기서 curl 로 트리거한다.
+#    인증: GH Secrets CRON_SECRET (기존 g2b.yml/prefill-predictions.yml 과 동일 패턴)
+
+on:
+  schedule:
+    - cron: "20 * * * *"   # realtime-snapshot — 매시 20분 (참여자 스냅샷)
+    - cron: "0 0 * * *"    # alerts/notify — 09:00 KST (새 공고 알림 이메일+알림톡)
+    - cron: "30 1 * * *"   # scorecard — 10:30 KST (개찰 성적표)
+    - cron: "0 2 * * *"    # competitor-alerts — 11:00 KST (경쟁사 낙찰 알림)
+    - cron: "30 23 * * *"  # subscription-expiry — 08:30 KST (D-3 안내 + 만료 강등)
+    - cron: "0 23 * * 0"   # weekly-report — 월 08:00 KST (주간 리포트)
+    - cron: "0 0 1 * *"    # monthly-backtest — 1일 09:00 KST (MASTER 백테스트)
+    - cron: "0 20 * * *"   # seo-ping — 05:00 KST
+    - cron: "0 1 * * *"    # x-post — 10:00 KST
+    - cron: "0 9 * * 0"    # pr-email — 일 18:00 KST
+  workflow_dispatch:
+    inputs:
+      path:
+        description: "수동 트리거할 API 경로 (예: /api/cron/realtime-snapshot)"
+        required: true
+        default: "/api/cron/realtime-snapshot"
+
+jobs:
+  trigger:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: 스케줄 → 엔드포인트 매핑
+        id: map
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "paths=${{ github.event.inputs.path }}" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+          case "${{ github.event.schedule }}" in
+            "20 * * * *")  PATHS="/api/cron/realtime-snapshot" ;;
+            "0 0 * * *")   PATHS="/api/alerts/notify" ;;
+            "30 1 * * *")  PATHS="/api/cron/scorecard" ;;
+            "0 2 * * *")   PATHS="/api/cron/competitor-alerts" ;;
+            "30 23 * * *") PATHS="/api/cron/subscription-expiry" ;;
+            "0 23 * * 0")  PATHS="/api/cron/weekly-report" ;;
+            "0 0 1 * *")   PATHS="/api/cron/monthly-backtest" ;;
+            "0 20 * * *")  PATHS="/api/cron/seo-ping" ;;
+            "0 1 * * *")   PATHS="/api/cron/x-post" ;;
+            "0 9 * * 0")   PATHS="/api/cron/pr-email" ;;
+            *) echo "::error::미매핑 스케줄: ${{ github.event.schedule }}"; exit 1 ;;
+          esac
+          echo "paths=$PATHS" >> $GITHUB_OUTPUT
+
+      - name: naktal.me cron 엔드포인트 호출
+        env:
+          SITE_URL: ${{ secrets.SITE_URL || 'https://naktal.me' }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          if [ -z "$CRON_SECRET" ]; then
+            echo "::error::CRON_SECRET 미설정"
+            exit 1
+          fi
+          for EP in ${{ steps.map.outputs.paths }}; do
+            echo "=== GET $EP ==="
+            HTTP=$(curl -s -o /tmp/resp.json -w "%{http_code}" --max-time 300 \
+              -H "Authorization: Bearer $CRON_SECRET" "$SITE_URL$EP")
+            echo "HTTP $HTTP"
+            cat /tmp/resp.json | head -c 1200 || true
+            echo ""
+            if [ "$HTTP" -ge 400 ]; then
+              echo "::error::$EP 응답 $HTTP"
+              exit 1
+            fi
+          done
