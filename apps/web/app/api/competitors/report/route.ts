@@ -148,7 +148,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
   const pattern = "%" + name.replace(/\s+/g, "%") + "%";
 
   if (type === "company") return companyReport(admin, name, pattern);
-  return orgReport(admin, name, pattern);
+  return orgReport(admin, name);
 }
 
 // ─── 경쟁사(낙찰업체) 리포트 ──────────────────────────────────────────────────
@@ -223,31 +223,75 @@ async function companyReport(admin: ReturnType<typeof createAdminClient>, name: 
 }
 
 // ─── 발주처 리포트 ────────────────────────────────────────────────────────────
-async function orgReport(admin: ReturnType<typeof createAdminClient>, name: string, pattern: string): Promise<NextResponse> {
-  // 정확 일치 우선 (btree 인덱스) → 부분 일치 폴백
-  let anns: AnnRow[] = [];
-  const { data: exact } = await admin
-    .from("Announcement")
-    .select("konepsId,title,orgName,category,region,bsisAmt,deadline")
-    .eq("orgName", name)
-    .order("deadline", { ascending: false })
-    .limit(600);
-  anns = (exact ?? []) as AnnRow[];
-  if (anns.length === 0) {
-    const { data: fuzzy, error } = await admin
+// ⚠️ ORDER BY deadline 금지 — 대형 발주처(조달청 20.9만건)는 전체 정렬이 statement timeout (2026-07-10 실측).
+//    deadline 창(개월)으로 좁혀 무정렬 조회 후 클라이언트 정렬. 쓰레기 deadline(5005년 등)은 lt(now)로 자연 배제.
+const ANN_FIELDS = "konepsId,title,orgName,category,region,bsisAmt,deadline";
+const norm = (s: string) => s.toLowerCase().replace(/\s+/g, "");
+
+async function fetchOrgAnnsExact(admin: ReturnType<typeof createAdminClient>, name: string): Promise<AnnRow[]> {
+  const now = new Date();
+  for (const months of [6, 24, 96]) {
+    const from = new Date(now.getTime() - months * 30 * 86400000).toISOString();
+    const { data, error } = await admin
       .from("Announcement")
-      .select("konepsId,title,orgName,category,region,bsisAmt,deadline")
-      .ilike("orgName", pattern)
-      .order("deadline", { ascending: false })
+      .select(ANN_FIELDS)
+      .eq("orgName", name)
+      .gte("deadline", from)
+      .lt("deadline", now.toISOString())
       .limit(600);
     if (error) {
-      console.error("[competitors/report] Announcement 검색 오류:", error.message);
-      return NextResponse.json({ error: "검색 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요." }, { status: 500 });
+      console.error("[competitors/report] Announcement eq 검색 오류:", error.message);
+      return [];
     }
-    anns = (fuzzy ?? []) as AnnRow[];
+    const rows = (data ?? []) as AnnRow[];
+    if (rows.length >= 50 || months === 96) {
+      return rows.sort((a, b) => String(b.deadline ?? "").localeCompare(String(a.deadline ?? "")));
+    }
   }
+  return [];
+}
+
+// 표기 변형 폴백 — search_ann_nospace RPC (nospace GIN 인덱스, 164ms 실측).
+// ⚠️ ilike 창 스캔은 12초 timeout (2026-07-10 실측) — 절대 회귀 금지.
+// RPC 는 title 도 매칭하므로 orgName 정규화 포함 필터 재적용, bsisAmt 는 konepsId 재조회로 보충.
+async function fetchOrgAnnsFuzzy(admin: ReturnType<typeof createAdminClient>, name: string): Promise<AnnRow[]> {
+  const { data: fuzzy, error } = await admin.rpc("search_ann_nospace", {
+    p_keyword: name,
+    p_deadline_gte: null,
+    p_limit: 600,
+    p_offset: 0,
+  });
+  if (error) {
+    console.error("[competitors/report] search_ann_nospace 오류:", error.message);
+    return [];
+  }
+  const target = norm(name);
+  const ids = ((fuzzy ?? []) as { konepsId: string; orgName: string | null }[])
+    .filter((f) => f.orgName && norm(f.orgName).includes(target))
+    .map((f) => f.konepsId);
+  if (ids.length === 0) return [];
+
+  const nowIso = new Date().toISOString();
+  const out: AnnRow[] = [];
+  for (const c of chunk([...new Set(ids)], 200)) {
+    const { data } = await admin
+      .from("Announcement")
+      .select(ANN_FIELDS)
+      .in("konepsId", c)
+      .lt("deadline", nowIso); // 마감 완료(=개찰 가능)만
+    out.push(...((data ?? []) as AnnRow[]));
+  }
+  return out
+    .sort((a, b) => String(b.deadline ?? "").localeCompare(String(a.deadline ?? "")))
+    .slice(0, 600);
+}
+
+async function orgReport(admin: ReturnType<typeof createAdminClient>, name: string): Promise<NextResponse> {
+  // 정확 일치 우선 (btree 인덱스) → nospace RPC 폴백
+  let anns = await fetchOrgAnnsExact(admin, name);
+  if (anns.length === 0) anns = await fetchOrgAnnsFuzzy(admin, name);
   if (anns.length === 0) {
-    return NextResponse.json({ type: "org", query: name, annCount: 0, message: "해당 발주처의 공고가 없습니다. 발주처명을 정확히 입력했는지 확인해주세요." });
+    return NextResponse.json({ type: "org", query: name, annCount: 0, message: "해당 발주처의 최근 공고가 없습니다. 발주처명을 정확히 입력했는지 확인해주세요." });
   }
 
   const annMap = new Map(anns.map((a) => [a.konepsId, a]));
