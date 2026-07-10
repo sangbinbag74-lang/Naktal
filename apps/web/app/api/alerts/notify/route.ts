@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/server";
 import { Resend } from "resend";
+import { sendAlimtalk, isSolapiConfigured } from "@/lib/notifications/solapi";
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://naktal.me";
 
@@ -30,6 +31,9 @@ interface DbUser {
   id: string;
   bizName: string;
   notifyEmail: string | null;
+  notifyPhone: string | null;
+  plan: string;
+  grandfathered: boolean | null;
 }
 
 function matchesAlert(ann: Announcement, alert: UserAlert): boolean {
@@ -90,10 +94,12 @@ async function runNotify(): Promise<NextResponse> {
   // 활성 UserAlert 조회
   const { data: userAlerts } = await supabase
     .from("UserAlert")
-    .select("*, user:User(id, bizName, notifyEmail)")
+    .select("*, user:User(id, bizName, notifyEmail, notifyPhone, plan, grandfathered)")
     .eq("active", true);
 
   let sentCount = 0;
+  let alimtalkCount = 0;
+  const alimtalkSentUser = new Set<string>(); // 유저당 일 1건 (알림톡 과금 통제)
 
   for (const alertRow of userAlerts ?? []) {
     const alert = alertRow as UserAlert & { user: DbUser };
@@ -109,7 +115,7 @@ async function runNotify(): Promise<NextResponse> {
         await resend.emails.send({
           from: "낙비 <noreply@naktal.me>",
           to: user.notifyEmail,
-          subject: `[낙찰AI] 새 공고: ${ann.title}`,
+          subject: `[낙비] 새 공고: ${ann.title}`,
           html: buildEmailHtml(ann, user.bizName),
         });
         sentCount++;
@@ -117,9 +123,26 @@ async function runNotify(): Promise<NextResponse> {
         console.error(`[알림 발송 실패] ${user.notifyEmail}:`, err);
       }
     }
+
+    // 카카오 알림톡 (솔라피, 2026-07-10) — LITE 이상 혜택, 유저당 일 1건 (첫 매칭 공고)
+    const effPlan = user.grandfathered ? "PRO" : user.plan;
+    const alimtalkEligible = effPlan === "LITE" || effPlan === "STANDARD" || effPlan === "PRO" || effPlan === "BIZ" || effPlan === "MASTER";
+    const first = matched[0];
+    if (alimtalkEligible && first && user.notifyPhone && isSolapiConfigured() && !alimtalkSentUser.has(user.id)) {
+      const ok = await sendAlimtalk({
+        to: user.notifyPhone,
+        variables: {
+          "#{회사명}": user.bizName || "고객",
+          "#{공고명}": first.title.slice(0, 40),
+          "#{발주처}": first.orgName.slice(0, 20),
+          "#{마감일}": new Date(first.deadline).toLocaleDateString("ko-KR"),
+        },
+      });
+      if (ok) { alimtalkCount++; alimtalkSentUser.add(user.id); }
+    }
   }
 
-  return NextResponse.json({ ok: true, sent: sentCount });
+  return NextResponse.json({ ok: true, sent: sentCount, alimtalk: alimtalkCount, solapiConfigured: isSolapiConfigured() });
 }
 
 // 관리자 수동 트리거 (기존 호환)

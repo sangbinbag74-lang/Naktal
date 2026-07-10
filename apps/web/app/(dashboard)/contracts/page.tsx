@@ -33,9 +33,9 @@ export default async function ContractsPage() {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
       <div>
-        <h2 style={{ fontSize: 22, fontWeight: 700, color: "#0F172A", margin: "0 0 4px" }}>투찰 의뢰 내역</h2>
+        <h2 style={{ fontSize: 22, fontWeight: 700, color: "#0F172A", margin: "0 0 4px" }}>투찰 추적</h2>
         <p style={{ fontSize: 13, color: "#64748B", margin: 0 }}>
-          총 {list.length}건 · AI 추천 투찰금액을 기반으로 의뢰한 공고 목록입니다
+          총 {list.length}건 · 추적 중인 공고의 개찰 결과를 자동으로 수집해 알려드립니다
         </p>
       </div>
 
@@ -44,9 +44,9 @@ export default async function ContractsPage() {
           background: "#fff", borderRadius: 14, border: "1px solid #E8ECF2",
           padding: "56px 24px", textAlign: "center",
         }}>
-          <div style={{ fontSize: 40, marginBottom: 12 }}>📋</div>
-          <div style={{ fontSize: 15, fontWeight: 600, color: "#374151", marginBottom: 8 }}>아직 의뢰한 공고가 없습니다</div>
-          <div style={{ fontSize: 13, color: "#9CA3AF", marginBottom: 20 }}>공고 상세 페이지에서 AI 투찰 의뢰를 시작하세요</div>
+          <div style={{ fontSize: 40, marginBottom: 12 }}>📌</div>
+          <div style={{ fontSize: 15, fontWeight: 600, color: "#374151", marginBottom: 8 }}>아직 추적 중인 공고가 없습니다</div>
+          <div style={{ fontSize: 13, color: "#9CA3AF", marginBottom: 20 }}>공고 상세에서 [투찰 추적 시작]을 누르면 개찰 결과를 자동으로 알려드려요</div>
           <Link href="/announcements" style={{
             display: "inline-block", background: "#1B3A6B", color: "#fff",
             padding: "10px 24px", borderRadius: 10, textDecoration: "none",

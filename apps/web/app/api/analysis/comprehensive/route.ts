@@ -129,12 +129,13 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   const lwltRaw = rawJsonEarly.sucsfbidLwltRate ?? "";
   const lowerLimitRateEarly = parseFloat(lwltRaw.replace(/[^0-9.]/g, "")) || defaultLwlt;
 
-  // ─── 24시간 캐시 확인 ──────────────────────────────────────────────────────
+  // ─── 분석 캐시 확인 (2026-07-10 박상빈님: 한 번 분석한 공고는 항상 즉시 표시) ─
+  //  row 는 annId upsert 로 영구 보존 — 만료(expiresAt 경과)여도 즉시 반환하고 stale 표시.
+  //  fresh 재계산은 force=true(재분석 버튼)로만 → cold start 60초 재발 방지.
   const { data: cached } = await admin
     .from("BidPricePrediction")
     .select("*")
     .eq("annId", annId)
-    .gt("expiresAt", new Date().toISOString())
     .maybeSingle();
 
   // sampleSize=0 또는 sajungRateRange 필드 null인 캐시는 재분석
@@ -178,7 +179,11 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     const estimatedPriceByACached = isAValue
       ? budgetNum * ((Number(cached.predictedSajungRate) || defaultSajung.center) / 100)
       : null;
-    return NextResponse.json(buildResponse(ann, cached, numberStrategyCached, trendMeta, estimatedPriceByACached, aValueTotal, lowerLimitRateEarly, budgetNum, bidRequestCount ?? 0, annKind, user.id));
+    const cachedPayload = buildResponse(ann, cached, numberStrategyCached, trendMeta, estimatedPriceByACached, aValueTotal, lowerLimitRateEarly, budgetNum, bidRequestCount ?? 0, annKind, user.id);
+    (cachedPayload.meta as unknown as Record<string, unknown>).stale =
+      new Date(String(cached.expiresAt)) < new Date(); // 24h 경과 표시 (재분석 버튼으로 갱신 가능)
+    // FREE 크레딧 게이트 — 캐시 경로에도 동일 적용 (마스킹 우회 구멍 봉합, 2026-07-10)
+    return finalizeFreeGate(cachedPayload, { admin, userPlan, freeBlurred, unlockKey });
   }
 
   // ─── 공고 메타 파싱 ────────────────────────────────────────────────────────
@@ -314,11 +319,17 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   };
 
   const payload = buildResponse(ann, predRecord, numberStrategy, trendMeta, estimatedPriceByA, aValueTotal, lowerLimitRate, budgetNum, bidRequestCount ?? 0, annKind, user.id);
+  return finalizeFreeGate(payload, { admin, userPlan, freeBlurred, unlockKey });
+}
 
-  // ─── FREE 크레딧 (5티어, 2026-07-09) ─────────────────────────────────────
-  //  소진 전: unlock 기록(같은 공고 재열람 무료) / 소진: 정밀필드 마스킹, 박스권(range)은 유지
-  if (userPlan === "FREE") {
-    if (freeBlurred) {
+// ─── FREE 크레딧 게이트 (5티어, 2026-07-09 / 캐시·fresh 두 경로 공용 2026-07-10) ──
+//  소진 전: unlock 기록(같은 공고 재열람 무료) / 소진: 정밀필드 마스킹, 박스권(range)은 유지
+async function finalizeFreeGate(
+  payload: ReturnType<typeof buildResponse>,
+  ctx: { admin: ReturnType<typeof createAdminClient>; userPlan: string; freeBlurred: boolean; unlockKey: string },
+): Promise<NextResponse> {
+  if (ctx.userPlan === "FREE") {
+    if (ctx.freeBlurred) {
       const bs = payload.bidStrategy as unknown as Record<string, unknown>;
       bs.predictedSajungRate = null; // 정밀 사정율 마스킹 (sajungRateRange 박스권은 그대로 공개)
       bs.mlPredictedSajungRate = null;
@@ -337,14 +348,13 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       const monthEnd = new Date();
       monthEnd.setMonth(monthEnd.getMonth() + 1, 1);
       monthEnd.setHours(0, 0, 0, 0);
-      const { error: unlockErr } = await admin.from("RateLimit").upsert(
-        { id: crypto.randomUUID(), key: unlockKey, count: 1, resetAt: monthEnd.toISOString(), updatedAt: new Date().toISOString() },
+      const { error: unlockErr } = await ctx.admin.from("RateLimit").upsert(
+        { id: crypto.randomUUID(), key: ctx.unlockKey, count: 1, resetAt: monthEnd.toISOString(), updatedAt: new Date().toISOString() },
         { onConflict: "key" },
       );
       if (unlockErr) console.error("[comprehensive] FREE unlock 기록 실패:", unlockErr.message);
     }
   }
-
   return NextResponse.json(payload);
 }
 

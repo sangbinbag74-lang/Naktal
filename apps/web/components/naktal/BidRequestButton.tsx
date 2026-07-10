@@ -56,14 +56,14 @@ export function BidRequestButton({
   }, [annId]);
 
   function handleViewContract() {
-    // 새 탭에서 열기 — 사용자가 현재 공고 페이지를 유지할 수 있도록
-    window.open(`/bid-contract/${konepsId}`, "_blank", "noopener,noreferrer");
+    // 수수료·전자계약 폐지 (2026-07-10) — 계약 페이지 대신 추적 결과 페이지로
+    window.open(`/bid-result/${konepsId}`, "_blank", "noopener,noreferrer");
   }
 
   async function handleClick() {
     // 박상빈님 5/22 명시 (7번째) — 즉시 새 창 (사용자 클릭 직후 = 팝업 차단 회피)
     // 분석/저장은 백그라운드에서 진행. 새 창에서 결과 polling.
-    window.open(`/bid-contract/${konepsId}`, "_blank", "noopener,noreferrer");
+    window.open(`/bid-result/${konepsId}`, "_blank", "noopener,noreferrer");
     setHasRequested(true);
 
     // 백그라운드 분석 + 의뢰 저장 (사용자 대기 X)
@@ -102,20 +102,26 @@ export function BidRequestButton({
 
   return (
     <>
+      {/* 투찰 추적 (구 투찰 의뢰, 2026-07-10 리네이밍) — 개찰 결과 자동 추적 + 성적표 */}
       <button
         onClick={hasRequested ? handleViewContract : handleClick}
         disabled={status === "loading"}
         style={{
-          fontSize: 12, fontWeight: 700,
+          fontSize: 14.5, fontWeight: 800,
           color: "#fff",
           background: status === "loading" ? "#93A8C9" : (hasRequested ? "#059669" : "#1B3A6B"),
           border: "none",
-          borderRadius: 8, padding: "6px 12px",
+          borderRadius: 12, padding: "14px 22px",
           cursor: status === "loading" ? "not-allowed" : "pointer",
           whiteSpace: "nowrap",
+          boxShadow: hasRequested ? "0 4px 14px rgba(5,150,105,0.25)" : "0 4px 14px rgba(27,58,107,0.30)",
+          display: "flex", flexDirection: "column", alignItems: "center", gap: 2, lineHeight: 1.3,
         }}
       >
-        {status === "loading" ? "처리 중..." : (hasRequested ? "계약서 확인 / 추천가 다시보기" : "투찰 의뢰")}
+        <span>{status === "loading" ? "처리 중..." : (hasRequested ? "✓ 추적 중 · 결과 보기" : "📌 투찰 추적 시작")}</span>
+        {!hasRequested && status !== "loading" && (
+          <span style={{ fontSize: 10.5, fontWeight: 500, opacity: 0.75 }}>개찰 결과 자동 알림 · 무료</span>
+        )}
       </button>
 
       {status === "error" && (
