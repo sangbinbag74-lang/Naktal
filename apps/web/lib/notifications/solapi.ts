@@ -66,10 +66,25 @@ export async function sendAlimtalk(params: AlimtalkParams): Promise<boolean> {
       }),
       signal: AbortSignal.timeout(8000),
     });
+    const bodyText = await res.text();
     if (!res.ok) {
-      console.error("[solapi] 발송 실패:", res.status, (await res.text()).slice(0, 200));
+      console.error("[solapi] 발송 실패:", res.status, bodyText.slice(0, 200));
       return false;
     }
+    // ⚠️ send-many/detail 은 HTTP 200 이어도 개별 메시지 거부 가능 (미승인 템플릿 = statusCode 1042 등).
+    //    본문의 failedMessageList / registeredFailed 를 확인해야 실제 성공 판정 (2026-07-10 실측).
+    try {
+      const data = JSON.parse(bodyText) as {
+        failedMessageList?: unknown[];
+        groupInfo?: { count?: { registeredFailed?: number; total?: number; registeredSuccess?: number } };
+      };
+      const failedCount = Array.isArray(data.failedMessageList) ? data.failedMessageList.length : 0;
+      const regFailed = data.groupInfo?.count?.registeredFailed ?? 0;
+      if (failedCount > 0 || regFailed > 0) {
+        console.error("[solapi] 개별 발송 거부(템플릿 미승인 등):", bodyText.slice(0, 250));
+        return false;
+      }
+    } catch { /* 본문 파싱 실패 시 HTTP 200 이면 접수 성공 간주 */ }
     return true;
   } catch (e) {
     console.error("[solapi] 발송 오류:", e);
