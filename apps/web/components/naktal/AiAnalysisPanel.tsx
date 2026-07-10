@@ -46,24 +46,32 @@ function SajungDistBar({ range, predicted, avg }: {
           left: `${toX(p25)}%`, width: `${Math.max(0, toX(p75) - toX(p25))}%`,
           top: 12, height: 12, background: "#BFDBFE", borderRadius: 4,
         }} />
-        <div style={{
-          position: "absolute",
-          left: `${toX(pred)}%`, transform: "translateX(-50%)",
-          top: 8, width: 4, height: 20, background: "#1B3A6B", borderRadius: 2,
-        }} />
+        {predicted != null && (
+          <div style={{
+            position: "absolute",
+            left: `${toX(pred)}%`, transform: "translateX(-50%)",
+            top: 8, width: 4, height: 20, background: "#1B3A6B", borderRadius: 2,
+          }} />
+        )}
       </div>
       <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, color: "#94A3B8" }}>
         <span>{min.toFixed(1)}%</span>
         <span style={{ color: "#1B3A6B", fontWeight: 700 }}>
-          예측 {pred.toFixed(4)}%
-          {deviation !== null && (
-            <span style={{
-              marginLeft: 4,
-              color: deviation >= 0 ? "#16A34A" : "#DC2626",
-              fontWeight: 600,
-            }}>
-              ({sign}{deviation.toFixed(4)}%p)
-            </span>
+          {predicted != null ? (
+            <>
+              예측 {pred.toFixed(4)}%
+              {deviation !== null && (
+                <span style={{
+                  marginLeft: 4,
+                  color: deviation >= 0 ? "#16A34A" : "#DC2626",
+                  fontWeight: 600,
+                }}>
+                  ({sign}{deviation.toFixed(4)}%p)
+                </span>
+              )}
+            </>
+          ) : (
+            "정밀 예측은 구독 후 공개"
           )}
         </span>
         <span>{max.toFixed(1)}%</span>
@@ -272,14 +280,17 @@ export function AiAnalysisPanel({ annDbId, budget, g2bUrl, konepsId, onRefresh, 
                   (예정가 ÷ 기초금액 × 100)
                 </span>
               </div>
-              <div style={!unlocked ? { filter: "blur(5px)", userSelect: "none", pointerEvents: "none", overflow: "hidden", borderRadius: 8 } : undefined}>
+              {/* 박스권(범위)은 무료 공개 설계 (2026-07-09) — 블러 제거, 정밀 예측 마커만 서버 마스킹 */}
+              <div>
                 <SajungDistBar range={bs.sajungRateRange} predicted={bs.predictedSajungRate} avg={bs.weightedAvg ?? bs.simpleAvg} />
                 <div style={{ fontSize: 11, color: "#64748B", marginTop: 8 }}>
                   예상 예정가{" "}
                   <strong>
                     {analysis?.meta?.estimatedPriceByA != null
                       ? fmt(analysis.meta.estimatedPriceByA)
-                      : fmt(budget * (bs.predictedSajungRate / 100))}
+                      : bs.predictedSajungRate != null
+                        ? fmt(budget * (bs.predictedSajungRate / 100))
+                        : "구독 후 공개"}
                   </strong>
                   {analysis?.meta?.aValueYn === "Y" && (
                     <span style={{ marginLeft: 6, fontSize: 10, color: "#92400E", background: "#FEF3C7",

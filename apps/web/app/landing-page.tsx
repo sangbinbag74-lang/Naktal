@@ -563,11 +563,11 @@ function DataScale() {
 
         <div className="nk-reveal" style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 0, border: "1px solid var(--border)", borderRadius: 18, overflow: "hidden", background: "#fff" }}>
           {big.map((b, i) => (
-            <div key={i} style={{ padding: "36px 32px 32px", borderRight: i < 3 ? "1px solid var(--border)" : "none", position: "relative", background: i % 2 === 0 ? "#fff" : "#FCFDFE" }}>
+            <div key={i} style={{ padding: "36px 24px 32px", borderRight: i < 3 ? "1px solid var(--border)" : "none", position: "relative", background: i % 2 === 0 ? "#fff" : "#FCFDFE", minWidth: 0 }}>
               <div className="nk-eyebrow nk-en" style={{ color: "var(--fg-4)", marginBottom: 18, letterSpacing: "0.14em", fontSize: 10 }}>{String(i + 1).padStart(2, "0")} / 04</div>
-              <div style={{ display: "flex", alignItems: "baseline", gap: 4, marginBottom: 14 }}>
-                <span className="nk-num" style={{ fontSize: "clamp(40px, 4.4vw, 60px)", fontWeight: 900, lineHeight: 1, letterSpacing: "-0.035em", color: "var(--navy-800)" }}>{b.n}</span>
-                <span style={{ fontSize: 18, fontWeight: 700, color: "var(--fg-3)" }}>{b.u}</span>
+              <div style={{ display: "flex", alignItems: "baseline", gap: 3, marginBottom: 14, whiteSpace: "nowrap" }}>
+                <span className="nk-num" style={{ fontSize: "clamp(24px, 2.8vw, 38px)", fontWeight: 900, lineHeight: 1, letterSpacing: "-0.035em", color: "var(--navy-800)" }}>{b.n}</span>
+                <span style={{ fontSize: 15, fontWeight: 700, color: "var(--fg-3)" }}>{b.u}</span>
               </div>
               <div style={{ fontSize: 15, fontWeight: 700, color: "var(--fg-1)", marginBottom: 6, letterSpacing: "-0.01em" }}>{b.l}</div>
               <div style={{ fontSize: 13, color: "var(--fg-3)", lineHeight: 1.5 }}>{b.d}</div>

@@ -77,11 +77,44 @@ export async function GET(): Promise<NextResponse> {
   if (!result.id) return NextResponse.json({});
 
   const admin = createAdminClient();
-  const { data } = await admin
+  let { data } = await admin
     .from("CompanyProfile")
     .select("*")
     .eq("userId", result.id)
     .maybeSingle();
+
+  // 자기복구 (2026-07-09): 가입 시 CompanyProfile 자동생성이 조용히 실패한 계정 —
+  //  조회 시점에 없으면 즉석에서 G2B 조회해 생성 (대시보드 추천·적격심사 "내 업체 안 나옴" 해결)
+  if (!data) {
+    const { data: dbUser } = await admin.from("User").select("bizNo,bizName,ownerName").eq("id", result.id).single();
+    const bizNo = dbUser?.bizNo ?? "";
+    if (/^\d{10}$/.test(bizNo)) {
+      try {
+        const g2b = await fetchG2BCompanyInfo(bizNo);
+        if (g2b) {
+          const healed = {
+            id: crypto.randomUUID(),
+            userId: result.id,
+            bizNo,
+            bizName: g2b.bizName || dbUser?.bizName || "",
+            ceoName: g2b.ceoName || dbUser?.ownerName || "",
+            address: g2b.address,
+            establishedAt: g2b.establishedAt,
+            employeeCount: g2b.employeeCount,
+            licenses: g2b.licenses,
+            mainCategory: g2b.licenses.find((l) => l.isMain)?.licenseType ?? "",
+            subCategories: g2b.licenses.filter((l) => !l.isMain).map((l) => l.licenseType),
+            updatedAt: new Date().toISOString(),
+          };
+          const { error: healErr } = await admin.from("CompanyProfile").upsert(healed, { onConflict: "userId" });
+          if (!healErr) data = healed as unknown as typeof data;
+          else console.error("[profile] 자기복구 upsert 실패:", healErr.message);
+        }
+      } catch (e) {
+        console.error("[profile] 자기복구 G2B 조회 실패:", e);
+      }
+    }
+  }
   return NextResponse.json(data ?? {});
 }
 
