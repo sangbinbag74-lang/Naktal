@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { createBrowserClient } from "@supabase/ssr";
 import Link from "next/link";
 
-interface PlanData { plan: string }
+interface PlanData { plan: string; grandfathered?: boolean }
 
 export default function RealtimePage() {
   const [planData, setPlanData] = useState<PlanData | null>(null);
@@ -18,7 +18,7 @@ export default function RealtimePage() {
       if (!user) { setLoading(false); return; }
       const { data } = await supabase
         .from("User")
-        .select("plan")
+        .select("plan,grandfathered")
         .eq("supabaseId", user.id)
         .single();
       setPlanData(data);
@@ -26,7 +26,9 @@ export default function RealtimePage() {
     });
   }, []);
 
-  const isPro = planData?.plan === "PRO";
+  // 5티어 (2026-07-09): PRO·BIZ·MASTER + 영구PRO(grandfathered) 허용
+  const effPlan = planData?.grandfathered ? "PRO" : planData?.plan;
+  const isPro = effPlan === "PRO" || effPlan === "BIZ" || effPlan === "MASTER";
 
   if (loading) return <div style={{ padding: 40, color: "#94A3B8" }}>로딩 중...</div>;
 

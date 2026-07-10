@@ -9,6 +9,12 @@ const PLAN_PRICES: Record<string, number> = {
 };
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
+  // 2026-07-09 결제 전환: 토스 계약 전까지 계좌이체 단독 — PortOne 경로 봉인 (구가격표 잔재로 인한 결제 사고 방지)
+  // 토스페이 도입 시 새 가격표(plan-guard PLAN_PRICES)로 재작성 후 개방할 것.
+  if (process.env.PORTONE_VERIFY_ENABLED !== "true") {
+    return NextResponse.json({ ok: false, message: "현재 결제는 계좌이체로만 가능합니다. /billing 에서 신청해주세요." }, { status: 410 });
+  }
+
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ ok: false, message: "Unauthorized" }, { status: 401 });

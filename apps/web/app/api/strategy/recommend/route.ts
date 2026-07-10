@@ -17,7 +17,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   const admin = createAdminClient();
   const { data: dbUser } = await admin
     .from("User")
-    .select("id,plan")
+    .select("id,plan,grandfathered")
     .eq("supabaseId", user.id)
     .single();
   if (!dbUser) return NextResponse.json({ error: "User not found" }, { status: 404 });
@@ -93,12 +93,43 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     );
   }
 
-  const plan = dbUser.plan as Plan;
+  // 5티어 (2026-07-09): grandfathered = 영구 PRO
+  const plan = ((dbUser as { plan: string; grandfathered?: boolean }).grandfathered ? "PRO" : dbUser.plan) as Plan;
   if (!canAccess(plan, Feature.CORE1_NUMBER_RECOMMEND)) {
     return NextResponse.json(
-      { error: "PRO_REQUIRED", message: "AI 분석은 프로 플랜부터 이용할 수 있습니다.", upgradeUrl: "/pricing" },
+      { error: "PRO_REQUIRED", message: "번호 분석은 요금제 가입 후 이용할 수 있습니다.", upgradeUrl: "/billing" },
       { status: 403 },
     );
+  }
+
+  // FREE 월 3건 통합 크레딧 — comprehensive 와 동일한 unlock 키 공유 (공고당 1크레딧, 재분석 무료)
+  if (plan === "FREE") {
+    const creditYm = new Date().toISOString().slice(0, 7);
+    const unlockKey = `unlock:${dbUser.id}:${ann.id}:${creditYm}`;
+    const { count: unlocked } = await admin
+      .from("RateLimit")
+      .select("key", { count: "exact", head: true })
+      .eq("key", unlockKey);
+    if ((unlocked ?? 0) === 0) {
+      const { count: used } = await admin
+        .from("RateLimit")
+        .select("key", { count: "exact", head: true })
+        .like("key", `unlock:${dbUser.id}:%:${creditYm}`);
+      if ((used ?? 0) >= 3) {
+        return NextResponse.json(
+          { error: "FREE_CREDIT_EXHAUSTED", message: "이번 달 무료 정밀 분석 3건을 모두 사용했습니다. 구독하면 무제한으로 이용할 수 있어요.", upgradeUrl: "/billing" },
+          { status: 403 },
+        );
+      }
+      // 크레딧 소모 기록 (월말 만료)
+      const monthEnd = new Date();
+      monthEnd.setMonth(monthEnd.getMonth() + 1, 1);
+      monthEnd.setHours(0, 0, 0, 0);
+      await admin.from("RateLimit").upsert(
+        { id: randomUUID(), key: unlockKey, count: 1, resetAt: monthEnd.toISOString(), updatedAt: new Date().toISOString() },
+        { onConflict: "key" },
+      );
+    }
   }
 
   // 공고 데이터에서 분석 파라미터 자동 추출

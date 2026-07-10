@@ -346,11 +346,12 @@ function Hero() {
 
         <p style={{ fontSize: "clamp(17px, 1.6vw, 21px)", lineHeight: 1.55, color: "rgba(255,255,255,0.72)", maxWidth: 680, margin: "0 0 44px", fontWeight: 400 }}>
           <strong style={{ color: "#fff", fontWeight: 700 }}>낙비</strong> — 내 손안의 AI 낙찰비서.<br />
-          나라장터 공고의 사정율·복수예가 번호·참여 자격을<br />머신러닝이 단 <span style={{ color: "#fff", fontWeight: 600 }}>0.5초</span> 만에 분석합니다.
+          나라장터 공고의 사정율·복수예가 번호·참여 자격을<br />머신러닝이 단 <span style={{ color: "#fff", fontWeight: 600 }}>0.5초</span> 만에 분석합니다.<br />
+          <span style={{ color: "var(--blue-300)", fontWeight: 600 }}>낙찰 수수료 0원</span> — 무료로 시작하세요.
         </p>
 
         <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginBottom: 84 }}>
-          <Link href="/login" className="nk-cta-onDark">분석 시작 <span aria-hidden>→</span></Link>
+          <Link href="/signup" className="nk-cta-onDark">무료로 시작하기 <span aria-hidden>→</span></Link>
           <a href="#engines" className="nk-cta-ghost-dark">엔진 살펴보기</a>
         </div>
 
@@ -691,7 +692,7 @@ function Trust() {
   const items = [
     { label: "PUBLIC DATA", t: "공식 조달 데이터", d: "조달청 나라장터 공식 데이터를 기반으로 분석합니다." },
     { label: "COVERAGE", t: "활성 공고 전수", d: "활성 공고 전수를 분석합니다. 검색 한 번이면 충분합니다." },
-    { label: "NO LIMIT", t: "분석은 무제한", d: "분석은 무제한 무료. 결과 검증은 자동으로 이루어집니다." },
+    { label: "NO FEE", t: "낙찰 수수료 0원", d: "낙찰해도 떼가는 돈이 없습니다. 공고 검색·박스권은 무료, 정밀 추천은 월 3건 무료로 시작합니다." },
   ];
   return (
     <section id="trust" style={{ background: "var(--page)", padding: "120px 0" }}>
@@ -814,10 +815,10 @@ function FinalCTA() {
           <span style={{ color: "var(--blue-400)" }}>투찰가가 나옵니다.</span>
         </h2>
         <div style={{ display: "inline-flex", flexDirection: "column", alignItems: "center", gap: 14 }}>
-          <Link href="/login" className="nk-cta-onDark" style={{ height: 64, padding: "0 44px", fontSize: 18, borderRadius: 14 }}>
-            분석 시작 <span aria-hidden>→</span>
+          <Link href="/signup" className="nk-cta-onDark" style={{ height: 64, padding: "0 44px", fontSize: 18, borderRadius: 14 }}>
+            무료로 시작하기 <span aria-hidden>→</span>
           </Link>
-          <span style={{ fontSize: 13, color: "rgba(255,255,255,0.45)" }}>사업자번호로 로그인</span>
+          <span style={{ fontSize: 13, color: "rgba(255,255,255,0.45)" }}>낙찰 수수료 0원 · 카드 등록 없이 가입</span>
         </div>
       </div>
     </section>
