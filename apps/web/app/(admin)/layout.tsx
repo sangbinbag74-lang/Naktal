@@ -19,6 +19,7 @@ const adminSections = [
     items: [
       { href: "/admin/users",    label: "회원 관리", icon: "👥" },
       { href: "/admin/payments", label: "결제·구독", icon: "💳" },
+      { href: "/admin/bank-requests", label: "입금 확인", icon: "🏦" },
     ],
   },
   {

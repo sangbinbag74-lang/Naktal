@@ -40,10 +40,13 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const admin = createAdminClient();
-  const { data: dbUser } = await admin.from("User").select("id,plan").eq("supabaseId", user.id).single();
-  if (!dbUser || dbUser.plan === "FREE") {
-    return NextResponse.json({ error: "PRO_REQUIRED", message: "AI 분석은 프로 플랜부터 이용할 수 있습니다.", upgradeUrl: "/pricing" }, { status: 403 });
+  const { data: dbUser } = await admin.from("User").select("id,plan,grandfathered").eq("supabaseId", user.id).single();
+  if (!dbUser) {
+    return NextResponse.json({ error: "USER_NOT_FOUND", message: "사용자 정보를 찾을 수 없습니다." }, { status: 403 });
   }
+  // 5티어 (2026-07-09): FREE도 분석 가능 — 월 3건 크레딧, 초과 시 정밀값 마스킹(blurred)
+  //  grandfathered = 전환 전 기존 회원 영구 PRO
+  const userPlan = (dbUser.grandfathered ? "PRO" : dbUser.plan) as import("@naktal/types").Plan;
 
   // 사용자 분당 20회 — ML/DB 비용 보호 (24시간 캐시 있어도 첫 호출 비싸므로)
   const { allowed: rlAllowed, resetAt: rlReset } = await rateLimit(`${dbUser.id}:comprehensive`, 20, 60);
@@ -57,6 +60,24 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   const body = (await request.json()) as { annId?: string; force?: boolean };
   if (!body.annId) {
     return NextResponse.json({ error: "annId 필수" }, { status: 400 });
+  }
+
+  // FREE 월 3건 크레딧 (공고 단위 unlock — 같은 공고 재열람은 재소모 없음)
+  let freeBlurred = false;
+  const creditYm = new Date().toISOString().slice(0, 7); // YYYY-MM
+  const unlockKey = `unlock:${dbUser.id}:${body.annId}:${creditYm}`;
+  if (userPlan === "FREE") {
+    const { count: unlocked } = await admin
+      .from("RateLimit")
+      .select("key", { count: "exact", head: true })
+      .eq("key", unlockKey);
+    if ((unlocked ?? 0) === 0) {
+      const { count: used } = await admin
+        .from("RateLimit")
+        .select("key", { count: "exact", head: true })
+        .like("key", `unlock:${dbUser.id}:%:${creditYm}`);
+      if ((used ?? 0) >= 3) freeBlurred = true;
+    }
   }
 
   // ─── 공고 조회 (활성 우선, 마감 공고 폴백) ────────────────────────────────
@@ -190,6 +211,8 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       // 박상빈님 5/21 K-2 박스권 ML — annId + userId hash → q40~q70 deterministic 다양화
       annId,
       userId: user.id,
+      // 박상빈님 7/9 a안 — PRO 이상 = 개인화 보정 0, AI 원본값(운영점) 그대로
+      originValue: userPlan === "PRO" || userPlan === "BIZ" || userPlan === "MASTER",
     }),
     analyzeCompetition({
       orgName: ann.orgName as string,
@@ -290,7 +313,39 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     recentSampleSize: sajung.recentSampleSize,
   };
 
-  return NextResponse.json(buildResponse(ann, predRecord, numberStrategy, trendMeta, estimatedPriceByA, aValueTotal, lowerLimitRate, budgetNum, bidRequestCount ?? 0, annKind, user.id));
+  const payload = buildResponse(ann, predRecord, numberStrategy, trendMeta, estimatedPriceByA, aValueTotal, lowerLimitRate, budgetNum, bidRequestCount ?? 0, annKind, user.id);
+
+  // ─── FREE 크레딧 (5티어, 2026-07-09) ─────────────────────────────────────
+  //  소진 전: unlock 기록(같은 공고 재열람 무료) / 소진: 정밀필드 마스킹, 박스권(range)은 유지
+  if (userPlan === "FREE") {
+    if (freeBlurred) {
+      const bs = payload.bidStrategy as unknown as Record<string, unknown>;
+      bs.predictedSajungRate = null; // 정밀 사정율 마스킹 (sajungRateRange 박스권은 그대로 공개)
+      bs.mlPredictedSajungRate = null;
+      bs.optimalBidPrice = null;
+      bs.bidPriceRangeLow = null;
+      bs.bidPriceRangeHigh = null;
+      bs.lowerLimitPrice = null;
+      bs.numberStrategy = null;
+      const meta = payload.meta as unknown as Record<string, unknown>;
+      meta.blurred = true;
+      meta.blurReason = "FREE_CREDIT_EXHAUSTED";
+      meta.creditLimit = 3;
+      meta.upgradeUrl = "/billing";
+    } else {
+      // 크레딧 소모 기록 (월말 만료) — 실패해도 응답은 정상 진행
+      const monthEnd = new Date();
+      monthEnd.setMonth(monthEnd.getMonth() + 1, 1);
+      monthEnd.setHours(0, 0, 0, 0);
+      const { error: unlockErr } = await admin.from("RateLimit").upsert(
+        { id: crypto.randomUUID(), key: unlockKey, count: 1, resetAt: monthEnd.toISOString(), updatedAt: new Date().toISOString() },
+        { onConflict: "key" },
+      );
+      if (unlockErr) console.error("[comprehensive] FREE unlock 기록 실패:", unlockErr.message);
+    }
+  }
+
+  return NextResponse.json(payload);
 }
 
 // ─── 응답 빌더 ───────────────────────────────────────────────────────────────

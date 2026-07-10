@@ -17,7 +17,8 @@ model User {
   notifyEmail     String?
   notifyPhone     String?
   address         String?                // 회원가입 시 직접 입력한 주소 (G2B 자동조회는 CompanyProfile.address)
-  plan            Plan                   @default(PRO)
+  plan            Plan                   @default(FREE)
+  grandfathered   Boolean                @default(false) // 전환 전 기존 사용자 = 영구 PRO (2026-07-09)
   isAdmin         Boolean                @default(false)
   isActive        Boolean                @default(true)
   adminMemo       String?
@@ -35,6 +36,24 @@ model User {
   companyProfile  CompanyProfile?
   recommendations NumberRecommendation[]
   bidOutcomes     BidOutcome[]
+}
+
+// 계좌이체 구독 신청 (토스 계약 전까지 유일 결제수단, 2026-07-09)
+//  PENDING → admin 입금 확인 → CONFIRMED(+User.plan 승급, Subscription ACTIVE) / REJECTED
+model BankTransferRequest {
+  id            String    @id @default(cuid())
+  userId        String
+  plan          Plan
+  period        String    @default("MONTHLY") // MONTHLY | YEARLY(2개월 무료)
+  amount        Int
+  depositorName String
+  status        String    @default("PENDING") // PENDING | CONFIRMED | REJECTED
+  adminMemo     String?
+  createdAt     DateTime  @default(now())
+  confirmedAt   DateTime?
+
+  @@index([status])
+  @@index([userId])
 }
 
 model Subscription {
@@ -424,8 +443,11 @@ model WinProbSimulation {
 
 enum Plan {
   FREE
-  STANDARD
-  PRO
+  STANDARD // 레거시 (미사용, PG enum 값 제거 불가로 유지)
+  LITE     // 9,900원/월 — 정밀 무제한(개인화 보정값) + 광고 제거
+  PRO      // 19,900원/월 — AI 원본값 + 실시간 모니터 (⭐인기)
+  BIZ      // 49,900원/월 — 팀 3계정 + 주간 심층 리포트
+  MASTER   // 99,000원/월 — 5계정 + 맞춤 백테스트 + 전담 온보딩
 }
 
 enum SubStatus {

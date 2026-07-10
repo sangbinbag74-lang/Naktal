@@ -432,7 +432,8 @@ function getWinrateTeMap(): WinrateTeMap | null {
   }
   return winrateTeMapCache;
 }
-/** 규모적응 band offset — 소액 [0.45,0.75] / 대형(3억+) [0.0,1.2], 사용자 hash 분산 (다양화) */
+/** 규모적응 band offset — 소액 [0.45,0.75] / 대형(3억+) [0.0,1.2], 사용자 hash 분산 (다양화)
+ *  userHash=0.5 = band 중심 = 백테스트 운영점(+0.6) = "AI 원본값" (PRO 이상, 2026-07-09 a안) */
 function winrateBandOffset(budget: number, userHash: number): number {
   const lo = budget >= 3e8 ? 0.0 : 0.45;
   const hi = budget >= 3e8 ? 1.2 : 0.75;
@@ -475,6 +476,8 @@ export async function predictOptimalBid(params: {
   // 박상빈님 5/21 K-2 박스권 ML — 사용자별 deterministic 다양화 (옵션, 없으면 hash=0.5 = 박스권 중간)
   annId?: string;
   userId?: string;
+  // 박상빈님 7/9 a안 — PRO 이상 = 개인화 보정 없이 "AI 원본값"(band 중심 운영점) 그대로
+  originValue?: boolean;
 }): Promise<SajungPrediction> {
   const budgetRange = classifyBudget(params.budget);
   const orgName = params.orgName;
@@ -823,6 +826,7 @@ export async function predictOptimalBid(params: {
   const bq40 = ensemblePred?.box_q40;
   const bq70 = ensemblePred?.box_q70;
   if (
+    !params.originValue && // 7/9 a안: PRO 이상은 다양화 미적용 = 원본 점추정 그대로
     typeof bq40 === "number" && typeof bq70 === "number" &&
     Number.isFinite(bq40) && Number.isFinite(bq70) && bq40 < bq70
   ) {
@@ -871,7 +875,9 @@ export async function predictOptimalBid(params: {
         lwlt: params.lowerLimitRate,
       });
       if (margin !== null) {
-        const offset = winrateBandOffset(params.budget, computeUserHash(params.annId, params.userId));
+        // 7/9 a안: PRO 이상 = band 중심(0.5) = 운영점 원본 / 그 외 = userHash 개인화 분산
+        const bandHash = params.originValue ? 0.5 : computeUserHash(params.annId, params.userId);
+        const offset = winrateBandOffset(params.budget, bandHash);
         const recRate = margin + params.lowerLimitRate + offset; // 추천 투찰률(기초금액 대비 %)
         finalOptimalBid = Math.ceil((recRate / 100) * params.budget); // A값은 학습 rate에 이미 반영
         usedWinrate = true;

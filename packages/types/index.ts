@@ -1,4 +1,5 @@
-export type Plan = "FREE" | "STANDARD" | "PRO";
+// STANDARD = 레거시 (미사용). 5티어: FREE / LITE 9,900 / PRO 19,900 / BIZ 49,900 / MASTER 99,000
+export type Plan = "FREE" | "STANDARD" | "LITE" | "PRO" | "BIZ" | "MASTER";
 
 export type SubStatus = "ACTIVE" | "CANCELLED" | "EXPIRED";
 

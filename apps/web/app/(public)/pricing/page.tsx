@@ -4,26 +4,21 @@ import Link from "next/link";
 // 박상빈님 5/20 명시 보호 — CDN 캐시 X (proxy.ts 의 라우트 가드가 작동하도록)
 export const dynamic = "force-dynamic";
 
+// 5티어 + 수수료 전면 폐지 (2026-07-09 박상빈님 확정)
 export const metadata: Metadata = {
-  title: "요금 안내 — 분석 무료, 낙찰 시에만 수수료",
+  title: "요금 안내 — 낙찰 수수료 0원, 무료로 시작",
   description:
-    "낙비 — 내 손안의 AI 낙찰비서. AI 사정율 예측·복수예가 번호 추천·공고문 자격 분석 모두 무제한 무료. " +
-    "월 구독료 없음, 낙찰 성공 시에만 수수료(낙찰가 1억 이상 1.5%, 1억 미만 1.7%) 발생. " +
-    "미낙찰 시 0원. 결과가 나기 전까지 어떠한 비용도 청구되지 않습니다.",
+    "낙비 — 내 손안의 AI 낙찰비서. 낙찰 수수료 0원. 공고 검색·사정율 박스권 무료, " +
+    "정밀 투찰가 추천은 무료 월 3건부터. 라이트 9,900원 / 프로 19,900원(런칭가) / 비즈 49,900원 / 마스터 99,000원.",
   keywords: [
-    "낙비 요금", "낙비 가격", "낙비 수수료", "낙비 결제",
-    "낙찰AI 요금", "낙찰 AI 가격", "공공입찰 AI 요금",
-    "나라장터 AI 무료", "나라장터 AI 가격",
-    "성공보수형 수수료", "낙찰 성공 수수료", "낙찰 시에만 수수료",
-    "1.5% 수수료", "1.7% 수수료",
-    "미낙찰 0원", "분석 무료", "구독료 없음", "월 구독료 없음",
-    "낙비 환불", "환불 정책",
+    "낙비 요금", "낙비 가격", "낙비 구독", "낙찰 수수료 없음", "수수료 0원",
+    "낙찰AI 요금", "공공입찰 AI 구독", "나라장터 AI 무료",
+    "입찰 분석 무료", "AI 투찰가 구독", "낙비 환불", "환불 정책",
   ],
   alternates: { canonical: "https://naktal.me/pricing" },
   openGraph: {
-    title: "낙비 — 요금 안내 (분석 무제한 무료, 낙찰 시에만 수수료)",
-    description:
-      "AI 사정율 예측·복수예가 번호·자격 분석 모두 무료. 낙찰 시에만 수수료 1.5~1.7%. 미낙찰 0원, 월 구독료 없음.",
+    title: "낙비 — 요금 안내 (낙찰 수수료 0원, 무료로 시작)",
+    description: "공고 검색·박스권 무료. 정밀 추천 월 3건 무료. 구독 9,900원부터 — 낙찰해도 수수료 없음.",
     url: "https://naktal.me/pricing",
     siteName: "낙비",
     locale: "ko_KR",
@@ -33,157 +28,143 @@ export const metadata: Metadata = {
   twitter: {
     card: "summary_large_image",
     title: "낙비 — 요금 안내",
-    description: "분석 무료. 낙찰 시에만 수수료 1.5~1.7%. 미낙찰 0원.",
+    description: "낙찰 수수료 0원. 무료로 시작, 구독 9,900원부터.",
     images: ["/og.png"],
   },
 };
 
-interface Plan {
-  name: string;
-  price: string;
-  unit: string;
-  features: string[];
-  fee: string | null;
-}
-
-const PLANS: Plan[] = [
+const TIERS = [
   {
-    name: "분석 서비스",
+    name: "무료",
     price: "0",
-    unit: "원 / 무제한",
+    original: null as string | null,
+    badge: null as string | null,
+    accent: "#475569",
     features: [
-      "AI 사정율 예측 (CORE 1)",
-      "복수예가 번호 추천 (CORE 2)",
-      "공고문 자격 자동 분석",
-      "낙찰하한가 계산",
-      "발주처별 사정율 통계",
-      "공고 알림 무제한",
+      "공고 검색·상세 무제한",
+      "사정율 박스권(범위) 전 공고",
+      "정밀 추천 월 3건",
+      "개찰 후 성적표 알림",
+      "공고 알림 3개",
     ],
-    fee: null,
   },
   {
-    name: "낙찰 성공 수수료 — 1억 원 이상",
-    price: "1.5",
-    unit: "% (실제 낙찰금액 기준)",
+    name: "라이트",
+    price: "9,900",
+    original: null,
+    badge: null,
+    accent: "#1D4ED8",
     features: [
-      "낙찰 성공 시에만 청구",
-      "미낙찰 시 수수료 0원",
-      "낙찰 공고일로부터 14일 이내 납부",
-      "법인계좌 입금만 인정",
+      "정밀 투찰가·번호 추천 무제한",
+      "광고 제거",
+      "공고 알림 10개 + 알림톡",
+      "사정율 추세·안정성 분석",
+      "경쟁사 추적 3개사",
     ],
-    fee: "낙찰가 100,000,000원 이상",
   },
   {
-    name: "낙찰 성공 수수료 — 1억 원 미만",
-    price: "1.7",
-    unit: "% (실제 낙찰금액 기준)",
+    name: "프로",
+    price: "19,900",
+    original: "29,900",
+    badge: "⭐ 가장 인기",
+    accent: "#1B3A6B",
     features: [
-      "낙찰 성공 시에만 청구",
-      "미낙찰 시 수수료 0원",
-      "낙찰 공고일로부터 14일 이내 납부",
-      "법인계좌 입금만 인정",
+      "AI 원본값 — 보정 0, 운영점 그대로",
+      "실시간 참여자 모니터",
+      "경쟁사·발주처 심층 분석",
+      "우선 알림 무제한 · 엑셀",
+      "경쟁사 추적 5개사",
     ],
-    fee: "낙찰가 100,000,000원 미만",
+  },
+  {
+    name: "비즈",
+    price: "49,900",
+    original: null,
+    badge: null,
+    accent: "#6D28D9",
+    features: [
+      "프로 전체 포함",
+      "팀 계정 3개",
+      "주간 맞춤 심층 리포트",
+      "경쟁사 추적 10개사",
+      "우선 1:1 지원",
+    ],
+  },
+  {
+    name: "마스터",
+    price: "99,000",
+    original: null,
+    badge: null,
+    accent: "#0F172A",
+    features: [
+      "비즈 전체 포함",
+      "팀 계정 5개",
+      "월 1회 맞춤 백테스트 리포트",
+      "전담 온보딩 · 컨설팅",
+      "경쟁사 추적 무제한",
+    ],
   },
 ];
 
-export default function PublicPricingPage() {
+export default function PricingPage() {
   return (
-    <div style={{ minHeight: "100vh", background: "#F0F2F5" }}>
-      <header style={{ background: "#fff", borderBottom: "1px solid #E8ECF2", height: 60, display: "flex", alignItems: "center", padding: "0 32px", justifyContent: "space-between" }}>
-        <Link href="/" style={{ fontSize: 18, fontWeight: 800, color: "#1B3A6B", textDecoration: "none" }}>낙비</Link>
-        <Link href="/login" style={{ fontSize: 14, color: "#374151", textDecoration: "none" }}>로그인</Link>
-      </header>
+    <div style={{ background: "#F0F2F5", minHeight: "100vh", padding: "64px 20px" }}>
+      <div style={{ maxWidth: 1200, margin: "0 auto" }}>
+        <div style={{ textAlign: "center", marginBottom: 44 }}>
+          <h1 style={{ fontSize: 34, fontWeight: 900, color: "#0F172A", letterSpacing: "-0.03em", margin: "0 0 10px" }}>
+            낙찰 수수료 <span style={{ color: "#1B3A6B" }}>0원</span>. 무료로 시작하세요.
+          </h1>
+          <p style={{ fontSize: 15, color: "#64748B", margin: 0 }}>
+            낙찰해도 떼가는 돈이 없습니다 — 구독만으로 모든 기능을 사용합니다. 연간 결제 시 2개월 무료.
+          </p>
+        </div>
 
-      <main style={{ maxWidth: 920, margin: "0 auto", padding: "48px 24px" }}>
-        <h1 style={{ fontSize: 32, fontWeight: 800, color: "#0F172A", marginBottom: 8 }}>이용 요금 안내</h1>
-        <p style={{ color: "#64748B", fontSize: 15, marginBottom: 40, lineHeight: 1.7 }}>
-          분석은 <strong style={{ color: "#1B3A6B" }}>완전 무료</strong> 입니다. 낙찰 성공 시에만 실제 낙찰금액의 일정 비율로 수수료가 청구됩니다.
-          <br />
-          미낙찰 시 어떠한 비용도 발생하지 않습니다.
-        </p>
-
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 16, marginBottom: 40 }}>
-          {PLANS.map((p, i) => (
-            <div key={p.name} style={{
-              background: "#fff",
-              borderRadius: 16,
-              border: i === 0 ? "2px solid #1B3A6B" : "1px solid #E8ECF2",
-              padding: "28px 24px",
-              boxShadow: "0 1px 3px rgba(15,23,42,0.04)",
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(210px, 1fr))", gap: 14 }}>
+          {TIERS.map((t) => (
+            <div key={t.name} style={{
+              background: "#fff", borderRadius: 16, padding: "26px 20px", position: "relative",
+              border: t.badge ? `2px solid ${t.accent}` : "1px solid #E8ECF2",
+              boxShadow: t.badge ? "0 4px 24px rgba(27,58,107,0.10)" : "none",
+              display: "flex", flexDirection: "column",
             }}>
-              <div style={{ fontSize: 13, fontWeight: 700, color: i === 0 ? "#1B3A6B" : "#64748B", marginBottom: 12, letterSpacing: "-0.01em" }}>
-                {p.name}
-              </div>
-              <div style={{ display: "flex", alignItems: "baseline", gap: 4, marginBottom: 16 }}>
-                <span style={{ fontSize: 40, fontWeight: 900, color: "#0F172A", letterSpacing: "-0.03em" }}>{p.price}</span>
-                <span style={{ fontSize: 14, color: "#64748B", fontWeight: 500 }}>{p.unit}</span>
-              </div>
-              {p.fee && (
-                <div style={{ fontSize: 11, color: "#D97706", background: "#FFFBEB", padding: "4px 10px", borderRadius: 6, fontWeight: 600, display: "inline-block", marginBottom: 14 }}>
-                  {p.fee}
-                </div>
+              {t.badge && (
+                <div style={{ position: "absolute", top: -12, left: "50%", transform: "translateX(-50%)", background: t.accent, color: "#fff", fontSize: 11, fontWeight: 700, padding: "3px 12px", borderRadius: 99, whiteSpace: "nowrap" }}>{t.badge}</div>
               )}
-              <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: 8 }}>
-                {p.features.map((f) => (
-                  <li key={f} style={{ fontSize: 13, color: "#374151", lineHeight: 1.6, paddingLeft: 18, position: "relative" }}>
-                    <span style={{ position: "absolute", left: 0, color: "#059669", fontWeight: 700 }}>✓</span>
-                    {f}
-                  </li>
+              <div style={{ fontSize: 13, fontWeight: 700, color: t.accent, marginBottom: 8 }}>{t.name}</div>
+              {t.original && <div style={{ fontSize: 13, color: "#94A3B8", textDecoration: "line-through" }}>정가 {t.original}원</div>}
+              <div style={{ fontSize: 25, fontWeight: 800, color: "#0F172A", lineHeight: 1.1 }}>{t.price}<span style={{ fontSize: 14, fontWeight: 600 }}>원</span></div>
+              <div style={{ fontSize: 11.5, color: "#94A3B8", margin: "3px 0 16px" }}>
+                {t.price === "0" ? "영원히 무료" : "월 / 부가세 포함 · 런칭 가격"}
+              </div>
+              <div style={{ flex: 1 }}>
+                {t.features.map((f) => (
+                  <div key={f} style={{ display: "flex", gap: 7, marginBottom: 8 }}>
+                    <span style={{ color: "#059669", fontSize: 13, lineHeight: "18px", flexShrink: 0 }}>✓</span>
+                    <span style={{ fontSize: 12.5, color: "#374151", lineHeight: "18px" }}>{f}</span>
+                  </div>
                 ))}
-              </ul>
+              </div>
+              <Link href={t.price === "0" ? "/signup" : "/billing"} style={{
+                marginTop: 16, height: 42, borderRadius: 10, fontSize: 13.5, fontWeight: 700,
+                display: "flex", alignItems: "center", justifyContent: "center", textDecoration: "none",
+                background: t.badge ? t.accent : "#fff", color: t.badge ? "#fff" : t.accent,
+                border: t.badge ? "none" : `1.5px solid ${t.accent}`,
+              }}>
+                {t.price === "0" ? "무료로 시작" : "구독하기"}
+              </Link>
             </div>
           ))}
         </div>
 
-        <div style={{ background: "#FFFBEB", border: "1px solid #FDE68A", borderRadius: 12, padding: "20px 24px", marginBottom: 24 }}>
-          <h2 style={{ fontSize: 15, fontWeight: 700, color: "#92400E", margin: "0 0 12px" }}>수수료 납부 조건</h2>
-          <ul style={{ margin: 0, paddingLeft: 20, color: "#78350F", fontSize: 13.5, lineHeight: 1.9 }}>
-            <li>수수료는 <strong>낙찰 성공 시에만</strong> 발생합니다. 미낙찰 시 일절 발생하지 않습니다.</li>
-            <li>납부 기한: <strong>낙찰 공고일로부터 14일 이내</strong></li>
-            <li>납부 계좌: <strong>신한은행 100-038-306439 (예금주: 주식회사 호라이즌)</strong></li>
-            <li>법인계좌 입금만 인정됩니다. 개인계좌 등 다른 계좌 입금은 미인정.</li>
-            <li>기한 도과 시 연 6% 지연이자 부과 + 서비스 영구 제한 가능</li>
-          </ul>
-        </div>
-
-        {/* 카카오톡 채널 CTA */}
-        <div style={{ marginBottom: 16, background: "#FEE500", borderRadius: 12, padding: "20px 24px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16, flexWrap: "wrap" }}>
-          <div>
-            <div style={{ fontSize: 14, fontWeight: 700, color: "#191600", marginBottom: 4 }}>문의·상담은 카카오톡으로</div>
-            <div style={{ fontSize: 12, color: "#3C1E1E" }}>요금 · 수수료 · 가입 관련 1:1 안내</div>
+        <div style={{ marginTop: 36, textAlign: "center", display: "flex", flexDirection: "column", gap: 8 }}>
+          <div style={{ fontSize: 13, color: "#64748B" }}>
+            결제: 계좌이체 (세금계산서 발행 가능) · 토스페이 준비 중 · 초기 구독자는 가격 인상 후에도 런칭 가격 유지
           </div>
-          <a
-            href="http://pf.kakao.com/_SQxmKX/chat"
-            target="_blank"
-            rel="noopener noreferrer"
-            style={{
-              background: "#191600", color: "#FEE500",
-              padding: "10px 22px", borderRadius: 8,
-              fontSize: 14, fontWeight: 700,
-              textDecoration: "none", whiteSpace: "nowrap",
-            }}
-          >
-            💬 카톡 문의하기
-          </a>
-        </div>
-
-        <div style={{ background: "#fff", border: "1px solid #E8ECF2", borderRadius: 12, padding: "20px 24px" }}>
-          <h2 style={{ fontSize: 15, fontWeight: 700, color: "#0F172A", margin: "0 0 12px" }}>관련 문서</h2>
-          <div style={{ display: "flex", gap: 16, flexWrap: "wrap", fontSize: 13 }}>
-            <Link href="/terms" style={{ color: "#1B3A6B", textDecoration: "underline" }}>이용약관</Link>
-            <Link href="/privacy" style={{ color: "#1B3A6B", textDecoration: "underline" }}>개인정보처리방침</Link>
-            <Link href="/refund" style={{ color: "#1B3A6B", textDecoration: "underline" }}>환불·취소 정책</Link>
-            <Link href="/faq" style={{ color: "#1B3A6B", textDecoration: "underline" }}>자주 묻는 질문</Link>
+          <div style={{ fontSize: 12, color: "#94A3B8" }}>
+            AI 분석 결과는 참고 자료이며 낙찰을 보장하지 않습니다 · <Link href="/refund" style={{ color: "#64748B" }}>환불 정책</Link> · <Link href="/terms" style={{ color: "#64748B" }}>이용약관</Link>
           </div>
         </div>
-      </main>
-
-      <footer style={{ textAlign: "center", padding: "32px 16px", color: "#94A3B8", fontSize: 11.5, lineHeight: 1.7 }}>
-        <div>주식회사 호라이즌 · 대표 박상빈 · 사업자등록번호 398-87-03453</div>
-        <div>대전광역시 유성구 장대로 106, 2층 제이321호 · 전화 0505-007-9882</div>
-        <div style={{ marginTop: 4 }}>© 2025 낙비. All rights reserved.</div>
-      </footer>
+      </div>
     </div>
   );
 }

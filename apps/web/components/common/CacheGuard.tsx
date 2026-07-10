@@ -8,7 +8,7 @@ import { useEffect } from "react";
  *  - 옛 필터(naktal_ann_filters 등) 자동 복원으로 "연동 안 됨" 호소 방지.
  *  - 조건부 X — 버전 불일치 시 무조건 전부 밀어버림.
  */
-const APP_VERSION = "2026-06-11-auth-safe"; // ⚠️ 배포마다 갱신
+const APP_VERSION = "2026-07-09-freemium-5tier"; // ⚠️ 배포마다 갱신
 
 // ⚠️ 인증 세션은 절대 지우지 않는다 (2026-06-11 사고: clear()가 로그인 세션 삭제 → 로그아웃 튕김)
 function isAuthKey(k: string): boolean {

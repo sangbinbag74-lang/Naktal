@@ -724,41 +724,38 @@ function Pricing() {
         <div className="nk-reveal" style={{ maxWidth: 880, marginBottom: 64 }}>
           <div className="nk-eyebrow" style={{ color: "var(--blue-400)", marginBottom: 18 }}>PRICING</div>
           <h2 style={{ fontSize: "clamp(40px, 5.4vw, 72px)", lineHeight: 1.04, letterSpacing: "-0.032em", fontWeight: 900, margin: "0 0 22px", color: "#fff" }}>
-            낙찰시에만 <span style={{ color: "var(--blue-400)" }}>수수료</span>가<br />발생합니다.
+            낙찰 수수료 <span style={{ color: "var(--blue-400)" }}>0원</span>.<br />무료로 시작하세요.
           </h2>
           <p style={{ fontSize: "clamp(16px, 1.4vw, 19px)", lineHeight: 1.6, color: "rgba(255,255,255,0.65)", margin: 0, maxWidth: 560 }}>
-            분석은 무제한 무료. 결과가 나기 전까지 어떠한 비용도 청구되지 않습니다.
+            낙찰해도 떼가는 돈이 없습니다. 공고 검색과 사정율 박스권은 무료 — 정밀 추천이 필요할 때만 구독하세요.
           </p>
         </div>
 
-        <div className="nk-reveal" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+        <div className="nk-reveal" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 14 }}>
           {[
-            { label: "1억원 이상", rate: "1.5", detail: "낙찰 금액 100,000,000원 이상" },
-            { label: "1억원 미만", rate: "1.7", detail: "낙찰 금액 100,000,000원 미만" },
+            { label: "무료", price: "0원", detail: "공고 검색 · 박스권 · 정밀 추천 월 3건", hot: false },
+            { label: "라이트", price: "9,900원", detail: "정밀 투찰가·번호 무제한 · 광고 제거", hot: false },
+            { label: "프로", price: "19,900원", detail: "AI 원본값 · 실시간 모니터 · 심층 분석", hot: true },
+            { label: "비즈 · 마스터", price: "49,900원~", detail: "팀 계정 · 맞춤 리포트 · 전담 지원", hot: false },
           ].map((p, i) => (
             <div key={i} style={{
-              padding: "40px 40px 36px", borderRadius: 18,
-              background: i === 0 ? "linear-gradient(180deg, rgba(96,165,250,0.16) 0%, rgba(96,165,250,0.04) 100%)" : "rgba(255,255,255,0.035)",
-              border: "1px solid " + (i === 0 ? "rgba(96,165,250,0.32)" : "rgba(255,255,255,0.1)"),
+              padding: "30px 26px", borderRadius: 18,
+              background: p.hot ? "linear-gradient(180deg, rgba(96,165,250,0.16) 0%, rgba(96,165,250,0.04) 100%)" : "rgba(255,255,255,0.035)",
+              border: "1px solid " + (p.hot ? "rgba(96,165,250,0.32)" : "rgba(255,255,255,0.1)"),
               position: "relative",
             }}>
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 32 }}>
-                <span style={{ fontSize: 14, fontWeight: 700, color: i === 0 ? "var(--blue-300)" : "rgba(255,255,255,0.75)", letterSpacing: "-0.01em" }}>{p.label}</span>
-                <span className="nk-eyebrow nk-en" style={{ color: "rgba(255,255,255,0.4)", letterSpacing: "0.16em", fontSize: 10 }}>TIER {String(i + 1).padStart(2, "0")}</span>
+              {p.hot && <div style={{ position: "absolute", top: -11, left: 24, background: "var(--blue-400)", color: "#0F1E3C", fontSize: 10.5, fontWeight: 800, padding: "3px 10px", borderRadius: 99 }}>가장 인기</div>}
+              <div style={{ fontSize: 13.5, fontWeight: 700, color: p.hot ? "var(--blue-300)" : "rgba(255,255,255,0.75)", marginBottom: 14 }}>{p.label}</div>
+              <div className="nk-num" style={{ fontSize: "clamp(26px, 2.6vw, 34px)", fontWeight: 900, color: "#fff", letterSpacing: "-0.03em", marginBottom: 12 }}>
+                {p.price}<span style={{ fontSize: 13, fontWeight: 500, color: "rgba(255,255,255,0.5)", marginLeft: 4 }}>{i === 0 ? "" : "/월"}</span>
               </div>
-              <div style={{ display: "flex", alignItems: "baseline", gap: 4, marginBottom: 18 }}>
-                <span className="nk-en nk-num" style={{ fontSize: "clamp(72px, 8.5vw, 112px)", fontWeight: 900, lineHeight: 1, letterSpacing: "-0.05em", color: "#fff" }}>{p.rate}</span>
-                <span className="nk-en" style={{ fontSize: "clamp(36px, 4vw, 56px)", fontWeight: 700, color: i === 0 ? "var(--blue-400)" : "rgba(255,255,255,0.75)", letterSpacing: "-0.03em" }}>%</span>
-              </div>
-              <div style={{ display: "flex", alignItems: "center", gap: 10, paddingTop: 24, borderTop: "1px solid rgba(255,255,255,0.1)" }}>
-                <span style={{ fontSize: 13, color: "rgba(255,255,255,0.55)" }}>{p.detail}</span>
-              </div>
+              <div style={{ fontSize: 12.5, color: "rgba(255,255,255,0.55)", lineHeight: 1.6 }}>{p.detail}</div>
             </div>
           ))}
         </div>
 
         <div className="nk-reveal" style={{ marginTop: 32, display: "flex", alignItems: "center", justifyContent: "center", gap: 32, flexWrap: "wrap", padding: "24px 32px", borderRadius: 12, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)" }}>
-          {[["미낙찰 시", "0원"], ["공고 분석", "무제한"], ["월 구독료", "없음"]].map(([k, v], i) => (
+          {[["낙찰 수수료", "0원"], ["연간 결제", "2개월 무료"], ["초기 구독자", "가격 평생 고정"]].map(([k, v], i) => (
             <span key={i} style={{ display: "flex", alignItems: "center", gap: 32 }}>
               {i > 0 && <span style={{ width: 1, height: 32, background: "rgba(255,255,255,0.1)" }} />}
               <span style={{ display: "flex", alignItems: "baseline", gap: 10 }}>
@@ -778,7 +775,7 @@ function FAQ() {
     { q: "어떤 입찰 방식을 지원하나요?", a: "복수예가, 적격심사 등 일반 공공입찰 전 영역을 지원합니다. 시설공사 · 용역 · 물품 모두 분석 대상입니다." },
     { q: "낙찰이 보장되나요?", a: "낙찰을 보장하지 않습니다. AI는 통계적 확률을 높이는 도구이며, 최종 의사결정은 항상 사용자에게 있습니다." },
     { q: "데이터는 어디서 가져오나요?", a: "조달청 나라장터 공식 데이터를 사용합니다. 다른 출처는 사용하지 않습니다." },
-    { q: "수수료는 어떻게 되나요?", a: "낙찰 시에만 수수료가 발생합니다. 낙찰 금액 1억원 이상은 1.5%, 1억원 미만은 1.7%. 미낙찰 시에는 어떠한 비용도 청구되지 않으며, 분석 자체는 무제한 사용 가능합니다." },
+    { q: "요금은 어떻게 되나요?", a: "낙찰 수수료는 0원입니다 — 낙찰해도 떼가는 돈이 없습니다. 공고 검색·사정율 박스권은 무료이고, 정밀 투찰가 추천은 무료 월 3건 후 구독(라이트 9,900원/프로 19,900원~)으로 무제한 이용할 수 있습니다. 연간 결제 시 2개월 무료." },
   ];
   return (
     <section id="faq" style={{ background: "var(--page)", padding: "120px 0" }}>

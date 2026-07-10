@@ -47,7 +47,9 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     if (sub) {
       const subTyped = sub as { userId: string };
       await supabase.from("Subscription").update({ status: webhook.type === "Transaction.Cancelled" ? "CANCELLED" : "EXPIRED" }).eq("portonePaymentId", paymentId);
-      await supabase.from("User").update({ plan: "FREE" }).eq("id", subTyped.userId);
+      // grandfathered(초기 회원 영구 PRO)는 FREE 강등 금지 (2026-07-09)
+      const { data: whUser } = await supabase.from("User").select("grandfathered").eq("id", subTyped.userId).single();
+      await supabase.from("User").update({ plan: whUser?.grandfathered ? "PRO" : "FREE" }).eq("id", subTyped.userId);
     }
   }
 

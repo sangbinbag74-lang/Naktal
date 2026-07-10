@@ -24,10 +24,13 @@ interface UserRow {
   kakaoVerifiedAt: string | null;
 }
 
-const PLAN_LABELS: Record<string, string> = { FREE: "무료", STANDARD: "스탠다드", PRO: "프로" };
+const PLAN_LABELS: Record<string, string> = { FREE: "무료", STANDARD: "라이트(구)", LITE: "라이트", PRO: "프로", BIZ: "비즈", MASTER: "마스터" };
 const PLAN_STYLE: Record<string, { background: string; color: string }> = {
-  PRO:      { background: "#EDE9FE", color: "#6D28D9" },
-  STANDARD: { background: "#DBEAFE", color: "#1D4ED8" },
+  MASTER:   { background: "#0F172A", color: "#F8FAFC" },
+  BIZ:      { background: "#EDE9FE", color: "#6D28D9" },
+  PRO:      { background: "#DBEAFE", color: "#1B3A6B" },
+  LITE:     { background: "#E0F2FE", color: "#1D4ED8" },
+  STANDARD: { background: "#E0F2FE", color: "#1D4ED8" },
   FREE:     { background: "#F1F5F9", color: "#64748B" },
 };
 
@@ -64,8 +67,10 @@ function PlanSelect({ row, onChange }: { row: UserRow; onChange: (id: string, pl
         }}
       >
         <option value="FREE">무료</option>
-        <option value="STANDARD">스탠다드</option>
+        <option value="LITE">라이트</option>
         <option value="PRO">프로</option>
+        <option value="BIZ">비즈</option>
+        <option value="MASTER">마스터</option>
       </select>
       <span style={{
         position: "absolute", right: 5, top: "50%", transform: "translateY(-50%)",

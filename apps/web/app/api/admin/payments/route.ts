@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin, writeAdminLog } from "@/lib/admin-guard";
 import { createAdminClient } from "@/lib/supabase/server";
 
-const PLAN_PRICES: Record<string, number> = { STANDARD: 99000, PRO: 199000 };
+// 5티어 월간가 (2026-07-09). 연납 매출은 BankTransferRequest 기준이 정확 — 여기는 근사 표시용
+const PLAN_PRICES: Record<string, number> = { STANDARD: 9900, LITE: 9900, PRO: 19900, BIZ: 49900, MASTER: 99000 };
 
 export async function GET(request: NextRequest): Promise<NextResponse> {
   const guard = await requireAdmin(request);
@@ -60,7 +61,9 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   if (!sub) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
   await supabase.from("Subscription").update({ status: "CANCELLED" }).eq("id", body.subscriptionId);
-  await supabase.from("User").update({ plan: "FREE" }).eq("id", (sub as { userId: string }).userId);
+  // grandfathered(초기 회원 영구 PRO)는 구독 취소해도 FREE 강등 금지 (2026-07-09)
+  const { data: subUser } = await supabase.from("User").select("grandfathered").eq("id", (sub as { userId: string }).userId).single();
+  await supabase.from("User").update({ plan: subUser?.grandfathered ? "PRO" : "FREE" }).eq("id", (sub as { userId: string }).userId);
 
   await writeAdminLog({
     adminId: "partner",
