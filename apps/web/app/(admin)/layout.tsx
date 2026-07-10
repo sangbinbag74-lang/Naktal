@@ -26,7 +26,7 @@ const adminSections = [
     label: "서비스",
     items: [
       { href: "/admin/announcements", label: "공고 관리", icon: "📋" },
-      { href: "/admin/requests",      label: "투찰 의뢰", icon: "📬" },
+      { href: "/admin/requests",      label: "AI 분석 의뢰", icon: "📬" },
       { href: "/admin/outcomes",      label: "낙찰 결과", icon: "📈" },
     ],
   },

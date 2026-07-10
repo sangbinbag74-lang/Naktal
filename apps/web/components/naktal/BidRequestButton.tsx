@@ -102,7 +102,7 @@ export function BidRequestButton({
 
   return (
     <>
-      {/* 투찰 추적 (구 투찰 의뢰, 2026-07-10 리네이밍) — 개찰 결과 자동 추적 + 성적표 */}
+      {/* AI 정밀 분석 (구 투찰 의뢰→투찰 추적, 2026-07-10 박상빈님 확정 명칭) — 정밀 추천가 + 개찰 결과 자동 추적 */}
       <button
         onClick={hasRequested ? handleViewContract : handleClick}
         disabled={status === "loading"}
@@ -118,9 +118,9 @@ export function BidRequestButton({
           display: "flex", flexDirection: "column", alignItems: "center", gap: 2, lineHeight: 1.3,
         }}
       >
-        <span>{status === "loading" ? "처리 중..." : (hasRequested ? "✓ 추적 중 · 결과 보기" : "📌 투찰 추적 시작")}</span>
+        <span>{status === "loading" ? "처리 중..." : (hasRequested ? "✓ 분석 완료 · 결과 보기" : "🎯 AI 정밀 분석")}</span>
         {!hasRequested && status !== "loading" && (
-          <span style={{ fontSize: 10.5, fontWeight: 500, opacity: 0.75 }}>개찰 결과 자동 알림 · 무료</span>
+          <span style={{ fontSize: 10.5, fontWeight: 500, opacity: 0.75 }}>정밀 추천가 + 개찰 결과 자동 알림</span>
         )}
       </button>
 

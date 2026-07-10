@@ -236,6 +236,7 @@ function CompetitorSection() {
       </div>
       <p style={{ fontSize: 12.5, color: "#64748B", margin: "0 0 14px" }}>
         추적 중인 경쟁사가 낙찰을 받으면 낙찰가·낙찰률과 함께 이메일로 알려드립니다.
+        업체명을 누르면 <a href="/competitors" style={{ color: "#1B3A6B", fontWeight: 700 }}>심층 분석 리포트</a>로 이동합니다 (PRO).
       </p>
       <div style={{ display: "flex", gap: 8 }}>
         <input value={name} onChange={(e) => setName(e.target.value)} placeholder="경쟁사 상호명 (예: 대한건설)" className="naktal-input" style={{ height: 42, flex: 1 }}
@@ -254,7 +255,9 @@ function CompetitorSection() {
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 14 }}>
           {rows.map((r) => (
             <span key={r.id} style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12.5, fontWeight: 600, color: "#0F172A", background: "#F8FAFC", border: "1px solid #E8ECF2", padding: "6px 10px", borderRadius: 99 }}>
-              🏗 {r.competitorName}
+              <a href={`/competitors?name=${encodeURIComponent(r.competitorName)}`} title="심층 분석 리포트 (PRO)" style={{ color: "#0F172A", textDecoration: "none" }}>
+                🏗 {r.competitorName} <span style={{ color: "#1B3A6B", fontWeight: 700 }}>📊</span>
+              </a>
               <button onClick={() => void handleRemove(r.id)} style={{ background: "none", border: "none", color: "#94A3B8", cursor: "pointer", fontSize: 13, lineHeight: 1, padding: 0 }}>×</button>
             </span>
           ))}

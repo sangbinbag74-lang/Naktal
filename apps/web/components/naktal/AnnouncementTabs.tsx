@@ -81,7 +81,7 @@ export interface AnnouncementTabsProps {
   multiplePrice: boolean;
   isClosed: boolean;
   bidMethod: string;
-  isContracted?: boolean;    // 계약 완료 여부 — false 면 사정율 분석 블러
+  isContracted?: boolean;    // (구 계약 모델 흔적 — 호출부 호환용, 잠금 분기 없음)
   aValueTotal?: number;      // A합산 (원). A값 적용 공고만, 없으면 0
   cntrctCnclsMthdNm?: string | null; // 계약방법 (수의/협상/일반·제한 등) — 분석 차단 판정용
   prearngPrceDcsnMthdNm?: string | null; // 가격결정방식 (복수예가/단일예가/비예가) — F3+F8 분석 차단용
@@ -95,6 +95,7 @@ export function AnnouncementTabs({
   cntrctCnclsMthdNm = null,
   prearngPrceDcsnMthdNm = null,
 }: AnnouncementTabsProps) {
+  void isContracted; // 2026-07-10 수수료·전자계약 폐지 — 사정율 분석 잠금 제거 (분포·흐름·구간추천은 무료 공개)
   const [analysis, setAnalysis] = useState<ComprehensiveResult | null>(null);
   const [analysisLoading, setAnalysisLoading] = useState(true);
   const [subTab, setSubTab] = useState<SubTab>("analysis1");
@@ -220,35 +221,14 @@ export function AnnouncementTabs({
             return null;
           })()}
 
-          {/* 사정율 분석 (서브탭 3개) — 계약 완료 후 공개 */}
+          {/* 사정율 분석 (서브탭 3개) — 무료 공개 (2026-07-10 무료+구독 전환, 계약 잠금 폐지) */}
           <div style={{ background: "#fff", border: "1px solid #E8ECF2", borderRadius: 10, padding: "16px 18px", position: "relative", overflow: "hidden" }}>
             <div style={{ fontSize: 13, fontWeight: 700, color: "#0F172A", marginBottom: 12 }}>
               사정율 분석
-              {!isContracted && (
-                <span style={{ fontSize: 10, fontWeight: 700, background: "#FEF3C7", color: "#92400E", padding: "2px 7px", borderRadius: 4, marginLeft: 8 }}>
-                  🔒 계약 회원
-                </span>
-              )}
+              <span style={{ fontSize: 10, fontWeight: 700, background: "#ECFDF5", color: "#059669", padding: "2px 7px", borderRadius: 4, marginLeft: 8 }}>
+                무료
+              </span>
             </div>
-            {!isContracted && (
-              <div style={{
-                position: "absolute", top: 50, left: 0, right: 0, bottom: 0,
-                background: "rgba(248,250,252,0.92)",
-                backdropFilter: "blur(18px)",
-                WebkitBackdropFilter: "blur(18px)",
-                display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
-                gap: 10, borderRadius: 10, zIndex: 10,
-              }}>
-                <div style={{ fontSize: 36 }}>🔒</div>
-                <div style={{ fontSize: 15, fontWeight: 700, color: "#0F172A" }}>
-                  계약 완료 후 공개됩니다
-                </div>
-                <div style={{ fontSize: 12, color: "#64748B", textAlign: "center", padding: "0 16px", lineHeight: 1.5 }}>
-                  투찰 의뢰 + 전자서명 완료 시<br />
-                  사정율 분포·흐름·구간추천 3종 모두 공개
-                </div>
-              </div>
-            )}
             {/* 서브탭 네비게이션 */}
             <div style={{ display: "flex", gap: 4, marginBottom: 16, padding: 4, background: "#F8FAFC", borderRadius: 10 }}>
               {([

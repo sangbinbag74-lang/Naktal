@@ -41,7 +41,7 @@ export default function RealtimePage() {
             <span style={{ fontSize: 11, fontWeight: 700, background: "#F0F9FF", color: "#0369A1", padding: "3px 8px", borderRadius: 5 }}>CORE 2</span>
             <span style={{ fontSize: 10, fontWeight: 700, background: "#059669", color: "#fff", padding: "2px 6px", borderRadius: 4 }}>PRO 전용</span>
           </div>
-          <p style={{ fontSize: 13, color: "#64748B", margin: 0 }}>마감 3시간 전 실시간 참여자 수 변화를 모니터링하고 번호 전략을 실시간으로 갱신합니다.</p>
+          <p style={{ fontSize: 13, color: "#64748B", margin: 0 }}>공고별 참여업체 수를 개찰 즉시 자동 집계하고, 참여자 수 기반 경쟁 강도를 모니터링합니다.</p>
         </div>
 
         {/* 블러 미리보기 */}
@@ -71,9 +71,9 @@ export default function RealtimePage() {
         {/* 기능 설명 */}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 14 }}>
           {[
-            { icon: "📡", title: "실시간 참여 신청 현황", desc: "나라장터 실시간 참여 데이터를 5분마다 업데이트" },
-            { icon: "🔄", title: "번호 전략 자동 갱신", desc: "참여자 수 변화에 따라 추천 번호 조합 실시간 재계산" },
-            { icon: "🔔", title: "마감 알림", desc: "D-3 이내 공고 참여자 급증 시 즉시 알림" },
+            { icon: "📡", title: "개찰 즉시 참여자 집계", desc: "개찰 결과 공개 즉시 참여업체 수를 자동 수집 (매시 갱신)" },
+            { icon: "📊", title: "경쟁 강도 분석", desc: "참여자 수 이력으로 발주처·공종별 경쟁 강도 파악" },
+            { icon: "⚡", title: "실시간 반영", desc: "새 집계가 저장되는 순간 화면에 실시간 반영" },
           ].map(({ icon, title, desc }) => (
             <div key={title} style={{ background: "#fff", borderRadius: 14, border: "1px solid #E8ECF2", padding: "20px" }}>
               <div style={{ fontSize: 28, marginBottom: 10 }}>{icon}</div>
@@ -96,9 +96,11 @@ interface ParticipantSnapshot {
 interface ParticipantData {
   title?: string;
   deadline?: string;
+  opened?: boolean;
   currentCount?: number | null;
   snapshotChannel?: string | null;
   snapshots?: ParticipantSnapshot[];
+  error?: string;
 }
 
 function RealtimeMonitor() {
@@ -165,17 +167,27 @@ function RealtimeMonitor() {
         </button>
       </div>
 
-      {data && (
+      {data?.error && (
+        <div style={{ background: "#FEF2F2", border: "1px solid #FECACA", borderRadius: 12, padding: "14px 18px", fontSize: 13, color: "#991B1B" }}>
+          {data.error}
+        </div>
+      )}
+
+      {data && !data.error && (
         <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
           <div style={{ background: "#fff", borderRadius: 14, border: "1px solid #E8ECF2", padding: 20 }}>
             <div style={{ fontSize: 15, fontWeight: 700, color: "#0F172A", marginBottom: 8 }}>{data.title}</div>
             <div style={{ display: "flex", gap: 24 }}>
               <div>
-                <div style={{ fontSize: 11, color: "#9CA3AF" }}>현재 참여자</div>
+                <div style={{ fontSize: 11, color: "#9CA3AF" }}>참여업체 수</div>
                 <div style={{ fontSize: 32, fontWeight: 800, color: "#1B3A6B" }}>
-                  {liveCount !== null ? liveCount + "개사" : "집계 중"}
+                  {liveCount !== null ? liveCount + "개사" : (data.opened === false ? "개찰 전" : "집계 중")}
                 </div>
-                {liveCount !== null && <div style={{ fontSize: 11, color: "#60A5FA" }}>● 실시간 업데이트</div>}
+                {liveCount !== null
+                  ? <div style={{ fontSize: 11, color: "#60A5FA" }}>● 실시간 업데이트</div>
+                  : data.opened === false
+                    ? <div style={{ fontSize: 11, color: "#9CA3AF" }}>나라장터는 마감 전 참여자 수를 공개하지 않습니다 · 개찰 즉시 자동 집계</div>
+                    : <div style={{ fontSize: 11, color: "#9CA3AF" }}>개찰 결과 공개 대기 중 · 매시 자동 재시도</div>}
               </div>
               <div>
                 <div style={{ fontSize: 11, color: "#9CA3AF" }}>마감일</div>

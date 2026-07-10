@@ -49,9 +49,9 @@ export default async function AdminUserContractsPreview({ params }: Props) {
       </div>
 
       <div>
-        <h2 style={{ fontSize: 22, fontWeight: 700, color: "#0F172A", margin: "0 0 4px" }}>투찰 의뢰 내역</h2>
+        <h2 style={{ fontSize: 22, fontWeight: 700, color: "#0F172A", margin: "0 0 4px" }}>AI 정밀 분석 내역</h2>
         <p style={{ fontSize: 13, color: "#64748B", margin: 0 }}>
-          총 {list.length}건 · AI 추천 투찰금액을 기반으로 의뢰한 공고 목록입니다
+          총 {list.length}건 · AI 정밀 분석을 실행한 공고 목록입니다
         </p>
       </div>
 

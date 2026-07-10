@@ -24,7 +24,10 @@
     "apps/web/app/api/cron/scorecard/route.ts": { "maxDuration": 60 },
     "apps/web/app/api/cron/competitor-alerts/route.ts": { "maxDuration": 60 },
     "apps/web/app/api/cron/weekly-report/route.ts": { "maxDuration": 60 },
-    "apps/web/app/api/cron/monthly-backtest/route.ts": { "maxDuration": 60 }
+    "apps/web/app/api/cron/monthly-backtest/route.ts": { "maxDuration": 60 },
+    "apps/web/app/api/cron/realtime-snapshot/route.ts": { "maxDuration": 120 },
+    "apps/web/app/api/realtime/participants/route.ts": { "maxDuration": 30 },
+    "apps/web/app/api/competitors/report/route.ts": { "maxDuration": 30 }
   },
   "crons": [
     { "path": "/api/cron/seo-ping", "schedule": "0 20 * * *" },
@@ -35,6 +38,7 @@
     { "path": "/api/cron/competitor-alerts", "schedule": "0 2 * * *" },
     { "path": "/api/cron/weekly-report", "schedule": "0 23 * * 0" },
     { "path": "/api/cron/monthly-backtest", "schedule": "0 0 1 * *" },
-    { "path": "/api/cron/subscription-expiry", "schedule": "30 23 * * *" }
+    { "path": "/api/cron/subscription-expiry", "schedule": "30 23 * * *" },
+    { "path": "/api/cron/realtime-snapshot", "schedule": "20 * * * *" }
   ]
 }

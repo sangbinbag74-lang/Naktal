@@ -14,6 +14,7 @@ const MENU_SECTIONS = [
       { href: "/announcements", label: "공고 목록", icon: "≡" },
       { href: "/qualification", label: "적격심사 계산기", icon: "🧮" },
       { href: "/realtime", label: "실시간 모니터", icon: "📡" },
+      { href: "/competitors", label: "경쟁사 분석", icon: "🔍" },
     ],
   },
   {
@@ -21,7 +22,7 @@ const MENU_SECTIONS = [
     items: [
       { href: "/history",  label: "열람 이력",  icon: "🎯" },
       { href: "/folder",   label: "찜 목록",    icon: "⭐" },
-      { href: "/contracts", label: "투찰 추적", icon: "📌" },
+      { href: "/contracts", label: "AI 정밀 분석", icon: "🎯" },
       { href: "/alerts",   label: "알림 설정",  icon: "◌" },
     ],
   },
@@ -39,7 +40,7 @@ const MENU_SECTIONS = [
       { href: "/admin/model",          label: "대시보드",   icon: "🏠", adminOnly: true },
       { href: "/admin/users",          label: "회원 관리",  icon: "👥", adminOnly: true },
       { href: "/admin/announcements",  label: "공고 관리",  icon: "📋", adminOnly: true },
-      { href: "/admin/requests",       label: "투찰 의뢰",  icon: "📬", adminOnly: true },
+      { href: "/admin/requests",       label: "AI 분석 의뢰", icon: "📬", adminOnly: true },
       { href: "/admin/outcomes",       label: "낙찰 결과",  icon: "📈", adminOnly: true },
       { href: "/admin/predictions",    label: "예측 vs 결과", icon: "🔮", adminOnly: true },
       { href: "/admin/accuracy",       label: "AI 적중률",  icon: "🎯", adminOnly: true },
