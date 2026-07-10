@@ -12,6 +12,8 @@ const MENU_SECTIONS = [
     label: "핵심 기능",
     items: [
       { href: "/announcements", label: "공고 목록", icon: "≡" },
+      { href: "/qualification", label: "적격심사 계산기", icon: "🧮" },
+      { href: "/realtime", label: "실시간 모니터", icon: "📡" },
     ],
   },
   {
@@ -27,6 +29,7 @@ const MENU_SECTIONS = [
     label: "계정",
     items: [
       { href: "/profile",  label: "내 업체 정보", icon: "🏢" },
+      { href: "/billing",  label: "요금제",       icon: "💳" },
       { href: "/settings", label: "설정",         icon: "⚙" },
     ],
   },

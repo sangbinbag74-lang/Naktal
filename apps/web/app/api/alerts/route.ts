@@ -28,16 +28,24 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const { data: dbUser } = await supabase.from("User").select("id, plan").eq("supabaseId", user.id).single();
+  const { data: dbUser } = await supabase.from("User").select("id, plan, grandfathered").eq("supabaseId", user.id).single();
   if (!dbUser) return NextResponse.json({ error: "User not found" }, { status: 404 });
 
-  const typedUser = dbUser as { id: string; plan: string };
+  const typedUser = dbUser as { id: string; plan: string; grandfathered?: boolean };
 
-  // 무료 플랜: 알림 1개 제한
-  if (typedUser.plan === "FREE") {
+  // 5티어 알림 한도 (2026-07-09): FREE 3 / LITE·STANDARD 10 / PRO·BIZ·MASTER 무제한
+  const effectivePlan = typedUser.grandfathered ? "PRO" : typedUser.plan;
+  const alertLimit =
+    effectivePlan === "FREE" ? 3 :
+    effectivePlan === "LITE" || effectivePlan === "STANDARD" ? 10 :
+    Infinity;
+  if (alertLimit !== Infinity) {
     const { count } = await supabase.from("UserAlert").select("*", { count: "exact" }).eq("userId", typedUser.id).eq("active", true);
-    if ((count ?? 0) >= 1) {
-      return NextResponse.json({ error: "무료 플랜은 알림을 1개만 설정할 수 있습니다." }, { status: 403 });
+    if ((count ?? 0) >= alertLimit) {
+      return NextResponse.json(
+        { error: `현재 플랜은 알림을 ${alertLimit}개까지 설정할 수 있습니다. 더 필요하시면 요금제를 업그레이드해주세요.`, upgradeUrl: "/billing" },
+        { status: 403 },
+      );
     }
   }
 

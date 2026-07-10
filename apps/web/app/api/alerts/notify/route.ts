@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/server";
 import { Resend } from "resend";
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://naktal.me";
@@ -70,15 +70,10 @@ function buildEmailHtml(ann: Announcement, bizName: string): string {
 </div>`;
 }
 
-export async function POST(request: NextRequest): Promise<NextResponse> {
-  // 관리자 인증
-  const secret = request.headers.get("x-admin-secret");
-  if (!secret || secret !== process.env.ADMIN_SECRET_KEY) {
-    return NextResponse.json({ ok: false }, { status: 401 });
-  }
-
+// 발송 본체 — 관리자 수동(POST)·Vercel Cron(GET) 공용 (2026-07-09 cron 가동)
+async function runNotify(): Promise<NextResponse> {
   const resend = new Resend(process.env.RESEND_API_KEY);
-  const supabase = await createClient();
+  const supabase = createAdminClient(); // cron 은 쿠키 세션이 없으므로 service role
 
   // 오늘 등록된 신규 공고
   const today = new Date();
@@ -125,4 +120,23 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   }
 
   return NextResponse.json({ ok: true, sent: sentCount });
+}
+
+// 관리자 수동 트리거 (기존 호환)
+export async function POST(request: NextRequest): Promise<NextResponse> {
+  const secret = request.headers.get("x-admin-secret");
+  if (!secret || secret !== process.env.ADMIN_SECRET_KEY) {
+    return NextResponse.json({ ok: false }, { status: 401 });
+  }
+  return runNotify();
+}
+
+// Vercel Cron (매일 09:00 KST) — Bearer CRON_SECRET (seo-ping 과 동일 패턴)
+export async function GET(request: NextRequest): Promise<NextResponse> {
+  const authHeader = request.headers.get("authorization");
+  const cronSecret = process.env.CRON_SECRET;
+  if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+  return runNotify();
 }
