@@ -127,6 +127,9 @@ async function runScorecard(): Promise<NextResponse> {
   const admin = createAdminClient();
   const resend = new Resend(process.env.RESEND_API_KEY);
 
+  // 0. 성적표 알림톡(BidRequest 순위 기반) — 이메일용 열람공고 소스와 독립이므로 early-return 전에 먼저 실행
+  const alimtalk = await sendScorecardAlimtalk(admin);
+
   // 1. 최근 36시간 내 실제 결과가 채워진 예측 (성적 데이터)
   const since = new Date(Date.now() - 36 * 60 * 60 * 1000).toISOString();
   const { data: preds } = await admin
@@ -136,7 +139,7 @@ async function runScorecard(): Promise<NextResponse> {
     .not("actualFinalPrice", "is", null)
     .limit(300);
   const scoreRows = (preds ?? []) as unknown as (ScoreRow & { resultFilledAt: string })[];
-  if (scoreRows.length === 0) return NextResponse.json({ ok: true, sent: 0, message: "신규 개찰 결과 없음" });
+  if (scoreRows.length === 0) return NextResponse.json({ ok: true, sent: 0, alimtalk, message: "신규 개찰 결과 없음" });
 
   const annIds = scoreRows.map((r) => r.annId);
   const scoreByAnn = new Map(scoreRows.map((r) => [r.annId, r]));
@@ -147,7 +150,7 @@ async function runScorecard(): Promise<NextResponse> {
     .select("userId,annDbId")
     .in("annDbId", annIds)
     .limit(3000);
-  if (!visits || visits.length === 0) return NextResponse.json({ ok: true, sent: 0, message: "방문자 없음" });
+  if (!visits || visits.length === 0) return NextResponse.json({ ok: true, sent: 0, alimtalk, message: "방문자 없음" });
 
   // 사용자별 공고 목록
   const byUser = new Map<string, string[]>();
@@ -200,7 +203,6 @@ async function runScorecard(): Promise<NextResponse> {
     }
   }
 
-  const alimtalk = await sendScorecardAlimtalk(admin);
   return NextResponse.json({ ok: true, sent, alimtalk, announcements: scoreRows.length });
 }
 
