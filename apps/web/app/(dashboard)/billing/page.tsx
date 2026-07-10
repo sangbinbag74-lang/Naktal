@@ -21,7 +21,7 @@ const PLANS: {
     features: [
       { text: "공고 검색·상세 무제한" },
       { text: "사정율 박스권(범위) 전 공고" },
-      { text: "정밀 추천 월 3건" },
+      { text: "공고 AI 분석 월 3건 (정밀 투찰가·번호)" },
       { text: "개찰 후 성적표 알림" },
       { text: "공고 알림 3개 · 경쟁사 추적 1개사" },
     ],
@@ -29,7 +29,7 @@ const PLANS: {
   {
     id: "LITE", name: "라이트", monthly: 9900, yearly: 99000, accent: "#1D4ED8",
     features: [
-      { text: "정밀 투찰가·번호 추천 무제한" },
+      { text: "공고 AI 분석 무제한 — 정밀 투찰가·번호" },
       { text: "광고 제거" },
       { text: "공고 알림 10개 + 카카오 알림톡" },
       { text: "경쟁사 추적 3개사" },

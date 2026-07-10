@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 
 /* ──────────────────────────────────────────────────────────────
@@ -589,9 +589,9 @@ function DataScale() {
 
 function ProvenPerformance() {
   const stats = [
-    { pre: "~", n: "30", u: "%", l: "낙찰선 ±3등 근접률", d: "추천가가 낙찰선 코앞(±3등)에 안착하는 비율" },
+    { pre: "약 ", n: "30", u: "%", l: "낙찰선 ±3등 근접률", d: "추천가가 낙찰선 코앞(±3등)에 안착하는 비율" },
     { pre: "", n: "28,000", u: "+", l: "맞춤 학습 발주처", d: "발주처마다 다른 입찰 패턴을 각각 학습" },
-    { pre: "", n: "218", u: "만 건", l: "AI 학습 공고", d: "2002년부터 누적된 입찰 데이터로 학습" },
+    { pre: "", n: "5,300", u: "만+", l: "분석 기반 데이터", d: "2002년부터 쌓인 공고·낙찰·개찰 전 기록 위에서 예측" },
   ];
   return (
     <section style={{ background: "var(--navy-900)", color: "#fff", padding: "140px 0", position: "relative", overflow: "hidden" }}>
@@ -717,6 +717,84 @@ function Trust() {
   );
 }
 
+// 어도비식 펼쳐지는 전체 기능 비교표 (2026-07-09 박상빈님 지시)
+function PricingCompareTable() {
+  const [open, setOpen] = useState(false);
+  const TIERS = ["무료", "라이트", "프로", "비즈", "마스터"];
+  const ROWS: { group?: string; name: string; vals: string[] }[] = [
+    { group: "기본", name: "공고 검색·상세 열람", vals: ["✓", "✓", "✓", "✓", "✓"] },
+    { name: "사정율 박스권(범위)", vals: ["✓", "✓", "✓", "✓", "✓"] },
+    { name: "개찰 후 성적표 알림", vals: ["✓", "✓", "✓", "✓", "✓"] },
+    { group: "AI 분석", name: "공고 AI 분석 (정밀 투찰가·번호)", vals: ["월 3건", "무제한", "무제한", "무제한", "무제한"] },
+    { name: "AI 원본값 (개인화 보정 0)", vals: ["—", "—", "✓", "✓", "✓"] },
+    { name: "실시간 참여자 모니터", vals: ["—", "—", "✓", "✓", "✓"] },
+    { name: "경쟁사·발주처 심층 분석", vals: ["—", "—", "✓", "✓", "✓"] },
+    { name: "사정율 추세·안정성 분석", vals: ["—", "✓", "✓", "✓", "✓"] },
+    { group: "알림", name: "공고 조건 알림", vals: ["3개", "10개", "무제한", "무제한", "무제한"] },
+    { name: "카카오 알림톡", vals: ["—", "✓", "✓", "✓", "✓"] },
+    { name: "경쟁사 추적 (낙찰 알림)", vals: ["1개사", "3개사", "5개사", "10개사", "무제한"] },
+    { group: "리포트", name: "주간 리포트", vals: ["기본", "기본", "기본", "심층", "심층"] },
+    { name: "월간 맞춤 백테스트", vals: ["—", "—", "—", "—", "✓"] },
+    { group: "기타", name: "팀 계정 (8월 오픈)", vals: ["1", "1", "1", "3", "5"] },
+    { name: "광고", vals: ["노출", "제거", "제거", "제거", "제거"] },
+    { name: "낙찰 수수료", vals: ["0원", "0원", "0원", "0원", "0원"] },
+    { name: "월 요금 (연납 시 2개월 무료)", vals: ["0원", "9,900원", "19,900원", "49,900원", "99,000원"] },
+  ];
+  return (
+    <div className="nk-reveal" style={{ marginTop: 20 }}>
+      <button
+        onClick={() => setOpen(!open)}
+        style={{
+          width: "100%", height: 50, borderRadius: 12, cursor: "pointer",
+          background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.12)",
+          color: "rgba(255,255,255,0.85)", fontSize: 14, fontWeight: 700,
+          display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+        }}
+      >
+        전체 기능 비교 {open ? "접기 ▴" : "펼쳐보기 ▾"}
+      </button>
+      {open && (
+        <div style={{ marginTop: 14, borderRadius: 14, border: "1px solid rgba(255,255,255,0.12)", overflow: "hidden", overflowX: "auto" }}>
+          <table style={{ width: "100%", minWidth: 640, borderCollapse: "collapse", fontSize: 12.5 }}>
+            <thead>
+              <tr style={{ background: "rgba(255,255,255,0.06)" }}>
+                <th style={{ textAlign: "left", padding: "12px 16px", color: "rgba(255,255,255,0.6)", fontWeight: 600, fontSize: 11.5 }}>기능</th>
+                {TIERS.map((t, i) => (
+                  <th key={t} style={{ padding: "12px 8px", color: i === 2 ? "var(--blue-300)" : "rgba(255,255,255,0.85)", fontWeight: 800, whiteSpace: "nowrap" }}>
+                    {t}{i === 2 ? " ⭐" : ""}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {ROWS.map((r) => (
+                <Fragment key={r.name}>
+                  {r.group && (
+                    <tr>
+                      <td colSpan={6} style={{ padding: "10px 16px 4px", color: "var(--blue-400)", fontSize: 10.5, fontWeight: 800, letterSpacing: "0.1em", textTransform: "uppercase" }}>{r.group}</td>
+                    </tr>
+                  )}
+                  <tr style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}>
+                    <td style={{ padding: "9px 16px", color: "rgba(255,255,255,0.75)" }}>{r.name}</td>
+                    {r.vals.map((v, i) => (
+                      <td key={i} style={{
+                        padding: "9px 8px", textAlign: "center", whiteSpace: "nowrap",
+                        color: v === "—" ? "rgba(255,255,255,0.25)" : v === "✓" ? "var(--green-400)" : "#fff",
+                        fontWeight: v === "✓" || v === "—" ? 400 : 600,
+                        background: i === 2 ? "rgba(96,165,250,0.06)" : "transparent",
+                      }}>{v}</td>
+                    ))}
+                  </tr>
+                </Fragment>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function Pricing() {
   return (
     <section style={{ background: "var(--navy-900)", color: "#fff", padding: "140px 0", position: "relative", overflow: "hidden" }}>
@@ -732,28 +810,31 @@ function Pricing() {
           </p>
         </div>
 
-        <div className="nk-reveal" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 14 }}>
+        <div className="nk-reveal" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 12 }}>
           {[
-            { label: "무료", price: "0원", detail: "공고 검색 · 박스권 · 정밀 추천 월 3건", hot: false },
-            { label: "라이트", price: "9,900원", detail: "정밀 투찰가·번호 무제한 · 광고 제거", hot: false },
-            { label: "프로", price: "19,900원", detail: "AI 원본값 · 실시간 모니터 · 심층 분석", hot: true },
-            { label: "비즈 · 마스터", price: "49,900원~", detail: "팀 계정 · 맞춤 리포트 · 전담 지원", hot: false },
+            { label: "무료", price: "0원", detail: "공고 검색 · 박스권 · AI 분석 월 3건", hot: false },
+            { label: "라이트", price: "9,900원", detail: "공고 AI 분석 무제한 · 광고 제거", hot: false },
+            { label: "프로", price: "19,900원", detail: "AI 원본값 · 실시간 모니터", hot: true },
+            { label: "비즈", price: "49,900원", detail: "팀 3계정 · 주간 심층 리포트", hot: false },
+            { label: "마스터", price: "99,000원", detail: "5계정 · 맞춤 백테스트 · 전담", hot: false },
           ].map((p, i) => (
             <div key={i} style={{
-              padding: "30px 26px", borderRadius: 18,
+              padding: "26px 20px", borderRadius: 18,
               background: p.hot ? "linear-gradient(180deg, rgba(96,165,250,0.16) 0%, rgba(96,165,250,0.04) 100%)" : "rgba(255,255,255,0.035)",
               border: "1px solid " + (p.hot ? "rgba(96,165,250,0.32)" : "rgba(255,255,255,0.1)"),
               position: "relative",
             }}>
-              {p.hot && <div style={{ position: "absolute", top: -11, left: 24, background: "var(--blue-400)", color: "#0F1E3C", fontSize: 10.5, fontWeight: 800, padding: "3px 10px", borderRadius: 99 }}>가장 인기</div>}
-              <div style={{ fontSize: 13.5, fontWeight: 700, color: p.hot ? "var(--blue-300)" : "rgba(255,255,255,0.75)", marginBottom: 14 }}>{p.label}</div>
-              <div className="nk-num" style={{ fontSize: "clamp(26px, 2.6vw, 34px)", fontWeight: 900, color: "#fff", letterSpacing: "-0.03em", marginBottom: 12 }}>
-                {p.price}<span style={{ fontSize: 13, fontWeight: 500, color: "rgba(255,255,255,0.5)", marginLeft: 4 }}>{i === 0 ? "" : "/월"}</span>
+              {p.hot && <div style={{ position: "absolute", top: -11, left: 20, background: "var(--blue-400)", color: "#0F1E3C", fontSize: 10.5, fontWeight: 800, padding: "3px 10px", borderRadius: 99 }}>가장 인기</div>}
+              <div style={{ fontSize: 13, fontWeight: 700, color: p.hot ? "var(--blue-300)" : "rgba(255,255,255,0.75)", marginBottom: 12 }}>{p.label}</div>
+              <div className="nk-num" style={{ fontSize: "clamp(22px, 2.2vw, 28px)", fontWeight: 900, color: "#fff", letterSpacing: "-0.03em", marginBottom: 10 }}>
+                {p.price}<span style={{ fontSize: 12, fontWeight: 500, color: "rgba(255,255,255,0.5)", marginLeft: 3 }}>{i === 0 ? "" : "/월"}</span>
               </div>
-              <div style={{ fontSize: 12.5, color: "rgba(255,255,255,0.55)", lineHeight: 1.6 }}>{p.detail}</div>
+              <div style={{ fontSize: 12, color: "rgba(255,255,255,0.55)", lineHeight: 1.6 }}>{p.detail}</div>
             </div>
           ))}
         </div>
+
+        <PricingCompareTable />
 
         <div className="nk-reveal" style={{ marginTop: 32, display: "flex", alignItems: "center", justifyContent: "center", gap: 32, flexWrap: "wrap", padding: "24px 32px", borderRadius: 12, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)" }}>
           {[["낙찰 수수료", "0원"], ["연간 결제", "2개월 무료"], ["초기 구독자", "가격 평생 고정"]].map(([k, v], i) => (
