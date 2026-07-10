@@ -8,6 +8,7 @@
  * 인증: Bearer CRON_SECRET (매시 정각) / 관리자 수동 POST(x-admin-secret, ?days=1~30 백필)
  */
 import { NextRequest, NextResponse } from "next/server";
+import { randomUUID } from "crypto";
 import { createAdminClient } from "@/lib/supabase/server";
 import { g2bFetchOpengComptForBidNtceNo } from "@/lib/g2b";
 import { rateLimit } from "@/lib/rate-limit";
@@ -73,14 +74,20 @@ async function runSnapshot(days: number): Promise<NextResponse> {
   }
 
   // 4. DB 매칭분 bulk insert
+  // ⚠️ id 명시 필수 — Prisma @default(cuid()) 는 client-side. Supabase 직접 insert 는 id NOT NULL 위반
+  //    (2026-07-10 실측: 955건 매칭인데 dbFilled 0 — 전량 조용히 실패했던 원인)
   const rows = need
     .filter((a) => countMap.has(a.konepsId))
-    .map((a) => ({ annId: a.id, count: countMap.get(a.konepsId) as number }));
+    .map((a) => ({ id: randomUUID(), annId: a.id, count: countMap.get(a.konepsId) as number }));
   let dbFilled = 0;
+  let dbErrors: string | null = null;
   for (const batch of chunk(rows, 100)) {
     const { error } = await admin.from("ParticipantSnapshot").insert(batch);
     if (!error) dbFilled += batch.length;
-    else console.error("[realtime-snapshot] insert 오류:", error.message);
+    else {
+      dbErrors = error.message; // 조용한 실패 금지 — 응답으로 노출
+      console.error("[realtime-snapshot] insert 오류:", error.message);
+    }
   }
 
   // 5. DB에 결과 없는 당일 개찰분 프로브 (마감 1~24h 경과, 최신순 ≤12건, 순차 250ms)
@@ -105,14 +112,15 @@ async function runSnapshot(days: number): Promise<NextResponse> {
       deadline: new Date(t.deadline),
     }).catch(() => []);
     if (compt.length > 0) {
-      const { error } = await admin.from("ParticipantSnapshot").insert({ annId: t.id, count: compt.length });
+      const { error } = await admin.from("ParticipantSnapshot").insert({ id: randomUUID(), annId: t.id, count: compt.length });
       if (!error) probeFilled++;
+      else console.error("[realtime-snapshot] 프로브 insert 오류:", error.message);
     }
     await new Promise((r) => setTimeout(r, 250));
   }
 
   console.log(`[realtime-snapshot] 창 ${anns.length}건 · 미충족 ${need.length}건 · DB백필 ${dbFilled}건 · 프로브 ${probed}건 중 ${probeFilled}건 저장`);
-  return NextResponse.json({ ok: true, window: anns.length, need: need.length, dbFilled, probed, probeFilled });
+  return NextResponse.json({ ok: dbErrors == null, window: anns.length, need: need.length, dbFilled, probed, probeFilled, dbErrors });
 }
 
 export async function GET(request: NextRequest): Promise<NextResponse> {

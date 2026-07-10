@@ -5,6 +5,7 @@
  * 스냅샷이 없고 마감이 지난 공고면 KONEPS 개찰 결과를 즉석 1회 조회해 저장 (온디맨드).
  */
 import { NextRequest, NextResponse } from "next/server";
+import { randomUUID } from "crypto";
 import { createAdminClient, createClient } from "@/lib/supabase/server";
 import { canAccess, Feature } from "@/lib/plan-guard";
 import { g2bFetchOpengComptForBidNtceNo } from "@/lib/g2b";
@@ -81,7 +82,8 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
       deadline: new Date(String(ann.deadline)),
     }).catch(() => []);
     if (compt.length > 0) {
-      const { error } = await admin.from("ParticipantSnapshot").insert({ annId: ann.id, count: compt.length });
+      // id 명시 필수 — Prisma @default(cuid()) 는 client-side (Supabase 직접 insert 는 NOT NULL 위반)
+      const { error } = await admin.from("ParticipantSnapshot").insert({ id: randomUUID(), annId: ann.id, count: compt.length });
       if (error) console.error("[realtime/participants] 온디맨드 스냅샷 저장 오류:", error.message);
       snapshots = [{ count: compt.length, snapshotAt: new Date().toISOString() }];
     }
