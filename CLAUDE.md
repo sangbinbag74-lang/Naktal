@@ -230,13 +230,18 @@ KAKAO_TEMPLATE_DEADLINE= # 마감 임박 알림 템플릿 ID
 - shadcn/ui 컴포넌트 원본 수정 금지 → 래핑
 
 ## 현재 상태: 실서비스 운영 중 (B안 베타)
-배포: Vercel → naktal.me (naktal-docs 프로젝트, Root Directory=apps/web)
-⚠️ **유효한 vercel.json은 apps/web/vercel.json 하나뿐** — 루트 vercel.json은 Vercel이 읽지 않는 죽은 파일 (2026-07-10 실측: 루트에만 등록한 cron 6종이 전부 미실행이었음). crons·functions 추가는 반드시 apps/web/vercel.json에. functions 경로는 apps/web 기준 상대 경로("app/api/...").
+배포: Vercel → naktal.me (naktal-docs 프로젝트, Root Directory=apps/web, **Hobby 플랜**)
+⚠️ **유효한 vercel.json은 apps/web/vercel.json 하나뿐** — 루트 vercel.json은 Vercel이 읽지 않는 죽은 파일 (2026-07-10 실측: 루트에만 등록한 cron 6종이 전부 미실행이었음). functions 경로는 apps/web 기준 상대 경로("app/api/...").
+⚠️ **Hobby 플랜 제약 (2026-07-10 배포 거부 실측)**: cron 3개 이상 또는 functions `memory` 설정 시 배포 생성 자체가 거부됨. Vercel crons는 sync-g2b 1개만 유지, **신규 주기 작업은 .github/workflows/web-crons.yml에 스케줄 추가** (Bearer CRON_SECRET curl 패턴).
 
-## 운영 스케줄
-매일 03:00 KST   — /api/cron/sync-g2b (공고 + 낙찰결과 수집)
-GitHub Actions  — bulk-import.yml (2012~ 역대 데이터, 수동 실행)
-pg_cron (선택)  — 실시간 참여자 스냅샷 (snapshotParticipants 함수)
+## 운영 스케줄 (2026-07-10 정비)
+Vercel cron (유일) — /api/cron/sync-g2b 매일 09:00 KST (Hobby라 시각 부정확 가능)
+GitHub Actions g2b.yml — 매일 23:00 KST daily 수집 (announcement → extras → opening → audit)
+GitHub Actions prefill-predictions.yml — 매시 정각 AI 예측 채움
+GitHub Actions web-crons.yml — 웹 주기 작업 10종 트리거 (Bearer CRON_SECRET):
+  매시 20분 realtime-snapshot(참여자 스냅샷) / 09:00 notify / 10:30 scorecard
+  / 11:00 competitor-alerts / 08:30 subscription-expiry / 월 08:00 weekly-report
+  / 1일 monthly-backtest / 05:00 seo-ping / 10:00 x-post / 일 18:00 pr-email
 
 ## 장애 대응
 CORE 1 DB 데이터 부족 → estimated-v1 폴백 + isEstimated:true UI 표시
