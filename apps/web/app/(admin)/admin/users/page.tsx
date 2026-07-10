@@ -12,6 +12,7 @@ interface UserRow {
   bizName: string;
   ownerName: string;
   plan: string;
+  grandfathered?: boolean;
   isActive: boolean;
   createdAt: string;
   address: string | null;
@@ -113,6 +114,20 @@ export default function AdminUsersPage() {
     { key: "bizNo", label: "사업자번호" },
     { key: "bizName", label: "상호명" },
     { key: "ownerName", label: "대표자" },
+    {
+      key: "plan", label: "플랜",
+      render: (r: UserRow) => (
+        <span style={{ display: "inline-flex", alignItems: "center", gap: 4, flexWrap: "wrap" }}>
+          <PlanSelect row={r} onChange={handlePlanChange} />
+          {r.grandfathered && (
+            <span title="초기 회원 — 프로 플랜 영구 무료 (구독 취소·만료에도 강등되지 않음)"
+                  style={{ fontSize: 10, fontWeight: 700, color: "#065F46", background: "#ECFDF5", padding: "2px 6px", borderRadius: 5 }}>
+              🎖 영구
+            </span>
+          )}
+        </span>
+      ),
+    },
     {
       key: "address", label: "주소",
       render: (r: UserRow) => r.address

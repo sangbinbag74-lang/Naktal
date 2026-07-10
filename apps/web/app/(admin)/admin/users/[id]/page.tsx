@@ -10,6 +10,7 @@ interface UserDetail {
   bizName: string;
   ownerName: string;
   plan: string;
+  grandfathered?: boolean;
   isAdmin: boolean;
   isActive: boolean;
   adminMemo: string | null;
@@ -28,7 +29,7 @@ interface UserDetail {
 interface AlertRow { id: string; keywords: string[]; active: boolean }
 interface SubRow { plan: string; status: string; currentPeriodEnd: string }
 
-const PLANS = ["FREE", "STANDARD", "PRO"];
+const PLANS = ["FREE", "LITE", "PRO", "BIZ", "MASTER"]; // 5티어 (2026-07-09, STANDARD=레거시 제외)
 
 const inputStyle: React.CSSProperties = {
   height: 38, padding: "0 12px", fontSize: 13, border: "1px solid #E2E8F0",
@@ -195,7 +196,15 @@ export default function AdminUserDetailPage({ params }: { params: Promise<{ id: 
 
       {/* 플랜 / 구독 */}
       <div style={sectionStyle}>
-        <h2 style={{ fontSize: 13, fontWeight: 600, color: "#64748B", marginBottom: 14 }}>플랜 / 구독 관리</h2>
+        <h2 style={{ fontSize: 13, fontWeight: 600, color: "#64748B", marginBottom: 14, display: "flex", alignItems: "center", gap: 8 }}>
+          플랜 / 구독 관리
+          {user.grandfathered && (
+            <span title="초기 회원 — 프로 플랜 영구 무료. 구독 취소·만료에도 FREE 강등되지 않습니다."
+                  style={{ fontSize: 10.5, fontWeight: 700, color: "#065F46", background: "#ECFDF5", padding: "2px 8px", borderRadius: 5 }}>
+              🎖 영구 프로 (초기 회원)
+            </span>
+          )}
+        </h2>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
           <div>
             <label style={{ fontSize: 12, color: "#64748B", display: "block", marginBottom: 5 }}>플랜</label>

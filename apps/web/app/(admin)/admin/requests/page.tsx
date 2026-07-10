@@ -163,7 +163,7 @@ export default async function AdminRequestsPage() {
       <AutoRefreshTrigger />
       <div>
         <h2 style={{ fontSize: 22, fontWeight: 700, color: "#0F172A", margin: "0 0 4px" }}>투찰 요청 관리</h2>
-        <p style={{ fontSize: 13, color: "#64748B", margin: 0 }}>AI 추천 의뢰 · 개찰 결과 · 수수료 현황</p>
+        <p style={{ fontSize: 13, color: "#64748B", margin: 0 }}>AI 추천 의뢰 · 개찰 결과 (수수료 제도는 2026-07-09 폐지 — 이하 수수료 표기는 폐지 전 기록)</p>
       </div>
 
       {/* ── 요약 카드 5개 ── */}
@@ -175,7 +175,7 @@ export default async function AdminRequestsPage() {
             { label: "개찰 대기",      value: pendingCount + "건", color: "#9CA3AF" },
             { label: "낙찰 성공",      value: wonCount + "건",     color: wonCount > 0 ? "#059669" : "#374151" },
             { label: "미낙찰",         value: lostCount + "건",    color: lostCount > 0 ? "#DC2626" : "#374151" },
-            { label: "수수료 청구 대기", value: feeCount + "건",   color: feeCount > 0 ? "#D97706" : "#374151" },
+            { label: "수수료(폐지 전 기록)", value: feeCount + "건", color: "#94A3B8" },
           ].map(({ label, value, color }) => (
             <div key={label} style={{ background: "#fff", borderRadius: 12, border: "1px solid #E8ECF2", padding: "20px" }}>
               <div style={{ fontSize: 11, color: "#9CA3AF", marginBottom: 6 }}>{label}</div>
