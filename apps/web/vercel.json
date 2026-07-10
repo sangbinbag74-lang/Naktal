@@ -9,7 +9,7 @@
     "app/api/realtime/participants/route.ts": { "maxDuration": 30 },
     "app/api/analysis/qualification/route.ts": { "maxDuration": 20 },
     "app/api/analysis/comprehensive/route.ts": { "maxDuration": 60 },
-    "app/api/ml-predict-ensemble/route.ts": { "maxDuration": 60, "memory": 3008 },
+    "app/api/ml-predict-ensemble/route.ts": { "maxDuration": 60 },
     "app/api/cron/sync-g2b/route.ts": { "maxDuration": 300 },
     "app/api/admin/g2b-pull/route.ts": { "maxDuration": 300 },
     "app/api/admin/sync-g2b-timing/route.ts": { "maxDuration": 300 },
