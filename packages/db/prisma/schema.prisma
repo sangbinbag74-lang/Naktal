@@ -38,6 +38,18 @@ model User {
   bidOutcomes     BidOutcome[]
 }
 
+// 경쟁사 추적 (전 티어, 개수 차등 FREE1/LITE3/PRO5/BIZ10/MASTER∞ — 2026-07-09)
+//  낙찰 발생 시(BidResult.winnerName 매칭) 이메일 알림 (/api/cron/competitor-alerts)
+model CompetitorWatch {
+  id             String   @id @default(cuid())
+  userId         String
+  competitorName String
+  createdAt      DateTime @default(now())
+
+  @@unique([userId, competitorName])
+  @@index([userId])
+}
+
 // 계좌이체 구독 신청 (토스 계약 전까지 유일 결제수단, 2026-07-09)
 //  PENDING → admin 입금 확인 → CONFIRMED(+User.plan 승급, Subscription ACTIVE) / REJECTED
 model BankTransferRequest {

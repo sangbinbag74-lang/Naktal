@@ -21,13 +21,15 @@
     "apps/web/app/api/cron/x-post/route.ts": { "maxDuration": 30 },
     "apps/web/app/api/cron/pr-email/route.ts": { "maxDuration": 60 },
     "apps/web/app/api/alerts/notify/route.ts": { "maxDuration": 60 },
-    "apps/web/app/api/cron/scorecard/route.ts": { "maxDuration": 60 }
+    "apps/web/app/api/cron/scorecard/route.ts": { "maxDuration": 60 },
+    "apps/web/app/api/cron/competitor-alerts/route.ts": { "maxDuration": 60 }
   },
   "crons": [
     { "path": "/api/cron/seo-ping", "schedule": "0 20 * * *" },
     { "path": "/api/cron/x-post", "schedule": "0 1 * * *" },
     { "path": "/api/cron/pr-email", "schedule": "0 9 * * 0" },
     { "path": "/api/alerts/notify", "schedule": "0 0 * * *" },
-    { "path": "/api/cron/scorecard", "schedule": "30 1 * * *" }
+    { "path": "/api/cron/scorecard", "schedule": "30 1 * * *" },
+    { "path": "/api/cron/competitor-alerts", "schedule": "0 2 * * *" }
   ]
 }

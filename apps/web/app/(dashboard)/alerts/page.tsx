@@ -14,6 +14,8 @@ interface AlertRow {
   createdAt: string;
 }
 
+interface CompetitorRow { id: string; competitorName: string; createdAt: string }
+
 const CATEGORIES = ["공사", "용역", "물품"];
 const REGIONS = [
   "전국", "서울특별시", "부산광역시", "대구광역시", "인천광역시", "광주광역시", "대전광역시", "울산광역시",
@@ -172,6 +174,92 @@ export default function AlertsPage() {
           </div>
         )}
       </div>
+
+      <CompetitorSection />
+    </div>
+  );
+}
+
+// ── 경쟁사 추적 (전 티어, 개수 차등 — 2026-07-09 P1) ─────────────────────────
+function CompetitorSection() {
+  const [rows, setRows] = useState<CompetitorRow[]>([]);
+  const [limit, setLimit] = useState<number | null>(1);
+  const [name, setName] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [upgradeUrl, setUpgradeUrl] = useState<string | null>(null);
+
+  const load = useCallback(async () => {
+    try {
+      const res = await fetch("/api/competitors");
+      const data = (await res.json()) as { data: CompetitorRow[]; limit: number | null };
+      setRows(data.data ?? []);
+      setLimit(data.limit ?? null);
+    } catch { /* 무시 */ }
+  }, []);
+
+  useEffect(() => { void load(); }, [load]);
+
+  async function handleAdd() {
+    if (name.trim().length < 2) { setError("경쟁사 상호명을 2자 이상 입력해주세요."); return; }
+    setSaving(true);
+    setError(null);
+    setUpgradeUrl(null);
+    try {
+      const res = await fetch("/api/competitors", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: name.trim() }),
+      });
+      const data = (await res.json()) as { error?: string; upgradeUrl?: string };
+      if (!res.ok) {
+        setError(data.error ?? "등록에 실패했습니다.");
+        if (data.upgradeUrl) setUpgradeUrl(data.upgradeUrl);
+        return;
+      }
+      setName("");
+      void load();
+    } catch {
+      setError("네트워크 오류가 발생했습니다.");
+    } finally { setSaving(false); }
+  }
+
+  async function handleRemove(id: string) {
+    await fetch(`/api/competitors?id=${id}`, { method: "DELETE" });
+    void load();
+  }
+
+  return (
+    <div style={{ background: "#fff", borderRadius: 14, border: "1px solid #E8ECF2", padding: "20px 22px" }}>
+      <div style={{ fontSize: 14, fontWeight: 700, color: "#0F172A", marginBottom: 4 }}>
+        경쟁사 추적 <span style={{ fontSize: 12, fontWeight: 500, color: "#94A3B8" }}>({rows.length}{limit != null ? `/${limit}` : ""}개사)</span>
+      </div>
+      <p style={{ fontSize: 12.5, color: "#64748B", margin: "0 0 14px" }}>
+        추적 중인 경쟁사가 낙찰을 받으면 낙찰가·낙찰률과 함께 이메일로 알려드립니다.
+      </p>
+      <div style={{ display: "flex", gap: 8 }}>
+        <input value={name} onChange={(e) => setName(e.target.value)} placeholder="경쟁사 상호명 (예: 대한건설)" className="naktal-input" style={{ height: 42, flex: 1 }}
+          onKeyDown={(e) => { if (e.key === "Enter") void handleAdd(); }} />
+        <button onClick={() => void handleAdd()} disabled={saving} className="naktal-btn-primary" style={{ marginTop: 0, width: "auto", padding: "0 18px", height: 42 }}>
+          {saving ? "..." : "추가"}
+        </button>
+      </div>
+      {error && (
+        <div style={{ marginTop: 10, background: "#FEF2F2", border: "1px solid #FECACA", borderRadius: 8, padding: "9px 12px", fontSize: 12.5, color: "#DC2626" }}>
+          {error}
+          {upgradeUrl && <a href={upgradeUrl} style={{ marginLeft: 8, color: "#1B3A6B", fontWeight: 700 }}>요금제 보기 →</a>}
+        </div>
+      )}
+      {rows.length > 0 && (
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 14 }}>
+          {rows.map((r) => (
+            <span key={r.id} style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12.5, fontWeight: 600, color: "#0F172A", background: "#F8FAFC", border: "1px solid #E8ECF2", padding: "6px 10px", borderRadius: 99 }}>
+              🏗 {r.competitorName}
+              <button onClick={() => void handleRemove(r.id)} style={{ background: "none", border: "none", color: "#94A3B8", cursor: "pointer", fontSize: 13, lineHeight: 1, padding: 0 }}>×</button>
+            </span>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
