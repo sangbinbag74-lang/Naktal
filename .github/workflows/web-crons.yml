@@ -56,8 +56,9 @@ jobs:
           CRON_SECRET: ${{ secrets.CRON_SECRET }}
         run: |
           if [ -z "$CRON_SECRET" ]; then
-            echo "::error::CRON_SECRET 미설정"
-            exit 1
+            # 시크릿 등록 전까지 실패 알림 스팸 방지 — 등록되는 순간 자동으로 실동작 시작
+            echo "::warning::GH Secrets CRON_SECRET 미등록 — 건너뜀 (등록 즉시 자동 활성화)"
+            exit 0
           fi
           for EP in ${{ steps.map.outputs.paths }}; do
             echo "=== GET $EP ==="

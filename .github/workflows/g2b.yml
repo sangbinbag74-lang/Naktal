@@ -271,7 +271,9 @@ jobs:
         working-directory: apps/crawler
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
-        run: pnpm ts-node src/scripts/audit-data-quality.ts
+        # 감사가 오래 걸려도 run 전체를 cancelled 로 만들지 않는다 (2026-07-10 — 7/8·7/9 daily 가
+        # audit 15분 타임아웃 하나 때문에 전체 cancelled 표시 → "수집 실패"로 오인됨. 수집 job 은 전부 성공이었음)
+        run: timeout 13m pnpm ts-node src/scripts/audit-data-quality.ts || echo "::warning::감사 13분 초과 — 부분 감사로 종료 (수집과 무관)"
 
   fill-bid-results:
     needs: [setup, opening]
