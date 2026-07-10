@@ -8,14 +8,25 @@ on:
 jobs:
   prefill:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    # 백로그(미분석 공고 누적) 처리 시 회차당 90~120초 → 5분 timeout 취소되던 문제 (2026-07-10 실측).
+    # 15분으로 늘리고 filled=0 이면 조기 종료 (백로그 없는 평시엔 1~2회차에 끝남).
+    timeout-minutes: 15
     steps:
       - name: Trigger prefill-predictions
         run: |
-          for i in 1 2 3; do
+          if [ -z "${{ secrets.CRON_SECRET }}" ]; then
+            echo "::warning::CRON_SECRET 미설정 — 건너뜀"; exit 0
+          fi
+          for i in $(seq 1 8); do
             echo "=== 회차 $i ==="
-            curl -X POST https://naktal.me/api/cron/prefill-predictions \
+            RESP=$(curl -X POST https://naktal.me/api/cron/prefill-predictions \
               -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
-              --max-time 120 -s -w "\nHTTP %{http_code} | %{time_total}s\n"
+              --max-time 120 -s -w "\n__HTTP__%{http_code}")
+            CODE=$(echo "$RESP" | sed -n 's/.*__HTTP__//p')
+            BODY=$(echo "$RESP" | sed 's/__HTTP__[0-9]*$//')
+            FILLED=$(echo "$BODY" | python3 -c "import sys,json; print(json.load(sys.stdin).get('filled',0))" 2>/dev/null || echo "0")
+            echo "HTTP $CODE | filled=$FILLED"
+            if [ "$CODE" != "200" ]; then echo "::warning::HTTP $CODE — 중단"; break; fi
+            if [ "$FILLED" = "0" ]; then echo "미분석 공고 없음 — 완료"; break; fi
             sleep 5
           done
