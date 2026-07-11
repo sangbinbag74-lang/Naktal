@@ -19,9 +19,11 @@ jobs:
           fi
           for i in $(seq 1 8); do
             echo "=== 회차 $i ==="
+            # max-time 150 > Vercel 함수 maxDuration 120 → 함수가 스스로 끝낸 응답을 받게 함(경계 충돌 방지).
+            # curl 실패/timeout(exit 28)은 set -e 로 스텝을 죽이지 않고 graceful 종료(다음 시각 실행이 이어받음).
             RESP=$(curl -X POST https://naktal.me/api/cron/prefill-predictions \
               -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
-              --max-time 120 -s -w "\n__HTTP__%{http_code}")
+              --max-time 150 -s -w "\n__HTTP__%{http_code}") || { echo "::warning::curl 실패/timeout — 이번 실행 종료"; break; }
             CODE=$(echo "$RESP" | sed -n 's/.*__HTTP__//p')
             BODY=$(echo "$RESP" | sed 's/__HTTP__[0-9]*$//')
             FILLED=$(echo "$BODY" | python3 -c "import sys,json; print(json.load(sys.stdin).get('filled',0))" 2>/dev/null || echo "0")

@@ -11,7 +11,7 @@ import { classifyCategory, DEFAULT_LWLT_BY_KIND } from "@/lib/analysis/category-
 
 export const dynamic = "force-dynamic";
 
-const BATCH_LIMIT = 30;
+const BATCH_LIMIT = 20; // 30→20 (2026-07-10): 30건 분석이 Vercel maxDuration 120초와 경계 충돌 → curl exit 28. 여유 확보.
 const DEFAULT_LOWER_LIMIT_RATE = 89.745; // 2026-01-30 공사 표준 상향 (10억 미만)
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
