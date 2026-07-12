@@ -347,52 +347,57 @@ function Hero() {
         <p style={{ fontSize: "clamp(17px, 1.6vw, 21px)", lineHeight: 1.55, color: "rgba(255,255,255,0.72)", maxWidth: 680, margin: "0 0 44px", fontWeight: 400 }}>
           <strong style={{ color: "#fff", fontWeight: 700 }}>낙비</strong> — 내 손안의 AI 낙찰비서.<br />
           나라장터 공고의 사정율·복수예가 번호·참여 자격을<br />머신러닝이 단 <span style={{ color: "#fff", fontWeight: 600 }}>0.5초</span> 만에 분석합니다.<br />
-          <span style={{ color: "var(--blue-300)", fontWeight: 600 }}>낙찰 수수료 0원</span> — 무료로 시작하세요.
+          <span style={{ color: "var(--blue-300)", fontWeight: 600 }}>공고 검색도, 사정율 박스권도, AI 공고 분석도 지금 무료</span> — 카드 등록 없이 시작하세요.
         </p>
 
         <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginBottom: 84 }}>
           <Link href="/signup" className="nk-cta-onDark">무료로 시작하기 <span aria-hidden>→</span></Link>
-          <a href="#engines" className="nk-cta-ghost-dark">엔진 살펴보기</a>
+          <a href="#trust" className="nk-cta-ghost-dark">무료로 뭘 받나요?</a>
         </div>
 
-        <div style={{ position: "relative", borderRadius: 20, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.1)", padding: "22px 24px", backdropFilter: "blur(6px)" }}>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 18 }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <span style={{ width: 7, height: 7, borderRadius: 999, background: "#F87171", boxShadow: "0 0 0 3px rgba(248,113,113,0.18)" }} />
-                <span style={{ fontSize: 11, color: "rgba(255,255,255,0.5)", letterSpacing: "0.14em", fontWeight: 700, textTransform: "uppercase" }}>LIVE FEED</span>
-              </div>
-              <div style={{ height: 14, width: 1, background: "rgba(255,255,255,0.15)" }} />
-              <div style={{ display: "flex", gap: 24 }}>
-                {[["사정율 분포", "σ"], ["추천 점수", "P"], ["수렴 곡선", "μ"]].map(([l, k]) => (
-                  <div key={l} style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                    <span className="nk-en nk-num" style={{ fontSize: 11, color: "var(--blue-400)", fontWeight: 700 }}>{k}</span>
-                    <span style={{ fontSize: 11.5, color: "rgba(255,255,255,0.62)" }}>{l}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-            <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, color: "rgba(255,255,255,0.45)" }}>
-              <span className="nk-en">REALTIME</span>
-              <span style={{ width: 4, height: 4, borderRadius: 999, background: "rgba(255,255,255,0.3)" }} />
-              <span className="nk-en nk-num">0.5s</span>
-            </div>
-          </div>
-
-          <div style={{ height: 300, position: "relative", borderRadius: 12, background: "rgba(15,30,60,0.4)", border: "1px solid rgba(255,255,255,0.06)", overflow: "hidden" }}>
+        {/* 무료 가치 스택 카드 (2026-07-11 A안) — 무료를 우측에서 증명. HeroViz는 배경으로 데이터틱 톤 유지 */}
+        <div style={{ position: "relative", borderRadius: 20, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.1)", padding: "24px 26px", backdropFilter: "blur(6px)", overflow: "hidden" }}>
+          {/* 배경: 사정율 분포 라이브 차트 (은은하게) */}
+          <div style={{ position: "absolute", inset: 0, opacity: 0.5, pointerEvents: "none", zIndex: 0 }}>
             <HeroViz />
-            <div style={{ position: "absolute", left: 14, bottom: 10, fontSize: 10, color: "rgba(255,255,255,0.35)", letterSpacing: "0.1em", textTransform: "uppercase" }}>LOWER BOUND</div>
-            <div style={{ position: "absolute", right: 14, bottom: 10, fontSize: 10, color: "rgba(255,255,255,0.35)", letterSpacing: "0.1em", textTransform: "uppercase" }}>UPPER BOUND</div>
-            <div style={{ position: "absolute", left: "50%", top: 14, transform: "translateX(-50%)", fontSize: 10, color: "var(--blue-300)", letterSpacing: "0.14em", textTransform: "uppercase", fontWeight: 700 }}>OPTIMAL ZONE</div>
           </div>
 
-          <div style={{ marginTop: 14, display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 14 }}>
-            {[["공고", "자동 수집"], ["공고문", "자동 파싱"], ["패턴", "학습"], ["투찰가", "산출"]].map(([k, v], i) => (
-              <div key={i} style={{ padding: "12px 14px", borderRadius: 10, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}>
-                <div style={{ fontSize: 11, color: "rgba(255,255,255,0.5)", letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 4, fontWeight: 600 }}>{`STEP ${String(i + 1).padStart(2, "0")}`}</div>
-                <div style={{ fontSize: 14, fontWeight: 700, color: "#fff" }}>{k}<span style={{ color: "rgba(255,255,255,0.5)", fontWeight: 400, marginLeft: 6 }}>{v}</span></div>
+          <div style={{ position: "relative", zIndex: 1 }}>
+            {/* 0원 헤더 + 실시간 */}
+            <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 18 }}>
+              <div>
+                <div className="nk-num nk-en" style={{ fontSize: "clamp(38px, 4.6vw, 52px)", fontWeight: 900, lineHeight: 0.92, letterSpacing: "-0.04em", color: "#fff" }}>
+                  0<span style={{ fontSize: "0.4em", color: "var(--blue-400)", marginLeft: 4, fontWeight: 800 }}>원</span>
+                </div>
+                <div style={{ fontSize: 12.5, color: "rgba(255,255,255,0.62)", marginTop: 7, fontWeight: 600 }}>지금 무료로 쓰는 것</div>
               </div>
-            ))}
+              <div style={{ display: "flex", alignItems: "center", gap: 7, paddingTop: 4 }}>
+                <span style={{ width: 7, height: 7, borderRadius: 999, background: "var(--green-400)", boxShadow: "0 0 0 3px rgba(52,211,153,0.18)", animation: "nk-pulse-dot 2.4s ease-in-out infinite" }} />
+                <span style={{ fontSize: 11, color: "rgba(255,255,255,0.55)", fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase" }}>실시간</span>
+              </div>
+            </div>
+
+            {/* 무료 체크리스트 — PricingCompareTable 무료 열과 1:1 동기화 (수정 시 양쪽 동시) */}
+            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+              {[
+                ["AI 공고 분석", "월 3건 무료"],
+                ["사정율 박스권 (예상 범위)", "무료"],
+                ["공고 검색·상세 열람", "무료"],
+                ["개찰 성적표 알림", "무료"],
+              ].map(([k, v], i) => (
+                <div key={i} style={{ display: "flex", alignItems: "center", gap: 10, padding: "11px 13px", borderRadius: 10, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)" }}>
+                  <span style={{ color: "var(--green-400)", fontSize: 15, fontWeight: 800, lineHeight: 1 }}>✓</span>
+                  <span style={{ flex: 1, fontSize: 14, fontWeight: 600, color: "#fff" }}>{k}</span>
+                  <span style={{ fontSize: 12.5, color: "rgba(255,255,255,0.55)", fontWeight: 600, whiteSpace: "nowrap" }}>{v}</span>
+                </div>
+              ))}
+            </div>
+
+            {/* 구분선 + 유료 전환 경로 (정직 노출) */}
+            <div style={{ marginTop: 14, paddingTop: 14, borderTop: "1px solid rgba(255,255,255,0.1)", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+              <span style={{ fontSize: 12.5, color: "rgba(255,255,255,0.6)" }}>정밀 추천 <strong style={{ color: "#fff", fontWeight: 700 }}>무제한</strong>이 필요하면</span>
+              <span style={{ fontSize: 12.5, color: "var(--blue-300)", fontWeight: 700, whiteSpace: "nowrap" }}>라이트 월 9,900원부터 →</span>
+            </div>
           </div>
         </div>
       </div>
@@ -825,6 +830,7 @@ function Pricing() {
               position: "relative",
             }}>
               {p.hot && <div style={{ position: "absolute", top: -11, left: 20, background: "var(--blue-400)", color: "#0F1E3C", fontSize: 10.5, fontWeight: 800, padding: "3px 10px", borderRadius: 99 }}>가장 인기</div>}
+              {i === 0 && <div style={{ position: "absolute", top: -11, left: 20, background: "var(--green-600)", color: "#fff", fontSize: 10.5, fontWeight: 800, padding: "3px 10px", borderRadius: 99 }}>지금 시작 · 무료</div>}
               <div style={{ fontSize: 13, fontWeight: 700, color: p.hot ? "var(--blue-300)" : "rgba(255,255,255,0.75)", marginBottom: 12 }}>{p.label}</div>
               <div className="nk-num" style={{ fontSize: "clamp(22px, 2.2vw, 28px)", fontWeight: 900, color: "#fff", letterSpacing: "-0.03em", marginBottom: 10 }}>
                 {p.price}<span style={{ fontSize: 12, fontWeight: 500, color: "rgba(255,255,255,0.5)", marginLeft: 3 }}>{i === 0 ? "" : "/월"}</span>
