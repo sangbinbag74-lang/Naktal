@@ -381,7 +381,7 @@ function Hero() {
             <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
               {[
                 ["AI 공고 분석", "월 3건 무료"],
-                ["사정율 박스권 (예상 범위)", "무료"],
+                ["사정율 분석 3종 · 분포·흐름·구간", "무료"],
                 ["공고 검색·상세 열람", "무료"],
                 ["개찰 성적표 알림", "무료"],
               ].map(([k, v], i) => (
@@ -399,6 +399,88 @@ function Hero() {
               <span style={{ fontSize: 12.5, color: "var(--blue-300)", fontWeight: 700, whiteSpace: "nowrap" }}>라이트 월 9,900원부터 →</span>
             </div>
           </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/* ── 무료 사정율 분석 3종 미니 시각화 (일러스트형 — 기능 유형 표현, 특정 데이터 아님) ── */
+function FsHistogram() {
+  const bars = [8, 16, 30, 52, 78, 96, 72, 44, 24, 12];
+  return (
+    <div style={{ display: "flex", alignItems: "flex-end", gap: 4, width: "100%", height: "100%" }}>
+      {bars.map((h, i) => (
+        <div key={i} style={{ flex: 1, height: `${h}%`, borderRadius: "3px 3px 0 0", background: i === 5 ? "var(--navy-800)" : "rgba(96,165,250,0.5)" }} />
+      ))}
+    </div>
+  );
+}
+function FsTrend() {
+  return (
+    <svg viewBox="0 0 200 56" preserveAspectRatio="none" style={{ width: "100%", height: "100%" }}>
+      <polyline points="0,44 30,38 60,42 90,28 120,32 150,18 172,22" fill="none" stroke="#60A5FA" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+      <line x1="172" y1="22" x2="200" y2="12" stroke="var(--navy-800)" strokeWidth="2" strokeDasharray="3 3" />
+      <circle cx="200" cy="12" r="3.5" fill="var(--navy-800)" />
+    </svg>
+  );
+}
+function FsZones() {
+  const rows = [92, 68, 50, 34];
+  return (
+    <div style={{ display: "flex", flexDirection: "column", justifyContent: "center", gap: 8, width: "100%", height: "100%" }}>
+      {rows.map((w, i) => (
+        <div key={i} style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <span style={{ fontSize: 9, fontWeight: 700, color: "var(--fg-4)", width: 12 }}>{i + 1}</span>
+          <div style={{ flex: 1, height: 8, borderRadius: 99, background: "var(--border)" }}>
+            <div style={{ width: `${w}%`, height: "100%", borderRadius: 99, background: i === 0 ? "var(--navy-800)" : "rgba(96,165,250,0.5)" }} />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function FreeSajungShowcase() {
+  const cards = [
+    { tag: "적중분석 1", name: "분포", desc: "발주처·업종의 사정율이 어느 구간에 몰리는지 — 평균·최빈·표준편차·IQR까지 한눈에.", viz: <FsHistogram /> },
+    { tag: "적중분석 2", name: "흐름", desc: "사정율이 최근 어떻게 움직였는지 추세와, 다음 공고 예상 사정율 3가지 시나리오.", viz: <FsTrend /> },
+    { tag: "적중분석 3", name: "구간추천", desc: "가장 자주 나온 사정율 구간 TOP과 구간별 참고 투찰가를 순위로.", viz: <FsZones /> },
+  ];
+  return (
+    <section style={{ background: "var(--page)", padding: "110px 0" }}>
+      <div className="nk-container">
+        <div className="nk-reveal" style={{ maxWidth: 720, marginBottom: 48 }}>
+          <div className="nk-eyebrow" style={{ color: "var(--green-600)", marginBottom: 16 }}>FREE ANALYSIS</div>
+          <h2 style={{ fontSize: "clamp(32px, 3.8vw, 48px)", lineHeight: 1.1, letterSpacing: "-0.028em", fontWeight: 900, margin: "0 0 18px", color: "var(--fg-1)" }}>
+            공고 하나에 사정율 분석 <span style={{ color: "var(--green-600)" }}>3가지.</span><br />전부 무료입니다.
+          </h2>
+          <p style={{ fontSize: "clamp(15px, 1.4vw, 18px)", lineHeight: 1.65, color: "var(--fg-3)", margin: 0, maxWidth: 620 }}>
+            공고를 열 때마다 발주처·업종의 사정율을 <strong style={{ color: "var(--fg-1)", fontWeight: 700 }}>분포·흐름·구간</strong>으로 분석합니다. 가입만 하면 <strong style={{ color: "var(--fg-1)", fontWeight: 700 }}>무제한 무료</strong> — 정밀 투찰가 추천만 구독입니다.
+          </p>
+        </div>
+
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 20 }}>
+          {cards.map((c, i) => (
+            <div key={i} className="nk-reveal nk-feat" style={{ padding: "22px 22px 24px", display: "flex", flexDirection: "column" }}>
+              <div style={{ height: 96, borderRadius: 12, background: "var(--cell)", border: "1px solid var(--border-light)", padding: "14px 16px", marginBottom: 18, overflow: "hidden" }}>
+                {c.viz}
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+                <span className="nk-eyebrow nk-en" style={{ color: "var(--fg-4)", letterSpacing: "0.12em", fontSize: 10 }}>{c.tag}</span>
+                <span style={{ fontSize: 10.5, fontWeight: 800, color: "#fff", background: "var(--green-600)", padding: "2px 8px", borderRadius: 99 }}>무료</span>
+              </div>
+              <h3 style={{ fontSize: 20, fontWeight: 800, letterSpacing: "-0.02em", margin: "0 0 8px", color: "var(--fg-1)" }}>{c.name}</h3>
+              <p style={{ fontSize: 13.5, lineHeight: 1.6, color: "var(--fg-3)", margin: 0 }}>{c.desc}</p>
+            </div>
+          ))}
+        </div>
+
+        <div className="nk-reveal" style={{ marginTop: 28, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16, flexWrap: "wrap" }}>
+          <span style={{ fontSize: 12.5, color: "var(--fg-4)", lineHeight: 1.6 }}>
+            AI 분석은 참고용이며 낙찰을 보장하지 않습니다. · 정밀 투찰가·복수예가 번호는 AI 공고 분석(무료 월 3건)
+          </span>
+          <Link href="/signup" className="nk-cta-primary" style={{ height: 46, fontSize: 14 }}>무료로 사정율 분석 보기 <span aria-hidden>→</span></Link>
         </div>
       </div>
     </section>
@@ -1038,6 +1120,7 @@ export default function LandingPage() {
       <style>{styles}</style>
       <Nav scrolled={scrolled} />
       <Hero />
+      <FreeSajungShowcase />
       <ProblemSection />
       <Engines />
       <WhyAccurate />
