@@ -352,7 +352,7 @@ function Hero() {
 
         <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginBottom: 84 }}>
           <Link href="/signup" className="nk-cta-onDark">무료로 시작하기 <span aria-hidden>→</span></Link>
-          <a href="#trust" className="nk-cta-ghost-dark">무료로 뭘 받나요?</a>
+          <a href="#trust" className="nk-cta-ghost-dark">무엇이 무료인가요?</a>
         </div>
 
         {/* 무료 가치 스택 카드 (2026-07-11 A안) — 무료를 우측에서 증명. HeroViz는 배경으로 데이터틱 톤 유지 */}
@@ -369,7 +369,7 @@ function Hero() {
                 <div className="nk-num nk-en" style={{ fontSize: "clamp(38px, 4.6vw, 52px)", fontWeight: 900, lineHeight: 0.92, letterSpacing: "-0.04em", color: "#fff" }}>
                   0<span style={{ fontSize: "0.4em", color: "var(--blue-400)", marginLeft: 4, fontWeight: 800 }}>원</span>
                 </div>
-                <div style={{ fontSize: 12.5, color: "rgba(255,255,255,0.62)", marginTop: 7, fontWeight: 600 }}>지금 무료로 쓰는 것</div>
+                <div style={{ fontSize: 12.5, color: "rgba(255,255,255,0.62)", marginTop: 7, fontWeight: 600 }}>이 모든 게 무료입니다</div>
               </div>
               <div style={{ display: "flex", alignItems: "center", gap: 7, paddingTop: 4 }}>
                 <span style={{ width: 7, height: 7, borderRadius: 999, background: "var(--green-400)", boxShadow: "0 0 0 3px rgba(52,211,153,0.18)", animation: "nk-pulse-dot 2.4s ease-in-out infinite" }} />
@@ -445,7 +445,7 @@ function FreeSajungShowcase() {
   const cards = [
     { tag: "적중분석 1", name: "분포", desc: "발주처·업종의 사정율이 어느 구간에 몰리는지 — 평균·최빈·표준편차·IQR까지 한눈에.", viz: <FsHistogram /> },
     { tag: "적중분석 2", name: "흐름", desc: "사정율이 최근 어떻게 움직였는지 추세와, 다음 공고 예상 사정율 3가지 시나리오.", viz: <FsTrend /> },
-    { tag: "적중분석 3", name: "구간추천", desc: "가장 자주 나온 사정율 구간 TOP과 구간별 참고 투찰가를 순위로.", viz: <FsZones /> },
+    { tag: "적중분석 3", name: "구간추천", desc: "가장 자주 나온 사정율 구간과 구간별 참고 투찰가를 빈도순 TOP으로 보여드립니다.", viz: <FsZones /> },
   ];
   return (
     <section style={{ background: "var(--page)", padding: "110px 0" }}>
