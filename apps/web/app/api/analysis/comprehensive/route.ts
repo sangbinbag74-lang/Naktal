@@ -11,6 +11,7 @@ import {
   type TrendResult,
 } from "@/lib/core1/sajung-engine";
 import { recommendNumbers } from "@/lib/core1/frequency-engine";
+import { Feature, getLimit } from "@/lib/plan-guard";
 import { isMultiplePriceBid } from "@/lib/bid-utils";
 import { calcBaseBudget } from "@/lib/analysis/sajung-utils";
 import { classifyCategory, DEFAULT_SAJUNG_BY_KIND, DEFAULT_LWLT_BY_KIND, getDefaultLwlt } from "@/lib/analysis/category-config";
@@ -62,11 +63,13 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ error: "annId 필수" }, { status: 400 });
   }
 
-  // FREE 월 3건 크레딧 (공고 단위 unlock — 같은 공고 재열람은 재소모 없음)
+  // FREE 월 크레딧 (공고 단위 unlock — 같은 공고 재열람은 재소모 없음)
+  // 한도는 plan-guard 가 단일 소스. 전면 무료 개방(FREE_OPEN_ALL) 시 Infinity 라 블러 처리되지 않는다.
   let freeBlurred = false;
+  const freeCredit = getLimit(userPlan, Feature.CORE1_NUMBER_RECOMMEND);
   const creditYm = new Date().toISOString().slice(0, 7); // YYYY-MM
   const unlockKey = `unlock:${dbUser.id}:${body.annId}:${creditYm}`;
-  if (userPlan === "FREE") {
+  if (userPlan === "FREE" && Number.isFinite(freeCredit)) {
     const { count: unlocked } = await admin
       .from("RateLimit")
       .select("key", { count: "exact", head: true })
@@ -76,7 +79,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         .from("RateLimit")
         .select("key", { count: "exact", head: true })
         .like("key", `unlock:${dbUser.id}:%:${creditYm}`);
-      if ((used ?? 0) >= 3) freeBlurred = true;
+      if ((used ?? 0) >= freeCredit) freeBlurred = true;
     }
   }
 
@@ -183,7 +186,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     (cachedPayload.meta as unknown as Record<string, unknown>).stale =
       new Date(String(cached.expiresAt)) < new Date(); // 24h 경과 표시 (재분석 버튼으로 갱신 가능)
     // FREE 크레딧 게이트 — 캐시 경로에도 동일 적용 (마스킹 우회 구멍 봉합, 2026-07-10)
-    return finalizeFreeGate(cachedPayload, { admin, userPlan, freeBlurred, unlockKey });
+    return finalizeFreeGate(cachedPayload, { admin, userPlan, freeBlurred, unlockKey, freeCredit });
   }
 
   // ─── 공고 메타 파싱 ────────────────────────────────────────────────────────
@@ -319,14 +322,14 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   };
 
   const payload = buildResponse(ann, predRecord, numberStrategy, trendMeta, estimatedPriceByA, aValueTotal, lowerLimitRate, budgetNum, bidRequestCount ?? 0, annKind, user.id);
-  return finalizeFreeGate(payload, { admin, userPlan, freeBlurred, unlockKey });
+  return finalizeFreeGate(payload, { admin, userPlan, freeBlurred, unlockKey, freeCredit });
 }
 
 // ─── FREE 크레딧 게이트 (5티어, 2026-07-09 / 캐시·fresh 두 경로 공용 2026-07-10) ──
 //  소진 전: unlock 기록(같은 공고 재열람 무료) / 소진: 정밀필드 마스킹, 박스권(range)은 유지
 async function finalizeFreeGate(
   payload: ReturnType<typeof buildResponse>,
-  ctx: { admin: ReturnType<typeof createAdminClient>; userPlan: string; freeBlurred: boolean; unlockKey: string },
+  ctx: { admin: ReturnType<typeof createAdminClient>; userPlan: string; freeBlurred: boolean; unlockKey: string; freeCredit: number },
 ): Promise<NextResponse> {
   if (ctx.userPlan === "FREE") {
     if (ctx.freeBlurred) {
@@ -341,7 +344,7 @@ async function finalizeFreeGate(
       const meta = payload.meta as unknown as Record<string, unknown>;
       meta.blurred = true;
       meta.blurReason = "FREE_CREDIT_EXHAUSTED";
-      meta.creditLimit = 3;
+      meta.creditLimit = ctx.freeCredit;
       meta.upgradeUrl = "/billing";
     } else {
       // 크레딧 소모 기록 (월말 만료) — 실패해도 응답은 정상 진행

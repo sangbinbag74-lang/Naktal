@@ -10,14 +10,33 @@ export enum Feature {
   TEAM_SEATS = "TEAM_SEATS",                         // 팀 계정 수
 }
 
+/**
+ * 전면 무료 개방 (2026-09-03 박상빈님 확정).
+ *  - true  = FREE 티어가 PRO 급 한도로 개방된다. 결제 없이 전 기능 이용 가능.
+ *  - false = 기존 5티어 한도로 즉시 복귀한다.
+ * 되돌릴 때는 이 상수만 false 로 바꾸면 된다. 다른 파일은 손대지 않는다.
+ * 주의: AI 원본값(isOriginValuePlan)은 개방 대상이 아니다 — FREE 는 개인화 보정값을
+ *       계속 받는다(사용자별 추천 다양화 유지). ML 산출 로직은 일절 건드리지 않았다.
+ */
+export const FREE_OPEN_ALL = true;
+
+const FREE_LIMITS_OPEN: Record<Feature, number> = {
+  [Feature.CORE1_NUMBER_RECOMMEND]: Infinity, // 무제한 (개인화 보정값 유지)
+  [Feature.REALTIME_MONITOR]: Infinity,
+  [Feature.COMPETITOR_TRACKING]: 5,
+  [Feature.TEAM_SEATS]: 1,
+};
+
+const FREE_LIMITS_TIERED: Record<Feature, number> = {
+  [Feature.CORE1_NUMBER_RECOMMEND]: 3, // 월 3건 (개인화 보정값)
+  [Feature.REALTIME_MONITOR]: 0,
+  [Feature.COMPETITOR_TRACKING]: 1,
+  [Feature.TEAM_SEATS]: 1,
+};
+
 // 월 사용 한도 (Infinity = 무제한, 0 = 접근 불가)
 const MONTHLY_LIMITS: Record<Plan, Record<Feature, number>> = {
-  FREE: {
-    [Feature.CORE1_NUMBER_RECOMMEND]: 3, // 월 3건 (개인화 보정값)
-    [Feature.REALTIME_MONITOR]: 0,
-    [Feature.COMPETITOR_TRACKING]: 1,
-    [Feature.TEAM_SEATS]: 1,
-  },
+  FREE: FREE_OPEN_ALL ? FREE_LIMITS_OPEN : FREE_LIMITS_TIERED,
   STANDARD: {
     // 레거시 → LITE 동급
     [Feature.CORE1_NUMBER_RECOMMEND]: Infinity,

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { randomUUID } from "crypto";
 import { createClient, createAdminClient } from "@/lib/supabase/server";
-import { Feature, canAccess } from "@/lib/plan-guard";
+import { Feature, canAccess, getLimit } from "@/lib/plan-guard";
 import { recommendNumbers } from "@/lib/core1/frequency-engine";
 import { predictOpeningNumbers, blendWithFrequency } from "@/lib/core2/opening-engine";
 import { rateLimit } from "@/lib/rate-limit";
@@ -102,8 +102,10 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     );
   }
 
-  // FREE 월 3건 통합 크레딧 — comprehensive 와 동일한 unlock 키 공유 (공고당 1크레딧, 재분석 무료)
-  if (plan === "FREE") {
+  // FREE 월 크레딧 — comprehensive 와 동일한 unlock 키 공유 (공고당 1크레딧, 재분석 무료)
+  // 한도는 plan-guard 가 단일 소스. 전면 무료 개방(FREE_OPEN_ALL) 시 Infinity 라 아래 블록은 통과한다.
+  const freeCredit = getLimit(plan, Feature.CORE1_NUMBER_RECOMMEND);
+  if (plan === "FREE" && Number.isFinite(freeCredit)) {
     const creditYm = new Date().toISOString().slice(0, 7);
     const unlockKey = `unlock:${dbUser.id}:${ann.id}:${creditYm}`;
     const { count: unlocked } = await admin
@@ -115,9 +117,9 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         .from("RateLimit")
         .select("key", { count: "exact", head: true })
         .like("key", `unlock:${dbUser.id}:%:${creditYm}`);
-      if ((used ?? 0) >= 3) {
+      if ((used ?? 0) >= freeCredit) {
         return NextResponse.json(
-          { error: "FREE_CREDIT_EXHAUSTED", message: "이번 달 무료 정밀 분석 3건을 모두 사용했습니다. 구독하면 무제한으로 이용할 수 있어요.", upgradeUrl: "/billing" },
+          { error: "FREE_CREDIT_EXHAUSTED", message: `이번 달 무료 정밀 분석 ${freeCredit}건을 모두 사용했습니다. 구독하면 무제한으로 이용할 수 있어요.`, upgradeUrl: "/billing" },
           { status: 403 },
         );
       }

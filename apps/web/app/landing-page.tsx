@@ -347,7 +347,7 @@ function Hero() {
         <p style={{ fontSize: "clamp(17px, 1.6vw, 21px)", lineHeight: 1.55, color: "rgba(255,255,255,0.72)", maxWidth: 680, margin: "0 0 44px", fontWeight: 400 }}>
           <strong style={{ color: "#fff", fontWeight: 700 }}>낙비</strong> — 내 손안의 AI 낙찰비서.<br />
           나라장터 공고의 사정율·복수예가 번호·참여 자격을<br />머신러닝이 단 <span style={{ color: "#fff", fontWeight: 600 }}>0.5초</span> 만에 분석합니다.<br />
-          <span style={{ color: "var(--blue-300)", fontWeight: 600 }}>공고 검색도, 사정율 박스권도, AI 공고 분석도 지금 무료</span> — 카드 등록 없이 시작하세요.
+          <span style={{ color: "var(--blue-300)", fontWeight: 600 }}>정밀 투찰가 추천까지 전 기능을 무료로 개방했습니다</span> — 카드 등록 없이 시작하세요.
         </p>
 
         <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginBottom: 84 }}>
@@ -380,7 +380,7 @@ function Hero() {
             {/* 무료 체크리스트 — PricingCompareTable 무료 열과 1:1 동기화 (수정 시 양쪽 동시) */}
             <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
               {[
-                ["AI 공고 분석", "월 3건 무료"],
+                ["AI 공고 분석", "무제한 무료"],
                 ["사정율 분석 3종 · 분포·흐름·구간", "무료"],
                 ["공고 검색·상세 열람", "무료"],
                 ["개찰 성적표 알림", "무료"],
@@ -395,8 +395,8 @@ function Hero() {
 
             {/* 구분선 + 유료 전환 경로 (정직 노출) */}
             <div style={{ marginTop: 14, paddingTop: 14, borderTop: "1px solid rgba(255,255,255,0.1)", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
-              <span style={{ fontSize: 12.5, color: "rgba(255,255,255,0.6)" }}>정밀 추천 <strong style={{ color: "#fff", fontWeight: 700 }}>무제한</strong>이 필요하면</span>
-              <span style={{ fontSize: 12.5, color: "var(--blue-300)", fontWeight: 700, whiteSpace: "nowrap" }}>라이트 월 9,900원부터 →</span>
+              <span style={{ fontSize: 12.5, color: "rgba(255,255,255,0.6)" }}>정밀 추천 <strong style={{ color: "#fff", fontWeight: 700 }}>무제한</strong>도</span>
+              <span style={{ fontSize: 12.5, color: "var(--blue-300)", fontWeight: 700, whiteSpace: "nowrap" }}>지금 무료 개방 중 →</span>
             </div>
           </div>
         </div>
@@ -456,7 +456,7 @@ function FreeSajungShowcase() {
             공고 하나에 사정율 분석 <span style={{ color: "var(--green-600)" }}>3가지.</span><br />전부 무료입니다.
           </h2>
           <p style={{ fontSize: "clamp(15px, 1.4vw, 18px)", lineHeight: 1.65, color: "var(--fg-3)", margin: 0, maxWidth: 620 }}>
-            공고를 열 때마다 발주처·업종의 사정율을 <strong style={{ color: "var(--fg-1)", fontWeight: 700 }}>분포·흐름·구간</strong>으로 분석합니다. 가입만 하면 <strong style={{ color: "var(--fg-1)", fontWeight: 700 }}>무제한 무료</strong> — 정밀 투찰가 추천만 구독입니다.
+            공고를 열 때마다 발주처·업종의 사정율을 <strong style={{ color: "var(--fg-1)", fontWeight: 700 }}>분포·흐름·구간</strong>으로 분석합니다. 가입만 하면 <strong style={{ color: "var(--fg-1)", fontWeight: 700 }}>무제한 무료</strong> — 정밀 투찰가 추천까지 전부 무료입니다.
           </p>
         </div>
 
@@ -478,7 +478,7 @@ function FreeSajungShowcase() {
 
         <div className="nk-reveal" style={{ marginTop: 28, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16, flexWrap: "wrap" }}>
           <span style={{ fontSize: 12.5, color: "var(--fg-4)", lineHeight: 1.6 }}>
-            AI 분석은 참고용이며 낙찰을 보장하지 않습니다. · 정밀 투찰가·복수예가 번호는 AI 공고 분석(무료 월 3건)
+            AI 분석은 참고용이며 낙찰을 보장하지 않습니다. · 정밀 투찰가·복수예가 번호는 AI 공고 분석(무료·무제한)
           </span>
           <Link href="/signup" className="nk-cta-primary" style={{ height: 46, fontSize: 14 }}>무료로 사정율 분석 보기 <span aria-hidden>→</span></Link>
         </div>
@@ -779,7 +779,7 @@ function Trust() {
   const items = [
     { label: "PUBLIC DATA", t: "공식 조달 데이터", d: "조달청 나라장터 공식 데이터를 기반으로 분석합니다." },
     { label: "COVERAGE", t: "활성 공고 전수", d: "활성 공고 전수를 분석합니다. 검색 한 번이면 충분합니다." },
-    { label: "NO FEE", t: "낙찰 수수료 0원", d: "낙찰해도 떼가는 돈이 없습니다. 공고 검색·박스권은 무료, 정밀 추천은 월 3건 무료로 시작합니다." },
+    { label: "NO FEE", t: "낙찰 수수료 0원", d: "낙찰해도 떼가는 돈이 없습니다. 구독료도 0원 — 현재 전 기능을 무료로 개방하고 있습니다." },
   ];
   return (
     <section id="trust" style={{ background: "var(--page)", padding: "120px 0" }}>
@@ -812,7 +812,7 @@ function PricingCompareTable() {
     { group: "기본", name: "공고 검색·상세 열람", vals: ["✓", "✓", "✓", "✓", "✓"] },
     { name: "사정율 박스권(범위)", vals: ["✓", "✓", "✓", "✓", "✓"] },
     { name: "개찰 후 성적표 알림", vals: ["✓", "✓", "✓", "✓", "✓"] },
-    { group: "AI 분석", name: "공고 AI 분석 (정밀 투찰가·번호)", vals: ["월 3건", "무제한", "무제한", "무제한", "무제한"] },
+    { group: "AI 분석", name: "공고 AI 분석 (정밀 투찰가·번호)", vals: ["무제한", "무제한", "무제한", "무제한", "무제한"] },
     { name: "AI 원본값 (개인화 보정 0)", vals: ["—", "—", "✓", "✓", "✓"] },
     { name: "실시간 참여자 모니터", vals: ["—", "—", "✓", "✓", "✓"] },
     { name: "경쟁사·발주처 심층 분석", vals: ["—", "—", "✓", "✓", "✓"] },
@@ -823,9 +823,9 @@ function PricingCompareTable() {
     { group: "리포트", name: "주간 리포트", vals: ["기본", "기본", "기본", "심층", "심층"] },
     { name: "월간 맞춤 백테스트", vals: ["—", "—", "—", "—", "✓"] },
     { group: "기타", name: "팀 계정 (8월 오픈)", vals: ["1", "1", "1", "3", "5"] },
-    { name: "광고", vals: ["노출", "제거", "제거", "제거", "제거"] },
+    { name: "광고", vals: ["노출", "노출", "노출", "노출", "노출"] },
     { name: "낙찰 수수료", vals: ["0원", "0원", "0원", "0원", "0원"] },
-    { name: "월 요금 (연납 시 2개월 무료)", vals: ["0원", "9,900원", "19,900원", "49,900원", "99,000원"] },
+    { name: "월 요금 (전 기능 무료 개방 중)", vals: ["0원", "0원", "0원", "0원", "0원"] },
   ];
   return (
     <div className="nk-reveal" style={{ marginTop: 20 }}>
@@ -890,20 +890,20 @@ function Pricing() {
         <div className="nk-reveal" style={{ maxWidth: 880, marginBottom: 64 }}>
           <div className="nk-eyebrow" style={{ color: "var(--blue-400)", marginBottom: 18 }}>PRICING</div>
           <h2 style={{ fontSize: "clamp(40px, 5.4vw, 72px)", lineHeight: 1.04, letterSpacing: "-0.032em", fontWeight: 900, margin: "0 0 22px", color: "#fff" }}>
-            낙찰 수수료 <span style={{ color: "var(--blue-400)" }}>0원</span>.<br />무료로 시작하세요.
+            지금, <span style={{ color: "var(--blue-400)" }}>전 기능 무료</span>.<br />구독료도 0원입니다.
           </h2>
           <p style={{ fontSize: "clamp(16px, 1.4vw, 19px)", lineHeight: 1.6, color: "rgba(255,255,255,0.65)", margin: 0, maxWidth: 560 }}>
-            낙찰해도 떼가는 돈이 없습니다. 공고 검색과 사정율 박스권은 무료 — 정밀 추천이 필요할 때만 구독하세요.
+            아래 요금제의 모든 기능을 결제 없이 열어두었습니다. 낙찰 수수료도, 구독료도 0원입니다.
           </p>
         </div>
 
         <div className="nk-reveal" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 12 }}>
           {[
-            { label: "무료", price: "0원", detail: "공고 검색 · 박스권 · AI 분석 월 3건", hot: false },
-            { label: "라이트", price: "9,900원", detail: "공고 AI 분석 무제한 · 광고 제거", hot: false },
-            { label: "프로", price: "19,900원", detail: "AI 원본값 · 실시간 모니터", hot: true },
-            { label: "비즈", price: "49,900원", detail: "팀 3계정 · 주간 심층 리포트", hot: false },
-            { label: "마스터", price: "99,000원", detail: "5계정 · 맞춤 백테스트 · 전담", hot: false },
+            { label: "무료", price: "0원", detail: "공고 검색 · 박스권 · AI 분석 무제한", hot: false },
+            { label: "라이트", price: "0원", detail: "공고 AI 분석 무제한 · 무료 개방 중", hot: false },
+            { label: "프로", price: "0원", detail: "실시간 참여자 모니터 · 무료 개방 중", hot: true },
+            { label: "비즈", price: "0원", detail: "팀 3계정 · 주간 심층 리포트", hot: false },
+            { label: "마스터", price: "0원", detail: "5계정 · 맞춤 백테스트 · 전담", hot: false },
           ].map((p, i) => (
             <div key={i} style={{
               padding: "26px 20px", borderRadius: 18,
@@ -925,7 +925,7 @@ function Pricing() {
         <PricingCompareTable />
 
         <div className="nk-reveal" style={{ marginTop: 32, display: "flex", alignItems: "center", justifyContent: "center", gap: 32, flexWrap: "wrap", padding: "24px 32px", borderRadius: 12, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)" }}>
-          {[["낙찰 수수료", "0원"], ["연간 결제", "2개월 무료"], ["초기 구독자", "가격 평생 고정"]].map(([k, v], i) => (
+          {[["낙찰 수수료", "0원"], ["구독료", "0원"], ["카드 등록", "불필요"]].map(([k, v], i) => (
             <span key={i} style={{ display: "flex", alignItems: "center", gap: 32 }}>
               {i > 0 && <span style={{ width: 1, height: 32, background: "rgba(255,255,255,0.1)" }} />}
               <span style={{ display: "flex", alignItems: "baseline", gap: 10 }}>
@@ -945,7 +945,7 @@ function FAQ() {
     { q: "어떤 입찰 방식을 지원하나요?", a: "복수예가, 적격심사 등 일반 공공입찰 전 영역을 지원합니다. 시설공사 · 용역 · 물품 모두 분석 대상입니다." },
     { q: "낙찰이 보장되나요?", a: "낙찰을 보장하지 않습니다. AI는 통계적 확률을 높이는 도구이며, 최종 의사결정은 항상 사용자에게 있습니다." },
     { q: "데이터는 어디서 가져오나요?", a: "조달청 나라장터 공식 데이터를 사용합니다. 다른 출처는 사용하지 않습니다." },
-    { q: "요금은 어떻게 되나요?", a: "낙찰 수수료는 0원입니다 — 낙찰해도 떼가는 돈이 없습니다. 공고 검색·사정율 박스권은 무료이고, 정밀 투찰가 추천은 무료 월 3건 후 구독(라이트 9,900원/프로 19,900원~)으로 무제한 이용할 수 있습니다. 연간 결제 시 2개월 무료." },
+    { q: "요금은 어떻게 되나요?", a: "현재 전 기능을 무료로 개방하고 있습니다. 낙찰 수수료 0원, 구독료 0원 — 공고 검색·사정율 분석은 물론 정밀 투찰가 추천과 복수예가 번호 추천까지 결제 없이 무제한으로 이용하실 수 있습니다. 카드 등록도 필요하지 않습니다." },
   ];
   return (
     <section id="faq" style={{ background: "var(--page)", padding: "120px 0" }}>

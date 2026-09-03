@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { FREE_OPEN_ALL } from "@/lib/plan-guard";
 
 interface UpgradeBannerProps {
   feature: string;
@@ -7,6 +8,8 @@ interface UpgradeBannerProps {
 }
 
 export function UpgradeBanner({ feature, requiredPlan = "STANDARD" }: UpgradeBannerProps) {
+  // 전면 무료 개방 중에는 잠금/업그레이드 안내를 노출하지 않는다 (2026-09-03)
+  if (FREE_OPEN_ALL) return null;
   const planLabel = requiredPlan === "PRO" ? "프로" : "스탠다드";
   return (
     <div style={{

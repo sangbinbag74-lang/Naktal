@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { FREE_OPEN_ALL } from "@/lib/plan-guard";
 
 interface UpgradeBannerProps {
   feature?: string;
@@ -8,6 +9,8 @@ interface UpgradeBannerProps {
 }
 
 export function UpgradeBanner({ feature, className = "" }: UpgradeBannerProps) {
+  // 전면 무료 개방 중에는 잠금/업그레이드 안내를 노출하지 않는다 (2026-09-03)
+  if (FREE_OPEN_ALL) return null;
   return (
     <div
       className={`flex flex-col items-center justify-center gap-3 rounded-lg border border-dashed border-gray-300 bg-gray-50 p-8 text-center ${className}`}

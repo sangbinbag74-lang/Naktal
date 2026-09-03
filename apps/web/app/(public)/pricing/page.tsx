@@ -1,15 +1,16 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { FREE_OPEN_ALL } from "@/lib/plan-guard";
 
 // 박상빈님 5/20 명시 보호 — CDN 캐시 X (proxy.ts 의 라우트 가드가 작동하도록)
 export const dynamic = "force-dynamic";
 
 // 5티어 + 수수료 전면 폐지 (2026-07-09 박상빈님 확정)
 export const metadata: Metadata = {
-  title: "요금 안내 — 낙찰 수수료 0원, 무료로 시작",
+  title: "요금 안내 — 전 기능 무료 개방 (낙찰 수수료 0원)",
   description:
-    "낙비 — 내 손안의 AI 낙찰비서. 낙찰 수수료 0원. 공고 검색·사정율 박스권 무료, " +
-    "정밀 투찰가 추천은 무료 월 3건부터. 라이트 9,900원 / 프로 19,900원(런칭가) / 비즈 49,900원 / 마스터 99,000원.",
+    "낙비 — 내 손안의 AI 낙찰비서. 전 기능 무료 개방 중. 낙찰 수수료 0원, 구독료 0원. " +
+    "공고 검색·사정율 박스권·정밀 투찰가 추천·번호 추천·실시간 참여자 모니터까지 결제 없이 이용하세요.",
   keywords: [
     "낙비 요금", "낙비 가격", "낙비 구독", "낙찰 수수료 없음", "수수료 0원",
     "낙찰AI 요금", "공공입찰 AI 구독", "나라장터 AI 무료",
@@ -43,7 +44,9 @@ const TIERS = [
     features: [
       "공고 검색·상세 무제한",
       "사정율 박스권(범위) 전 공고",
-      "공고 AI 분석 월 3건 (정밀 투찰가·번호)",
+      FREE_OPEN_ALL
+        ? "공고 AI 분석 무제한 (정밀 투찰가·번호)"
+        : "공고 AI 분석 월 3건 (정밀 투찰가·번호)",
       "개찰 후 성적표 알림",
       "공고 알림 3개",
     ],
@@ -110,12 +113,37 @@ export default function PricingPage() {
   return (
     <div style={{ background: "#F0F2F5", minHeight: "100vh", padding: "64px 20px" }}>
       <div style={{ maxWidth: 1200, margin: "0 auto" }}>
+        {FREE_OPEN_ALL && (
+          <div style={{
+            background: "linear-gradient(135deg,#1B3A6B 0%,#2563EB 100%)", color: "#fff",
+            borderRadius: 16, padding: "22px 24px", marginBottom: 28, textAlign: "center",
+            boxShadow: "0 6px 28px rgba(27,58,107,0.22)",
+          }}>
+            <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: "0.08em", opacity: 0.85, marginBottom: 6 }}>
+              2026. 09. 03 —
+            </div>
+            <div style={{ fontSize: 23, fontWeight: 900, letterSpacing: "-0.02em", lineHeight: 1.35 }}>
+              전 기능을 무료로 개방합니다.
+            </div>
+            <div style={{ fontSize: 14, opacity: 0.92, marginTop: 8, lineHeight: 1.6 }}>
+              구독료 0원 · 낙찰 수수료 0원. 정밀 투찰가 추천, 번호 추천, 실시간 참여자 모니터까지<br />
+              결제 없이 전부 사용하실 수 있습니다.
+            </div>
+          </div>
+        )}
+
         <div style={{ textAlign: "center", marginBottom: 44 }}>
           <h1 style={{ fontSize: 34, fontWeight: 900, color: "#0F172A", letterSpacing: "-0.03em", margin: "0 0 10px" }}>
-            낙찰 수수료 <span style={{ color: "#1B3A6B" }}>0원</span>. 무료로 시작하세요.
+            {FREE_OPEN_ALL ? (
+              <>구독료 <span style={{ color: "#1B3A6B" }}>0원</span>. 수수료 <span style={{ color: "#1B3A6B" }}>0원</span>.</>
+            ) : (
+              <>낙찰 수수료 <span style={{ color: "#1B3A6B" }}>0원</span>. 무료로 시작하세요.</>
+            )}
           </h1>
           <p style={{ fontSize: 15, color: "#64748B", margin: 0 }}>
-            낙찰해도 떼가는 돈이 없습니다 — 구독만으로 모든 기능을 사용합니다. 연간 결제 시 2개월 무료.
+            {FREE_OPEN_ALL
+              ? "아래 요금제의 모든 기능이 현재 무료로 열려 있습니다. 가입만 하시면 바로 이용하실 수 있습니다."
+              : "낙찰해도 떼가는 돈이 없습니다 — 구독만으로 모든 기능을 사용합니다. 연간 결제 시 2개월 무료."}
           </p>
         </div>
 
@@ -131,10 +159,19 @@ export default function PricingPage() {
                 <div style={{ position: "absolute", top: -12, left: "50%", transform: "translateX(-50%)", background: t.accent, color: "#fff", fontSize: 11, fontWeight: 700, padding: "3px 12px", borderRadius: 99, whiteSpace: "nowrap" }}>{t.badge}</div>
               )}
               <div style={{ fontSize: 13, fontWeight: 700, color: t.accent, marginBottom: 8 }}>{t.name}</div>
-              {t.original && <div style={{ fontSize: 13, color: "#94A3B8", textDecoration: "line-through" }}>정가 {t.original}원</div>}
-              <div style={{ fontSize: 25, fontWeight: 800, color: "#0F172A", lineHeight: 1.1 }}>{t.price}<span style={{ fontSize: 14, fontWeight: 600 }}>원</span></div>
-              <div style={{ fontSize: 11.5, color: "#94A3B8", margin: "3px 0 16px" }}>
-                {t.price === "0" ? "영원히 무료" : "월 / 부가세 포함 · 런칭 가격"}
+              {FREE_OPEN_ALL && t.price !== "0" && (
+                <div style={{ fontSize: 13, color: "#94A3B8", textDecoration: "line-through" }}>월 {t.price}원</div>
+              )}
+              {!FREE_OPEN_ALL && t.original && (
+                <div style={{ fontSize: 13, color: "#94A3B8", textDecoration: "line-through" }}>정가 {t.original}원</div>
+              )}
+              <div style={{ fontSize: 25, fontWeight: 800, color: "#0F172A", lineHeight: 1.1 }}>
+                {FREE_OPEN_ALL ? "0" : t.price}<span style={{ fontSize: 14, fontWeight: 600 }}>원</span>
+              </div>
+              <div style={{ fontSize: 11.5, color: FREE_OPEN_ALL ? "#059669" : "#94A3B8", fontWeight: FREE_OPEN_ALL ? 700 : 400, margin: "3px 0 16px" }}>
+                {FREE_OPEN_ALL
+                  ? "전 기능 무료 개방 중"
+                  : t.price === "0" ? "영원히 무료" : "월 / 부가세 포함 · 런칭 가격"}
               </div>
               <div style={{ flex: 1 }}>
                 {t.features.map((f) => (
@@ -144,13 +181,13 @@ export default function PricingPage() {
                   </div>
                 ))}
               </div>
-              <Link href={t.price === "0" ? "/signup" : "/billing"} style={{
+              <Link href={FREE_OPEN_ALL || t.price === "0" ? "/signup" : "/billing"} style={{
                 marginTop: 16, height: 42, borderRadius: 10, fontSize: 13.5, fontWeight: 700,
                 display: "flex", alignItems: "center", justifyContent: "center", textDecoration: "none",
                 background: t.badge ? t.accent : "#fff", color: t.badge ? "#fff" : t.accent,
                 border: t.badge ? "none" : `1.5px solid ${t.accent}`,
               }}>
-                {t.price === "0" ? "무료로 시작" : "구독하기"}
+                {FREE_OPEN_ALL || t.price === "0" ? "무료로 시작" : "구독하기"}
               </Link>
             </div>
           ))}
@@ -158,7 +195,9 @@ export default function PricingPage() {
 
         <div style={{ marginTop: 36, textAlign: "center", display: "flex", flexDirection: "column", gap: 8 }}>
           <div style={{ fontSize: 13, color: "#64748B" }}>
-            결제: 계좌이체 (세금계산서 발행 가능) · 토스페이 준비 중 · 초기 구독자는 가격 인상 후에도 런칭 가격 유지
+            {FREE_OPEN_ALL
+              ? "현재 결제 절차 없이 전 기능이 열려 있습니다. 유료 전환 시에는 사전에 공지하며, 개방 기간 중 가입하신 분께는 별도 혜택을 드립니다."
+              : "결제: 계좌이체 (세금계산서 발행 가능) · 토스페이 준비 중 · 초기 구독자는 가격 인상 후에도 런칭 가격 유지"}
           </div>
           <div style={{ fontSize: 12, color: "#94A3B8" }}>
             AI 분석 결과는 참고 자료이며 낙찰을 보장하지 않습니다 · <Link href="/refund" style={{ color: "#64748B" }}>환불 정책</Link> · <Link href="/terms" style={{ color: "#64748B" }}>이용약관</Link>
