@@ -19,7 +19,7 @@ export const metadata: Metadata = {
   alternates: { canonical: "https://naktal.me/pricing" },
   openGraph: {
     title: "낙비 — 요금 안내 (낙찰 수수료 0원, 무료로 시작)",
-    description: "공고 검색·박스권 무료. 정밀 추천 월 3건 무료. 구독 9,900원부터 — 낙찰해도 수수료 없음.",
+    description: "전 기능 무료 개방 중 — 구독료 0원, 낙찰 수수료 0원. 정밀 투찰가 추천·번호 추천까지 결제 없이 무제한.",
     url: "https://naktal.me/pricing",
     siteName: "낙비",
     locale: "ko_KR",
@@ -29,7 +29,7 @@ export const metadata: Metadata = {
   twitter: {
     card: "summary_large_image",
     title: "낙비 — 요금 안내",
-    description: "낙찰 수수료 0원. 무료로 시작, 구독 9,900원부터.",
+    description: "전 기능 무료 개방 중 — 구독료 0원, 낙찰 수수료 0원.",
     images: ["/og.png"],
   },
 };
@@ -48,7 +48,7 @@ const TIERS = [
         ? "공고 AI 분석 무제한 (정밀 투찰가·번호)"
         : "공고 AI 분석 월 3건 (정밀 투찰가·번호)",
       "개찰 후 성적표 알림",
-      "공고 알림 3개",
+      FREE_OPEN_ALL ? "공고 알림·경쟁사 추적 무제한" : "공고 알림 3개",
     ],
   },
   {

@@ -8,6 +8,7 @@ export enum Feature {
   REALTIME_MONITOR = "REALTIME_MONITOR",             // 실시간 참여자 모니터
   COMPETITOR_TRACKING = "COMPETITOR_TRACKING",       // 경쟁사 추적 알림 — 전 티어 (개수 차등, 7/9 명시)
   TEAM_SEATS = "TEAM_SEATS",                         // 팀 계정 수
+  ALERTS = "ALERTS",                                 // 공고 조건 알림 등록 개수
 }
 
 /**
@@ -23,8 +24,9 @@ export const FREE_OPEN_ALL = true;
 const FREE_LIMITS_OPEN: Record<Feature, number> = {
   [Feature.CORE1_NUMBER_RECOMMEND]: Infinity, // 무제한 (개인화 보정값 유지)
   [Feature.REALTIME_MONITOR]: Infinity,
-  [Feature.COMPETITOR_TRACKING]: 5,
+  [Feature.COMPETITOR_TRACKING]: Infinity,
   [Feature.TEAM_SEATS]: 1,
+  [Feature.ALERTS]: Infinity,
 };
 
 const FREE_LIMITS_TIERED: Record<Feature, number> = {
@@ -32,6 +34,7 @@ const FREE_LIMITS_TIERED: Record<Feature, number> = {
   [Feature.REALTIME_MONITOR]: 0,
   [Feature.COMPETITOR_TRACKING]: 1,
   [Feature.TEAM_SEATS]: 1,
+  [Feature.ALERTS]: 3,
 };
 
 // 월 사용 한도 (Infinity = 무제한, 0 = 접근 불가)
@@ -43,30 +46,35 @@ const MONTHLY_LIMITS: Record<Plan, Record<Feature, number>> = {
     [Feature.REALTIME_MONITOR]: 0,
     [Feature.COMPETITOR_TRACKING]: 3,
     [Feature.TEAM_SEATS]: 1,
+    [Feature.ALERTS]: 10,
   },
   LITE: {
     [Feature.CORE1_NUMBER_RECOMMEND]: Infinity, // 무제한 (개인화 보정값)
     [Feature.REALTIME_MONITOR]: 0,
     [Feature.COMPETITOR_TRACKING]: 3,
     [Feature.TEAM_SEATS]: 1,
+    [Feature.ALERTS]: 10,
   },
   PRO: {
     [Feature.CORE1_NUMBER_RECOMMEND]: Infinity, // 무제한 + AI 원본값
     [Feature.REALTIME_MONITOR]: Infinity,
     [Feature.COMPETITOR_TRACKING]: 5,
     [Feature.TEAM_SEATS]: 1,
+    [Feature.ALERTS]: Infinity,
   },
   BIZ: {
     [Feature.CORE1_NUMBER_RECOMMEND]: Infinity,
     [Feature.REALTIME_MONITOR]: Infinity,
     [Feature.COMPETITOR_TRACKING]: 10,
     [Feature.TEAM_SEATS]: 3,
+    [Feature.ALERTS]: Infinity,
   },
   MASTER: {
     [Feature.CORE1_NUMBER_RECOMMEND]: Infinity,
     [Feature.REALTIME_MONITOR]: Infinity,
     [Feature.COMPETITOR_TRACKING]: Infinity,
     [Feature.TEAM_SEATS]: 5,
+    [Feature.ALERTS]: Infinity,
   },
 };
 

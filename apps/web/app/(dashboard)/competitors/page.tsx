@@ -6,6 +6,8 @@
 import { useEffect, useState } from "react";
 import { createBrowserClient } from "@supabase/ssr";
 import Link from "next/link";
+import { Feature, canAccess } from "@/lib/plan-guard";
+import type { Plan } from "@naktal/types";
 
 interface PlanData { plan: string; grandfathered?: boolean; isAdmin?: boolean }
 
@@ -68,7 +70,8 @@ export default function CompetitorsPage() {
   }, []);
 
   const effPlan = planData?.grandfathered ? "PRO" : planData?.plan;
-  const isPro = planData?.isAdmin || effPlan === "PRO" || effPlan === "BIZ" || effPlan === "MASTER";
+  // 권한 판정의 단일 소스 = plan-guard. 전면 무료 개방 중에는 FREE 도 통과한다.
+  const isPro = planData?.isAdmin || canAccess((effPlan ?? "FREE") as Plan, Feature.REALTIME_MONITOR);
 
   if (loading) return <div style={{ padding: 40, color: "#94A3B8" }}>로딩 중...</div>;
 

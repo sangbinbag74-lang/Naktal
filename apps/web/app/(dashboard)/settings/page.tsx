@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { FREE_OPEN_ALL } from "@/lib/plan-guard";
 
 export default function SettingsPage() {
   const [notifyEmail, setNotifyEmail] = useState("");
@@ -90,7 +91,7 @@ export default function SettingsPage() {
                 {planInfo.label}
               </span>
             </div>
-            {plan !== "PRO" && (
+            {!FREE_OPEN_ALL && plan !== "PRO" && (
               <a href="/pricing" style={{
                 marginTop: 18, fontSize: 12, fontWeight: 600, color: "#60A5FA", textDecoration: "none",
               }}>

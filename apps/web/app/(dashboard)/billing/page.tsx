@@ -5,6 +5,7 @@
 //  - "자동 갱신" 표기 금지 (정기결제 미구현 — 허위표시 방지). 입금 확인 후 기간제 활성화.
 import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { FREE_OPEN_ALL } from "@/lib/plan-guard";
 
 type PlanId = "FREE" | "LITE" | "PRO" | "BIZ" | "MASTER";
 type Period = "MONTHLY" | "YEARLY";
@@ -21,9 +22,9 @@ const PLANS: {
     features: [
       { text: "공고 검색·상세 무제한" },
       { text: "사정율 박스권(범위) 전 공고" },
-      { text: "공고 AI 분석 월 3건 (정밀 투찰가·번호)" },
+      { text: FREE_OPEN_ALL ? "공고 AI 분석 무제한 (정밀 투찰가·번호)" : "공고 AI 분석 월 3건 (정밀 투찰가·번호)" },
       { text: "개찰 후 성적표 알림" },
-      { text: "공고 알림 3개 · 경쟁사 추적 1개사" },
+      { text: FREE_OPEN_ALL ? "공고 알림·경쟁사 추적 무제한" : "공고 알림 3개 · 경쟁사 추적 1개사" },
     ],
   },
   {
@@ -126,6 +127,15 @@ export default function BillingPage() {
           낙찰 수수료 0원 — 구독만으로 모든 기능을 사용합니다.
         </p>
       </div>
+
+      {FREE_OPEN_ALL && (
+        <div style={{ background: "linear-gradient(135deg,#1B3A6B 0%,#2563EB 100%)", color: "#fff", borderRadius: 12, padding: "18px 20px" }}>
+          <div style={{ fontSize: 16, fontWeight: 800, marginBottom: 6 }}>현재 전 기능을 무료로 개방하고 있습니다</div>
+          <div style={{ fontSize: 13, opacity: 0.92, lineHeight: 1.6 }}>
+            아래 요금제의 모든 기능을 결제 없이 이용하실 수 있습니다. 지금은 별도의 신청이나 입금이 필요하지 않습니다.
+          </div>
+        </div>
+      )}
 
       {grandfathered && (
         <div style={{ background: "#ECFDF5", border: "1px solid #A7F3D0", borderRadius: 10, padding: "12px 16px", fontSize: 13, color: "#065F46" }}>

@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { randomUUID } from "crypto";
 import { createClient } from "@/lib/supabase/server";
+import { Feature, getLimit } from "@/lib/plan-guard";
+import type { Plan } from "@naktal/types";
 
 // GET /api/alerts — 현재 유저의 알림 목록
 export async function GET(): Promise<NextResponse> {
@@ -33,12 +35,9 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
   const typedUser = dbUser as { id: string; plan: string; grandfathered?: boolean };
 
-  // 5티어 알림 한도 (2026-07-09): FREE 3 / LITE·STANDARD 10 / PRO·BIZ·MASTER 무제한
-  const effectivePlan = typedUser.grandfathered ? "PRO" : typedUser.plan;
-  const alertLimit =
-    effectivePlan === "FREE" ? 3 :
-    effectivePlan === "LITE" || effectivePlan === "STANDARD" ? 10 :
-    Infinity;
+  // 알림 한도의 단일 소스 = plan-guard (전면 무료 개방 시 FREE 도 무제한)
+  const effectivePlan = (typedUser.grandfathered ? "PRO" : typedUser.plan) as Plan;
+  const alertLimit = getLimit(effectivePlan, Feature.ALERTS);
   if (alertLimit !== Infinity) {
     const { count } = await supabase.from("UserAlert").select("*", { count: "exact" }).eq("userId", typedUser.id).eq("active", true);
     if ((count ?? 0) >= alertLimit) {

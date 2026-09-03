@@ -2,6 +2,8 @@
 import { useEffect, useState } from "react";
 import { createBrowserClient } from "@supabase/ssr";
 import Link from "next/link";
+import { Feature, canAccess } from "@/lib/plan-guard";
+import type { Plan } from "@naktal/types";
 
 interface PlanData { plan: string; grandfathered?: boolean }
 
@@ -28,7 +30,8 @@ export default function RealtimePage() {
 
   // 5티어 (2026-07-09): PRO·BIZ·MASTER + 영구PRO(grandfathered) 허용
   const effPlan = planData?.grandfathered ? "PRO" : planData?.plan;
-  const isPro = effPlan === "PRO" || effPlan === "BIZ" || effPlan === "MASTER";
+  // 권한 판정의 단일 소스 = plan-guard. 전면 무료 개방 중에는 FREE 도 통과한다.
+  const isPro = canAccess((effPlan ?? "FREE") as Plan, Feature.REALTIME_MONITOR);
 
   if (loading) return <div style={{ padding: 40, color: "#94A3B8" }}>로딩 중...</div>;
 
