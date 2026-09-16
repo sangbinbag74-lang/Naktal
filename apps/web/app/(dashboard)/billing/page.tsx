@@ -149,8 +149,8 @@ export default function BillingPage() {
         </div>
       )}
 
-      {/* 월/연 토글 */}
-      <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+      {/* 월/연 토글 — 무료 개방 중 숨김 */}
+      {!FREE_OPEN_ALL && <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
         {(["MONTHLY", "YEARLY"] as Period[]).map((p) => (
           <button key={p} onClick={() => setPeriod(p)} style={{
             height: 36, padding: "0 16px", borderRadius: 8, fontSize: 13, fontWeight: 600,
@@ -161,14 +161,15 @@ export default function BillingPage() {
             {p === "MONTHLY" ? "월간" : "연간 (2개월 무료)"}
           </button>
         ))}
-      </div>
+      </div>}
 
       {/* 5티어 카드 */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(210px, 1fr))", gap: 14 }}>
         {PLANS.map((plan) => {
           const isCurrent = effective === plan.id;
           const price = period === "MONTHLY" ? plan.monthly : plan.yearly;
-          const canApply = plan.id !== "FREE" && !isCurrent && !pending;
+          // 전면 무료 개방 중에는 결제 신청 경로를 완전히 닫는다 (버튼·모달·API 모두)
+          const canApply = !FREE_OPEN_ALL && plan.id !== "FREE" && !isCurrent && !pending;
           return (
             <div key={plan.id} style={{
               background: "#fff", borderRadius: 16, padding: "24px 20px",
@@ -214,7 +215,7 @@ export default function BillingPage() {
                   color: isCurrent ? "#059669" : canApply ? "#fff" : "#94A3B8",
                 }}
               >
-                {isCurrent ? "현재 플랜" : plan.id === "FREE" ? "기본 제공" : pending ? "입금 확인 대기 중" : "계좌이체로 시작"}
+                {FREE_OPEN_ALL ? "무료 개방 중" : isCurrent ? "현재 플랜" : plan.id === "FREE" ? "기본 제공" : pending ? "입금 확인 대기 중" : "계좌이체로 시작"}
               </button>
             </div>
           );
@@ -222,11 +223,13 @@ export default function BillingPage() {
       </div>
 
       <div style={{ textAlign: "center", fontSize: 12, color: "#94A3B8" }}>
-        결제 수단: 계좌이체 (세금계산서 발행 가능) · 토스페이 결제 준비 중 · 기간 만료 전 알림을 드립니다
+        {FREE_OPEN_ALL
+          ? "현재 결제 절차가 없습니다. 유료 전환 시 사전에 공지드립니다."
+          : "결제 수단: 계좌이체 (세금계산서 발행 가능) · 토스페이 결제 준비 중 · 기간 만료 전 알림을 드립니다"}
       </div>
 
-      {/* 계좌이체 신청 모달 */}
-      {applyPlan && (
+      {/* 계좌이체 신청 모달 — 무료 개방 중 절대 열리지 않음 */}
+      {!FREE_OPEN_ALL && applyPlan && (
         <div onClick={() => !loading && setApplyPlan(null)} style={{ position: "fixed", inset: 0, background: "rgba(15,30,60,0.55)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000, padding: 20 }}>
           <div onClick={(e) => e.stopPropagation()} style={{ background: "#fff", borderRadius: 16, padding: "28px 28px", width: "100%", maxWidth: 400, boxShadow: "0 20px 60px rgba(0,0,0,0.25)" }}>
             {done ? (

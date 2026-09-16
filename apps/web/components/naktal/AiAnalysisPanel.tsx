@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { FREE_OPEN_ALL } from "@/lib/plan-guard";
 import type { ComprehensiveResult } from "./AnnouncementTabs";
 import { AnalysisLoader } from "./AnalysisLoader";
 
@@ -221,7 +222,7 @@ export function AiAnalysisPanel({ annDbId, budget, g2bUrl, konepsId, onRefresh, 
                   {fmt(bs.bidPriceRangeLow)} ~ {fmt(bs.bidPriceRangeHigh)}
                 </div>
               )}
-              {cl !== "LOW" && !unlocked && (
+              {!FREE_OPEN_ALL && cl !== "LOW" && !unlocked && (
                 <>
                   <div style={{ fontSize: 11, color: "#94A3B8", marginTop: 6 }}>
                     이번 달 무료 정밀 분석 3건을 모두 사용했어요

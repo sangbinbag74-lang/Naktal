@@ -45,7 +45,9 @@ export default function SettingsPage() {
     STANDARD: { label: "스탠다드", color: "#1B3A6B", bg: "#EFF6FF" },
     PRO:      { label: "프로",     color: "#059669", bg: "#F0FDF4" },
   };
-  const planInfo = planLabels[plan] ?? planLabels["FREE"]!;
+  const planInfo = FREE_OPEN_ALL
+    ? { label: "전 기능 무료 개방 중", color: "#059669", bg: "#F0FDF4" }
+    : (planLabels[plan] ?? planLabels["FREE"]!);
 
   const inp: React.CSSProperties = {
     height: 44, border: "1.5px solid #E8ECF2", borderRadius: 10,
@@ -82,7 +84,7 @@ export default function SettingsPage() {
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
             <div>
-              <label style={lbl}>현재 플랜</label>
+              <label style={lbl}>{FREE_OPEN_ALL ? "이용 상태" : "현재 플랜"}</label>
               <span style={{
                 display: "inline-block", padding: "4px 12px", borderRadius: 99,
                 fontSize: 13, fontWeight: 600,

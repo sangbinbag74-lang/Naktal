@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient, createAdminClient } from "@/lib/supabase/server";
-import { PLAN_PRICES, PLAN_PRICES_YEARLY } from "@/lib/plan-guard";
+import { PLAN_PRICES, PLAN_PRICES_YEARLY, FREE_OPEN_ALL } from "@/lib/plan-guard";
 import type { Plan } from "@naktal/types";
 
 export const dynamic = "force-dynamic";
@@ -31,6 +31,13 @@ export async function GET(): Promise<NextResponse> {
 
 // 구독 신청 (입금 대기 생성)
 export async function POST(request: NextRequest): Promise<NextResponse> {
+  // 전면 무료 개방 중에는 결제 신청을 서버에서도 막는다 — UI 우회 방지
+  if (FREE_OPEN_ALL) {
+    return NextResponse.json(
+      { ok: false, error: "현재 전 기능이 무료로 개방되어 있어 결제 신청을 받지 않습니다." },
+      { status: 410 },
+    );
+  }
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ ok: false, error: "로그인이 필요합니다." }, { status: 401 });

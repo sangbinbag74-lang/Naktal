@@ -12,7 +12,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/server";
 import { Resend } from "resend";
 import { sendAlimtalk, isSolapiConfigured } from "@/lib/notifications/solapi";
-import { PLAN_LABELS } from "@/lib/plan-guard";
+import { PLAN_LABELS, FREE_OPEN_ALL } from "@/lib/plan-guard";
 import type { Plan } from "@naktal/types";
 
 export const dynamic = "force-dynamic";
@@ -50,7 +50,9 @@ async function runExpiry(): Promise<NextResponse> {
     .gt("currentPeriodEnd", now.toISOString())
     .lt("currentPeriodEnd", d3.toISOString());
   let reminded = 0;
-  for (const sub of (expiring ?? []) as { id: string; userId: string; plan: string; currentPeriodEnd: string }[]) {
+  // 전면 무료 개방 중에는 "구독 연장(계좌이체)" 유도 메일·알림톡을 보내지 않는다.
+  const expiringList = FREE_OPEN_ALL ? [] : (expiring ?? []);
+  for (const sub of expiringList as { id: string; userId: string; plan: string; currentPeriodEnd: string }[]) {
     const key = `subexp:${sub.id}:${sub.currentPeriodEnd.slice(0, 10)}`;
     const { count } = await admin.from("RateLimit").select("key", { count: "exact", head: true }).eq("key", key);
     if ((count ?? 0) > 0) continue;
