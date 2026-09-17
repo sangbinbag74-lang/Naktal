@@ -164,7 +164,7 @@ export default function RootLayout({
         founder: { "@type": "Person", name: "박상빈" },
         contactPoint: {
           "@type": "ContactPoint",
-          telephone: "+82-63-831-9882",
+          url: "http://pf.kakao.com/_SQxmKX",
           contactType: "customer service",
           areaServed: "KR",
           availableLanguage: ["Korean"],
